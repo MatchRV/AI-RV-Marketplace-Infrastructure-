@@ -460,7 +460,8 @@ export function Home() {
                 alt="RV interior"
                 width={1920}
                 height={1280}
-                loading="lazy"
+                loading="eager"
+                fetchPriority="high"
                 decoding="async"
                 className="w-full h-80 object-cover rounded-2xl object-[50%_40%]"
               />

@@ -71,11 +71,14 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Microsoft Clarity (production only — skip dev/test traffic) -->
+    <!-- Microsoft Clarity (production only — skip dev/test and internal traffic) -->
     <script type="text/javascript">
       (function(){
         var h = window.location.hostname;
+        var q = window.location.search;
         if (h.indexOf("replit.dev") !== -1 || h.indexOf("localhost") !== -1 || h.indexOf("127.0.0.1") !== -1) return;
+        if (h.indexOf("dev.") !== -1 || h.indexOf("staging.") !== -1) return;
+        if (q.indexOf("internal=1") !== -1) return;
         (function(c,l,a,r,i,t,y){
           c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
           t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;

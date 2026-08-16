@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, Component, type ReactNode } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { trackPageView, detectReturnVisit } from "@/lib/analytics";
 import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
@@ -253,14 +253,42 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+class ClerkErrorBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  componentDidCatch(error: Error, _errorInfo: unknown) {
+    console.error("Clerk provider/chunk failed to load; falling back to local auth.", error);
+    this.setState({ hasError: true });
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 text-center">
+          <p className="text-sm text-[#3b4949]">Loading authentication…</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
+  const [clerkFailed, setClerkFailed] = useState(false);
+
   return (
     <WouterRouter base={basePath}>
-      {isClerkConfigured ? (
-        <ClerkProviderWithRoutes />
+      {isClerkConfigured && !clerkFailed ? (
+        <ClerkErrorBoundary onError={() => setClerkFailed(true)}>
+          <ClerkProviderWithRoutes />
+        </ClerkErrorBoundary>
       ) : (
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
+          <AuthProvider forceLocal>
             <AppRouter />
           </AuthProvider>
         </QueryClientProvider>

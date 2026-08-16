@@ -31,14 +31,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode;
+  forceLocal?: boolean;
+}
+
+export function AuthProvider({ children, forceLocal }: AuthProviderProps) {
   const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
   const isClerkConfigured =
     typeof clerkPubKey === "string" &&
     /^pk_(test|live)_/.test(clerkPubKey) &&
     !clerkPubKey.includes("placeholder");
 
-  if (!isClerkConfigured) {
+  if (forceLocal || !isClerkConfigured) {
     return <LocalAuthProvider>{children}</LocalAuthProvider>;
   }
 

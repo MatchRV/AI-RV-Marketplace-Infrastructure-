@@ -1,0 +1,1174 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: RV Marketplace API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: listings
+    description: RV listing operations
+  - name: outfitter
+    description: AI Outfitter chat operations
+  - name: search
+    description: Search and filter operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: user
+    description: User account operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /listings:
+    get:
+      operationId: getListings
+      tags: [listings]
+      summary: Get all RV listings
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: number
+        - name: minYear
+          in: query
+          schema:
+            type: number
+        - name: maxYear
+          in: query
+          schema:
+            type: number
+        - name: maxLength
+          in: query
+          schema:
+            type: number
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: dealScore
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+        - name: offset
+          in: query
+          schema:
+            type: number
+        - name: sort
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingsResponse"
+
+  /listings/{id}:
+    get:
+      operationId: getListing
+      tags: [listings]
+      summary: Get a single RV listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Listing details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /outfitter/chat:
+    post:
+      operationId: outfitterChat
+      tags: [outfitter]
+      summary: Send a message to the RV Outfitter AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutfitterChatRequest"
+      responses:
+        "200":
+          description: AI response with optional recommendations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutfitterChatResponse"
+
+  /outfitter/recommendations:
+    post:
+      operationId: getOutfitterRecommendations
+      tags: [outfitter]
+      summary: Get RV recommendations based on buyer profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerProfile"
+      responses:
+        "200":
+          description: Recommended listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationsResponse"
+
+  /search/filters:
+    get:
+      operationId: getSearchFilters
+      tags: [search]
+      summary: Get available filter options
+      responses:
+        "200":
+          description: Filter options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchFilters"
+
+  /tow-match:
+    post:
+      operationId: towMatch
+      tags: [listings]
+      summary: Check towing compatibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowMatchRequest"
+      responses:
+        "200":
+          description: Towing compatibility results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowMatchResponse"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect on success or failure.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /user/saved:
+    get:
+      tags: [user]
+      operationId: getSavedListings
+      summary: Get user saved listings
+      responses:
+        '200':
+          description: Saved listings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedListingsResponse'
+        '401':
+          description: Unauthorized
+  /listings/{id}/save:
+    post:
+      tags: [user]
+      operationId: saveListing
+      summary: Save a listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Listing saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    delete:
+      tags: [user]
+      operationId: unsaveListing
+      summary: Unsave a listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Listing unsaved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/searches:
+    get:
+      tags: [user]
+      operationId: getSavedSearches
+      summary: Get saved searches
+      responses:
+        '200':
+          description: Saved searches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedSearchesResponse'
+    post:
+      tags: [user]
+      operationId: saveSearch
+      summary: Save a search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSearchRequest'
+      responses:
+        '200':
+          description: Search saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/searches/{id}:
+    delete:
+      tags: [user]
+      operationId: deleteSavedSearch
+      summary: Delete a saved search
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Search deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/alerts:
+    get:
+      tags: [user]
+      operationId: getPriceAlerts
+      summary: Get price alerts
+      responses:
+        '200':
+          description: Price alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceAlertsResponse'
+    post:
+      tags: [user]
+      operationId: createPriceAlert
+      summary: Create a price alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePriceAlertRequest'
+      responses:
+        '200':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/alerts/{id}:
+    delete:
+      tags: [user]
+      operationId: deletePriceAlert
+      summary: Delete a price alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Alert deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/messages:
+    get:
+      tags: [user]
+      operationId: getMessages
+      summary: Get sent messages
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesResponse'
+    post:
+      tags: [user]
+      operationId: sendMessage
+      summary: Send a message to a dealer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /user/saved-ids:
+    get:
+      tags: [user]
+      operationId: getSavedListingIds
+      summary: Get IDs of saved listings
+      responses:
+        '200':
+          description: Saved listing IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedListingIdsResponse'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    DealScore:
+      type: string
+      enum:
+        - great_deal
+        - good_deal
+        - fair_deal
+        - high_price
+        - overpriced
+
+    RvType:
+      type: string
+      enum:
+        - class_a
+        - class_b
+        - class_c
+        - travel_trailer
+        - fifth_wheel
+        - toy_hauler
+        - popup_camper
+        - truck_camper
+
+    Listing:
+      type: object
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: number
+        type:
+          $ref: "#/components/schemas/RvType"
+        price:
+          type: number
+        marketValue:
+          type: number
+        dealScore:
+          $ref: "#/components/schemas/DealScore"
+        dealSavings:
+          type: number
+        mileage:
+          type: number
+        length:
+          type: number
+        slides:
+          type: number
+        location:
+          type: string
+        state:
+          type: string
+        dealerName:
+          type: string
+        dealerId:
+          type: number
+        images:
+          type: array
+          items:
+            type: string
+        daysOnMarket:
+          type: number
+        sleeps:
+          type: number
+        condition:
+          type: string
+        isNew:
+          type: boolean
+        isFeatured:
+          type: boolean
+        vin:
+          type: string
+        pricePerFoot:
+          type: number
+      required:
+        - id
+        - title
+        - make
+        - model
+        - year
+        - type
+        - price
+        - marketValue
+        - dealScore
+        - location
+        - state
+        - dealerName
+        - dealerId
+        - images
+        - daysOnMarket
+        - sleeps
+        - condition
+        - isNew
+
+    ListingDetail:
+      allOf:
+        - $ref: "#/components/schemas/Listing"
+        - type: object
+          properties:
+            description:
+              type: string
+            features:
+              type: array
+              items:
+                type: string
+            dryWeight:
+              type: number
+            gvwr:
+              type: number
+            hitchWeight:
+              type: number
+            freshWater:
+              type: number
+            greyWater:
+              type: number
+            blackWater:
+              type: number
+            generator:
+              type: boolean
+            solar:
+              type: boolean
+            awning:
+              type: boolean
+            outdoor_kitchen:
+              type: boolean
+            washerDryer:
+              type: boolean
+            priceHistory:
+              type: array
+              items:
+                $ref: "#/components/schemas/PricePoint"
+            dealer:
+              $ref: "#/components/schemas/DealerInfo"
+            similarListings:
+              type: array
+              items:
+                $ref: "#/components/schemas/Listing"
+
+    PricePoint:
+      type: object
+      properties:
+        date:
+          type: string
+        price:
+          type: number
+      required:
+        - date
+        - price
+
+    DealerInfo:
+      type: object
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        phone:
+          type: string
+        rating:
+          type: number
+        reviewCount:
+          type: number
+        avgResponseTime:
+          type: string
+        beginnerFriendly:
+          type: boolean
+        yearsInBusiness:
+          type: number
+        totalListings:
+          type: number
+      required:
+        - id
+        - name
+        - city
+        - state
+        - rating
+        - reviewCount
+        - avgResponseTime
+        - beginnerFriendly
+        - yearsInBusiness
+        - totalListings
+
+    ListingsResponse:
+      type: object
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+        total:
+          type: number
+        offset:
+          type: number
+        limit:
+          type: number
+      required:
+        - listings
+        - total
+        - offset
+        - limit
+
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        content:
+          type: string
+      required:
+        - role
+        - content
+
+    OutfitterChatRequest:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        sessionId:
+          type: string
+        buyerProfile:
+          $ref: "#/components/schemas/BuyerProfile"
+      required:
+        - messages
+
+    NoMatchFilters:
+      type: object
+      properties:
+        rvType:
+          type: string
+        minLength:
+          type: number
+        maxLength:
+          type: number
+
+    ExpansionSuggestion:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - expand_range
+            - show_closest
+            - change_type
+            - start_over
+        label:
+          type: string
+        message:
+          type: string
+          nullable: true
+      required:
+        - action
+        - label
+        - message
+
+    OutfitterChatResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        sessionId:
+          type: string
+        updatedProfile:
+          $ref: "#/components/schemas/BuyerProfile"
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+        stage:
+          type: string
+          enum:
+            - greeting
+            - want
+            - use
+            - activities
+            - who
+            - trade
+            - tow_vehicle
+            - size
+            - budget
+            - matching
+            - complete
+        noMatch:
+          type: boolean
+        noMatchFilters:
+          $ref: "#/components/schemas/NoMatchFilters"
+        expansionSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpansionSuggestion"
+      required:
+        - message
+        - sessionId
+        - stage
+
+    BuyerProfile:
+      type: object
+      properties:
+        rvType:
+          type: string
+        useCase:
+          type: string
+        activities:
+          type: array
+          items:
+            type: string
+        travelers:
+          type: number
+        hasKids:
+          type: boolean
+        hasPets:
+          type: boolean
+        hasTrade:
+          type: boolean
+        towVehicle:
+          type: string
+        towVehicleYear:
+          type: number
+        paymentType:
+          type: string
+          enum:
+            - payments
+            - cash
+        minBudget:
+          type: number
+        maxBudget:
+          type: number
+        monthlyPayment:
+          type: number
+        downPayment:
+          type: number
+        minLength:
+          type: number
+        maxLength:
+          type: number
+        rawLengthInput:
+          type: string
+        lengthFlexibility:
+          type: boolean
+        intendedUse:
+          type: string
+        towingNeeds:
+          type: string
+        sleepingCapacity:
+          type: number
+        mustHaves:
+          type: array
+          items:
+            type: string
+        timeline:
+          type: string
+        experience:
+          type: string
+          enum:
+            - first_time
+            - some_experience
+            - experienced
+        campingStyle:
+          type: string
+
+    RecommendationsResponse:
+      type: object
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+        explanation:
+          type: string
+      required:
+        - listings
+        - explanation
+
+    SearchFilters:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            type: string
+        makes:
+          type: array
+          items:
+            type: string
+        states:
+          type: array
+          items:
+            type: string
+        priceRange:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+          required:
+            - min
+            - max
+        yearRange:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+          required:
+            - min
+            - max
+      required:
+        - types
+        - makes
+        - states
+        - priceRange
+        - yearRange
+
+    TowMatchRequest:
+      type: object
+      properties:
+        vehicleMake:
+          type: string
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: number
+        listingId:
+          type: number
+      required:
+        - vehicleMake
+        - vehicleModel
+        - vehicleYear
+
+    TowMatchResponse:
+      type: object
+      properties:
+        canTow:
+          type: boolean
+        towingCapacity:
+          type: number
+        rvWeight:
+          type: number
+        hitchWeight:
+          type: number
+        safetyMargin:
+          type: number
+        notes:
+          type: string
+      required:
+        - canTow
+        - towingCapacity
+        - rvWeight
+        - hitchWeight
+        - safetyMargin
+        - notes
+
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    SuccessResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    SavedListingsResponse:
+      type: object
+      required: [listings]
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Listing'
+    SavedListingIdsResponse:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: number
+    SaveSearchRequest:
+      type: object
+      required: [name, filters]
+      properties:
+        name:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+    SavedSearchItem:
+      type: object
+      required: [id, name, filters, createdAt]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+    SavedSearchesResponse:
+      type: object
+      required: [searches]
+      properties:
+        searches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SavedSearchItem'
+    CreatePriceAlertRequest:
+      type: object
+      required: [listingId, targetPrice]
+      properties:
+        listingId:
+          type: number
+        targetPrice:
+          type: number
+    PriceAlertItem:
+      type: object
+      required: [id, listingId, targetPrice, triggered, createdAt]
+      properties:
+        id:
+          type: number
+        listingId:
+          type: number
+        targetPrice:
+          type: number
+        triggered:
+          type: boolean
+        createdAt:
+          type: string
+        listingTitle:
+          type: string
+        currentPrice:
+          type: number
+    PriceAlertsResponse:
+      type: object
+      required: [alerts]
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceAlertItem'
+    SendMessageRequest:
+      type: object
+      required: [dealerId, listingId, body]
+      properties:
+        dealerId:
+          type: number
+        listingId:
+          type: number
+        body:
+          type: string
+    MessageItem:
+      type: object
+      required: [id, dealerId, listingId, body, read, createdAt]
+      properties:
+        id:
+          type: number
+        dealerId:
+          type: number
+        dealerName:
+          type: string
+        listingId:
+          type: number
+        listingTitle:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+    MessagesResponse:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageItem'
+
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie
+      schema:
+        type: string

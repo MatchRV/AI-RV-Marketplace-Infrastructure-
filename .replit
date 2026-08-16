@@ -1,0 +1,61 @@
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "RV Inventory Scraper (Daily 3AM)"
+
+[[workflows.workflow]]
+name = "RV Inventory Scraper (Daily 3AM)"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 -m rv_inventory_scraper.scheduler"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+integrations = ["sendgrid:1.0.0", "twilio:1.0.0"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["freetype", "gitFull", "glibcLocales", "orbiton", "playwright-driver", "postgresql", "unzip", "zip"]
+
+[userenv]
+
+[userenv.shared]
+VITE_GOOGLE_PLACES_API_KEY = "AIzaSyCUkQNt0Q5d9-G9EoaWmI7-_RXTIUGpMo0"
+SMS_ALERT_TO = "+12538881117"
+BRIGHT_DATA_ZONE = "95329"
+SMS_GATEWAY_EMAIL = "2538881117@vzwpix.com"
+NTFY_TOPIC = "matchrv-leads-jonathan"
+BRIGHT_DATA_CUSTOMER_ID = "hl_92c929dc"

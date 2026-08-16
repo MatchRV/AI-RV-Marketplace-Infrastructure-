@@ -1,0 +1,243 @@
+st TYPE_MAP = {
+"class a":"class_a","class-a":"class_a","diesel pusher":"class_a",
+"class b":"class_b","class-b":"class_b","camper van":"class_b","van camper":"class_b","class b+":"class_b",
+"class c":"class_c","class-c":"class_c","super c":"class_c","mini motorhome":"class_c",
+"travel trailer":"travel_trailer","bumper pull":"travel_trailer",
+"fifth wheel":"fifth_wheel","5th wheel":"fifth_wheel",
+"toy hauler":"toy_hauler","sport utility rv":"toy_hauler",
+"popup camper":"popup_camper","pop-up camper":"popup_camper","tent trailer":"popup_camper",
+"truck camper":"truck_camper","slide-in camper":"truck_camper",
+};
+function normalizeType(raw) {
+if (!raw) return "travel_trailer";
+const k = raw.toLowerCase().trim();
+if (TYPE_MAP[k]) return TYPE_MAP[k];
+if (k.includes("class a")||k.includes("diesel")) return "class_a";
+if (k.includes("class b")) return "class_b";
+if (k.includes("class c")||k.includes("super c")) return "class_c";
+if (k.includes("fifth")||k.includes("5th")) return "fifth_wheel";
+if (k.includes("toy hauler")) return "toy_hauler";
+if (k.includes("truck camper")) return "truck_camper";
+if (k.includes("popup")||k.includes("pop-up")||k.includes("tent trailer")) return "popup_camper";
+if (k.includes("motorhome")||k.includes("motor home")) return "class_a";
+return "travel_trailer";
+}
+function normalizePrice(raw) {
+if (typeof raw==="number") return raw;
+return parseInt(String(raw||"0").replace(/[^0-9]/g,""))||0;
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+async function agentRun(url, goal, timeoutMs=PAGE_TIMEOUT) {
+for (let attempt=1; attempt<=3; attempt++) {
+const res = await fetch(TINYFISH_RUN_URL, {
+method:"POST",
+headers:{"Content-Type":"application/json","X-API-Key":TINYFISH_API_KEY},
+body:JSON.stringify({url,goal,browser_profile:"stealth",proxy_config:{enabled:true,type:"tetra",country_code:"US"}}),
+signal:AbortSignal.timeout(timeoutMs),
+});
+if (res.status===429) {
+const wait=60000*attempt;
+console.warn(` [429] waiting ${wait/1000}s...`);
+await sleep(wait); continue;
+}
+if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+const data = await res.json();
+if (data.status==="FAILED") throw new Error(`FAILED: ${JSON.stringify(data.error)}`);
+return data.result;
+}
+throw new Error("429 gave up");
+}
+
+function parseResult(result) {
+if (!result) return null;
+if (typeof result==="object") return result;
+if (typeof result==="string") {
+const m = result.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+if (m) try { return JSON.parse(m[0]); } catch {}
+}
+return null;
+}
+
+async function discoverInventory(dealer) {
+const goal=`Visit this RV dealership site and find their inventory page. Return ONLY a JSON object: {"inventory_url":"<url>","pagination_type":"<url_param|path|none|unknown>","pagination_param":"<param or null>","page_url_template":"<URL with N as page number, or null>","total_units":<integer or null>}`;
+for (let i=1; i<=RETRY_LIMIT; i++) {
+try {
+const r = await agentRun(dealer.website, goal, DISCO_TIMEOUT);
+const p = parseResult(r);
+if (p?.inventory_url) return p;
+throw new Error("No inventory_url");
+} catch(err) {
+console.warn(` [discover] attempt ${i}: ${err.message}`);
+if (i<RETRY_LIMIT) await sleep(RETRY_DELAY);
+}
+}
+return null;
+}
+
+async function extractOnePage(pageUrl) {
+const goal=`Go to this URL: ${pageUrl}\n\nExtract every RV unit FOR SALE on THIS PAGE ONLY. Do NOT paginate. For each unit return: title, make, model, year (integer), condition ("new"/"used"), type, price (integer), vin, images (array of photo URLs), detail_url. Use null for missing. Return ONLY a JSON array.`;
+for (let i=1; i<=RETRY_LIMIT; i++) {
+try {
+const r = await agentRun(pageUrl, goal, PAGE_TIMEOUT);
+const p = parseResult(r);
+if (!p) return [];
+return Array.isArray(p)?p:(p.units||p.listings||p.inventory||[]);
+} catch(err) {
+console.warn(` [page] attempt ${i}: ${err.message}`);
+if (i<RETRY_LIMIT) await sleep(RETRY_DELAY);
+}
+}
+return [];
+}
+
+function buildPageUrls(info) {
+const urls=[info.inventory_url];
+if (!info.page_url_template) return urls;
+for (let p=2; p<=MAX_PAGES; p++) urls.push(info.page_url_template.replace("N",String(p)));
+return urls;
+}
+
+async function scrapeDealer(dealer) {
+console.log(`\n🔍 ${dealer.name}`);
+const info = await discoverInventory(dealer);
+if (!info) { console.error(` ❌ Discovery failed`); return null; }
+console.log(` → ${info.inventory_url} | ~${info.total_units??"?"} units`);
+
+const pageUrls = buildPageUrls(info);
+const allUnits = [];
+let emptyStreak = 0;
+
+for (let i=0; i<pageUrls.length; i++) {
+console.log(` [page ${i+1}/${pageUrls.length}]`);
+const units = await extractOnePage(pageUrls[i]);
+if (units.length===0) {
+if (++emptyStreak>=2) { console.log(` → stopping`); break; }
+} else {
+emptyStreak=0;
+allUnits.push(...units);
+console.log(` → ${units.length} units (total: ${allUnits.length})`);
+}
+await sleep(10000);
+}
+return allUnits;
+}
+
+async function pushListing(unit, dealer) {
+const price=normalizePrice(unit.price);
+const type=normalizeType(unit.type);
+const images=(Array.isArray(unit.images)?unit.images:[]).filter(Boolean).slice(0,8);
+if (!images.length) return null;
+try {
+const res = await fetch(`${MATCHRV_API_URL}/api/listings`,{
+method:"POST",
+headers:{"Content-Type":"application/json","x-admin-key":MATCHRV_ADMIN_KEY},
+body:JSON.stringify({
+title:unit.title||`${unit.year} ${unit.make} ${unit.model}`.trim(),
+make:unit.make||"Unknown", model:unit.model||"Unknown",
+year:parseInt(unit.year)||new Date().getFullYear(),
+type, price,
+condition:(unit.condition||"used").toLowerCase(),
+isNew:(unit.condition||"").toLowerCase()==="new",
+images, location:dealer.city, state:dealer.state,
+dealerName:dealer.name, dealerId:dealer.id||1,
+vin:unit.vin||null, sleeps:parseInt(unit.sleeps)||null,
+slides:parseInt(unit.slides)||null, length:parseFloat(unit.length)||null,
+description:unit.description||null,
+features:Array.isArray(unit.features)?unit.features:[],
+daysOnMarket:0, isFeatured:false,
+}),
+signal:AbortSignal.timeout(15000),
+});
+return res.ok?await res.json():null;
+} catch { return null; }
+}
+
+function loadState() {
+if (existsSync(STATE_FILE)) return JSON.parse(readFileSync(STATE_FILE,"utf8"));
+return {completed:[],failed:[],lastRun:null};
+}
+function saveState(s) { writeFileSync(STATE_FILE,JSON.stringify(s,null,2)); }
+
+const WA_DEALERS = [
+{id:1,name:"RVs Northwest",city:"Spokane Valley",state:"WA",website:"https://www.rvsnorthwest.com"},
+{id:2,name:"Fife RV Center",city:"Fife",state:"WA",website:"https://www.fifervcenter.com"},
+{id:3,name:"Johnson RV",city:"Fife",state:"WA",website:"https://www.johnsonrv.com"},
+{id:4,name:"South Hill RV Sales",city:"Puyallup",state:"WA",website:"https://www.southhillrv.com"},
+{id:5,name:"Baydo's RV",city:"Fife",state:"WA",website:"https://www.baydosrv.com"},
+{id:6,name:"Apache Camping Center",city:"Tacoma",state:"WA",website:"https://www.apachecampingcenter.com"},
+{id:7,name:"Tacoma RV Center",city:"Fife",state:"WA",website:"https://www.tacomarvcenter.com"},
+{id:8,name:"Poulsbo RV",city:"Kent",state:"WA",website:"https://www.poulsborv.com"},
+{id:9,name:"Maple Grove RV Sales",city:"Everett",state:"WA",website:"https://www.maplegrovervsales.com"},
+{id:10,name:"Open Road RV",city:"Arlington",state:"WA",website:"https://www.openroadrv.com"},
+{id:11,name:"Halterman's RV",city:"Arlington",state:"WA",website:"https://www.haltermansrv.com"},
+{id:12,name:"Roy Robinson RV",city:"Marysville",state:"WA",website:"https://www.royrobinsonrv.com"},
+{id:13,name:"Foley RV Center",city:"Marysville",state:"WA",website:"https://www.foleyrv.com"},
+{id:14,name:"Clearview RV",city:"Snohomish",state:"WA",website:"https://www.clearviewrv.com"},
+{id:15,name:"Airstream Adventures NW",city:"Covington",state:"WA",website:"https://www.airstreamadventuresnw.com"},
+{id:16,name:"Valley RV Supercenter",city:"Kent",state:"WA",website:"https://www.valleyrvsupercenter.com"},
+{id:17,name:"Camper's Choice RV",city:"Napavine",state:"WA",website:"https://www.camperschoicerv.com"},
+{id:18,name:"Awesome RV",city:"Chehalis",state:"WA",website:"https://www.awesomerv.com"},
+{id:19,name:"Kitsap RV",city:"Bremerton",state:"WA",website:"https://www.kitsaprv.com"},
+{id:20,name:"Annie's RVs",city:"Vancouver",state:"WA",website:"https://www.anniesrvs.com"},
+{id:21,name:"Scott's RV",city:"Vancouver",state:"WA",website:"https://www.scottsrv.com"},
+{id:22,name:"Vancouver RV Center",city:"Vancouver",state:"WA",website:"https://www.vancouverrvs.com"},
+{id:23,name:"Westgate Homes & RV",city:"Oak Harbor",state:"WA",website:"https://www.westgaterv.com"},
+{id:24,name:"North Beach RV",city:"Hoquiam",state:"WA",website:"https://www.northbeachrv.com"},
+{id:25,name:"Sundance RV Center",city:"Shelton",state:"WA",website:"https://www.sundancervcenter.com"},
+{id:26,name:"Blue Dog RV",city:"Kennewick",state:"WA",website:"https://www.bluedogrv.com"},
+{id:27,name:"Click It RV",city:"Spokane",state:"WA",website:"https://www.clickitrv.com"},
+{id:28,name:"R'nR RV Center",city:"Liberty Lake",state:"WA",website:"https://www.rnrrvs.com"},
+{id:29,name:"Blue Compass RV Pasco",city:"Pasco",state:"WA",website:"https://www.bluecompassrv.com/pasco-wa"},
+{id:30,name:"Broadmoor RV",city:"Pasco",state:"WA",website:"https://www.broadmoorrv.com"},
+{id:31,name:"Parkway RV",city:"Deer Park",state:"WA",website:"https://www.parkwayrv.net"},
+{id:32,name:"D&L's RV Center",city:"Wenatchee",state:"WA",website:"https://www.dlsrv.com"},
+{id:33,name:"Canopy Country RV",city:"Ellensburg",state:"WA",website:"https://www.canopycountryrv.com"},
+{id:34,name:"Central Washington RV",city:"Yakima",state:"WA",website:"https://www.centralwashingtonrv.com"},
+{id:35,name:"Sun Country RV",city:"Moses Lake",state:"WA",website:"https://www.suncountryrv.com"},
+{id:36,name:"Sunrise RVs",city:"Omak",state:"WA",website:"https://www.sunrisemotorsomak.com"},
+{id:37,name:"Krueger's RV",city:"Clarkston",state:"WA",website:"https://www.kruegersrv.com"},
+{id:38,name:"Kirkland RV Sales",city:"Everett",state:"WA",website:"https://www.kirklandrvsales.com"},
+{id:39,name:"Puyallup RV",city:"Puyallup",state:"WA",website:"https://www.puyalluprvstore.com"},
+{id:40,name:"Camping World Burlington",city:"Burlington",state:"WA",website:"https://rv.campingworld.com/dealerships/washington/burlington"},
+];
+
+async function main() {
+console.log("🚐 MatchRV WA Scraper — Running on Replit\n");
+const state = loadState();
+const pending = WA_DEALERS.filter(d=>!state.completed.includes(d.name));
+console.log(`📋 ${pending.length} dealers pending\n`);
+const stats = {ok:0,failed:0,units_found:0,units_pushed:0,skipped:0};
+
+for (const dealer of pending) {
+const units = await scrapeDealer(dealer);
+if (units===null) {
+state.failed.push({name:dealer.name,at:new Date().toISOString()});
+stats.failed++; saveState(state); continue;
+}
+stats.units_found+=units.length;
+let pushed=0,skipped=0;
+for (const unit of units) {
+const r = await pushListing(unit,dealer);
+if (r?.id) { pushed++; console.log(` ${r.created?"✅":"🔄"} [${r.id}] ${unit.year} ${unit.make} ${unit.model}`); }
+else skipped++;
+await sleep(150);
+}
+stats.units_pushed+=pushed; stats.skipped+=skipped; stats.ok++;
+state.completed.push(dealer.name); saveState(state);
+console.log(` ✅ ${dealer.name}: ${pushed} pushed, ${skipped} skipped\n`);
+await sleep(5000);
+}
+
+state.lastRun={...stats,at:new Date().toISOString()}; saveState(state);
+console.log("═".repeat(50));
+console.log(`📊 DONE — ${stats.units_pushed} units pushed across ${stats.ok} dealers`);
+console.log("═".repeat(50));
+}
+
+main().catch(console.error);
+
+
+Once the file is saved, run in Replit shell:
+bash
+node scripts/wa-scraper.mjs

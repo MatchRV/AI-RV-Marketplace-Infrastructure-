@@ -1,0 +1,707 @@
+newmtl default
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_tires
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0.290196 0.282353 0.254902
+Ks 1 1 1
+Km 0
+map_Kd /Maps/xgb4.jpg
+
+newmtl default_cargo_frames
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_bumper
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0.286275 0.282353 0.254902
+Ks 1 1 1
+Km 0
+
+newmtl default_RV_truck
+d 0.8
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_metal_front
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0.74902 0.74902 0.556863
+Ks 1 1 1
+Km 0
+
+newmtl default_front_hood
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0.286275 0.282353 0.254902
+Ks 1 1 1
+Km 0
+map_Kd /Maps/steak_bum.jpg
+
+newmtl default_AC
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_grid
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/wall5_01_01_01_01_01_01_01_01_01.jpg
+
+newmtl default_headlights
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_Headlights_cover
+d 0.458333
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0.239216 0.419608 0.501961
+Ks 1 1 1
+Km 0
+
+newmtl default_headlights_bulb
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/sd1_01_01_02_01_01_01_01_01_01_01_01_01.jpg
+
+newmtl default_side_fenders
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 0.286275 0.282353 0.254902
+Ks 1 1 1
+Km 0
+
+newmtl default_brakes
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_RV_truck_RV_truck
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/x2_01_01_01_01_01_01_01_01_01.jpg
+
+newmtl default_brakelights_bulbs
+d 1
+Ns 0.75
+Ni 0
+Ka 0 0 0
+Kd 1 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_door_left
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_door_right
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_rv_bus_door
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/x2.jpg
+
+newmtl default_door_glass
+d 0.8
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_inner_fender_covers
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0.290196 0.282353 0.254902
+Ks 1 1 1
+Km 0
+map_Kd /Maps/wall5_01_01_01_01_01_01_01_01_01.jpg
+
+newmtl default_wipers
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_kitchen_bus
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0.227451 0.247059 0.286275
+Ks 1 1 1
+Km 0
+map_Kd /Maps/antenna.jpg
+
+newmtl default_glass
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_stove
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 1 1
+Km 0
+
+newmtl default_oven
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/antenna.jpg
+
+newmtl default_drawers
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/byw1_01_01.jpg
+
+newmtl default_cabinets
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/byw1_01_01.jpg
+
+newmtl default_metal_parts
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_dinning_set
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/yx1_02.jpg
+
+newmtl default_dinner
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/byw1_01_01.jpg
+
+newmtl ground_1
+d 1
+Ns 0
+Ni 0
+Ka 0.658824 0.658824 0.658824
+Kd 0.658824 0.658824 0.658824
+Ks 0 0 0
+Km 0
+
+newmtl wall_1_2
+d 1
+Ns 0
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+Km 0
+map_Kd /Maps/shower_wall_1_2.jpg
+
+newmtl wall_4_8
+d 1
+Ns 0
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+Km 0
+
+newmtl Poignee_12
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl sweethome3d_window_pane_14
+d 0.5
+Ns 1
+Ni 0
+Ka 0.521569 0.521569 0.521569
+Kd 0.823529 0.823529 0.823529
+Ks 0 0 0
+Km 0
+
+newmtl Evacuation_27
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.513726 0.513726 0.513726
+Km 0
+
+newmtl Robinet_gauche_28
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl ground_1_toilet
+d 1
+Ns 0
+Ni 0
+Ka 0.658824 0.658824 0.658824
+Kd 0.658824 0.658824 0.658824
+Ks 0 0 0
+Km 0
+
+newmtl wall_1_2_toilet
+d 1
+Ns 0
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+Km 0
+map_Kd /Maps/toilet_wall_1_2.jpg
+
+newmtl wall_5_10
+d 1
+Ns 1
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0.247059 0.247059 0.247059
+Km 0
+map_Kd /Maps/toilet_wall_1_2.jpg
+
+newmtl Bas_12
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl Chasse_14
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl default_sofa2
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/yx1_02.jpg
+
+newmtl matress
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.937255 0.803922 0.584314
+Ks 0.14902 0.14902 0.14902
+Km 0.0004
+
+newmtl wood1
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.964706 0.964706 0.964706
+Ks 0 0 0
+Km 0.0004
+map_Kd /Maps/Darkwood.jpg
+
+newmtl Preview
+d 1
+Ns 0.85
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.0196078 0.137255 0.192157
+Km 0.0004
+map_Kd /Maps/bs1.jpg
+
+newmtl fabric
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.937255 0.937255 0.937255
+Ks 0.027451 0.027451 0.027451
+Km 0.0004
+map_Kd /Maps/bs1.jpg
+
+newmtl Gray_Plastic
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+map_Kd /Maps/SATINSTA.jpg
+
+newmtl Chrome
+d 1
+Ns 0.994737
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+map_refl /Maps/Chrome004.jpg
+
+newmtl default_twin_beds2
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/yx1_02.jpg
+
+newmtl default_wood
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/byw1_01_01.jpg
+
+newmtl default_handles
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+
+newmtl default_bed_spread2twins
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/bs1.jpg
+
+newmtl ground_1_toilet_1
+d 1
+Ns 0
+Ni 0
+Ka 0.658824 0.658824 0.658824
+Kd 0.658824 0.658824 0.658824
+Ks 0 0 0
+Km 0
+
+newmtl wall_1_2_toilet_1
+d 1
+Ns 0
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0 0 0
+Km 0
+map_Kd /Maps/toilet_wall_1_2.jpg
+
+newmtl wall_5_10_toilet
+d 1
+Ns 1
+Ni 1
+Ka 0.2 0.2 0.2
+Kd 1 1 1
+Ks 0.247059 0.247059 0.247059
+Km 0
+map_Kd /Maps/toilet_wall_1_2.jpg
+
+newmtl Bas_12_toilet
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl Chasse_14_toilet
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.466667 0.466667 0.466667
+Km 0
+
+newmtl default_wood_furniture_cabinets
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/byw1_01_01.jpg
+
+newmtl default_interiors1
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/yx1_02.jpg
+
+newmtl default_walls
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/bs1.jpg
+
+newmtl default_instruments
+d 1
+Ns 1
+Ni 0
+Ka 1 1 1
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/rt1.jpg
+
+newmtl default_interiors
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 1 1 1
+Km 0
+map_Kd /Maps/leather.jpg
+
+newmtl glass
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.827451 0.827451 0.827451
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl shiny
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.584314 0.584314 0.584314
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl Darkblack
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.00784314 0.00784314 0.00784314
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl Darkgrey
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.239216 0.247059 0.227451
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl shiny2
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.929412 0.929412 0.929412
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl glass_tv
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.827451 0.827451 0.827451
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl shiny_tv
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.584314 0.584314 0.584314
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl Darkblack_tv
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.00784314 0.00784314 0.00784314
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl Darkgrey_tv
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.239216 0.247059 0.227451
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl shiny2_tv
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.929412 0.929412 0.929412
+Ks 0.894118 0.894118 0.894118
+Km 0.0004
+
+newmtl default_handle
+d 1
+Ns 1
+Ni 0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.6 0.6 0.6
+Km 0
+

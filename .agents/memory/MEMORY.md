@@ -1,0 +1,15 @@
+- [Scraper pipeline safety rules](scraper-pipeline-safety.md) — mark_dealer_complete must only fire after upsert commits; deployment restarts can kill mid-transaction
+- [Lazydays bot detection pattern](lazydays-bot-detection.md) — lazydays.com uses aggressive bot detection; 0-result scrapes are common; safety guard injects existing identities
+- [Lazydays URL filter + timeout](lazydays-url-filter.md) — sitemap has ~2000 category pages that 403; stock-ID filter cuts 3005→1032; per-dealer timeout must be ≥1800s
+- [Vite BASE_URL API fetch bug](vite-base-url-api.md) — fetch calls must NOT use BASE_URL prefix for /api paths; Vite proxy only matches /api not /rv-marketplace/api
+- [Match Report API — perf & URL quirks](match-report-api-perf.md) — generateCopy() needs Promise.race timeout ≤12s or Claude hangs the whole request; all deal scores are fair_deal so bestValue always falls back to second-fit listing
+- [MatchRV Rugged Horizon light design](rugged-horizon-design.md) — site is now LIGHT (bg #f4fbfa, cyan #00CED1, dark blocks #0B1117); never hardcode color in global h1-h6 rule or dark-section headings go invisible
+- [Stale workflow process after restart](stale-workflow-process.md) — restarts can orphan the old process still holding the port; ps + kill before trusting a "code isn't taking effect" diagnosis
+- [api-server has no hot-reload](api-server-no-watch.md) — dev runs plain tsx, not tsx watch; restart the API Server workflow after src edits or you test stale in-memory code
+- [Outfitter AI rerank quirks](outfitter-rerank.md) — haiku wraps JSON in fences (strip before parse); backfill from deterministic when <3 valid picks; per-request console logs not in workflow snapshot
+- [Responsive QA — inverted font sizes](responsive-qa.md) — visual-editor can leave a large arbitrary base size (text-[100px]) with smaller sm/md overrides → overflows only on mobile; screenshot at 402px + grep text-[NNpx]
+- [Deployment image size limit](deploy-image-size.md) — publish fails at 8 GiB image cap; .replitignore must exclude archives/.cache/attached_assets but keep the master seed JSON
+- [No-photo listings hidden](no-photo-listings-hidden.md) — listings w/ empty images filtered at API read layer (not deleted, scraper re-inserts); keep all listing-list queries in sync
+- [ReportLab PDF gotchas](reportlab-pdf-gotchas.md) — unescaped `&` renders stray `;`; splitting "Name, $12,345" on comma breaks price; always pdftoppm-verify every page
+- [Inventory package imports](inventory-package-import.md) — blank unit_type needs 3-tier inference (DB map → keywords → LLM); proxy rejects public Claude aliases; dup VINs predate imports
+- [Listing image junk](listing-image-junk.md) — per-listing images arrays carry dealer banners + dup resolution/thumb variants; clean before any gallery, never stock-fallback empty galleries

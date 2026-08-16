@@ -1,0 +1,46 @@
+ Open the file artifacts/api-server/src/routes/outfitter.ts and replace the entire matching/recommendations logic. The
+  current matching engine only filters on 3 fields (rvType, maxBudget, minBudget) and ignores everything else the buyer
+  tells the Outfitter AI — including length, sleeps, tow vehicle, camping style, and use case. This is causing
+  completely wrong RV recommendations.
+
+  Here's what needs to change:
+
+  1. Add a tow capacity lookup table before the router, with common vehicles (F-150: 13000, Ram 1500: 12750, Tacoma:
+  6800, Tundra: 12000, etc.) and a function estimateTowCapacity(vehicle) that fuzzy-matches the buyer's tow vehicle
+  string to get max tow capacity in lbs.
+
+  2. Replace the inline SQL filtering with a buildListingFilters(profile) function that builds WHERE clauses for ALL of
+  these fields:
+  - rv_type = profile.rvType (hard filter)
+  - COALESCE(sale_price, price) <= maxBudget (NEVER exceed budget)
+  - COALESCE(sale_price, price) >= minBudget
+  - sleeps >= profile.travelers (must fit the travel party)
+  - length <= profile.maxLength (respect size preferences)
+  - length >= profile.minLength
+  - COALESCE(gvwr, dry_weight) <= towCapacity (only for towable types — don't recommend RVs they can't tow)
+  - condition = 'new' or 'used' if stated
+  - inventory_status = 'available' (always)
+
+  3. Add an AI re-ranking layer. After the SQL query pulls 15 candidates (not 3), make a second Claude API call with a
+  system prompt that says: "You are the RV Outfitter matching engine. You receive a buyer profile and candidate
+  listings. Select the TOP 3 that best match. Priorities in order: budget (never exceed), RV type, camping style
+  (boondocking needs generator + big fresh water tank; full hookup needs slideouts), use case, travelers, tow vehicle,
+  activities." Send each candidate's specs (sleeps, length, weight, generator, bunkhouse, fresh_water_capacity,
+  features, description, etc.) along with the full buyer profile. Claude returns JSON with the top 3 listing IDs, a
+  whyMatch description (2-3 personalized sentences referencing the buyer's specific needs), and a matchScore (0-100). If
+   the re-ranking call fails, fall back to returning the first 3 SQL results.
+
+  4. Create a getMatchedListings(profile) function that runs: buildListingFilters → SQL query (LIMIT 15) → rerankWithAI
+  → return top 3 with whyMatch and matchScore attached.
+
+  5. Update both endpoints (/outfitter/chat and /outfitter/recommendations) to use getMatchedListings() instead of the
+  current inline SQL.
+
+  6. Update the recommendations card UI in outfitter.tsx to show:
+  - Badges: "Best Match" / "Runner Up" / "Great Option" instead of "Perfect Match" on all 3
+  - The matchScore percentage in the top-right corner
+  - The whyMatch description text under each title
+  - Sleeps count and length on each card
+
+  Do NOT change the conversation system prompt (OUTFITTER_SYSTEM_PROMPT) or the profile extraction logic — those are
+  working correctly. Only fix the matching and recommendation code.

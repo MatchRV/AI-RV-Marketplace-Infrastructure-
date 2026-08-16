@@ -1,0 +1,199 @@
+You are my senior full-stack product engineer and UX fixer for **LotLink.io**, an RV marketplace web app built in Replit. Your job is to audit the existing codebase and implement every fix below—not mock them superficially. Prioritize working production behavior, clean UX, mobile responsiveness, and conversion-focused improvements. Do not ask for approval between issues unless you hit a true blocker. Prefer production-grade fixes over stubs. At the end, deliver a summary of: what was fixed, root causes found, remaining risks, and recommended next improvements.
+
+---
+
+## Architecture audit first
+
+Before writing a single line of code, inspect the existing app and identify:
+- All route files and their data loaders
+- Shared component library (cards, nav, modals, CTAs)
+- Listing data model and schema
+- Data fetching layer (API calls, queries, state management)
+- Metadata/SEO configuration
+- Nav component and responsive behavior
+
+Then create a concise implementation plan grouped by the issues below, and execute each fix fully in order.
+
+---
+
+## Fix 1 — Listing detail pages (`/listing/:id`)
+
+**Root cause investigation:** Determine whether the blank detail page is caused by bad route param handling, failed fetch, null listing data, hydration/render guard bug, permissions gating, missing fallback UI, schema mismatch between browse cards and detail page, or broken image array handling.
+
+**Fix the route so every valid listing ID renders:**
+- Hero image gallery
+- Price, title, year/make/model/type
+- Location, mileage or condition
+- Deal score / market estimate if available
+- Description
+- Seller/dealer info
+- CTAs: contact, save, share
+
+**Add all missing states:**
+- Loading skeleton
+- "Listing not found" state for invalid IDs, with related inventory suggestions below
+- Graceful fallback when photos are missing
+- Graceful fallback when individual fields are null
+
+**Also:**
+- Generate per-listing SEO/social metadata if the framework supports it
+- Add "Back to results" navigation from the detail page
+- Confirm clicking any browse card opens a fully rendered detail page on both desktop and mobile
+
+**Done when:** No valid listing renders blank. Invalid IDs show a helpful state. Detail page is visually complete and conversion-ready. Image gallery works on both viewports.
+
+---
+
+## Fix 2 — LotLink branding
+
+**Find and replace all occurrences of:**
+- "RV Marketplace" (generic)
+- Generic title tags, header text, footer branding
+- Default/placeholder meta titles and descriptions
+- Placeholder Open Graph and social sharing tags
+
+**Replace with consistent LotLink brand hierarchy:**
+- Logo/wordmark: **LotLink**
+- Short descriptor: AI-powered RV marketplace
+- Supporting line: smarter RV shopping, selling, matching, and dealer tools
+
+**Touch every brand surface:**
+- Navbar, footer, browser tab title
+- Per-page metadata (unique per major route)
+- Social sharing preview tags
+- Empty states, auth screens, email templates if present in repo
+
+**Done when:** Every primary user-facing brand touchpoint says LotLink. The app feels like one product, not a template.
+
+---
+
+## Fix 3 — Browse card photos and image fallbacks (`/browse`)
+
+**Add to every browse card:**
+- Primary listing photo as thumbnail (deterministic cover image selection if multiple exist)
+- Skeleton/blur while loading
+- Clean placeholder when no photo exists
+- `onerror` fallback if remote image fails
+- Consistent aspect ratio, no layout shift
+
+**Card visual hierarchy (top to bottom):** photo → price → title → location → core specs → deal badge
+
+**Performance requirements:** lazy loading, responsive image sizes, no layout shift.
+
+**Done when:** Every browse card shows a real thumbnail or clean fallback. No broken image icons appear.
+
+---
+
+## Fix 4 — Discover uses real inventory (`/discover`)
+
+**Connect Discover to the live listings dataset:**
+- Build a swipe or next/previous card stack cycling through real listings
+- Preserve match rationale tied to actual listing attributes (tags: off-grid, family, luxury, budget, towable, etc.)
+- If user hasn't completed AI Outfitter, show lightweight starter preferences inline and let them continue
+- Add actions: like/save, skip, view details, refine preferences
+- Persist state in app memory or backend as appropriate
+- When no matches remain: show refresh, broaden filters, and go-to-browse options
+
+**Done when:** Discover serves multiple real listings in sequence. Match explanations reference actual listing attributes.
+
+---
+
+## Fix 5 — Browse pagination or load-more
+
+**Inspect the current browse query and rendering model, then implement one of:**
+- Numbered pagination
+- Load more button
+- Infinite scroll with explicit progress indicator
+
+**Always show the user:**
+- Current result range (e.g., "Showing 1–24 of 312")
+- Total count
+- Active filters with a clear-filters control
+
+**Also:** Preserve scroll position when returning from a detail page. Reset pagination correctly on filter changes.
+
+**Done when:** Users always know more inventory exists. Navigation across inventory is frictionless.
+
+---
+
+## Fix 6 — Trip Planner logged-out preview (`/trips`)
+
+**Redesign the logged-out state to preview value before asking for auth:**
+- Sample itinerary cards
+- Example campgrounds or route stops
+- Teaser map or trip modules
+- Explanation of what the planner does
+
+**One clear CTA:** "Sign in to save your trip" or "Start planning free"
+
+Keep full trip saving behind auth, but eliminate the dead-end empty wall.
+
+**Done when:** Logged-out users understand the feature and feel desire before hitting the auth gate.
+
+---
+
+## Fix 7 — AI Outfitter onboarding progress UX (`/outfitter`)
+
+**Audit the progress logic and replace with something intuitive:**
+- Start at 0% before any input, or show "Step 1 of N" until sufficient data exists for a meaningful percentage
+- Never show a discouraging low percentage (like 11%) as the starting state
+
+**Structure the flow into clear stages:** budget → usage → size/sleeps → towability/drivability → camping style → optional preferences
+
+**Add:**
+- Immediate feedback after each step
+- Completion reward messaging: improved matches, better Discover recommendations, dealer readiness, smarter filtering
+- Consistent progress indicator across mobile and desktop
+
+**Done when:** Progress starts logically. Users always know what comes next. Completion feels meaningful.
+
+---
+
+## Fix 8 — Mobile navigation and small-screen layout
+
+**Implement a high-quality mobile nav pattern** (hamburger drawer or compact bottom nav):
+- Primary destinations: Browse, Discover, Sell, Trips, Outfitter, account/profile
+- Large tap targets
+- Drawer closes reliably
+- Active route is highlighted
+- No overlap with hero content, no clipped menu items
+
+**Full mobile audit:** Review all primary routes at phone widths and fix overflow, broken grids, collapsed filters, and CTA issues.
+
+**Done when:** Mobile nav is polished. No horizontal overflow on primary pages. Core flows are fully usable on phone-sized screens.
+
+---
+
+## Additional quality improvements (implement while you are in each file)
+
+- Add empty, loading, and error states everywhere a data fetch occurs
+- Consistent CTA hierarchy across all routes
+- Page-specific headings and metadata on all major routes
+- Remove all placeholder and generic filler copy
+- Improve internal linking between `/browse`, `/discover`, `/outfitter`, `/trips`, `/tow-guide`, and `/sell`
+- Save/favorite affordances where practical
+- Proper disabled, success, and error states on all buttons and forms
+- Accessibility basics: semantic headings, form labels, keyboard navigation, image alt text, color contrast, focus states
+- Performance basics: lazy-loaded images, no unoptimized image payloads, no blocking client-side loops on browse
+
+---
+
+## Dealer page (`/dealers`)
+
+Inspect `/dealers` for broken loading states, dead buttons, fake metrics, or placeholder workflows, but treat dealer improvements as secondary unless they block trust or demos—that area already appears more developed than the consumer-side listing detail experience.
+
+---
+
+## Definition of done
+
+Work is complete only when:
+- Listing detail pages render real content reliably for all valid IDs
+- LotLink branding is consistent across every user-facing surface
+- Browse cards display working images with clean fallbacks
+- Discover cycles through real inventory with real match rationale
+- Browse pagination or load-more is visible and functional
+- Trips has a useful logged-out preview with a clear CTA
+- Outfitter progress starts logically and guides users through clear stages
+- Mobile nav is polished and all primary pages are responsive and stable
+
+Build this as if LotLink is being shown to investors, dealers, and retail buyers this week.

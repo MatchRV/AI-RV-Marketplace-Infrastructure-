@@ -1,0 +1,139 @@
+I'm building RV Marketplace — an AI-powered RV buying platform (think CarGurus for RVs). 
+
+My tech stack is: Next.js 14, TypeScript, Tailwind CSS, Supabase (PostgreSQL), Stripe for payments, Resend for email.
+
+I need you to build two connected features: Ghost Listings and the Dealer Claim Flow. Here is exactly what each does:
+
+---
+
+## FEATURE 1: GHOST LISTINGS
+
+### What it is
+Every RV dealership in America gets a profile page on my platform automatically — even if they never signed up. These are called "ghost listings." The data comes from a CSV I will upload (dealer name, address, phone, city, state, zip, website, specialties).
+
+### Database
+Add a `dealers` table in Supabase with these columns:
+- id (uuid, primary key)
+- name (text)
+- address (text)
+- city (text)
+- state (text)
+- zip (text)
+- phone (text)
+- website (text)
+- specialties (text) — e.g. "Class C, Travel Trailers"
+- status (enum: 'ghost', 'claimed', 'active') — default 'ghost'
+- claimed_by_user_id (uuid, nullable, foreign key to auth.users)
+- claimed_at (timestamp, nullable)
+- trial_ends_at (timestamp, nullable)
+- stripe_customer_id (text, nullable)
+- stripe_subscription_id (text, nullable)
+- created_at (timestamp)
+
+### Admin Import Page
+Build a page at /admin/import-dealers where I can upload a CSV and it bulk-inserts all dealers with status = 'ghost'.
+
+### Public Dealer Profile Page
+Build a page at /dealers/[id] that shows:
+- Dealer name, address, phone, specialties
+- A yellow banner at the top that says: "⚠️ This dealer hasn't joined RV Marketplace yet. They can't receive messages until they claim this listing."
+- A button: "Are you this dealer? Claim your free listing →" that links to /claim/[id]
+- If status is 'claimed' or 'active', hide the banner and show normal profile
+
+---
+
+## FEATURE 2: BUYER INQUIRY + DEALER CLAIM FLOW
+
+### Step 1 — Buyer Sends Inquiry to Ghost Dealer
+When a buyer gets matched to a ghost dealer (status = 'ghost'), show them this UI:
+
+> "Dave's RV Center was matched to you by our AI — but they haven't joined RV Marketplace yet."
+> [Send them your inquiry anyway — we'll notify them] ← button
+
+When buyer clicks that button, save an `inquiries` table row:
+- id (uuid)
+- dealer_id (foreign key to dealers)
+- buyer_name (text)
+- buyer_email (text)
+- buyer_phone (text, optional)
+- budget (text)
+- rv_type (text)
+- timeline (text)
+- tow_vehicle (text, optional)
+- message (text, optional)
+- status (enum: 'pending', 'delivered', 'responded')
+- created_at (timestamp)
+
+Then immediately send an email to the dealer's listed email address using Resend. The email looks like this:
+
+Subject: "A buyer is waiting for you on RV Marketplace"
+
+Body:
+---
+Hi [Dealer Name],
+
+A buyer was matched to your dealership by our AI today.
+
+Here are their details:
+• Name: [buyer name]
+• Budget: [budget]
+• Looking for: [rv type]
+• Timeline: [timeline]
+• Tow vehicle: [tow vehicle]
+
+They're waiting for a response.
+
+[Claim Your Free Listing and Respond →] ← big button linking to /claim/[dealer_id]?inquiry=[inquiry_id]
+
+This takes 60 seconds. Free for 30 days. No credit card required to start.
+
+— The RV Marketplace Team
+---
+
+### Step 2 — Dealer Claim Flow (/claim/[dealer_id])
+This is a 3-step wizard:
+
+STEP 1 — Verify Identity
+- Show dealer name and address
+- Form fields: Your name, Your email, Your phone, Your role at dealership (Owner / Manager / Sales)
+- Button: "This is my dealership — continue"
+
+STEP 2 — Confirm Your Info
+- Pre-filled from ghost listing data (editable): dealership name, address, phone, website, specialties
+- Upload logo (optional)
+- Button: "Looks good — activate my free trial"
+
+STEP 3 — Confirmation
+- Show: "You're live! Your 30-day free trial has started."
+- If there is a pending inquiry (passed via URL param), show it immediately:
+  > "You have a buyer waiting. Here's their inquiry: [show inquiry details]"
+  > [Reply to this buyer →] ← opens email compose or shows buyer contact info
+- Show link to their new dealer dashboard: /dashboard/dealer
+
+### After Claim
+- Set dealer status = 'claimed'
+- Set trial_ends_at = now + 30 days
+- Set claimed_by_user_id = auth user id (create account for them if needed using their email)
+- Update inquiry status = 'delivered'
+
+---
+
+## FEATURE 3: DEALER DASHBOARD (/dashboard/dealer)
+Simple dashboard for claimed dealers showing:
+- Their profile info (editable)
+- List of all inquiries they've received (buyer name, budget, rv type, date, status)
+- Trial status banner: "Your free trial ends in X days. [Upgrade to Pro →]"
+- Upgrade button triggers Stripe checkout for $299/month plan
+
+---
+
+## ADDITIONAL REQUIREMENTS
+- All pages must use my existing Tailwind CSS design system (white/clean, light mode, NOT dark)
+- Brand name throughout is "RV Marketplace"
+- Mobile responsive
+- Supabase Row Level Security: dealers can only see their own inquiries
+- All forms must have basic validation and loading states
+- Use Resend for all transactional emails
+- Environment variables needed: RESEND_API_KEY, STRIPE_SECRET_KEY, STRIPE_PRICE_ID_PRO, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+Start by showing me the database schema SQL, then build each feature in order: 1) database + types, 2) ghost listing page, 3) buyer inquiry UI, 4) dealer email, 5) claim wizard, 6) dealer dashboard.

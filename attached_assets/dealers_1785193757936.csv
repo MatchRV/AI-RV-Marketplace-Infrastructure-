@@ -1,0 +1,27 @@
+dealer_id,slug,name,city,state,domain,platform,timezone,is_existing
+2,fife-rv,Fife RV Center,Fife,WA,fifervcenter.com,DealerSpike,America/Los_Angeles,true
+9,maple-grove-rv,Maple Grove RV,Everett,WA,maplegroverv.com,DealerSpike,America/Los_Angeles,false
+10,central-washington-rv,Central Washington RV,Yakima,WA,centralwashingtonrv.com,DealerSpike,America/Los_Angeles,false
+11,clearview-rv,Clearview RV,Snohomish,WA,clearviewrv.com,DealerSpike,America/Los_Angeles,false
+12,rvs-northwest,RVs Northwest,Spokane Valley,WA,rvsnorthwest.com,DealerSpike,America/Los_Angeles,false
+13,country-motorhomes,Country Motorhomes,Mount Vernon,WA,countrymotorhomes.com,DealerSpike,America/Los_Angeles,false
+14,selkirk-rv,Selkirk RV,Spokane,ID,selkirkrv.com,DealerSpike,America/Boise,false
+15,sumner-rv,Sumner RV,Sumner,WA,sumnerrv.com,DealerSpike,America/Los_Angeles,false
+16,rnr-rv-center,RnR RV Center,Liberty Lake,WA,rnrrv.com,DealerSpike,America/Los_Angeles,false
+17,bretz-rv-marine,Bretz RV & Marine,Liberty Lake,WA,bretzrv.com,DealerSpike,America/Los_Angeles,false
+18,apache-camping-center,Apache Camping Center,Everett,WA,apachecamping.com,DealerSpike,America/Los_Angeles,false
+19,broadmoor-rv-superstore,Broadmoor RV SuperStore,Pasco,WA,broadmoorrv.com,DealerSpike,America/Los_Angeles,false
+20,valley-rv-supercenter,Valley RV Supercenter,Kent,WA,valleyrvsupercenter.com,Overfuel,America/Los_Angeles,false
+21,blue-compass-rv-pasco,Blue Compass RV - Pasco,Pasco,WA,bluecompassrv.com,DealerSpike,America/Los_Angeles,false
+22,blue-compass-rv-liberty-lake,Blue Compass RV - Liberty Lake,Liberty Lake,WA,bluecompassrv.com,DealerSpike,America/Los_Angeles,false
+23,puyallup-rv-puyallup,Puyallup RV - Puyallup,Puyallup,WA,puyalluprv.com,Automanager,America/Los_Angeles,false
+24,puyallup-rv-vancouver,Puyallup RV - Vancouver,Vancouver,WA,puyalluprv.com,Automanager,America/Los_Angeles,false
+25,bish-s-rv,Bish's RV,Meridian,ID,bishs.com,DealerSpike,America/Boise,false
+26,curtis-trailers,Curtis Trailers,Portland,OR,curtistrailers.com,DealerSpike,America/Los_Angeles,false
+27,george-m-sutton-rv,George M Sutton RV,Eugene,OR,suttonrv.com,DealerSpike,America/Los_Angeles,false
+28,roberson-rv,Roberson RV,Salem,OR,robersonrv.com,DealerSpike,America/Los_Angeles,false
+29,porter-s-rvs,Porter's RVs,Coos Bay,OR,portersrv.com,DealerSpike,America/Los_Angeles,false
+30,dennis-dillon-rv,Dennis Dillon RV,Boise,ID,www.dillonrv.com,DealerSpike,America/Boise,false
+31,blue-compass-rv-oregon,Blue Compass RV - Oregon,(multi),OR,www.bluecompassrv.com,DealerSpike,America/Los_Angeles,false
+32,blue-compass-rv-idaho,Blue Compass RV - Idaho,(multi),ID,www.bluecompassrv.com,DealerSpike,America/Boise,false
+33,poulsbo-rv,Poulsbo RV,Everett,WA,poulsborv.com,WordPress/Woo,America/Los_Angeles,false

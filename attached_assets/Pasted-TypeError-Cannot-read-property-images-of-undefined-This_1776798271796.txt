@@ -1,0 +1,133 @@
+TypeError: Cannot read property 'images' of undefined
+
+This error is located at:
+    at v (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1214:1117)
+    at RCTView (<anonymous>)
+    at View (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:296:1246)
+    at RCTView (<anonymous>)
+    at View (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:296:1246)
+    at I (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1214:6182)
+    at Suspense (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:801:383)
+    at s (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:810:3681)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:748:455)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:677:230)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:746:127)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:710:325)
+    at t (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:916:329)
+    at Suspense (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:916:119)
+    at RNSBottomTabsScreen (<anonymous>)
+    at B (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:949:2341)
+    at T (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1069:4549)
+    at RNSBottomTabs (<anonymous>)
+    at v (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:946:449)
+    at P (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1069:6257)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1069:1162)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:735:189)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:754:390)
+    at t (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:696)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:227)
+    at y (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1067:1160)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:800:1115)
+    at f (<anonymous>)
+    at x (<anonymous>)
+    at Suspense (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:801:383)
+    at s (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:810:3681)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:748:455)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:677:230)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:746:127)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:710:325)
+    at RNSScreenContentWrapper (<anonymous>)
+    at l (<anonymous>)
+    at u (<anonymous>)
+    at RNSScreen (<anonymous>)
+    at Animated(Anonymous) (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:418:466)
+    at t (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:916:329)
+    at Suspense (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:916:119)
+    at c (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:915:296)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:913:894)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:913:4288)
+    at y (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:936:790)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:710:325)
+    at S (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:976:2450)
+    at RNSScreenStack (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:933:400)
+    at G (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:932:831)
+    at RCTView (<anonymous>)
+    at View (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:296:1246)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:875:379)
+    at v (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:894:650)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:976:132)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:735:189)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:754:390)
+    at t (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:696)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:227)
+    at m (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:973:1240)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:800:1115)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:656:4509)
+    at v (<anonymous>)
+    at KeyboardControllerView (<anonymous>)
+    at Animated(Anonymous) (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:418:466)
+    at AnimatedComponent(Animated(Anonymous)) (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1381:237)
+    at Animated(Anonymous) (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1381:605)
+    at T (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1540:1433)
+    at RCTView (<anonymous>)
+    at View (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:296:1246)
+    at o (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1623:330)
+    at o (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1190:804)
+    at s (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1691:360)
+    at RNCSafeAreaProvider (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:867:477)
+    at x (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1574:997)
+    at Suspense (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:801:383)
+    at s (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:810:3681)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:748:455)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:677:230)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:746:127)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:710:325)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:735:189)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:754:390)
+    at t (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:696)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:743:227)
+    at U (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1054:2992)
+    at RNCSafeAreaProvider (<anonymous>)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:867:477)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:984:202)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1054:1058)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:683:126)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:677:230)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:660:1023)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1058:552)
+    at L (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1054:1840)
+    at anonymous (https://rvmarketplace.replit.app/mobile/1776732556334-157/_expo/static/js/ios/bundle.js:1054:961)
+    at RCTView (<anonymous>)
+    at View (https://r
+
+v
+    bundle.js:1214:3109
+Gl
+    bundle.js:181:37629
+Ga
+    bundle.js:181:67567
+hi
+    bundle.js:181:77271
+io
+    bundle.js:181:102943
+lo
+    bundle.js:181:101968
+to
+    bundle.js:181:101810
+$u
+    bundle.js:181:99092
+Ht
+    bundle.js:181:29381
+Dt
+    bundle.js:181:27999
+jt
+    bundle.js:181:28235
+anonymous
+    bundle.js:181:27608

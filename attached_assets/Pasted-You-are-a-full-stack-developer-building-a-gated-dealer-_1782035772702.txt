@@ -1,0 +1,31 @@
+You are a full-stack developer building a gated dealer dashboard feature for an existing web application.
+
+**Context:** I have an existing "For Dealers" page where dealers can log in. I need you to implement a complete subscription-tiered dealer portal section that activates upon dealer login. I will provide the relevant file containing the full content/data to be displayed inside this section.
+
+**The three-tier feature structure is as follows:**
+
+1. **Leads** *(Free — included at signup)*
+   - Dealers receive leads automatically upon signing up
+   - Each lead must display enriched data pulled from the site, including all relevant details I've specified in the file
+   - No payment required to access this tier
+
+2. **Inventory Intelligence** *(Paid — Subscription Tier 1)*
+   - Locked behind a payment/subscription gate
+   - Dealers must purchase this subscription to unlock and use this feature
+   - Display a paywall or upgrade prompt if the dealer has not subscribed
+
+3. **AI Lead Agent** *(Paid — Subscription Tier 2)*
+   - An AI-powered follow-up agent that automatically engages with the dealership's incoming leads
+   - Locked behind a second, higher-tier subscription
+   - Display a paywall or upgrade prompt if the dealer has not subscribed to this tier
+
+**Implementation requirements:**
+
+- On login, the dealer's subscription status must be checked and used to conditionally render access to each feature
+- Free features (Leads) are visible and functional immediately after signup
+- Paid features show a locked/upgrade state until the dealer has an active subscription for that tier
+- Build the payment gating logic as a reusable function/hook that can wrap any feature component — checking entitlement before rendering
+- All content from the file I've provided must be rendered inside the designated section of the For Dealers page
+- Match the existing architecture, component patterns, and styling conventions already present in the codebase
+
+The uploaded file contains the full content, data structure, and lead field specifications to be integrated. Use it as the source of truth for what each section should display and how leads should be structured.

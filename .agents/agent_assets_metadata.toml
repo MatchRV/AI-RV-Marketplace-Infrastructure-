@@ -1,0 +1,86 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "JfncQpM0ZwNJxuAWnGNHx"
+uri = "file://outfitter-rv.tar.gz"
+type = "unspecified"
+title = "OutfitterRV — Full Project (tar.gz)"
+
+[[outputs]]
+id = "1v941nTOQ5C79d8uNvw0v"
+uri = "file://rv-marketplace-src.zip"
+type = "unspecified"
+title = "RV Marketplace — Source Code"
+
+[[outputs]]
+id = "s4E6ZVt5j5z2Ko6NWDABh"
+uri = "file://rv-marketplace-description.md"
+type = "text"
+title = "RV Marketplace — Full Technical & Product Description"
+
+[[outputs]]
+id = "ZvBGU5KZfEd0vs1MPyxY9"
+uri = "file://ai-outfitter-bundle.md"
+type = "text"
+title = "AI Outfitter — Complete Source Bundle"
+
+[[outputs]]
+id = "-IWaE-LQ0z2boCArLxnBt"
+uri = "file://scraper-review.md"
+type = "text"
+title = "MatchRV Scraper Files — Review Document"
+
+[[outputs]]
+id = "Ltkr9tpzjl3uPzJ3ayS4a"
+uri = "file://matchrv-dealer-guide.pdf"
+type = "pdf"
+title = "MatchRV Dealer Intelligence Platform Guide"
+
+[[outputs]]
+id = "sgoUFASHP-gqEr0L8qkAd"
+uri = "file://outfitterrv-full-project.tar.gz"
+type = "unspecified"
+title = "MatchRV Full Project Source (outfitterrv-full-project.tar.gz)"
+
+[[outputs]]
+id = "Y5CBFe-Vuj0l-InfzaG8c"
+uri = "file://.local/MatchRV-Dealer-Intelligence.pdf"
+type = "pdf"
+title = "MatchRV Dealer Intelligence — Buyer Readiness Scoring"
+
+[[outputs]]
+id = "burd_jP60ZBli4rSGMetY"
+uri = "file://matchrv-scraper.zip"
+type = "unspecified"
+title = "MatchRV Scraper — Full File Set"
+
+[[outputs]]
+id = "umBan9IeWaRTeoGI0LT3B"
+uri = "file://match-report-combined.txt"
+type = "text"
+title = "Match Report — All 3 Files Combined"
+
+[[outputs]]
+id = "OulyV3QMQ-OYEuW-WJSL4"
+uri = "file://match-report-files.zip"
+type = "unspecified"
+title = "Match Report Files (zip)"
+
+[[outputs]]
+id = "WluFXK5knSmpTeFhaAxTa"
+uri = "file://ai-rv-outfitter-complete-bundle.md"
+type = "text"
+title = "AI RV Outfitter — Complete Source & Knowledge Bundle"
+
+[[outputs]]
+id = "hz-YBuRgj3_6Rqlv4A8we"
+uri = "file://exports/MatchRV-Lead-Tiers.pdf"
+type = "pdf"
+title = "MatchRV Lead Tiers"
+
+[[outputs]]
+id = "TNXiJtdxlkcMan-U9k5xZ"
+uri = "file://exports/rv-inventory-scraper-combined.txt"
+type = "text"
+title = "RV Inventory Scraper - Combined Source"

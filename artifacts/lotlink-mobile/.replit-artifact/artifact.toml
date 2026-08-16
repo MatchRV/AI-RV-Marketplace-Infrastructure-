@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "MatchRV Mobile"
+version = "1.0.0"
+id = "artifacts/lotlink-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/mobile/" ]
+localPort = 18892
+
+[services.development]
+run = "pnpm --filter @workspace/lotlink-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lotlink-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/lotlink-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "18892"
+BASE_PATH = "/mobile/"

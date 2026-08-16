@@ -1,0 +1,55 @@
+You are working on MatchRV.com, an AI-powered RV marketplace (React/Node app).
+IMPORTANT GROUND RULES:
+- Do not invent new pages or rename existing routes.
+- Do not remove the "Get My Free Match Report" CTA or the AI Outfitter / Match f
+- Keep all copy free of em dashes.
+- Test on mobile viewport widths after every change involving layout.
+=== FIX 1 (HIGHEST PRIORITY): Mobile hero is burying the main CTA ===
+PROBLEM: Only about 55% of mobile users scroll past 10% depth on the homepage. M
+DO THIS:
+- On mobile breakpoints (max-width ~768px), shorten the homepage hero so the pri
+- Reduce hero vertical padding/height on mobile, shrink the hero headline font s
+- Keep the desktop hero as-is unless it also pushes the CTA down; if it does, ti
+- Verify on a 375px-wide and a 414px-wide viewport that the CTA is visible witho
+=== FIX 2 (HIGHEST PRIORITY): Capture email to fix the 91% no-return problem ===
+PROBLEM: Returning user rate is only 8.93%. 91% of visitors never come back. The
+DO THIS:
+- Add an email capture step to the Match Report flow. When a user submits the A
+- Make the email field required to receive the full Match Report (frame it as "W
+- Persist the email to the backend/database with a timestamp and, if available,
+- Do NOT block users from seeing SOME value, but require email to deliver the sa
+- Confirm the captured emails are queryable in the database (tell me the table/c
+=== FIX 3: Broken URLs returning 404 ===
+PROBLEM: Users are hitting /about-us and /fleet, which no longer exist, and get
+DO THIS:
+- Add permanent 301 redirects: /about-us -> /about and /fleet -> /browse
+- Audit the codebase and sitemap for any other dead internal links and redirect
+- Confirm the redirects work (hitting the old URL lands on the new page with a 3
+=== FIX 4: Dealer login is failing to convert ===
+PROBLEM: Dealer login sessions are initiated but not completed. Users enter info
+DO THIS:
+- Inspect the dealer login flow for friction or bugs: unclear/confusing fields,
+- Make error messages explicit (e.g., "Incorrect password" vs a silent failure)
+- Ensure the submit button works on first click and that successful login reliab
+- Test a full login attempt end to end and report exactly what was broken and wh
+=== FIX 5: Cumulative Layout Shift (CLS) is POOR (score 3.5) ===
+PROBLEM: Page elements jump around during load. This frustrates users and hurts
+DO THIS:
+- Add explicit width and height (or aspect-ratio) attributes to all images so th
+- Reserve space for any dynamically injected content (the chat widget, any late
+- Lazy-load below-the-fold images but with reserved dimensions.
+- Re-measure CLS after changes and confirm it has dropped toward the "Good" rang
+=== FIX 6: Dead clicks on non-interactive text (10.37% of sessions) ===
+PROBLEM: Users click text that looks clickable but does nothing, especially on
+DO THIS:
+- On the Match page, make the chat input field clearly the primary interactive e
+- On listing detail pages, ensure the hero headline and section headers are not
+=== FIX 7: Tablet layout is weak ===
+PROBLEM: Tablet users barely explore and cluster all clicks on one button. The f
+DO THIS:
+- Test the Browse page and homepage at tablet widths (~768px to ~1024px). Fix th
+- Confirm listing cards are readable and filters are usable at iPad portrait and
+=== AFTER ALL FIXES ===
+- Give me a short summary table: each fix, status (done/partial/blocked), and fi
+- Flag anything you could not complete and why.
+- Do not deploy to production without telling me first; show me the changes on a

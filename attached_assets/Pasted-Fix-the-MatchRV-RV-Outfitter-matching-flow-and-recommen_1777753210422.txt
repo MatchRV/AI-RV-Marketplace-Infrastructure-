@@ -1,0 +1,100 @@
+Fix the MatchRV RV Outfitter matching flow and recommendation logic.
+
+Problem:
+The RV Outfitter currently does not clearly ask what type of RV the customer is looking for. Also, when a user asks for a 40 ft RV, the system is showing Class C RVs under 30 ft. That is unacceptable because if the customer says 40 ft, they mean around 40 ft — not 27–29 ft. This makes the product feel like it is not listening.
+
+Goal:
+Update the RV Outfitter so it collects RV type and desired length clearly, saves those preferences, and uses them as hard filters when recommending RVs.
+
+Required changes:
+
+1. Add a direct RV type question early in the Outfitter flow:
+“What type of RV are you looking for?”
+
+Options should include:
+- Class A Motorhome
+- Class B Van
+- Class C Motorhome
+- Travel Trailer
+- Fifth Wheel
+- Toy Hauler
+- Truck Camper
+- Not sure yet
+
+2. Add a direct RV length question:
+“What length range are you looking for?”
+
+Options should include:
+- Under 25 ft
+- 25–30 ft
+- 30–35 ft
+- 35–40 ft
+- 40+ ft
+- Flexible / not sure
+
+Also support typed answers like:
+- “40 ft”
+- “around 40 feet”
+- “at least 40 ft”
+- “under 30 ft”
+- “35 to 40 ft”
+
+3. Treat length as a hard matching rule.
+If the user says “40 ft,” only show RVs approximately 38–42 ft unless they say they are flexible.
+If the user says “40+ ft,” only show RVs 40 ft or longer.
+If the user says “under 30 ft,” only show RVs under 30 ft.
+If the user gives a range, only show RVs inside that range.
+
+4. Treat RV type as a hard matching rule when the user selects a specific type.
+For example:
+- If user selects Class A, do not show Class C units.
+- If user selects Fifth Wheel, do not show motorhomes.
+- If user selects “Not sure yet,” then the system can recommend multiple types, but it should explain why.
+
+5. If there are no exact matches, do NOT show bad matches as if they are correct.
+Instead, display a message like:
+“We couldn’t find an exact match for a 40 ft RV in your selected criteria. Would you like to expand the length range or see nearby alternatives?”
+
+Then offer buttons:
+- Expand to 35–45 ft
+- Show closest matches
+- Change RV type
+- Start over
+
+6. Update the recommendation query/filtering logic so RV type and length are included before results are shown.
+Do not rely only on AI text interpretation. The database or inventory filtering needs to enforce these fields.
+
+7. Save these values to the buyer profile:
+- rvTypePreference
+- minLength
+- maxLength
+- lengthFlexibility
+- rawLengthInput
+- budget
+- location
+- intendedUse
+- towingNeeds
+- sleepingCapacity
+
+8. Add validation tests:
+- User asks for “40 ft” → no RVs under 38 ft should appear.
+- User asks for “40+ ft” → no RVs under 40 ft should appear.
+- User asks for “Class A” → no Class C RVs should appear.
+- User asks for “Fifth Wheel 35–40 ft” → only fifth wheels between 35 and 40 ft should appear.
+- User selects “Not sure yet” → multiple RV types can appear, but the system must explain why each one fits.
+
+9. Improve the user-facing copy.
+Replace any vague “best matches” language with copy that confirms the user’s actual request, such as:
+“Showing Class A motorhomes around 40 ft.”
+or
+“Showing fifth wheels between 35 and 40 ft.”
+
+10. Make sure the UI clearly displays why each RV was recommended:
+- RV type match
+- Length match
+- Budget match
+- Sleeping capacity match
+- Use-case match
+
+Acceptance criteria:
+A customer who asks for a 40 ft RV should never be shown three Class C RVs under 30 ft unless the system clearly says there were no exact matches and asks permission to show alternatives. The customer’s stated RV type and length must be respected before recommendations are displayed.

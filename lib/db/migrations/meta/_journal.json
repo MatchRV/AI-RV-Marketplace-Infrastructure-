@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778217600000,
+      "tag": "0000_add_dealers_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1753660800000,
+      "tag": "0001_add_import_runs",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+Here's a prompt you can paste directly into Replit's AI agent:
+
+---
+
+**Fix the RV Outfitter matching pipeline to properly return 3 RVs with photos, descriptions, and distance-based search. Here's exactly what needs to change:**
+
+## 1. Database: Add lat/lng columns to listings table
+
+Run this SQL migration:
+```sql
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+CREATE INDEX IF NOT EXISTS idx_listings_coordinates ON listings (latitude, longitude) WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+```
+
+Also add `latitude` and `longitude` as `doublePrecision` columns in the Drizzle schema for the listings table.
+
+## 2. Create a geocoding script at `scripts/geocode-listings.ts`
+
+Create a script that:
+- Fetches all listings where `latitude IS NULL AND location IS NOT NULL`
+- Parses the city from the `location` field (format: "City, WA")
+- Uses a static lookup table of WA city coordinates (Seattle: 47.6062/-122.3321, Tacoma: 47.2529/-122.4443, Kent: 47.3809/-122.2348, Auburn: 47.3073/-122.2285, Everett: 47.9790/-122.2021, Spokane: 47.6588/-117.4260, Vancouver: 45.6387/-122.6615, Olympia: 47.0379/-122.9007, Bellingham: 48.7519/-122.4787, Yakima: 46.6021/-120.5059, Mount Vernon: 48.4213/-122.3341, Marysville: 48.0518/-122.1771, Puyallup: 47.1854/-122.2929, Poulsbo: 47.7354/-122.6468, Bremerton: 47.5673/-122.6326, Silverdale: 47.6443/-122.6949, Fife: 47.2393/-122.3571, Lakewood: 47.1718/-122.5185, Federal Way: 47.3223/-122.3126, Renton: 47.4829/-122.2171, Bellevue: 47.6101/-122.2015, Lynnwood: 47.8209/-122.3151, Issaquah: 47.5301/-122.0326, Woodinville: 47.7543/-122.1635, Bothell: 47.7623/-122.2054, Monroe: 47.8554/-121.9710, Arlington: 48.1987/-122.1254, Burlington: 48.4757/-122.3255, Centralia: 46.7162/-122.9543, Longview: 46.1382/-122.9382, Kennewick: 46.2112/-119.1372, Moses Lake: 47.1301/-119.2781, Ellensburg: 46.9965/-120.5478, Gig Harbor: 47.3293/-122.5801, Anacortes: 48.5126/-122.6127)
+- Falls back to Nominatim API (`https://nominatim.openstreetmap.org/search?q={location}&format=json&limit=1&countrycodes=us`) with 1.1s delay between calls for any locations not in the lookup
+- Updates the listing row with the lat/lng
+- Run it once after creating it
+
+## 3. Update `artifacts/api-server/src/routes/outfitter.ts`
+
+Make these changes to the outfitter route:
+
+### A. Add geocoding and distance functions after the existing helper functions:
+
+```typescript
+async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(location);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=us`,
+      { headers: { "User-Agent": "MatchRV/1.0 (contact@matchrv.com)" } }
+    );
+    if (!response.ok) return null;
+    const results = await response.json();
+    if (results.length === 0) return null;
+    return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+  } catch { return null; }
+}
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+```
+
+### B. Update `getMatchedListings` function:
+
+- Change the SQL LIMIT from 15 to 50 (to have more candidates for distance filtering)
+- After fetching candidates, add distance-based filtering:
+  1. Get `buyerLocation`, `buyerZip`, and `buyerState` from the profile
+  2. Geocode the buyer's location (try buyerZip first, then buyerLocation)
+  3. If buyer coords are available, calculate distance for each candidate using their `latitude`/`longitude` columns
+  4. Try expanding radius: first filter to candidates within 25 miles. If fewer than 3 results, expand to 50 miles. Then 100 miles. Then 200 miles. Then all.
+  5. Sort by distance (closest first), with null-distance listings at the end
+  6. If no buyer coords but buyerState exists, filter by state match as fallback
+- After distance filtering, take the top 15 and pass to `rerankWithAI` as before
+- Include `distance_miles` in each candidate object passed to the AI re-ranker
+
+### C. Update the response mapping in the `/outfitter/chat` route:
+
+After `getMatchedListings` returns, map the recommendations to include ALL fields the frontend needs:
+```typescript
+const formattedRecommendations = recommendations.map((r) => ({
+  id: r.id,
+  title: r.title,
+  make: r.make,
+  model: r.model,
+  year: r.year,
+  type: r.type,
+  price: Number(r.price),
+  marketValue: Number(r.market_value ?? 0),
+  dealScore: r.deal_score,
+  dealSavings: Number(r.deal_savings ?? 0),
+  location: r.location,
+  state: r.state,
+  dealerName: r.dealer_name,
+  dealerId: r.dealer_id,
+  images: (r.images as string[]) ?? [],
+  daysOnMarket: Number(r.days_on_market ?? 0),
+  sleeps: Number(r.sleeps ?? 2),
+  length: r.length,
+  condition: r.condition,
+  isNew: Boolean(r.is_new),
+  isFeatured: Boolean(r.is_featured),
+  slides: r.slides,
+  freshWater: r.fresh_water,
+  generator: r.generator,
+  solar: r.solar,
+  awning: r.awning,
+  outdoorKitchen: r.outdoor_kitchen,
+  washerDryer: r.washer_dryer,
+  whyMatch: r.whyMatch ?? null,
+  matchScore: r.matchScore ?? null,
+  distanceMiles: r.distance_miles ?? null,
+}));
+```
+
+Use `formattedRecommendations` in the `res.json()` response instead of raw `recommendations`.
+
+### D. Update the OUTFITTER_SYSTEM_PROMPT:
+
+1. Add a new step 4 in the conversation flow: `4. LOCATION - "Where are you located? City or zip code works — I'll find RVs near you first."`
+2. Shift all subsequent steps down by 1 (Drive or Tow becomes 5, Size becomes 6, Budget becomes 7, Fork becomes 8)
+3. Add these fields to the `<profile>` JSON schema: `"buyerLocation": null, "buyerState": null, "buyerZip": null`
+4. Add location extraction rules: If they say "I'm in Seattle" → buyerLocation = "Seattle, WA", buyerState = "WA". If they give a 5-digit zip → buyerZip = that zip. If they mention a destination like "Ocean Shores" that's their camping destination NOT their home — ask where they're based separately.
+5. Add "location" to the stage tracking options: `<stage>knowledge|prime_use|who|where_when|location|drive_or_tow|size|budget|fork|deep_dive|matching|complete</stage>`
+6. Add a key rule: "LOCATION — CRITICAL: Always ask for the buyer's location (city/zip) during the flow. If they haven't provided location by the fork, ask before generating matches."
+
+### E. Update the RERANK_SYSTEM_PROMPT:
+
+Add proximity as priority #4: `4. PROXIMITY — Prefer listings closer to the buyer's location. Within 25 miles is ideal, 50 miles is good, 100+ miles is a stretch.`
+
+Update the whyMatch instructions to include: `- Mentions the distance/location if relevant (e.g., "just 15 miles from you in Kent, WA")`
+
+## 4. Add geocoding to the nightly scraper
+
+In whatever file runs the nightly RV Inventory Scraper, after new listings are inserted, add a step that queries `SELECT id, location FROM listings WHERE latitude IS NULL AND location IS NOT NULL` and geocodes them using the same static WA city lookup table with API fallback.
+
+---
+
+**Summary of what this achieves:**
+- The Outfitter now asks for the buyer's location during the conversation
+- Matching uses expanding radius: 25mi → 50mi → 100mi → 200mi → statewide
+- The recommendations response includes full data (images array, whyMatch description, distance in miles) so the MatchReadyCard and match-report page render properly with photos and personalized descriptions
+- New listings get geocoded automatically each night

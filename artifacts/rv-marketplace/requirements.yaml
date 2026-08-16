@@ -1,0 +1,19 @@
+packages:
+  "framer-motion": "For page transitions, smooth enter animations, and chat bubble staggering"
+  "recharts": "To render the price history chart on the listing detail page"
+  "date-fns": "For formatting dates in the price history and chat"
+  "clsx": "For conditional class merging in reusable UI components"
+  "tailwind-merge": "For safely merging tailwind classes in reusable components"
+
+images:
+  - path: "artifacts/rv-marketplace/public/images/hero-bg.png"
+    description: "Cinematic, photorealistic wide shot of a modern, luxury RV parked by a pristine alpine lake at sunset. Warm golden hour lighting, majestic mountains in the background, conveying adventure, freedom, and premium quality."
+    aspect_ratio: "16:9"
+  - path: "artifacts/rv-marketplace/public/images/outfitter-avatar.png"
+    description: "Friendly, modern vector illustration of an outdoor guide or park ranger face, wearing a classic ranger hat. Clean lines, warm trustworthy expression, flat colors with subtle gradients, suitable for an AI assistant avatar."
+    aspect_ratio: "1:1"
+
+notes:
+  - Assuming @workspace/api-client-react provides functional TanStack Query hooks.
+  - Assuming UI components like Toast are available or will fail gracefully if missing.
+  - Wouter is used for routing as per standard stack.

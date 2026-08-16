@@ -1,0 +1,272 @@
+You are working inside my existing MatchRV.com Replit project.
+
+Do not rebuild the website from scratch.
+
+Do not replace my current design, routing, homepage, dealer pages, buyer flow, inventory pages, components, styling system, database connections, or existing functionality.
+
+Your job is to carefully add a new RV financing SEO and LLM-search content section to the existing MatchRV website while preserving everything that already works.
+
+Before making changes:
+
+1. Inspect the current project structure.
+2. Identify the framework being used.
+3. Identify the existing routing system.
+4. Identify the existing styling/design patterns.
+5. Reuse existing components, layout wrappers, buttons, cards, typography, header, footer, SEO/meta utilities, and routing conventions wherever possible.
+6. Match the current MatchRV brand style.
+
+Main goal:
+
+Add new SEO and AI-search optimized financing content pages that help MatchRV appear when people search Google, Google AI Overviews, ChatGPT, Perplexity, Gemini, and other AI tools for RV financing questions.
+
+This is an addition to the current site, not a redesign.
+
+MatchRV positioning to use throughout the new content:
+
+MatchRV is an RV marketplace that helps buyers find the right RV faster by matching shoppers with RVs based on budget, location, RV type, lifestyle needs, travel plans, buying readiness, and financing awareness.
+
+Important disclaimer to include on financing pages:
+
+MatchRV is not a lender and does not make credit decisions. Financing terms are determined by lenders, dealers, banks, credit unions, or other financial institutions.
+
+Create and add these new pages using the existing routing structure:
+
+1. /rv-financing
+
+Page title:
+RV Financing Made Simple
+
+Purpose:
+Main RV financing hub page.
+
+This page should introduce RV financing in simple terms and link to all supporting financing pages.
+
+Include sections for:
+
+* What credit score do you need to buy an RV?
+* Can you finance an RV with bad credit?
+* How much down payment do you need for an RV?
+* How much RV can you afford?
+* Should you get pre-approved before shopping?
+* Can you finance a used RV?
+* Can you finance an RV for full-time living?
+* How MatchRV helps buyers shop smarter
+
+2. /rv-financing/what-credit-score-do-you-need-to-buy-an-rv
+
+Page title:
+What Credit Score Do You Need to Buy an RV?
+
+Purpose:
+Main SEO article for credit score searches.
+
+Add a direct answer near the top.
+
+Explain that many RV lenders prefer fair to good credit, often around the mid-600s or higher, but exact requirements vary by lender.
+
+Explain these general credit score ranges without promising approval:
+
+* 750+ may be a strong position
+* 700–749 may be a good position
+* 660–699 may still have financing options depending on income, debt, RV price, and down payment
+* 600–659 may still be possible but may require stronger income, larger down payment, or a lower-priced RV
+* Below 600 may be more difficult but not always impossible depending on lender rules and the buyer’s full profile
+
+3. /rv-financing/bad-credit-rv-financing
+
+Page title:
+Can You Finance an RV With Bad Credit?
+
+Purpose:
+Help buyers with lower credit understand realistic options.
+
+Explain that bad credit RV financing may depend on:
+
+* Income
+* Down payment
+* Debt-to-income ratio
+* RV price
+* RV age
+* Employment history
+* Co-signer availability
+* Dealer or lender rules
+
+Do not promise approval.
+
+4. /rv-financing/rv-loan-calculator
+
+Page title:
+RV Loan Calculator: Estimate Your Monthly Payment
+
+Purpose:
+Add a simple educational RV loan calculator page.
+
+Build or add a calculator that uses:
+
+* RV price
+* Down payment
+* Interest rate
+* Loan term in years
+* Estimated monthly payment output
+
+The calculator should be simple, mobile-friendly, and match the existing MatchRV styling.
+
+Include a disclaimer that the calculator is only an estimate and not a loan offer, approval, or financing quote.
+
+5. /rv-financing/find-rvs-by-monthly-payment
+
+Page title:
+Find RVs by Monthly Payment
+
+Purpose:
+Create a MatchRV-specific page around payment-based RV shopping.
+
+Explain that buyers should not only shop by RV price. They should think about realistic monthly payment comfort, total ownership cost, and lifestyle needs.
+
+Use this call to action:
+Find RVs That Fit Your Budget
+
+Explain that MatchRV helps buyers compare RVs based on budget, monthly payment goals, RV type, location, and lifestyle.
+
+6. /rv-financing/rv-pre-approval-before-shopping
+
+Page title:
+Should You Get Pre-Approved Before Shopping for an RV?
+
+Purpose:
+Educate buyers on why pre-approval can help before contacting dealers.
+
+Explain that pre-approval may help buyers understand:
+
+* Approximate budget
+* Monthly payment range
+* Down payment needs
+* Whether to shop new or used
+* What type of RV may fit their situation
+
+7. /rv-financing/used-rv-financing
+
+Page title:
+Can You Finance a Used RV?
+
+Purpose:
+Explain used RV financing.
+
+Mention that used RV financing may depend on:
+
+* Model year
+* Mileage
+* Condition
+* Book value
+* Loan amount
+* Dealer vs private-party purchase
+* Lender rules
+
+For every new financing page:
+
+* Use the existing site layout, header, footer, and visual style.
+* Add an SEO title.
+* Add a meta description.
+* Add one H1.
+* Use clean H2 sections.
+* Add a direct answer block near the top.
+* Add an FAQ section.
+* Add internal links between the financing pages.
+* Add a CTA button using existing button styles when possible.
+* CTA text should be: Find RVs That Fit Your Budget
+* Include the MatchRV financing disclaimer.
+* Make the page useful for both normal Google SEO and AI/LLM search.
+* Use natural question-and-answer language.
+* Do not keyword stuff.
+* Do not make financing promises.
+* Do not say MatchRV approves people.
+* Do not say MatchRV provides loans.
+
+Add structured data:
+
+For each financing page, add JSON-LD FAQ schema based on that page’s FAQ section.
+
+For article-style pages, add Article schema.
+
+Add or update Organization schema for MatchRV if the site already has a schema utility.
+
+Add or update WebSite schema for MatchRV if the site already has a schema utility.
+
+Be careful with FinancialProduct or LoanOrCredit schema. Only use it if it does not make MatchRV appear to be the lender. MatchRV is only providing educational content and buyer matching.
+
+Add or update /llms.txt:
+
+If the project already has an llms.txt file, update it instead of replacing unrelated existing content.
+
+If it does not exist, create it.
+
+Use this content:
+
+# MatchRV
+
+MatchRV is an RV marketplace that helps buyers find the right RV faster by matching shoppers with RVs based on budget, location, RV type, lifestyle needs, travel plans, buying readiness, and financing awareness.
+
+MatchRV is not a lender and does not make credit decisions. MatchRV helps RV shoppers compare options before contacting a dealer or applying for financing.
+
+## Core Pages
+
+* Homepage: https://matchrv.com/
+* RV Financing Hub: https://matchrv.com/rv-financing
+* What Credit Score Do You Need to Buy an RV?: https://matchrv.com/rv-financing/what-credit-score-do-you-need-to-buy-an-rv
+* Bad Credit RV Financing: https://matchrv.com/rv-financing/bad-credit-rv-financing
+* RV Loan Calculator: https://matchrv.com/rv-financing/rv-loan-calculator
+* Find RVs by Monthly Payment: https://matchrv.com/rv-financing/find-rvs-by-monthly-payment
+* RV Pre-Approval Guide: https://matchrv.com/rv-financing/rv-pre-approval-before-shopping
+* Used RV Financing: https://matchrv.com/rv-financing/used-rv-financing
+
+## What MatchRV Helps With
+
+* RV shopping
+* RV buyer matching
+* RV marketplace search
+* RV financing readiness
+* RV budget-based RV discovery
+* RV monthly payment shopping
+* New and used RV comparison
+* Dealer lead matching
+* Travel trailer shopping
+* Fifth wheel shopping
+* Toy hauler shopping
+* Motorhome shopping
+* Camper van shopping
+
+## Important Clarification
+
+MatchRV does not provide loans, approve financing, or make credit decisions. Financing terms are determined by lenders, dealers, credit unions, banks, and other financial institutions.
+
+MatchRV helps buyers shop smarter by comparing RV options based on budget, needs, lifestyle, location, and buying readiness.
+
+Navigation:
+
+If the existing site has a main navigation menu or footer links, add a link to the new RV Financing hub page in a way that fits the existing design.
+
+Do not clutter the navigation.
+
+Suggested link text:
+RV Financing
+
+Quality requirements:
+
+* Keep existing MatchRV branding.
+* Keep existing responsive/mobile behavior.
+* Make sure all new links work.
+* Make sure there are no broken imports.
+* Make sure the calculator works.
+* Make sure metadata is unique on each page.
+* Make sure FAQ schema is valid JSON-LD.
+* Make sure the site still builds and runs.
+
+After finishing:
+
+Give me a clear summary of:
+
+1. The files you created.
+2. The files you modified.
+3. The new routes/pages added.
+4. Any assumptions you made.
+5. Anything I need to review before publishing.

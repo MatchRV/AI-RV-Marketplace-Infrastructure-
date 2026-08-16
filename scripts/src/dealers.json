@@ -1,0 +1,450 @@
+[
+  {
+    "name": "Awesome RV",
+    "city": "Chehalis",
+    "state": "WA",
+    "phone": "(360) 748-6658",
+    "website": "https://www.awesomerv.com"
+  },
+  {
+    "name": "Basin RV",
+    "city": "Moses Lake",
+    "state": "WA",
+    "phone": "(509) 760-0812",
+    "website": "https://www.basinrvmoseslake.com"
+  },
+  {
+    "name": "Baydo's RV Center",
+    "city": "Fife",
+    "state": "WA",
+    "phone": "(253) 896-4500",
+    "website": "https://www.baydos.com"
+  },
+  {
+    "name": "Baydo's RV Sales",
+    "city": "Chehalis",
+    "state": "WA",
+    "phone": "(360) 748-9400",
+    "website": "https://www.baydosrvs.com"
+  },
+  {
+    "name": "Blue Compass RV",
+    "city": "Liberty Lake",
+    "state": "WA",
+    "phone": "(509) 921-9977",
+    "website": "https://www.applewayrv.com"
+  },
+  {
+    "name": "Blue Compass RV of Pasco",
+    "city": "Pasco",
+    "state": "WA",
+    "phone": "(509) 547-1198",
+    "website": "https://www.bluedogrv.com"
+  },
+  {
+    "name": "Blue Dog RV, Inc.",
+    "city": "Milton",
+    "state": "WA",
+    "phone": "(253) 444-0832",
+    "website": null
+  },
+  {
+    "name": "Broadmoor RV SuperStore, Inc.",
+    "city": "Pasco",
+    "state": "WA",
+    "phone": "(509) 545-4776",
+    "website": "https://www.broadmoorrv.com"
+  },
+  {
+    "name": "Central Washington RV",
+    "city": "Yakima",
+    "state": "WA",
+    "phone": "(509) 248-2978",
+    "website": "https://www.cwrv.net"
+  },
+  {
+    "name": "Clearview RV, Inc.",
+    "city": "Snohomish",
+    "state": "WA",
+    "phone": "(360) 668-9595",
+    "website": "https://www.clearviewrv.com"
+  },
+  {
+    "name": "Cruise America",
+    "city": "Everett",
+    "state": "WA",
+    "phone": "(425) 355-8935",
+    "website": "https://www.cruiseamerica.com"
+  },
+  {
+    "name": "El Monte RV",
+    "city": "Seattle",
+    "state": "WA",
+    "phone": "(800) 367-3687",
+    "website": "https://www.elmonte.com"
+  },
+  {
+    "name": "Fife RV Center",
+    "city": "Fife",
+    "state": "WA",
+    "phone": "(253) 284-6600",
+    "website": "https://www.fifervcenter.com"
+  },
+  {
+    "name": "Genesis Automotive & RV Repair, Inc.",
+    "city": "Tacoma",
+    "state": "WA",
+    "phone": "(253) 473-2336",
+    "website": "https://www.genesisautorv.com"
+  },
+  {
+    "name": "Horn Rapids RV",
+    "city": "Richland",
+    "state": "WA",
+    "phone": "(509) 375-7577",
+    "website": "https://www.hornsrapidrv.com"
+  },
+  {
+    "name": "Johnson RV Sales",
+    "city": "Fife",
+    "state": "WA",
+    "phone": "(833) 667-0428",
+    "website": null
+  },
+  {
+    "name": "Open Road RV, LLC",
+    "city": "Arlington",
+    "state": "WA",
+    "phone": "(360) 469-6980",
+    "website": null
+  },
+  {
+    "name": "Open Road RV, LLC",
+    "city": "Monroe",
+    "state": "WA",
+    "phone": "(360) 217-8785",
+    "website": "https://www.openroadrvcenter.com"
+  },
+  {
+    "name": "Poulsbo RV",
+    "city": "Sumner",
+    "state": "WA",
+    "phone": "(253) 852-4383",
+    "website": "https://www.poulsborvauburn.com"
+  },
+  {
+    "name": "Poulsbo RV",
+    "city": "Fife",
+    "state": "WA",
+    "phone": "(253) 344-4240",
+    "website": null
+  },
+  {
+    "name": "Poulsbo RV",
+    "city": "Kent",
+    "state": "WA",
+    "phone": "(206) 824-7170",
+    "website": "https://www.poulsborv.com"
+  },
+  {
+    "name": "Poulsbo RV",
+    "city": "Everett",
+    "state": "WA",
+    "phone": "(425) 353-6122",
+    "website": "https://www.poulsborveverett.com"
+  },
+  {
+    "name": "Poulsbo RV",
+    "city": "Mount Vernon",
+    "state": "WA",
+    "phone": "(360) 424-7056",
+    "website": "https://www.poulsborvmtvernon.com"
+  },
+  {
+    "name": "Puyallup RV",
+    "city": "Puyallup",
+    "state": "WA",
+    "phone": "(253) 845-1500",
+    "website": "https://www.puyalluprv.com"
+  },
+  {
+    "name": "R'N'R RV - Liberty Lake",
+    "city": "Liberty Lake",
+    "state": "WA",
+    "phone": "(509) 927-9000",
+    "website": "https://www.rnrrv.com"
+  },
+  {
+    "name": "R'N'R RV - Spokane",
+    "city": "Spokane",
+    "state": "WA",
+    "phone": "(509) 244-5888",
+    "website": "https://www.rnrrv.com"
+  },
+  {
+    "name": "Tacoma RV Center",
+    "city": "Tacoma",
+    "state": "WA",
+    "phone": "(253) 896-4401",
+    "website": "https://www.tacomarv.com"
+  },
+  {
+    "name": "Vancouver RV Center Inc.",
+    "city": "Vancouver",
+    "state": "WA",
+    "phone": "(360) 816-1346",
+    "website": "https://www.vancouverrv.com/"
+  },
+  {
+    "name": "Wilder RV",
+    "city": "Port Angeles",
+    "state": "WA",
+    "phone": "(360) 457-7715",
+    "website": "https://www.wilderrvs.com"
+  },
+  {
+    "name": "Beaver Coach Sales & Service of OR, LLC",
+    "city": "Bend",
+    "state": "OR",
+    "phone": "(541) 322-2184",
+    "website": "https://www.beavercoachsales.com"
+  },
+  {
+    "name": "Big Country RV, Inc.",
+    "city": "Bend",
+    "state": "OR",
+    "phone": "(541) 330-2495",
+    "website": "https://www.bigcrv.com"
+  },
+  {
+    "name": "Big Country RV, Inc.",
+    "city": "Redmond",
+    "state": "OR",
+    "phone": "(541) 548-5254",
+    "website": "https://www.bigcrv.com"
+  },
+  {
+    "name": "Bish's RV of Junction City - 5th Wheel Center",
+    "city": "Junction City",
+    "state": "OR",
+    "phone": "(541) 998-4049",
+    "website": "https://www.bishs.com"
+  },
+  {
+    "name": "Blue Compass RV",
+    "city": "Bend",
+    "state": "OR",
+    "phone": "(541) 306-4405",
+    "website": null
+  },
+  {
+    "name": "Blue Compass RV of Redmond",
+    "city": "Redmond",
+    "state": "OR",
+    "phone": "(541) 526-7799",
+    "website": "https://www.bluedogrv.com"
+  },
+  {
+    "name": "Blue Dog RV, Inc. - Portland Service",
+    "city": "Portland",
+    "state": "OR",
+    "phone": "(971) 533-8711",
+    "website": null
+  },
+  {
+    "name": "Center Street Ridez",
+    "city": "Eugene",
+    "state": "OR",
+    "phone": "(541) 525-6352",
+    "website": "https://www.centerstreetridez.com/"
+  },
+  {
+    "name": "Cruise America/American Cruise",
+    "city": "Albany",
+    "state": "OR",
+    "phone": "(800) 327-7799",
+    "website": "https://www.cruiseamerica.com"
+  },
+  {
+    "name": "Cruise America/ecoShuttle Charter & Tows",
+    "city": "Sherwood",
+    "state": "OR",
+    "phone": "(503) 548-4480",
+    "website": "https://www.cruiseamerica.com"
+  },
+  {
+    "name": "Curtis Trailers, Inc.",
+    "city": "Portland",
+    "state": "OR",
+    "phone": "(503) 760-1363",
+    "website": "https://www.curtistrailers.com"
+  },
+  {
+    "name": "Curtis Trailers, Inc.",
+    "city": "Aloha",
+    "state": "OR",
+    "phone": "(503) 649-8528",
+    "website": "https://www.curtistrailers.com"
+  },
+  {
+    "name": "Family Fun RV, Inc",
+    "city": "Saint Helens",
+    "state": "OR",
+    "phone": "(971) 803-7912",
+    "website": "https://www.familyfunrv.net"
+  },
+  {
+    "name": "Gib's RV Superstore",
+    "city": "Coos Bay",
+    "state": "OR",
+    "phone": "(541) 888-3424",
+    "website": "https://www.gibsrvsuperstore.com"
+  },
+  {
+    "name": "Highway Trailer Sales, Inc.",
+    "city": "Salem",
+    "state": "OR",
+    "phone": "(503) 393-2400",
+    "website": "https://www.hwytrailersales.com"
+  },
+  {
+    "name": "Johnson RV Sales",
+    "city": "Sandy",
+    "state": "OR",
+    "phone": "(503) 668-5400",
+    "website": "https://www.johnsonrv.com"
+  },
+  {
+    "name": "Johnson RV Sales",
+    "city": "Medford",
+    "state": "OR",
+    "phone": "(458) 226-2472",
+    "website": null
+  },
+  {
+    "name": "Porter's R.V.",
+    "city": "Coos Bay",
+    "state": "OR",
+    "phone": "(541) 269-5121",
+    "website": "https://www.portersrv.com"
+  },
+  {
+    "name": "Rent RV, LLC",
+    "city": "Portland",
+    "state": "OR",
+    "phone": "(503) 655-9876",
+    "website": "https://www.rentrv.com"
+  },
+  {
+    "name": "The RV Corral, Inc.",
+    "city": "Eugene",
+    "state": "OR",
+    "phone": "(541) 689-9204",
+    "website": "https://www.rvcorral.com"
+  },
+  {
+    "name": "Bish's RV of Idaho Falls",
+    "city": "Idaho Falls",
+    "state": "ID",
+    "phone": "(208) 529-4386",
+    "website": "https://www.bishs.com"
+  },
+  {
+    "name": "Bish's RV of Magic Valley",
+    "city": "Jerome",
+    "state": "ID",
+    "phone": "(208) 293-9100",
+    "website": "https://www.bishs.com"
+  },
+  {
+    "name": "Bish's RV of Meridian",
+    "city": "Meridian",
+    "state": "ID",
+    "phone": "(208) 888-1111",
+    "website": null
+  },
+  {
+    "name": "Bretz RV & Marine",
+    "city": "Nampa",
+    "state": "ID",
+    "phone": "(208) 606-7160",
+    "website": "https://www.bretzrvnampa.com"
+  },
+  {
+    "name": "Bretz RV & Marine",
+    "city": "Boise",
+    "state": "ID",
+    "phone": "(208) 388-4678",
+    "website": "https://www.bretzrv.com"
+  },
+  {
+    "name": "Cruise America/ East Idaho Trailer Parts",
+    "city": "Idaho Falls",
+    "state": "ID",
+    "phone": "(800) 327-7799",
+    "website": null
+  },
+  {
+    "name": "Cruise America/ EZ RV Service & Repair",
+    "city": "Caldwell",
+    "state": "ID",
+    "phone": "(800) 327-7799",
+    "website": null
+  },
+  {
+    "name": "IWS Sales",
+    "city": "Mountain Home",
+    "state": "ID",
+    "phone": "(208) 599-6326",
+    "website": null
+  },
+  {
+    "name": "Parris RV",
+    "city": "Pocatello",
+    "state": "ID",
+    "phone": "(208) 237-8900",
+    "website": "https://www.parrisrv.com"
+  },
+  {
+    "name": "R'N'R RV - Lewiston/Clarkston",
+    "city": "Lewiston",
+    "state": "ID",
+    "phone": "(866) 883-9237",
+    "website": "https://www.rnrrv.com"
+  },
+  {
+    "name": "Teton Adventures RV",
+    "city": "Idaho Falls",
+    "state": "ID",
+    "phone": "(208) 523-3571",
+    "website": "https://www.tetonadventuresrv.com"
+  },
+  {
+    "name": "Wilson's RV Repair",
+    "city": "Caldwell",
+    "state": "ID",
+    "phone": "(208) 454-9282",
+    "website": "https://www.wilsonsrvrepair.com"
+  },
+  {
+    "name": "Wilson's RV Repair",
+    "city": "Wendell",
+    "state": "ID",
+    "phone": "(208) 536-2301",
+    "website": "https://www.wilsonsrvreair.com"
+  },
+  {
+    "name": "Wilson's RV Repair",
+    "city": "Garden City",
+    "state": "ID",
+    "phone": "(208) 345-3311",
+    "website": "https://www.wilsonsrvrepair.com"
+  },
+  {
+    "name": "Wilson's RV Repair",
+    "city": "Boise",
+    "state": "ID",
+    "phone": "(208) 336-9122",
+    "website": "https://www.wilsonsrvrepair.com"
+  }
+]

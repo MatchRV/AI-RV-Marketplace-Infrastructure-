@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MatchRV — Find the Right RV the First Time</title>
+    <meta name="description" content="Get a personalized RV Match Report based on your lifestyle, budget, and tow vehicle. Free." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00CED1" />
+    <meta property="og:site_name" content="MatchRV" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Outfit:wght@300..800&display=swap" rel="stylesheet">
+
+    <!-- Sitewide JSON-LD — served in raw HTML so JS-less crawlers (GPTBot, ClaudeBot, etc.) can read it -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "MatchRV",
+      "url": "https://matchrv.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://matchrv.com/matchrv-logo.png",
+        "width": 200,
+        "height": 60
+      },
+      "description": "MatchRV is an AI-powered RV marketplace based in the Pacific Northwest. Browse 7,500+ live listings from Pacific Northwest dealers and get a free personalized Match Report.",
+      "foundingLocation": {
+        "@type": "Place",
+        "name": "Pacific Northwest, Washington State, USA"
+      },
+      "founder": {
+        "@type": "Person",
+        "name": "Jonathan Kitchel"
+      },
+      "sameAs": ["https://matchrv.com/about"]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MatchRV",
+      "url": "https://matchrv.com",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://matchrv.com/browse?search={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Microsoft Clarity (production only — skip dev/test traffic) -->
+    <script type="text/javascript">
+      (function(){
+        var h = window.location.hostname;
+        if (h.indexOf("replit.dev") !== -1 || h.indexOf("localhost") !== -1 || h.indexOf("127.0.0.1") !== -1) return;
+        (function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "wrzebeqx7e");
+      })();
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2C0PN44L2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Y2C0PN44L2', { send_page_view: false });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

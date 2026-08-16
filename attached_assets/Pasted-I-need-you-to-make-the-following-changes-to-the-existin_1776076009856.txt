@@ -1,0 +1,47 @@
+I need you to make the following changes to the existing project:
+
+1. Create a new file: artifacts/rv-marketplace/src/pages/discover.tsx
+
+This is a Tinder-style swipe page for browsing RVs. Here's exactly what it needs to do:
+
+- Show one RV listing at a time with a large photo, title, RV type, location, price, deal score badge, and key specs (length, sleeps, slides, new/used)
+- Swipe RIGHT or click the heart button = interested / like
+- Swipe LEFT or click the X button = pass
+- On mobile: touch drag to swipe. On desktop: click buttons OR use left/right arrow keys
+- When dragging, show a green "LIKE ✓" stamp overlay when pulling right, red "PASS ✗" when pulling left
+- The next card peeks behind the current one at a slightly smaller scale
+- After 5 right-swipes without being signed in: show a yellow sticky banner at the top — "💛 You have X unsaved picks" with a "Save them →" button that calls login()
+- After 10 total swipes without being signed in: show a dismissable modal — "Don't lose your picks — Sign In & Save My Picks" button plus "Keep swiping without saving" to dismiss
+- A "Help me decide" button appears in the header after the first like. It saves the swipe data to sessionStorage as JSON ({ liked: [...], totalSwiped: N }) and navigates to /outfitter
+- When all listings have been swiped through: show an end screen with how many they liked and a CTA to the AI Outfitter
+- A small info icon on each card links to /listing/:id for full details
+- Progress bar at the bottom showing how far through the inventory they are
+- Keyboard hint on desktop: ← Pass · → Like
+
+Use useAppAuth() from @/contexts/auth-context for auth state and the login() function.
+Use useGetListings({ limit: 100 }) from @workspace/api-client-react for inventory data.
+Use trackEvent from @/lib/analytics to track swipes.
+Use formatCurrency from @/lib/utils for prices.
+Import Link and useLocation from wouter for navigation.
+
+The /discover route is already registered in App.tsx — no router changes needed.
+
+---
+
+2. Update artifacts/rv-marketplace/src/pages/home.tsx
+
+Replace the current hero section CTA button ("START EXPEDITION") with two buttons:
+- Primary: "Start Swiping →" — links to /discover — large, dark green, full of energy
+- Secondary: "Browse All RVs" — links to /browse — smaller, outlined style
+
+Keep everything else on the homepage the same.
+
+---
+
+3. Update the AI Outfitter at artifacts/rv-marketplace/src/pages/outfitter.tsx
+
+At the top of the component, add this logic: when the page loads, check sessionStorage for a swipeData key. If it exists, parse it and have the AI automatically start the conversation with a message like: "I can see you liked X RVs while browsing — mostly [type] in the [price range] range. Want me to help you narrow it down to the best one?" Then clear the sessionStorage key so it doesn't repeat.
+
+---
+
+That's it — three file changes, all in the existing project. Don't change anything else.

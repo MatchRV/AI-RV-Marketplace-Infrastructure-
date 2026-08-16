@@ -1,0 +1,35 @@
+# The format of this file is identical to `.dockerignore`.
+# It is used to reduce the size of deployed images to make the process of publishing faster.
+
+# No need to store the pnpm store twice.
+.local
+
+# Playwright-based scraper — dev-only, not needed in production
+MatchRV-scraper
+
+# Build caches — regenerated as needed, not required at runtime
+.cache
+
+# Old project backup archives (large, dev-only)
+myproject.zip
+myproject_clean.zip
+myproject_final.zip
+myproject_final2.zip
+outfitterrv-full-project.tar.gz
+rv-marketplace-src.zip
+matchrv-scraper.zip
+match-report-files.zip
+
+# Attachments, exports, and scraper output — dev-only artifacts
+# (keep the master seed JSON: api-server's empty-DB bootstrap reads it)
+attached_assets/*
+!attached_assets/matchrv-master_1776731519171.json
+exports
+output
+
+# Misc dev-only files
+pnpm-lock.yaml.1187162549
+matchrv-dealer-guide.pdf
+ai-rv-outfitter-complete-bundle.md
+scraper-review.md
+match-report-combined.txt

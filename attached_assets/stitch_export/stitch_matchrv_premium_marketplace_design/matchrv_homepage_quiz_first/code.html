@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MatchRV | Premium AI-Powered RV Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&amp;family=DM+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #f4fbfa 0%, #e2eae9 100%);
+        }
+        .quiz-card-shadow {
+            box-shadow: 0 10px 40px -10px rgba(11, 17, 23, 0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#ffa54a",
+                        "primary-fixed-dim": "#2ddbde",
+                        "inverse-primary": "#2ddbde",
+                        "secondary-fixed-dim": "#c1c7cf",
+                        "primary": "#00696b",
+                        "on-primary-container": "#005354",
+                        "surface-container-highest": "#dde4e3",
+                        "on-tertiary-fixed-variant": "#6b3b00",
+                        "horizon-cyan": "#00CED1",
+                        "error": "#ba1a1a",
+                        "deep-teal": "#004329",
+                        "silver-road": "#E2E8F0",
+                        "surface-container": "#e8efef",
+                        "primary-container": "#00ced1",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#eef5f4",
+                        "on-tertiary-container": "#6f3d00",
+                        "surface-variant": "#dde4e3",
+                        "surface-tint": "#00696b",
+                        "on-secondary-fixed-variant": "#41474e",
+                        "on-surface-variant": "#3b4949",
+                        "secondary-fixed": "#dde3ec",
+                        "on-secondary-fixed": "#161c22",
+                        "inverse-surface": "#2b3232",
+                        "on-primary-fixed-variant": "#004f51",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#5af8fb",
+                        "surface-container-high": "#e2eae9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d4dbdb",
+                        "on-primary-fixed": "#002020",
+                        "caution-gold": "#FFE08B",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#161d1d",
+                        "on-secondary": "#ffffff",
+                        "background": "#f4fbfa",
+                        "outline": "#6b7a7a",
+                        "on-secondary-container": "#5f656c",
+                        "on-background": "#161d1d",
+                        "secondary": "#595f66",
+                        "tertiary": "#8d4f00",
+                        "inverse-on-surface": "#ebf2f2",
+                        "tertiary-fixed-dim": "#ffb876",
+                        "surface": "#f4fbfa",
+                        "tertiary-fixed": "#ffdcc0",
+                        "surface-bright": "#f4fbfa",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#2d1600",
+                        "midnight-slate": "#0B1117",
+                        "secondary-container": "#dde3ec",
+                        "outline-variant": "#bac9c9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "margin-desktop": "64px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Outfit"],
+                        "body-md": ["DM Sans"],
+                        "label-bold": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "display-lg": ["Outfit"],
+                        "headline-lg": ["Outfit"],
+                        "headline-md": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md">
+<!-- TopAppBar -->
+<nav class="bg-surface border-b border-silver-road sticky top-0 z-[100] h-20 flex items-center">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto h-20">
+<div class="flex items-center gap-8">
+<span class="font-display-lg text-display-lg italic font-black text-on-surface">MatchRV</span>
+<div class="hidden md:flex gap-6">
+<a class="font-label-bold text-label-bold text-horizon-cyan font-bold border-b-2 border-horizon-cyan" href="#">Explore</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Inventory</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Sell</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden md:block font-label-bold text-label-bold text-primary hover:opacity-80 transition-all uppercase tracking-wider">Sell My RV</button>
+<button class="bg-midnight-slate text-horizon-cyan px-6 py-2 font-bold hover:scale-95 active:opacity-80 transition-all">Sign In</button>
+<span class="material-symbols-outlined md:hidden text-on-surface cursor-pointer">menu</span>
+</div>
+</div>
+</nav>
+<main>
+<!-- Hero Section: AI Match Report -->
+<section class="relative overflow-hidden hero-gradient py-20 lg:py-32">
+<div class="max-w-container-max mx-auto px-margin-desktop relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+<div class="lg:col-span-6 space-y-8">
+<div class="inline-flex items-center gap-2 bg-white px-4 py-1 border border-silver-road">
+<span class="w-2 h-2 rounded-full bg-horizon-cyan animate-pulse"></span>
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">AI Outfitter Active</span>
+</div>
+<h1 class="font-display-lg text-display-lg leading-tight">Take our Match Report! <br/><span class="text-horizon-cyan">Find what RVs are right for you.</span></h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg">Our precision engineering algorithm analyzes your lifestyle, towing capacity, and travel goals to curate the perfect high-performance vehicle matches.</p>
+<div class="flex flex-wrap gap-4 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-horizon-cyan">verified_user</span>
+<span class="font-label-bold text-label-bold">98% Match Accuracy</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-horizon-cyan">speed</span>
+<span class="font-label-bold text-label-bold">2-Minute Analysis</span>
+</div>
+</div>
+</div>
+<!-- Match Report Card (Quiz-First UI) -->
+<div class="lg:col-span-6 lg:ml-auto">
+<div class="bg-white border-2 border-midnight-slate quiz-card-shadow p-8 md:p-10 relative">
+<div class="absolute -top-4 -right-4 bg-tertiary-container text-on-tertiary-container px-4 py-1 font-bold text-sm">
+                            NEW: 2024 MODELS
+                        </div>
+<h2 class="font-headline-md text-headline-md mb-6">Start Your Analysis</h2>
+<div class="space-y-6">
+<div>
+<label class="font-label-bold text-label-bold mb-3 block text-on-surface-variant">What is your primary travel style?</label>
+<div class="grid grid-cols-2 gap-3">
+<button class="border-2 border-silver-road p-4 text-left hover:border-horizon-cyan transition-all group active:scale-[0.98]">
+<span class="material-symbols-outlined block mb-2 text-on-surface-variant group-hover:text-horizon-cyan">terrain</span>
+<span class="font-bold">Off-Road Grid</span>
+</button>
+<button class="border-2 border-horizon-cyan bg-surface-container-low p-4 text-left transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined block mb-2 text-horizon-cyan">location_city</span>
+<span class="font-bold">Luxury Resort</span>
+</button>
+</div>
+</div>
+<div>
+<label class="font-label-bold text-label-bold mb-3 block text-on-surface-variant">Towing Capacity Requirement</label>
+<input class="w-full accent-horizon-cyan" max="20000" min="0" step="1000" type="range"/>
+<div class="flex justify-between text-xs font-bold mt-2 text-on-surface-variant">
+<span>0 LBS</span>
+<span>10,000 LBS</span>
+<span>20,000+ LBS</span>
+</div>
+</div>
+<button class="w-full bg-midnight-slate text-horizon-cyan py-5 font-black text-lg hover:bg-opacity-90 transition-all flex items-center justify-center gap-2">
+                                GET REPORT <span class="material-symbols-outlined">analytics</span>
+</button>
+<p class="text-center text-xs text-on-surface-variant opacity-60">Confidential AI Analysis. No registration required to start.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Atmospheric BG Element -->
+<div class="absolute bottom-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
+<div class="w-full h-full bg-cover bg-center" data-alt="A macro photography shot of industrial carbon fiber texture and polished aluminum details of a high-end luxury RV, emphasizing precision engineering and rugged durability. The lighting is dramatic, high-contrast, and modern, reflecting a premium vehicle marketplace aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDW8lDveLyRO0fcXrze5idTxbFdNJs6fDKlR06CvaPPlwQWr_84cWf2ZJU7c2Wn73G62d1eGyE9XsGkyM6UWvuRFLYwriSIwJVhMSrPeYmr3DJgOblasF8hHcu8A455d4r4Z68ZJvVs65d47c8GMTmrTmlXiENK3aJR3PL6yrBhExvrUPiLTyZkrOMx2fvq9MDYyhoEPXoHzf_KgfMUr9CFE3Qi2F9HLiAAWJMfccr_LfOwhA4pOTlyy2MseHqThsx8ND9sKs-5vY5W')"></div>
+</div>
+</section>
+<!-- Featured Match-Ready Inventory -->
+<section class="py-24 bg-white">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+<div>
+<h2 class="font-display-lg text-display-lg mb-4">Featured Match-Ready Inventory</h2>
+<p class="text-on-surface-variant font-body-lg max-w-2xl">Hand-selected for performance, durability, and technological integration. These units represent the top 5% of our current marketplace listings.</p>
+</div>
+<a class="font-label-bold text-label-bold text-midnight-slate border-b-2 border-midnight-slate pb-1 hover:text-horizon-cyan hover:border-horizon-cyan transition-colors shrink-0" href="#">BROWSE ALL RVS</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- RV Card 1 -->
+<div class="group border border-silver-road hover:shadow-xl transition-all duration-300">
+<div class="aspect-video relative overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A sleek, modern Class A luxury diesel pusher RV parked on a scenic mountain overlook during golden hour. The vehicle features a dark slate and silver aerodynamic exterior. The lighting highlights the glossy finish and high-tech detailing of the vehicle's body, set against a backdrop of rugged peaks." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBO-sECSv9R-39hZB5XzJjBJodf8dltX8F9LvIy0WEpBCc6sVUJ3LSyvR30JteEOuIE7V2pHvcoOn4y34q9Qg7koFLZPUJsDKbcxk28BIfwk03m2pzLj9jMGXdATHfeGy5KU_0Fwv0V5qZtDx4657Fp2Ftl1bc4eqMK6_CDs6_-7Ry8x-MBoQpXqXwNDEaiYy56K6vuMYMCSfMpOW2YA2c7TgDeQWKW3UmZkx7c0vYrYLcEFw2y7_7d4QXaXB6wPGaJ1tz1rEt5aZQd"/>
+<div class="absolute top-4 left-4 bg-midnight-slate text-horizon-cyan px-3 py-1 font-bold text-xs uppercase tracking-tighter">New Arrival</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md leading-tight">Entegra Coach Cornerstone 45B</h3>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-error transition-colors">favorite</span>
+</div>
+<p class="text-horizon-cyan font-display-lg text-2xl mb-4">$485,000</p>
+<div class="grid grid-cols-3 gap-2 border-t border-silver-road pt-4">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">straighten</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">45 Ft</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">group</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Sleeps 6</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">bolt</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Solar Ready</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RV Card 2 -->
+<div class="group border border-silver-road hover:shadow-xl transition-all duration-300">
+<div class="aspect-video relative overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A rugged off-road adventure van with all-terrain tires and a roof rack, navigating a desert trail in Utah. The van is a matte charcoal color with bright orange accents. The lighting is harsh and bright, emphasizing the vehicle's readiness for extreme environments and off-grid exploration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuTm9FcsjAvae39YPxXnP0XmfkP3cZK6kwgyagH3NnT1Lnc_FVVacBy7pDZAPY0O0d7R3fM8EtXhT4dr2jHqAgirKzJh8tGOiu78traPL3D4U68SWWw8tU-4fWpbhk2kKczppE7quaUe-WURH4eM4UROJ0DQ3Q-OiokttD-sDCRrhxCEQBVUNKkssjGJZb39UPJDvH34-Qn8tlmx31d9LHqXtMtcY5Y8tcAjMG0AlQj2HDdonE2kT1vzdB6gzCQmqRjWU5rItCmTN4"/>
+<div class="absolute top-4 left-4 bg-midnight-slate text-horizon-cyan px-3 py-1 font-bold text-xs uppercase tracking-tighter">98% Match</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md leading-tight">Winnebago Revel 4x4</h3>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-error transition-colors">favorite</span>
+</div>
+<p class="text-horizon-cyan font-display-lg text-2xl mb-4">$198,000</p>
+<div class="grid grid-cols-3 gap-2 border-t border-silver-road pt-4">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">settings_input_component</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">4WD High</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">bed</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Power Lift</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">battery_charging_full</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Lithium+</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RV Card 3 -->
+<div class="group border border-silver-road hover:shadow-xl transition-all duration-300">
+<div class="aspect-video relative overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A classic, high-polished silver aluminum travel trailer parked in a serene forest clearing. The chrome-like surface reflects the surrounding tall pines and the soft blue sky. The scene is elegant and timeless, focusing on the high-end craftsmanship and iconic design of luxury towing vehicles." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJk9xZGFOVFhW61YtA0BHosYmvlMd-G8KmthMbrG5kpuO0vswhIPalEEk9Irtw69mEwJTQ_-SP8Y5ZGjRb4p_uGhe5j5TMaC83PxXsUTfeuWlAZFIS8Tfua2Z7FmGeKXibdOhY3Zno-gJEjXJvN4J9p_FZYRfBDY1N9APGssHifOml5fMDqaY7fyuHnOLCNyzyJzrP_AS0HzSvHIdxD3YsMqZe8FwK5ubKzIy7IAOwnvKDEiJzV8QAbtYg5vrMJ76u57XFuMo2tvDf"/>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md leading-tight">Airstream Classic 33FB</h3>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-error transition-colors">favorite</span>
+</div>
+<p class="text-horizon-cyan font-display-lg text-2xl mb-4">$182,500</p>
+<div class="grid grid-cols-3 gap-2 border-t border-silver-road pt-4">
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">kitchen</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Gourmet</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">home_work</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Office Kit</span>
+</div>
+<div class="text-center">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">thermostat</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Smart HV</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Secondary CTA: Financing & Selling -->
+<section class="py-24 bg-surface-container overflow-hidden relative">
+<div class="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-2 gap-12 relative z-10">
+<div class="bg-midnight-slate p-12 text-white flex flex-col justify-between">
+<div>
+<h3 class="font-display-lg text-display-lg text-horizon-cyan mb-6">Trade or Sell Your Unit</h3>
+<p class="font-body-lg text-surface-variant mb-8">Our brokerage specialists ensure you get top-market value. We handle the paperwork, inspection, and logistics.</p>
+</div>
+<button class="w-fit border-2 border-horizon-cyan text-horizon-cyan px-10 py-4 font-bold hover:bg-horizon-cyan hover:text-midnight-slate transition-all uppercase tracking-widest">Get Valuation</button>
+</div>
+<div class="bg-white border-2 border-midnight-slate p-12 flex flex-col justify-between">
+<div>
+<h3 class="font-display-lg text-display-lg text-midnight-slate mb-6">Financing &amp; Protection</h3>
+<p class="font-body-lg text-on-surface-variant mb-8">Competitive rates from our network of specialized lenders. 48-hour approval turnaround for qualified buyers.</p>
+</div>
+<button class="w-fit bg-horizon-cyan text-midnight-slate px-10 py-4 font-bold hover:opacity-90 transition-all uppercase tracking-widest">Explore Options</button>
+</div>
+</div>
+<!-- Graphic Element: Modern Lines -->
+<div class="absolute inset-0 opacity-5 pointer-events-none">
+<svg height="100%" preserveaspectratio="none" viewbox="0 0 100 100" width="100%">
+<path class="text-midnight-slate" d="M0 100 L100 0" stroke="currentColor" stroke-width="0.1"></path>
+<path class="text-midnight-slate" d="M0 80 L80 0" stroke="currentColor" stroke-width="0.1"></path>
+<path class="text-midnight-slate" d="M20 100 L100 20" stroke="currentColor" stroke-width="0.1"></path>
+</svg>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-on-background text-surface-variant py-16">
+<div class="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="md:col-span-1">
+<span class="font-display-lg text-display-lg text-surface-container-lowest block mb-4">MatchRV</span>
+<p class="font-body-md text-body-md opacity-60">The professional-grade marketplace for high-performance mobile living.</p>
+</div>
+<div>
+<h4 class="font-label-bold text-label-bold text-horizon-cyan uppercase mb-6">Inventory</h4>
+<ul class="space-y-4 font-body-md">
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Class A Diesel</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Adventure Vans</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Luxury Trailers</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Off-Road Kits</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-bold text-label-bold text-horizon-cyan uppercase mb-6">Platform</h4>
+<ul class="space-y-4 font-body-md">
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Match Report AI</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Financing</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Broker Services</a></li>
+<li><a class="hover:text-horizon-cyan transition-colors" href="#">Protection Plans</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-bold text-label-bold text-horizon-cyan uppercase mb-6">Newsletter</h4>
+<p class="font-body-md mb-4">Get the latest market analysis and new arrivals.</p>
+<div class="flex">
+<input class="bg-midnight-slate border-silver-road text-white focus:ring-horizon-cyan focus:border-horizon-cyan w-full" placeholder="Email Address" type="email"/>
+<button class="bg-horizon-cyan text-midnight-slate px-4"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+</div>
+<div class="max-w-container-max mx-auto px-margin-desktop mt-16 pt-8 border-t border-silver-road border-opacity-10 flex flex-col md:flex-row justify-between items-center gap-6 text-sm">
+<p>© 2024 MatchRV Marketplace. All rights reserved.</p>
+<div class="flex gap-8">
+<a class="hover:text-horizon-cyan transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-horizon-cyan transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-horizon-cyan transition-colors" href="#">Sitemap</a>
+</div>
+</div>
+</footer>
+<!-- Mobile Bottom Navigation Shell -->
+<nav class="fixed bottom-0 w-full md:hidden flex justify-around items-center py-3 bg-surface border-t border-silver-road z-50">
+<a class="flex flex-col items-center justify-center text-horizon-cyan" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-bold text-[10px]">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">rv_hookup</span>
+<span class="font-label-bold text-[10px]">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-bold text-[10px]">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-label-bold text-[10px]">Sell</span>
+</a>
+</nav>
+<script>
+        // Simple Interaction Logic
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+
+        // Range slider value display mock
+        const range = document.querySelector('input[type="range"]');
+        if(range) {
+            range.addEventListener('input', (e) => {
+                // Logic for real-time match count update could go here
+            });
+        }
+    </script>
+</body></html>

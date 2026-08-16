@@ -1,0 +1,67 @@
+ Step 1 — Upload the scraper to Replit:
+
+  In your Replit workspace, create a folder called MatchRV-scraper and drag/drop (or upload) all the files from:
+  C:\Users\OBSch\OneDrive\Desktop\MatchRV\MatchRV-scraper\
+
+  Step 2 — Give Replit this prompt to wire it up for live inventory:
+
+  ---
+  I've uploaded a scraper to MatchRV-scraper/ in this workspace. It uses Playwright to scrape RV dealer inventory from
+  60+ Washington state dealers and outputs normalized JSON with 68 fields per listing.
+
+  Set up the following:
+
+  1. Install dependencies:
+  - Run cd MatchRV-scraper && npm install to install Playwright and other deps
+  - Run npx playwright install chromium to install the browser binary
+
+  2. Connect scraper output to the database:
+  - After each scrape run, the scraper outputs JSON files to MatchRV-scraper/data/ (one per dealer, keyed by domain)
+  - Create a new service MatchRV-scraper/sync-to-db.js that:
+    - Reads all JSON files from data/
+    - For each listing record, upserts into the listings table using VIN or stock_number as the unique key
+    - Maps the scraper's field names to the DB column names (they should match — both use the same schema: year, make,
+  model, rv_type, price, sale_price, sleeps, length, dry_weight, gvwr, condition, image_urls, description, features,
+  etc.)
+    - Sets inventory_status = 'available' for all listings in the current scrape
+    - Sets inventory_status = 'sold' for any listings in the DB that were NOT in the current scrape (they disappeared
+  from the dealer site)
+    - Updates last_seen_at timestamp on every upserted listing
+    - Sets _first_seen only on new inserts (not updates)
+    - Tracks price changes: if a listing's price changed, append to _price_history array
+  - Use the existing @workspace/db package and Drizzle ORM for database operations
+  - Use parameterized queries, not string interpolation
+
+  3. Schedule automated scraping:
+  - Create a cron job or scheduled task that runs every 6 hours:
+    - node MatchRV-scraper/scraper/scheduled-run.js (scrapes all enabled dealers)
+    - Then node MatchRV-scraper/sync-to-db.js (syncs results to database)
+  - Log each run with: timestamp, dealers scraped, total listings found, new listings, removed listings, price changes
+  - If Replit supports cron, use that. Otherwise, use setInterval in a long-running process or Replit's scheduled
+  deployments.
+
+  4. Add an admin API endpoint:
+  - POST /api/admin/scrape — triggers a manual scrape of all enabled dealers (or a specific dealer if
+  ?dealer=fifervcenter.com is passed)
+  - POST /api/admin/sync — triggers sync-to-db without re-scraping
+  - GET /api/admin/scrape-status — returns last scrape time, number of listings per dealer, any errors
+  - Protect these endpoints (only accessible to authenticated admin users)
+
+  5. Add a scrape status dashboard to the founder dashboard (or create one):
+  - Show last scrape timestamp
+  - Listings per dealer (table: dealer name, listing count, last scraped, status)
+  - New listings in last 24 hours
+  - Price drops in last 24 hours
+  - Any failed scrapes with error messages
+
+  Important notes:
+  - The scraper uses Playwright Chromium with anti-detection (randomized user agents, viewport, timezone)
+  - It has custom adapters for: Poulsbo RV (API), Camping World (Next.js), Fife RV Center (InteractRV), Tacoma RV (Coast
+   Technology Stealth Suite)
+  - All other dealers use the generic BaseAdapter with multi-source extraction
+  - The dealers.json file controls which dealers are scraped (enabled: true/false)
+  - Scraping all 60+ dealers takes roughly 30-60 minutes depending on inventory sizes
+  - Rate limiting is built in (random delays between requests) — do not remove this
+
+  Do NOT modify the scraper code itself (adapters, extractors, etc.) — only create the sync-to-db service, cron
+  scheduling, and admin endpoints.

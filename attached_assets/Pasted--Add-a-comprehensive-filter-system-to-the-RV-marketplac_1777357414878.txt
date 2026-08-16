@@ -1,0 +1,115 @@
+ Add a comprehensive filter system to the RV marketplace search/browse page. The filters should let buyers narrow down inventory using all available structured data.
+
+  FILTER LAYOUT:
+
+  Always visible at the top (horizontal filter bar or sidebar):
+  - RV Type (multi-select chips: Class A, Class B, Class C, Fifth Wheel, Travel Trailer, Toy Hauler, Pop-Up, Truck Camper)
+  - Price Range (dual-handle slider with min/max inputs, showing formatted dollar amounts)
+  - New / Used / All (toggle buttons)
+  - Year Range (min/max dropdowns)
+  - Make/Brand (searchable multi-select dropdown — populate from distinct makes in DB)
+
+  "More Filters" expand button reveals the advanced panel:
+
+  Size & Capacity Section:
+  - Sleeps (minimum — dropdown: 1-10+)
+  - Length (dual-handle slider in feet, min/max)
+  - Slideouts (dropdown: Any, 0, 1, 2, 3+)
+  - Bed Size (chips: King, Queen, Any)
+
+  Towing & Mechanical Section:
+  - "My Vehicle Can Tow" (input field for max tow weight in lbs — filter listings where GVWR <= entered value. Include a helper link: "Don't know? Check your vehicle" that shows a
+   small lookup table of common trucks)
+  - Hitch Type (chips: Bumper Pull, Fifth Wheel, Gooseneck — only show for towable RV types, hide for motorhomes)
+  - Fuel Type (chips: Gas, Diesel, Any — only show for motorhomes)
+  - Mileage (max input — only show for motorhomes)
+
+  Lifestyle Section:
+  - Camping Style smart filter with 3 toggle options:
+    - "Boondocking Ready" — filters where boondocking_score >= 60
+    - "Full Hookup" — filters where slideouts >= 1
+    - "All" — no filter
+  - Bunkhouse (toggle: Yes / Any)
+  - Toy Hauler Garage (toggle: Yes / Any)
+  - Pet Friendly (toggle: Yes / Any)
+  - Four Season / Winter Ready (toggle: Yes / Any)
+
+  Features Section (checkboxes):
+  - Outdoor Kitchen
+  - Solar (dropdown: Any, Solar Ready, Solar Installed)
+  - Washer/Dryer Prep
+  - Generator (onboard)
+  - Fireplace
+  - Leveling Jacks (dropdown: Any, Hydraulic, Any Type)
+  - Power Awning
+  - Outdoor Shower
+  - Backup Camera
+  - Theater Seating
+  - Enclosed Underbelly
+
+  Floorplan Section (chips, multi-select):
+  - Rear Bedroom
+  - Rear Living
+  - Front Kitchen
+  - Island Kitchen
+  - Walk-Around Bed
+
+  Deals Section (toggle switches):
+  - Price Drops Only (filter where _price_history shows a decrease)
+  - New Arrivals (filter where _first_seen is within last 7 days)
+  - Long on Lot (filter where _first_seen is more than 60 days ago — bargain signal)
+
+  Distance Section:
+  - Zip code input field
+  - Radius dropdown (25, 50, 100, 200, 500 miles)
+  - Requires geocoding dealer_location — if geocoding is not set up yet, just add the UI and show "Coming soon" when used
+
+  FILTER BEHAVIOR:
+
+  1. Filters update results in real-time (debounced 300ms) — no "Apply" button needed
+  2. Show active filter count on the "More Filters" button as a badge (e.g., "More Filters (4)")
+  3. Show a "Clear All Filters" button when any filters are active
+  4. Each active filter shows as a removable chip/tag above the results (e.g., "Travel Trailer x", "Under $50,000 x", "Bunkhouse x")
+  5. Show total result count that updates with filters: "Showing 47 of 312 RVs"
+  6. URL query params should reflect active filters so filtered views are shareable/bookmarkable
+  7. Save last-used filters to localStorage so they persist between visits
+  8. Mobile: filters should be in a full-screen slide-up drawer triggered by a "Filters" button, with an "Apply" button at the bottom and result count preview
+
+  SORT OPTIONS (dropdown next to results count):
+  - Best Match (default — uses deal_score or featured status)
+  - Price: Low to High
+  - Price: High to Low
+  - Newest First (by year)
+  - Just Listed (by _first_seen date)
+  - Length: Short to Long
+  - Length: Long to Short
+  - Biggest Price Drop
+
+  SMART FILTER INTERACTIONS:
+  - When "RV Type" is set to a motorhome (Class A/B/C), hide towing-related filters (hitch type, tow weight) and show mileage/fuel type
+  - When "RV Type" is set to a towable (Travel Trailer, Fifth Wheel, Toy Hauler), show towing filters and hide mileage/fuel type
+  - When "Boondocking Ready" is toggled on, automatically highlight the related features (generator, solar, fresh water) in the features section so users understand what makes
+  something "boondocking ready"
+
+  "TALK TO THE OUTFITTER" CTA:
+  At the bottom of the filter panel, add a call-to-action card:
+  - "Not sure what you need?"
+  - "Let our AI Outfitter guide you to your perfect match"
+  - Button: "Start Matching" → navigates to /outfitter with the current active filters pre-loaded as the buyer profile's starting values (e.g., if they filtered for travel trailer
+   under $50k that sleeps 6, the Outfitter already knows those preferences)
+
+  STYLING:
+  - Match the existing site design: white backgrounds, green (#004329) for active states, orange (#fe9b49) for CTAs
+  - Rounded corners (rounded-xl), subtle borders (border-[#bfc9c0]/20)
+  - Smooth transitions on expand/collapse
+  - Filter chips use a light green tint when active
+
+  API:
+  Create a GET /api/listings endpoint (or update existing) that accepts all filter params as query parameters:
+  GET /api/listings?rv_type=travel_trailer,fifth_wheel&max_price=50000&min_price=10000&condition=new&min_sleeps=6&max_length=35&min_length=25&bunkhouse=true&boondocking_ready=true
+  &outdoor_kitchen=true&sort=price_asc&page=1&limit=24
+
+  Build the SQL query dynamically from the provided params. Use parameterized queries (not string interpolation) to prevent SQL injection. Return paginated results with total
+  count.
+
+  Do NOT modify the Outfitter chat page, matching engine, or any existing endpoints. This is a new search/browse experience that lives alongside the Outfitter.

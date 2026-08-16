@@ -1,0 +1,665 @@
+# Replit prompt to upgrade MatchRV.com
+
+You are my senior full-stack engineer, product designer, and UX implementer working on **MatchRV** (matchrv.com), an AI-powered RV marketplace.
+
+The site is already live. Your job is to improve the UX, information architecture, homepage hierarchy, marketplace clarity, and trust signals while preserving existing business logic and core backend flows.
+
+The current site over-emphasizes the Match Report questionnaire and under-emphasizes the fact that MatchRV is a real RV marketplace with live inventory.
+
+The redesign goal is to make MatchRV feel like:
+
+* a trustworthy RV marketplace,
+* with real inventory,
+* enhanced by AI-powered matching and shopping tools.
+
+Do NOT make the site feel like a lead-generation site or “quiz funnel.” Buyers should feel like they are shopping intelligently, not being sold as leads.
+
+Maintain all existing flows unless absolutely necessary:
+
+* `/match`
+* `/browse`
+* `/outfitter`
+* `/pricing`
+* `/sell`
+* `/trips`
+* `/dealers/login`
+
+Preserve existing backend integrations and APIs whenever possible.
+
+---
+
+# HIGH-LEVEL STRATEGY
+
+The homepage hierarchy should shift from:
+
+1. Match Report
+2. AI tools
+3. Marketplace
+
+TO:
+
+1. Browse marketplace inventory
+2. Match Report / AI guidance
+3. Additional tools
+
+The website should visually and structurally resemble a modern trusted marketplace similar to:
+
+* Zillow
+* AutoTrader
+* CarGurus
+* RVTrader
+* Redfin
+
+NOT a startup landing page or lead-generation funnel.
+
+The experience should feel:
+
+* inventory-first,
+* trustworthy,
+* practical,
+* premium,
+* mobile-friendly,
+* and easy to understand instantly.
+
+Avoid overly clever marketing copy that sacrifices clarity.
+
+---
+
+# 1. HOMEPAGE REDESIGN — MARKETPLACE FIRST
+
+## HERO SECTION
+
+Replace or significantly improve the current “Buy Your 3rd RV First” hero messaging.
+
+The current messaging is too abstract and does not immediately communicate marketplace value.
+
+Create a clearer marketplace-focused hero.
+
+Preferred direction:
+
+Headline examples:
+
+* “Find the right RV without wasting months researching.”
+* “Smarter RV shopping starts here.”
+* “Browse real RV inventory matched to your lifestyle.”
+* “The easiest way to compare RVs confidently.”
+
+Subheadline:
+Explain that MatchRV combines:
+
+* live RV inventory,
+* AI-powered matching,
+* comparison tools,
+* and real dealer listings.
+
+Primary CTA:
+
+* “Browse RVs”
+
+Secondary CTA:
+
+* “Get My Match Report”
+
+IMPORTANT:
+The primary CTA should emphasize inventory browsing first.
+
+---
+
+# TRUST BAR BELOW HERO
+
+Add a trust / credibility strip directly below the hero.
+
+Examples:
+
+* Live inventory
+* Nationwide listings
+* Verified dealers
+* AI-powered matching
+* Updated daily
+
+Use icons and concise styling.
+
+---
+
+# MARKETPLACE SNAPSHOT SECTION
+
+Add a new “Marketplace Snapshot” section near the top of the homepage.
+
+Show:
+
+* total live listings,
+* number of states covered,
+* RV categories,
+* potentially average dealer response times later.
+
+Include:
+
+* strong “Browse all RVs” CTA
+* category chips:
+
+  * Travel Trailers
+  * Fifth Wheels
+  * Toy Haulers
+  * Class C
+  * Diesel Pushers
+  * etc.
+
+Link chips to filtered browse pages if supported.
+
+If live data is unavailable, structure the section with configurable placeholder values.
+
+---
+
+# REAL LISTINGS SECTION
+
+Add a homepage inventory strip called:
+
+“Real RVs on MatchRV right now”
+
+Display:
+
+* 3–6 real listings
+* horizontal scroll on mobile
+* marketplace-style cards
+
+Each card should include:
+
+* photo
+* title
+* price
+* location
+* sleeps
+* dealer name/logo if available
+* badge:
+
+  * Live listing
+  * Verified dealer
+  * Good value
+  * etc.
+
+Cards should click into existing listing detail pages.
+
+This section should visually resemble modern marketplace inventory experiences.
+
+IMPORTANT:
+This section is critical to establishing marketplace legitimacy immediately.
+
+---
+
+# BUYER JOURNEY SECTION
+
+Add:
+“How buying with MatchRV works”
+
+Keep concise and practical.
+
+Suggested flow:
+
+1. Browse inventory or get a Match Report.
+2. Compare RVs and review recommendations.
+3. Contact the dealer or seller through MatchRV.
+4. Inspect and finalize your purchase.
+
+IMPORTANT:
+Avoid “lead” terminology.
+
+Use consumer-friendly language:
+
+* connect with dealers
+* contact sellers
+* compare confidently
+* discover better matches
+
+NOT:
+
+* lead funnel
+* lead generation
+* conversions
+* funnel optimization
+
+---
+
+# MATCH REPORT POSITIONING
+
+The Match Report should be reframed as:
+
+“Your smarter way to narrow down the right RV.”
+
+It should feel like:
+
+* an advantage,
+* a shopping assistant,
+* a recommendation engine,
+
+NOT the entire identity of the company.
+
+Reduce the feeling that users must take a quiz before browsing inventory.
+
+---
+
+# FAQ FIXES
+
+The FAQ currently renders questions without answers.
+
+Implement:
+
+* fully functional accordion
+* keyboard accessibility
+* proper ARIA attributes
+
+Provide clear answers for:
+
+* What is the Match Report?
+* Is it free?
+* How long does it take?
+* How is this different from RVTrader or Craigslist?
+* Are recommendations only based on price?
+* Can I retake the quiz?
+
+Tone should be:
+
+* transparent,
+* trustworthy,
+* practical,
+* non-salesy.
+
+---
+
+# TRUST & SAFETY SECTION
+
+Add a visually distinct trust section above the footer.
+
+Suggested heading:
+“How we help buyers shop safely”
+
+Include:
+
+* live inventory only
+* verified or vetted dealers where applicable
+* recommendation to use inspections
+* no stale “already sold” listings
+* transparent pricing philosophy
+
+This section should reduce buyer anxiety.
+
+RV buyers are highly sensitive to:
+
+* scams
+* fake listings
+* outdated inventory
+* misleading pricing
+
+Lean into trust heavily.
+
+---
+
+# TESTIMONIALS / SOCIAL PROOF
+
+Add:
+“What buyers are saying”
+
+Create reusable testimonial card components.
+
+Use placeholder testimonials for now, but structure for:
+
+* CMS,
+* config file,
+* or future admin panel integration.
+
+Keep testimonials believable and grounded.
+
+---
+
+# 2. NAVIGATION & INFORMATION ARCHITECTURE
+
+Improve audience clarity throughout navigation.
+
+Current nav:
+
+* Get Match Report
+* AI Outfitter
+* Browse Inventory
+* Pricing
+* Buyers Guide
+* Sell Your RV
+* Saved Listings
+* Sign In
+
+---
+
+## ADD DEALER ENTRY
+
+Add:
+“For Dealers”
+
+This should link to:
+`/dealers`
+
+Do NOT send new dealer traffic directly to `/dealers/login`.
+
+---
+
+## CLARIFY SELL PAGE
+
+Rename:
+“Sell Your RV”
+
+TO:
+“Sell Your RV (Owner)”
+
+Update hero copy on the sell page to clarify:
+
+* this is for private sellers,
+* not dealerships.
+
+---
+
+## CLARIFY PRICING
+
+Rename or relabel pricing to:
+“Pricing — Sellers & Dealers”
+
+Clearly separate:
+
+* private seller plans
+* dealer partnership options
+
+If dealer pricing is not finalized:
+show:
+“Founding dealer program — contact us”
+
+---
+
+## SAVED LISTINGS UX
+
+Improve empty state.
+
+If user has no saved RVs:
+show:
+
+* explanation,
+* browse CTA,
+* sign-in guidance.
+
+Add tooltip near nav item:
+“Sign in to save your favorite RVs”
+
+---
+
+# 3. CREATE NEW `/dealers` PAGE
+
+Create a dedicated public-facing dealer landing page.
+
+This is a marketing / onboarding page.
+
+It should NOT feel like:
+
+* a CRM,
+* admin panel,
+* or login portal.
+
+Tone should feel premium and partnership-oriented.
+
+---
+
+## DEALER HERO
+
+Headline examples:
+
+* “Help serious RV shoppers find the right inventory.”
+* “AI-powered RV discovery for modern dealerships.”
+* “Connect your inventory with high-intent RV buyers.”
+
+Avoid aggressive lead-gen wording.
+
+Use:
+
+* serious shoppers
+* matched buyers
+* intent-driven discovery
+* aligned preferences
+
+NOT:
+
+* lead volume
+* conversion funnels
+* lead capture
+
+Primary CTA:
+“Request dealer access”
+
+Secondary CTA:
+“Book a demo”
+
+---
+
+## DEALER VALUE PROP
+
+Create sections explaining:
+
+* buyers arrive with clearer preferences,
+* inventory appears in recommendations,
+* MatchRV helps shoppers narrow choices faster,
+* marketplace stays focused on live inventory.
+
+Explain:
+
+* tow vehicle matching,
+* camping style,
+* budget alignment,
+* RV type fit,
+* etc.
+
+---
+
+## DEALER WORKFLOW
+
+Explain:
+
+1. Apply for access
+2. Upload inventory/feed
+3. Inventory appears in marketplace + recommendations
+4. Buyers contact dealership
+
+Simple and visually clean.
+
+---
+
+## DEALER RISK REDUCTION
+
+Add bullets:
+
+* No long-term contracts
+* Founding partner program
+* Flexible onboarding
+* Cancel anytime
+
+Structure for future metrics insertion.
+
+---
+
+## DEALER SOCIAL PROOF
+
+Placeholder:
+
+* dealer logos
+* testimonial cards
+
+Structure as reusable config-driven components.
+
+---
+
+## DEALER FORM
+
+Add form fields:
+
+* dealership name
+* website
+* contact name
+* email
+* phone
+* city/state
+* inventory size
+* DMS provider
+
+Validate fields.
+
+If backend endpoint does not exist:
+
+* mock successful submission
+* show success state
+* structure endpoint cleanly for future implementation.
+
+---
+
+## DEALER LOGIN LINK
+
+At bottom:
+“Already a dealer partner? Log in here”
+
+Link:
+`/dealers/login`
+
+---
+
+# 4. DEALER LOGIN PAGE
+
+Keep existing auth functionality.
+
+Improve surrounding UX.
+
+Add:
+
+* “Dealer portal — existing partners”
+* link back to `/dealers`
+
+Improve:
+
+* invalid login states
+* error styling
+* spacing
+* responsiveness
+
+---
+
+# 5. UX POLISH & ACCESSIBILITY
+
+Perform a shared component quality pass.
+
+---
+
+## BUTTON HIERARCHY
+
+Standardize:
+
+* primary buttons
+* secondary buttons
+* hover states
+* focus states
+
+Across:
+
+* browse
+* match
+* dealers
+* pricing
+* seller flows
+
+---
+
+## EMPTY STATES
+
+Improve:
+
+* no saved listings
+* empty browse filters
+* form validation states
+
+Provide useful recovery actions.
+
+---
+
+## ACCESSIBILITY
+
+Ensure:
+
+* semantic headings
+* ARIA labels
+* accessible accordions
+* keyboard navigation
+* proper form labeling
+
+---
+
+# 6. MOBILE-FIRST RESPONSIVENESS
+
+Prioritize mobile UX first.
+
+Most RV shoppers browse on mobile devices.
+
+Ensure:
+
+* horizontal inventory scrolling works well,
+* nav remains clean,
+* cards stack properly,
+* spacing is touch-friendly.
+
+---
+
+# 7. PERFORMANCE & SEO
+
+Maintain or improve:
+
+* SEO structure
+* metadata
+* Core Web Vitals
+
+Lazy-load homepage listing strips where appropriate.
+
+Optimize image loading.
+
+Avoid excessive animations.
+
+The site should feel:
+
+* stable,
+* trustworthy,
+* fast,
+* and marketplace-focused.
+
+---
+
+# IMPLEMENTATION APPROACH
+
+Prefer:
+
+* small composable components,
+* reusable marketplace modules,
+* configurable placeholder content.
+
+Examples:
+
+* MarketplaceSnapshot
+* HomepageListingsStrip
+* BuyerJourney
+* TrustAndSafety
+* DealerHero
+* DealerWorkflow
+* DealerTestimonials
+* DealerLeadForm
+
+Expose hardcoded values through config/constants where possible.
+
+---
+
+# FINAL OUTPUT
+
+When complete, summarize:
+
+* all files changed,
+* all components added,
+* any new routes,
+* any new API endpoints,
+* placeholder content requiring replacement,
+* any new environment variables,
+* any recommendations for future improvements.

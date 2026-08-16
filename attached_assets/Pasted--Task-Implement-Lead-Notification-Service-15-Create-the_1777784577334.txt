@@ -1,0 +1,311 @@
+ ## Task: Implement Lead Notification Service (#15)
+
+  Create the file `artifacts/api-server/src/lib/notify-lead.ts` and update `artifacts/api-server/src/routes/leads.ts`.
+
+  ### 1. Create `artifacts/api-server/src/lib/notify-lead.ts`
+
+  This file sends email (SendGrid), SMS (Twilio), and CRM webhook (LotLink) notifications when leads are submitted. No
+  npm packages needed — uses native fetch for all three APIs.
+
+  ```typescript
+  /**
+   * Lead notification service — SendGrid email, Twilio SMS, LotLink CRM webhook.
+   *
+   * Required env vars (Replit Secrets):
+   *   SENDGRID_API_KEY
+   *   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+   *   LOTLINK_CRM_WEBHOOK_URL  (optional — CRM sync skipped if missing)
+   *   LOTLINK_CRM_API_KEY       (optional — sent as x-api-key header if set)
+   */
+
+  import { db, buyerLeadsTable, scraperLeadsTable } from "@workspace/db";
+  import { eq } from "drizzle-orm";
+
+  export interface LeadNotificationPayload {
+    leadId?: number;
+    buyerLeadId?: number;
+    scraperLeadId?: number;
+    leadSource?: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    message?: string | null;
+    dealerName?: string | null;
+    dealerEmail?: string | null;
+    listingTitle?: string | null;
+    listingUrl?: string | null;
+    listingSnapshot?: Record<string, unknown>;
+    buyerProfile?: Record<string, unknown>;
+  }
+
+  const NOTIFY_EMAIL = "jonathan@matchrv.com";
+  const NOTIFY_PHONE = "+12538881117";
+
+  export async function notifyLead(payload: LeadNotificationPayload): Promise<void> {
+    await Promise.allSettled([
+      sendEmail(payload),
+      sendSms(payload),
+      postToCrm(payload),
+    ]);
+  }
+
+  async function sendEmail(payload: LeadNotificationPayload): Promise<void> {
+    const apiKey = process.env.SENDGRID_API_KEY;
+    if (!apiKey) {
+      console.warn("[notify-lead] SENDGRID_API_KEY not set — skipping email");
+      return;
+    }
+
+    const rvTitle = buildRvTitle(payload);
+    const subject = `New MatchRV Lead — ${rvTitle}`;
+    const html = buildEmailHtml(payload, rvTitle);
+
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: NOTIFY_EMAIL }] }],
+        from: { email: "leads@matchrv.com", name: "MatchRV Leads" },
+        subject,
+        content: [{ type: "text/html", value: html }],
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[notify-lead] SendGrid error ${res.status}:`, body);
+    }
+  }
+
+  function buildRvTitle(payload: LeadNotificationPayload): string {
+    if (payload.listingTitle) return payload.listingTitle;
+    const snap = payload.listingSnapshot;
+    if (snap) {
+      const parts = [snap.year, snap.make, snap.model].filter(Boolean);
+      if (parts.length) return parts.join(" ");
+    }
+    return payload.leadSource === "price_alert_email" ? "Price Alert Signup" : "General Inquiry";
+  }
+
+  function buildEmailHtml(payload: LeadNotificationPayload, rvTitle: string): string {
+    const snap = payload.listingSnapshot ?? {};
+    const profile = payload.buyerProfile ?? {};
+    const source = payload.leadSource ?? "contact_dealer";
+
+    const contactRows = [
+      payload.contactName && `<tr><td style="padding:4px 12px;font-weight:600;">Name</td><td style="padding:4px
+  12px;">${esc(payload.contactName)}</td></tr>`,
+      payload.contactEmail && `<tr><td style="padding:4px 12px;font-weight:600;">Email</td><td style="padding:4px
+  12px;"><a href="mailto:${esc(payload.contactEmail)}">${esc(payload.contactEmail)}</a></td></tr>`,
+      payload.contactPhone && `<tr><td style="padding:4px 12px;font-weight:600;">Phone</td><td style="padding:4px
+  12px;"><a href="tel:${esc(payload.contactPhone)}">${esc(payload.contactPhone)}</a></td></tr>`,
+    ].filter(Boolean).join("");
+
+    const messageBlock = payload.message
+      ? `<div style="background:#f5f5f5;padding:12px 16px;border-radius:6px;margin:12px
+  0;font-style:italic;">"${esc(payload.message)}"</div>`
+      : "";
+
+    const rvRows = [
+      snap.year && `<tr><td style="padding:4px 12px;font-weight:600;">Year</td><td style="padding:4px
+  12px;">${esc(String(snap.year))}</td></tr>`,
+      snap.make && `<tr><td style="padding:4px 12px;font-weight:600;">Make</td><td style="padding:4px
+  12px;">${esc(String(snap.make))}</td></tr>`,
+      snap.model && `<tr><td style="padding:4px 12px;font-weight:600;">Model</td><td style="padding:4px
+  12px;">${esc(String(snap.model))}</td></tr>`,
+      snap.price && `<tr><td style="padding:4px 12px;font-weight:600;">Price</td><td style="padding:4px
+  12px;">$${Number(snap.price).toLocaleString()}</td></tr>`,
+      snap.sale_price && `<tr><td style="padding:4px 12px;font-weight:600;">Sale Price</td><td style="padding:4px
+  12px;">$${Number(snap.sale_price).toLocaleString()}</td></tr>`,
+      (payload.dealerName || snap.dealer_name) && `<tr><td style="padding:4px 12px;font-weight:600;">Dealer</td><td
+  style="padding:4px 12px;">${esc(String(payload.dealerName || snap.dealer_name))}</td></tr>`,
+      payload.listingUrl && `<tr><td style="padding:4px 12px;font-weight:600;">Listing</td><td style="padding:4px
+  12px;"><a href="${esc(payload.listingUrl)}">View Listing</a></td></tr>`,
+    ].filter(Boolean).join("");
+
+    const profileLines: string[] = [];
+    if (profile.maxBudget) profileLines.push(`Budget: up to $${Number(profile.maxBudget).toLocaleString()}`);
+    if (profile.experience) profileLines.push(`Experience: ${profile.experience}`);
+    if (profile.campingStyle) profileLines.push(`Camping style: ${profile.campingStyle}`);
+    if (profile.rvType) profileLines.push(`Looking for: ${profile.rvType}`);
+    if (profile.useCase) profileLines.push(`Use case: ${profile.useCase}`);
+    if (profile.towVehicle) profileLines.push(`Tow vehicle: ${profile.towVehicle}`);
+    if (profile.travelers) profileLines.push(`Travelers: ${profile.travelers}`);
+
+    const profileBlock = profileLines.length
+      ? `<h3 style="margin:16px 0 8px;">AI Outfitter Profile</h3><ul
+  style="margin:0;padding-left:20px;">${profileLines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>`
+      : "";
+
+    const sourceLabel: Record<string, string> = {
+      contact_dealer: "Contact Dealer Form",
+      saved_listing: "Saved Listing",
+      price_alert_email: "Price Alert Signup",
+    };
+
+    return `
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0
+  auto;color:#1a1a1a;">
+    <div style="background:#2563eb;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;">
+      <h2 style="margin:0;font-size:18px;">New MatchRV Lead</h2>
+      <p style="margin:4px 0 0;opacity:0.85;font-size:14px;">Source: ${esc(sourceLabel[source] ?? source)}</p>
+    </div>
+    <div style="padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
+      <h3 style="margin:0 0 8px;">Buyer Contact</h3>
+      <table style="border-collapse:collapse;width:100%;">${contactRows || "<tr><td style='padding:4px
+  12px;color:#999;'>No contact info provided</td></tr>"}</table>
+      ${messageBlock}
+      ${rvRows ? `<h3 style="margin:16px 0 8px;">RV Details</h3><table
+  style="border-collapse:collapse;width:100%;">${rvRows}</table>` : ""}
+      ${profileBlock}
+      <p style="margin:20px 0 0;font-size:12px;color:#999;">Lead ID: ${payload.buyerLeadId ?? payload.scraperLeadId ??
+  "—"}</p>
+    </div>
+  </div>`.trim();
+  }
+
+  function esc(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  async function sendSms(payload: LeadNotificationPayload): Promise<void> {
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const from = process.env.TWILIO_FROM_NUMBER;
+    if (!sid || !token || !from) {
+      console.warn("[notify-lead] Twilio credentials not set — skipping SMS");
+      return;
+    }
+
+    const rvTitle = buildRvTitle(payload);
+    const price = payload.listingSnapshot?.price || payload.listingSnapshot?.sale_price;
+    const priceStr = price ? ` ($${Number(price).toLocaleString()})` : "";
+    const contact = payload.contactPhone || payload.contactEmail || "no contact";
+    const msgPreview = payload.message ? payload.message.slice(0, 100) : "";
+
+    let body = `MatchRV Lead: ${payload.contactName ?? "Unknown"} is interested in ${rvTitle}${priceStr}. ${contact}.`;
+    if (msgPreview) body += ` Msg: ${msgPreview}`;
+
+    const params = new URLSearchParams({ To: NOTIFY_PHONE, From: from, Body: body });
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${sid}:${token}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[notify-lead] Twilio error ${res.status}:`, err);
+    }
+  }
+
+  export async function postToCrm(payload: LeadNotificationPayload): Promise<void> {
+    const webhookUrl = process.env.LOTLINK_CRM_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn("[notify-lead] LOTLINK_CRM_WEBHOOK_URL not set — skipping CRM sync");
+      return;
+    }
+
+    const leadTable = payload.scraperLeadId ? scraperLeadsTable : buyerLeadsTable;
+    const leadId = payload.scraperLeadId ?? payload.buyerLeadId;
+
+    const crmPayload = {
+      source: "matchrv",
+      leadSource: payload.leadSource ?? "contact_dealer",
+      matchrvLeadId: leadId,
+      contact: {
+        name: payload.contactName ?? null,
+        email: payload.contactEmail ?? null,
+        phone: payload.contactPhone ?? null,
+      },
+      message: payload.message ?? null,
+      listing: {
+        title: payload.listingTitle ?? buildRvTitle(payload),
+        url: payload.listingUrl ?? null,
+        ...(payload.listingSnapshot ?? {}),
+      },
+      dealer: {
+        name: payload.dealerName ?? payload.listingSnapshot?.dealer_name ?? null,
+        email: payload.dealerEmail ?? null,
+      },
+      buyerProfile: payload.buyerProfile ?? null,
+      timestamp: new Date().toISOString(),
+    };
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (process.env.LOTLINK_CRM_API_KEY) {
+      headers["x-api-key"] = process.env.LOTLINK_CRM_API_KEY;
+    }
+
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(crmPayload),
+      });
+
+      if (res.ok && leadId) {
+        await db.update(leadTable).set({ crmSyncStatus: "synced" }).where(eq(leadTable.id, leadId));
+      } else if (leadId) {
+        const errBody = await res.text();
+        console.error(`[notify-lead] CRM webhook error ${res.status}:`, errBody);
+        await db.update(leadTable).set({ crmSyncStatus: "failed" }).where(eq(leadTable.id, leadId));
+      }
+    } catch (err) {
+      console.error("[notify-lead] CRM webhook failed:", err);
+      if (leadId) {
+        await db.update(leadTable).set({ crmSyncStatus: "failed" }).where(eq(leadTable.id, leadId)).catch(() => {});
+      }
+    }
+  }
+
+  2. Fix security issue in artifacts/api-server/src/routes/leads.ts
+
+  Make these two changes to leads.ts:
+
+  Change 1: Remove the hardcoded admin key fallback (line 7)
+
+  Delete this line:
+  const ADMIN_KEY_VALUE = process.env.ADMIN_KEY ?? "2538628333Jk!";
+
+  Change 2: Fix the scraper route auth check (around line 20-22)
+
+  Change:
+  const key = req.headers["x-admin-key"];
+  if (key === ADMIN_KEY_VALUE) {
+
+  To:
+  const key = req.headers["x-admin-key"];
+  if (process.env.ADMIN_KEY && key === process.env.ADMIN_KEY) {
+
+  This makes the scraper route use the same env-var-only auth as the adminAuth middleware. If ADMIN_KEY isn't set in
+  secrets, both reject (fail-closed). No hardcoded credentials in source code.
+
+  3. Add these Replit Secrets
+
+  Add the following secrets in Replit (Settings > Secrets):
+
+  - SENDGRID_API_KEY — your SendGrid API key
+  - TWILIO_ACCOUNT_SID — your Twilio Account SID (starts with AC)
+  - TWILIO_AUTH_TOKEN — your Twilio Auth Token
+  - TWILIO_FROM_NUMBER — your Twilio phone number (E.164 format, e.g. +12535551234)
+  - ADMIN_KEY — a strong random string to replace the hardcoded key (generate one with: openssl rand -base64 32)
+  - LOTLINK_CRM_WEBHOOK_URL — set to:
+  https://2a46a0a0-1b7f-4802-95cf-6b7b095be201-00-2m9jvqq3eqr4j.spock.replit.dev/api/leads/inbound
+  - LOTLINK_CRM_API_KEY — (optional, only if the LotLink endpoint requires auth)
+
+  Important notes
+
+  - Do NOT install any npm packages. This uses native fetch for SendGrid, Twilio, and the CRM webhook.
+  - The leads.ts file already imports notifyLead and postToCrm from ../lib/notify-lead.js and calls them in all the
+  right places — you only need to create the notify-lead.ts file and apply the two security fixes to leads.ts.
+  - The import in leads.ts (from "../lib/notify-lead.js") already matches the file path
+  artifacts/api-server/src/lib/notify-lead.ts — no import changes needed.
+
+  ---

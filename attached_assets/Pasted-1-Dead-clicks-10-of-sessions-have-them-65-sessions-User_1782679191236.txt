@@ -1,0 +1,59 @@
+1. Dead clicks — ~10% of sessions have them (65 sessions)
+Users are clicking on non-interactive elements on listing pages and forms — buttons or areas that look clickable but do nothing
+
+Clarity flagged dead clicks at 10.37% of sessions (65 total) — this is a real UX problem
+
+Specifically called out: elements on listing pages and the match report form area
+
+Fix: Make non-interactive hero text (like the headline "Find the right RV without wasting months researching") visually distinct from clickable elements
+
+2. Quick backs — 6.86% of sessions (43 sessions)
+Users are hitting a page and immediately going back — this is a bounce indicator
+
+Happening on listing pages and after some form interactions
+
+Fix: Review what users see on first landing — likely the listing detail pages aren't meeting expectations set by the listing card
+
+3. Broken/outdated URLs causing 404 errors
+Multiple sessions showed users hitting /about-us and /fleet — pages that don't exist anymore — resulting in "Page Not Found" errors
+
+These are likely coming from old marketing links, social posts, or backlinks
+
+Fix: Set up 301 redirects from /about-us → /about and /fleet → /browse (or wherever appropriate)
+
+4. Dealer login is failing to convert
+Dealer login sessions were initiated but not completed — users enter info and stop before signing in
+
+Fix: Check the dealer login flow for friction (confusing fields, unclear error messages, or a required step that's blocking them)
+
+5. Mobile scroll drop-off on the homepage
+Mobile users had steep drop-off after just 10% scroll depth on the homepage
+
+Only ~55% of mobile users reach the 10% scroll mark — which means most are NOT seeing your inventory or the Match CTA below the fold
+
+Fix: Surface the "Get My Free Match Report" CTA above the fold on mobile, or make the hero section shorter
+
+6. CLS (Cumulative Layout Shift) is POOR — score 3.5
+This means page elements are jumping around during load, which frustrates users and hurts SEO
+
+Fix: This is likely caused by images loading without defined dimensions, or dynamic content injecting into the layout (ads, chat widget, etc.)
+
+7. Tablet experience is weak
+Tablet users showed minimal scroll behavior and half their clicks concentrated only on "Get My Free Match Report" — they're not exploring further
+
+Tablet interactions on the Browse page were minimal compared to desktop/mobile
+
+Fix: Test the tablet layout specifically — filter sidebar and listing cards likely don't render well at tablet widths
+
+8. The Match page has dead clicks on the main content container
+Users are clicking on the non-interactive page body/text area around the chat widget — likely trying to interact with something that isn't clickable
+
+Fix: Make the chat input field more visually prominent as the main action area
+
+9. Very low returning user rate (8.93%)
+Only 56 of 627 sessions are returning users — 91% are brand new
+
+This suggests people are finding you, checking it out, and not coming back
+
+Fix: Consider email capture after a Match Report submission, or push notifications for new listings matching their criteria
+

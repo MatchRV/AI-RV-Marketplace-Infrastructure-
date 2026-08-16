@@ -1,0 +1,101 @@
+You are ﬁ xing bugs in the MatchRV "RV Match Report" feature. There are several real bugs
+causing the matcher to return "No exact matches" for searches that SHOULD have results,
+and to ignore the buyer's requested RV length. Fix all of the following. Do not change
+unrelated behavior. Keep the existing code style.
+CONTEXT —how the system works today
+• The buyer chat collects a proﬁ le ( proﬁ le.rvType , proﬁ le.minBudget , proﬁ le.maxBudget ,
+proﬁ le.campingStyle , proﬁ le.mustHaves , etc.) and POSTs a quiz payload to POST
+/api/match-report/generate .
+• The server ﬁ le (match-report-api.ts) ﬁ lters live listingsTable rows by price + RV type (+
+tow weight for towables), scores them, and returns 3picks (best_overall, best_value,
+upgrade).
+• The listingsTable HAS a length column (numeric, in feet). The report UI already displays
+it. But length is NEVER captured in the buyer proﬁ le and NEVER used to ﬁ lter. This must
+change.
+BUG 1—RV type mapping (diesel pusher returns zero)
+The server only recognizes these exact drivable types: class_a , class_b , class_c (and
+towable types). When a buyer says "Class A diesel pusher," "diesel pusher," "gas
+motorhome," etc., that string never matches class_a , so inArray(type, allowed) returns ZERO
+rows.
+Fix: Add a normalization step that maps common buyer phrasings to the canonical type
+BEFORE ﬁ ltering. At minimum:
+• "diesel pusher", "class a diesel", "class a gas", "class a", "a", "motorhome (class a)" →
+class_a
+• "class b", "b", "camper van", "van" → class_b
+• "class c", "c" → class_c
+• "travel trailer", "tt" → travel_trailer
+
+
+• "ﬁ fth wheel", "5th wheel", "ﬁ ver" → ﬁ fth_wheel
+• "toy hauler" → toy_hauler
+• "pop up", "popup", "pop-up" → popup_camper
+• "truck camper" → truck_camper
+Normalize case/spacing/punctuation. If after normalization the type still isn't
+recognized, treat rvType as null (no type ﬁ lter) rather than ﬁ ltering to a non-existent
+type.
+BUG 2—capture and ﬁ lter by LENGTH (critical trust issue)
+A buyer who asks for a 40ft diesel pusher must NEVER be shown a 24ft or 35ft unit. Today
+length is ignored entirely.
+Fix part A (chat/proﬁ le layer): Capture the buyer's desired length from the conversation into
+the proﬁ le as lengthMin and lengthMax (in feet). If the buyer gives a single number like
+"40ft", set a TIGHT band around it: lengthMin = value - 3 , lengthMax = value + 3 (so 40ft →37‒
+43ft). If the buyer gives a range ("38to 45ft"), use it exactly. If the buyer says nothing about
+length, leave both undeﬁ ned. Add lengthMin / lengthMax to the quiz payload sent to the
+server.
+Fix part B (server): Add lengthMin / lengthMax to the QuizAnswers type and sanitize them
+(reasonable bounds, e.g. 8‒60ft). In fetchCandidates , when both are present, add length
+conditions: gte(listingsTable.length, lengthMin) and lte(listingsTable.length, lengthMax) .
+IMPORTANT: only apply this to listings that have a non-null length —use or(isNull(length),
+and(gte(length, min), lte(length, max))) so units missing a length value aren't silently dropped,
+but real out-of-range lengths ARE excluded. Length should be treated as a near-hard
+requirement when the buyer speciﬁ ed it. Also add a ﬁ t-score bonus in scoreFit for listings
+whose length falls inside the requested band, so closer-to-target lengths rank higher.
+BUG 3—budget default silently caps at $100K
+In the request handler, budgetMax defaults to 100000 when no budget number is captured.
+A buyer who says "strong ﬁ nancing budget" with no dollar ﬁ gure, searching for a Class A
+diesel pusher (which typically costs well above $100K), gets everything ﬁ ltered out.
+Fix: Make the default budget RV-type-aware instead of a ﬂ at $100K. When budgetMax is
+missing/unparsed, set a sensible default ceiling based on the (normalized) rvType:
+• class_a →default budgetMax 400000
+• class_c →default budgetMax 200000
+• class_b →default budgetMax 200000
+
+
+• ﬁ fth_wheel / toy_hauler →default budgetMax 150000
+• everything else / unknown →default budgetMax 120000
+Keep the existing budgetMin derivation. Additionally, the chat layer should make one
+attempt to capture a real dollar ﬁ gure when a buyer mentions budget vaguely (e.g., ask
+"Do you have a price range in mind, or should I show you what's available across the
+lineup?") —but if the buyer declines, proceed with the type-aware default rather than
+blocking.
+BUG 4—turn hard "no matches" into graceful soft
+fallback
+Today if the strict ﬁ lter returns zero, the buyer hits a dead "No exact matches" wall. Instead,
+degrade gracefully so a report still generates whenever inventory plausibly exists.
+Fix: If fetchCandidates with all ﬁ lters returns zero, automatically retry with progressively
+relaxed ﬁ lters in this order, and clearly note in the response which constraint was relaxed:
+1. First retry: widen length band (±6ft instead of ±3), keep type + budget.
+2. Second retry: drop the length ﬁ lter, keep type + budget.
+3. Third retry: widen budgetMax by 25%, keep type.
+Only return the "no matches" 404if even the relaxed pass ﬁ nds nothing. When results
+come from a relaxed pass, include a relaxedNote ﬁ eld in the JSON response (e.g., "We
+widened your length range slightly to show strong nearby options") so the UI can be
+honest with the buyer instead of silently showing oﬀ -target units.
+BUG 5—conversation keeps re-asking questions (loop /
+never completes cleanly)
+The buyer reported being asked the same kinds of questions repeatedly even after the
+proﬁ le was complete. Ensure the chat reliably transitions to the matching stage once the
+core ﬁ elds are captured (use case, travelers, drive/RV type, budget OR explicit "show me
+everything", camping style). Once those are present, the assistant must STOP asking new
+discovery questions and move to generating the report (emit the completion signal / set
+stage to complete). Do not invent additional probing questions (bedroom layout, couch
+position, etc.) once the core proﬁ le is captured.
+BUG 6—scrub a third-party training-program reference
+In the match-report copy-generation prompt there is a phrase referencing a named third-
+party RV sales training program ("Think like a [Name] University trained outﬁ tter...").
+
+
+Remove that brand reference entirely. Replace it with neutral wording such as: "Think like
+an experienced, independent RV outﬁ tter who understands HOW they'll use the RV." Search
+the whole codebase for that program's name and remove every occurrence in user-facing
+or prompt text.

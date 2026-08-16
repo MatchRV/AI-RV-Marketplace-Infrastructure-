@@ -1,0 +1,125 @@
+Remove maximum-scale=1 from viewport (1 min)
+In your index.html, change:
+html<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+to:
+html<meta name="viewport" content="width=device-width, initial-scale=1" />
+3. Install GA4 (15 min)
+Create a GA4 property at analytics.google.com, grab the G-XXXXXXXXXX measurement ID. Add GTM wrapping it so you can add pixels later without code deploys. Load the GTM script in index.html before </head>. Wire a custom event for quiz completion when the Match Report renders.
+4. Generate a real favicon + manifest (30 min)
+Go to realfavicongenerator.net, upload your logo, download the package. Drop the files in public/ (Vite auto-copies to dist/). Replace the two icon <link> tags in index.html with the ones the generator produces. Write a real public/manifest.json:
+json{
+  "name": "MatchRV",
+  "short_name": "MatchRV",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#1F3A2E",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}
+Day 2 — App Engine config (ship together in one deploy)
+5. Fix compression + cache headers in app.yaml
+Update your handlers so static assets get brotli/gzip and long cache times. Example:
+yamlruntime: nodejs20
+
+handlers:
+  # Real static files served before SPA catch-all
+  - url: /favicon.ico
+    static_files: dist/favicon.ico
+    upload: dist/favicon\.ico
+    http_headers:
+      Cache-Control: "public, max-age=86400"
+
+  - url: /manifest.json
+    static_files: dist/manifest.json
+    upload: dist/manifest\.json
+    http_headers:
+      Cache-Control: "public, max-age=86400"
+
+  - url: /robots.txt
+    static_files: dist/robots.txt
+    upload: dist/robots\.txt
+
+  - url: /sitemap.xml
+    static_files: dist/sitemap.xml
+    upload: dist/sitemap\.xml
+
+  # Hashed assets get forever cache
+  - url: /assets/(.*)
+    static_files: dist/assets/\1
+    upload: dist/assets/.*
+    http_headers:
+      Cache-Control: "public, max-age=31536000, immutable"
+      X-Content-Type-Options: "nosniff"
+
+  # SPA catch-all — return HTML shell only for known app routes
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index\.html
+If App Engine standard isn't compressing, the cheapest correct answer is to front the site with Cloudflare (free tier) — point DNS at Cloudflare, let them proxy to App Engine. They add brotli, CDN caching, and WAF for free.
+6. Add security headers
+In app.yaml, add to each handler or use a middleware. Minimum set:
+yamlhttp_headers:
+  X-Content-Type-Options: "nosniff"
+  Referrer-Policy: "strict-origin-when-cross-origin"
+  Permissions-Policy: "camera=(), microphone=(), geolocation=(self)"
+  Content-Security-Policy-Report-Only: "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com"
+Ship CSP in report-only mode first. Watch the violation reports for a week, then flip to enforcing.
+7. Fix soft 404s
+Your SPA catch-all currently returns HTTP 200 for everything. Add a real 404 handler. Two options:
+
+Quick: In the React router, when matching the * fallback route, inject <meta name="prerender-status-code" content="404" /> and have prerender middleware read it. Without prerender middleware, Google will still index 404 pages as 200 — the only real fix is SSR/prerender (next step).
+Proper: After step 8 below (prerender), the prerender layer sets HTTP 404 for unknown paths.
+
+Days 3–5 — The fix that actually determines whether you rank
+8. Ship SSG for static pages (2–3 days)
+This is the one that matters. Install vite-plugin-ssg:
+bashnpm i -D vite-ssg
+Change entry point from main.tsx to use the plugin's bootstrap:
+ts// src/main.tsx
+import { ViteSSG } from 'vite-ssg'
+import App from './App'
+import { routes } from './router'
+
+export const createApp = ViteSSG(App, { routes })
+Update package.json:
+json"scripts": {
+  "build": "vite-ssg build"
+}
+In each page component, use useHead() from @vueuse/head (or react-helmet-async — you already have Helmet) to set title, description, canonical, OG tags, and JSON-LD. Now at build time, vite-ssg renders the full HTML for every route in your router and writes real HTML files. The result: each URL serves real content to crawlers, but still hydrates into your SPA for users.
+Start with these routes (the ones with stable content):
+
+/
+/about, /contact, /sell, /dealers, /rv-dealers, /outfitter, /trips, /discover, /finance, /tow-guide
+All /guides/*
+All 6 category landing pages
+
+Leave /browse and individual listings as CSR for now — they're dynamic. For those, add a prerender service later (Prerender.io is $90/mo, or self-host Rendertron on App Engine for free).
+9. Resolve duplicate URL paths (2 hours)
+Pick one scheme. I'd keep the /*-for-sale versions (matches search intent) and retire /rv/*. For each legacy path:
+
+Add a 301 redirect in app.yaml:
+
+yaml- url: /rv/class-a-motorhomes
+  static_files: dist/redirects/class-a.html
+  upload: dist/redirects/.*
+Or use an express middleware on your App Engine service for dynamic 301s.
+
+Remove the legacy URLs from sitemap.xml.
+Add <link rel="canonical" href="https://matchrv.com/class-a-rvs-for-sale" /> on the surviving page.
+
+Day 5–6 — SEO finishing
+10. Add proper structured data (now that SSG renders it)
+
+Homepage: Organization JSON-LD with name, logo, sameAs (social profiles), address, contactPoint.
+Each /guides/* post: Article JSON-LD.
+Each category page: ItemList pointing at listings.
+Each individual listing (once built): Product with offers, brand, vehicleIdentificationNumber, mileageFromOdometer, images.
+Everywhere: BreadcrumbList.
+
+Use Google's Rich Results Test (search.google.com/test/rich-results) to validate each template.
+11. Clean up the sitemap (15 min)
+Remove the <priority> field from every URL — Google ignores it. Remove the 6 duplicate /rv/* URLs you just 301'd. Submit the updated sitemap in Search Console.
+12. Shrink the favicon payload (5 min)
+If realfavicongenerator gave you files over 5 KB total, re-export with tinypng.com first.

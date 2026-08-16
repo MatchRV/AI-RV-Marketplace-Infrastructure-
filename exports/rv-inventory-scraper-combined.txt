@@ -1,0 +1,3196 @@
+===================================================================
+ RV INVENTORY SCRAPER - COMBINED SOURCE
+ Package: rv_inventory_scraper
+ Generated: 2026-07-11 19:54 UTC
+===================================================================
+
+Files included (in order):
+  - rv_inventory_scraper/__init__.py
+  - rv_inventory_scraper/models.py
+  - rv_inventory_scraper/normalize.py
+  - rv_inventory_scraper/db.py
+  - rv_inventory_scraper/scraper.py
+  - rv_inventory_scraper/pipeline.py
+  - rv_inventory_scraper/scheduler.py
+  - rv_inventory_scraper/push_to_prod.py
+  - rv_inventory_scraper/cli.py
+
+
+###################################################################
+# FILE: rv_inventory_scraper/__init__.py
+###################################################################
+
+"""Washington RV inventory scraper and sync pipeline."""
+
+__all__ = ["__version__"]
+
+__version__ = "1.0.0"
+
+
+###################################################################
+# FILE: rv_inventory_scraper/models.py
+###################################################################
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any
+
+
+@dataclass(frozen=True)
+class Dealer:
+    name: str
+    city: str
+    url: str
+
+    @property
+    def domain(self) -> str:
+        from urllib.parse import urlparse
+
+        host = urlparse(self.url).netloc.lower()
+        return host.removeprefix("www.")
+
+
+@dataclass
+class Listing:
+    dealer_name: str
+    dealer_domain: str
+    dealer_location: str | None
+    source_url: str
+    title: str
+    rv_type: str | None
+    condition: str | None
+    year: int | None
+    manufacturer: str | None
+    brand: str | None
+    model: str | None
+    floorplan: str | None
+    price: int | None
+    vin: str | None = None
+    stock_number: str | None = None
+    description: str | None = None
+    photos: list[str] = field(default_factory=list)
+    specs: dict[str, Any] = field(default_factory=dict)
+    first_seen_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_seen_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    def has_required_media(self) -> bool:
+        # Photo-exclusion rule: listings with zero usable photos never enter sync.
+        return any(p.startswith("http") for p in self.photos)
+
+    def has_required_core_fields(self) -> bool:
+        return bool(self.source_url and self.title and self.price and self.year and self.manufacturer)
+
+
+###################################################################
+# FILE: rv_inventory_scraper/normalize.py
+###################################################################
+
+from __future__ import annotations
+
+import hashlib
+import re
+from urllib.parse import urlparse
+
+from .models import Listing
+
+# All RV types use unit-level identity (VIN / stock number / source URL).
+# Collapsing same-model units from one dealer loses real inventory — two units
+# of the same floor plan can have different options, prices, and VINs.
+DEDUPE_TYPES: set[str] = set()
+
+
+def clean_text(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    return text or None
+
+
+def slug_text(value: object | None) -> str:
+    text = clean_text(value) or ""
+    text = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return text or "unknown"
+
+
+def parse_int(value: object | None) -> int | None:
+    if value is None:
+        return None
+    match = re.search(r"-?\d[\d,]*", str(value))
+    if not match:
+        return None
+    try:
+        return int(match.group(0).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def parse_price(value: object | None) -> int | None:
+    price = parse_int(value)
+    if price is None or price < 1000 or price > 2_000_000:
+        return None
+    return price
+
+
+def normalize_type(value: object | None) -> str | None:
+    if not value:
+        return None
+    text = str(value).lower().strip()
+    normalized = text.replace("-", "_").replace(" ", "_")
+    if normalized in {
+        "toy_hauler",
+        "fifth_wheel",
+        "travel_trailer",
+        "class_a",
+        "class_b",
+        "class_c",
+        "truck_camper",
+        "popup_camper",
+    }:
+        return normalized
+    text = text.replace("_", " ").replace("-", " ")
+    if "toy hauler" in text:
+        return "toy_hauler"
+    if "fifth wheel" in text or "5th wheel" in text or "destination trailer" in text:
+        return "fifth_wheel"
+    if "travel trailer" in text or text.strip() == "destination":
+        return "travel_trailer"
+    if "class a" in text or "diesel pusher" in text:
+        return "class_a"
+    if "class b+" in text or "class b plus" in text or "class b" in text:
+        return "class_b"
+    if "class c" in text or "super c" in text:
+        return "class_c"
+    if "truck camper" in text:
+        return "truck_camper"
+    if "popup" in text or "pop-up" in text or "pop up" in text or "tent trailer" in text:
+        return "popup_camper"
+    return None
+
+
+def infer_type_from_text(*values: object | None) -> str | None:
+    return normalize_type(" ".join(str(v) for v in values if v))
+
+
+def dealer_domain(url: str) -> str:
+    host = urlparse(url).netloc.lower()
+    return host.removeprefix("www.")
+
+
+def build_listing_identity(listing: Listing) -> str:
+    """Return the stable sync identity for a listing.
+
+    Deduplication rule:
+    - Class C, fifth wheels, and travel trailers dedupe within one dealer by
+      year + manufacturer + brand + model + floorplan.
+    - Every other category keeps every unit, using VIN/stock/source URL as the
+      unit identity so Class A, Class B, toy haulers, etc. are not collapsed.
+    """
+    rv_type = normalize_type(listing.rv_type)
+    if rv_type in DEDUPE_TYPES:
+        parts = [
+            listing.dealer_domain,
+            rv_type,
+            listing.year,
+            listing.manufacturer,
+            listing.brand,
+            listing.model,
+            listing.floorplan,
+        ]
+        return "dedupe:" + "|".join(slug_text(p) for p in parts)
+
+    unit_id = listing.vin or listing.stock_number or listing.source_url
+    if not unit_id:
+        digest = hashlib.sha256(
+            f"{listing.title}|{listing.price}|{listing.dealer_domain}".encode("utf-8")
+        ).hexdigest()[:16]
+        unit_id = f"generated:{digest}"
+    return "unit:" + "|".join([slug_text(listing.dealer_domain), slug_text(rv_type), slug_text(unit_id)])
+
+
+def parse_title_parts(title: str) -> dict[str, object | None]:
+    cleaned = clean_text(title) or ""
+    year = parse_int(cleaned[:4])
+    rest = re.sub(r"^\d{4}\s+", "", cleaned)
+    tokens = rest.split()
+    manufacturer = tokens[0] if tokens else None
+    floorplan = None
+    for token in reversed(tokens):
+        if re.search(r"\d", token) and len(token) >= 3:
+            floorplan = token.strip(",")
+            break
+    model = " ".join(tokens[1:]) if len(tokens) > 1 else None
+    return {
+        "year": year,
+        "manufacturer": manufacturer,
+        "brand": manufacturer,
+        "model": model,
+        "floorplan": floorplan,
+    }
+
+
+###################################################################
+# FILE: rv_inventory_scraper/db.py
+###################################################################
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from dataclasses import asdict
+from datetime import datetime, timezone
+from typing import Any, Iterable
+
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.types.json import Json
+
+from .models import Listing
+from .normalize import build_listing_identity, normalize_type
+
+LOGGER = logging.getLogger(__name__)
+
+
+class InventorySync:
+    """Full inventory sync for scraped RV listings.
+
+    The sync keeps a companion identity table so existing application schemas do
+    not need to dedupe by VIN globally. Each run is treated as a full snapshot:
+    listings seen in the current scrape are upserted, and previously synced
+    listings absent from the snapshot are flagged sold when the listings table
+    has sold columns, otherwise removed from the active app table.
+    """
+
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        listings_table: str = "listings",
+        dealers_table: str = "dealers",
+    ) -> None:
+        self.database_url = database_url
+        self.listings_table = self.validate_identifier(listings_table)
+        self.dealers_table = self.validate_identifier(dealers_table)
+
+    def connect(self) -> psycopg.Connection:
+        return psycopg.connect(self.database_url, row_factory=dict_row)
+
+    def validate_identifier(self, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
+            raise ValueError(f"Unsafe SQL identifier: {value!r}")
+        return value
+
+    def sync(self, listings: Iterable[Listing]) -> dict[str, int]:
+        now = datetime.now(timezone.utc)
+        snapshot = list(listings)
+        stats = {
+            "seen": len(snapshot),
+            "inserted": 0,
+            "updated": 0,
+            "sold": 0,
+            "price_changes": 0,
+            "notifications": 0,
+            "skipped": 0,
+        }
+        run_id = now.isoformat()
+
+        with self.connect() as conn:
+            self.ensure_companion_tables(conn)
+            listing_columns = self.table_columns(conn, self.listings_table)
+            dealer_columns = self.table_columns(conn, self.dealers_table)
+            seen_identities: set[str] = set()
+
+            with conn.transaction():
+                for listing in snapshot:
+                    identity = build_listing_identity(listing)
+                    seen_identities.add(identity)
+                    dealer_id = self.get_or_create_dealer(conn, dealer_columns, listing)
+                    existing = self.lookup_sync_state(conn, identity)
+                    if existing:
+                        previous_price = self.current_price(conn, int(existing["listing_id"]))
+                        self.update_listing(conn, listing_columns, int(existing["listing_id"]), listing, dealer_id)
+                        self.touch_sync_state(conn, identity, listing, run_id)
+                        stats["updated"] += 1
+                        if previous_price is not None and previous_price != listing.price:
+                            stats["price_changes"] += 1
+                            stats["notifications"] += self.record_price_change(
+                                conn,
+                                int(existing["listing_id"]),
+                                listing,
+                                previous_price,
+                                int(listing.price or 0),
+                            )
+                    else:
+                        listing_id = self.insert_listing(conn, listing_columns, listing, dealer_id)
+                        self.insert_sync_state(conn, identity, listing_id, listing, run_id)
+                        stats["inserted"] += 1
+
+                stats["sold"] = self.mark_missing_as_sold(conn, listing_columns, seen_identities, run_id)
+                self.refresh_dealer_counts(conn, dealer_columns)
+        return stats
+
+    def upsert_dealer(
+        self,
+        listings: Iterable[Listing],
+        run_id: str,
+        *,
+        listing_columns: set[str] | None = None,
+        dealer_columns: set[str] | None = None,
+    ) -> dict[str, int]:
+        """Upsert one dealer's listings immediately — no mark-sold, no dedup.
+
+        Called inside run_full_sync after each dealer completes so that a
+        container restart only loses the current dealer's in-flight work rather
+        than the entire run.  mark_missing_as_sold is called once at the end of
+        the full run after all dealers have been processed.
+        """
+        snapshot = list(listings)
+        stats: dict[str, int] = {"seen": len(snapshot), "inserted": 0, "updated": 0, "price_changes": 0}
+
+        with self.connect() as conn:
+            self.ensure_companion_tables(conn)
+            cols = listing_columns or self.table_columns(conn, self.listings_table)
+            dcols = dealer_columns or self.table_columns(conn, self.dealers_table)
+
+            with conn.transaction():
+                for listing in snapshot:
+                    identity = build_listing_identity(listing)
+                    dealer_id = self.get_or_create_dealer(conn, dcols, listing)
+                    existing = self.lookup_sync_state(conn, identity)
+                    if existing:
+                        previous_price = self.current_price(conn, int(existing["listing_id"]))
+                        self.update_listing(conn, cols, int(existing["listing_id"]), listing, dealer_id)
+                        self.touch_sync_state(conn, identity, listing, run_id)
+                        stats["updated"] += 1
+                        if previous_price is not None and previous_price != listing.price:
+                            stats["price_changes"] += 1
+                            self.record_price_change(
+                                conn,
+                                int(existing["listing_id"]),
+                                listing,
+                                previous_price,
+                                int(listing.price or 0),
+                            )
+                    else:
+                        listing_id = self.insert_listing(conn, cols, listing, dealer_id)
+                        self.insert_sync_state(conn, identity, listing_id, listing, run_id)
+                        stats["inserted"] += 1
+        return stats
+
+    def finalize_run(self, seen_identities: set[str], run_id: str) -> dict[str, int]:
+        """Mark listings not seen in this run as sold and refresh dealer counts.
+
+        Called once after all dealers have been upserted via upsert_dealer().
+        """
+        stats: dict[str, int] = {"sold": 0}
+        with self.connect() as conn:
+            listing_columns = self.table_columns(conn, self.listings_table)
+            dealer_columns = self.table_columns(conn, self.dealers_table)
+            with conn.transaction():
+                stats["sold"] = self.mark_missing_as_sold(conn, listing_columns, seen_identities, run_id)
+                self.refresh_dealer_counts(conn, dealer_columns)
+                self._delete_meta(conn, "current_run_id")
+        return stats
+
+    # ------------------------------------------------------------------
+    # Resume helpers — persist run_id across container restarts
+    # ------------------------------------------------------------------
+
+    def _upsert_meta(self, conn: psycopg.Connection, key: str, value: str) -> None:
+        conn.execute(
+            """
+            INSERT INTO rv_scraper_meta (key, value, updated_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+            """,
+            (key, value),
+        )
+
+    def _delete_meta(self, conn: psycopg.Connection, key: str) -> None:
+        conn.execute("DELETE FROM rv_scraper_meta WHERE key = %s", (key,))
+
+    def _read_meta(self, conn: psycopg.Connection, key: str) -> str | None:
+        row = conn.execute(
+            "SELECT value FROM rv_scraper_meta WHERE key = %s", (key,)
+        ).fetchone()
+        return str(row["value"]) if row else None
+
+    def get_or_create_run_id(self, conn: psycopg.Connection) -> str:
+        """Return the persisted run_id for the current in-progress scrape.
+
+        If no run is in progress a new run_id is generated, stored in
+        rv_scraper_meta as 'current_run_id', and returned.  On the next call
+        after a container restart the same id is returned so the resume logic
+        can skip already-completed dealers.
+        """
+        existing = self._read_meta(conn, "current_run_id")
+        if existing:
+            LOGGER.info("Resuming scrape run %s", existing)
+            return existing
+        run_id = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self._upsert_meta(conn, "current_run_id", run_id)
+        conn.commit()
+        LOGGER.info("Started new scrape run %s", run_id)
+        return run_id
+
+    def mark_dealer_complete(self, conn: psycopg.Connection, domain: str, run_id: str) -> None:
+        """Record *domain* as done in the current run (even if 0 listings scraped).
+
+        Stored as JSON list in rv_scraper_meta under key
+        ``completed_dealers_<run_id>`` so resume logic can skip it on restart.
+        """
+        key = f"completed_dealers_{run_id}"
+        existing_raw = self._read_meta(conn, key)
+        existing: list[str] = json.loads(existing_raw) if existing_raw else []
+        if domain not in existing:
+            existing.append(domain)
+        self._upsert_meta(conn, key, json.dumps(existing))
+        conn.commit()
+
+    def completed_dealer_domains(self, conn: psycopg.Connection, run_id: str) -> set[str]:
+        """Return domains already finished in *run_id* (listings-based OR explicitly marked)."""
+        rows = conn.execute(
+            "SELECT DISTINCT dealer_domain FROM rv_inventory_sync_state WHERE last_run_id = %s",
+            (run_id,),
+        ).fetchall()
+        domains = {str(row["dealer_domain"]) for row in rows}
+        # Also include dealers explicitly marked complete (e.g. 0-listing dealers)
+        key = f"completed_dealers_{run_id}"
+        meta_raw = self._read_meta(conn, key)
+        if meta_raw:
+            domains |= set(json.loads(meta_raw))
+        return domains
+
+    def dealer_identities_in_run(self, conn: psycopg.Connection, dealer_domain: str, run_id: str) -> set[str]:
+        """Return identity keys for a dealer that were written in *run_id*.
+
+        Used when skipping an already-scraped dealer so its listings are still
+        counted as 'seen' and not incorrectly marked sold at finalize time.
+        """
+        rows = conn.execute(
+            "SELECT identity_key FROM rv_inventory_sync_state WHERE dealer_domain = %s AND last_run_id = %s",
+            (dealer_domain, run_id),
+        ).fetchall()
+        return {str(row["identity_key"]) for row in rows}
+
+    def live_dealer_identities(self, conn: psycopg.Connection, dealer_domain: str) -> set[str]:
+        """Return identity keys for all currently-live (not sold) listings for a dealer.
+
+        Used as a safety guard: when a scrape returns 0 (or suspiciously few)
+        listings for a dealer, inject these identities into seen_identities so
+        finalize_run does not hard-delete real inventory that was likely blocked
+        by bot detection or a temporary site outage.
+        """
+        rows = conn.execute(
+            "SELECT identity_key FROM rv_inventory_sync_state WHERE dealer_domain = %s AND sold_at IS NULL",
+            (dealer_domain,),
+        ).fetchall()
+        return {str(row["identity_key"]) for row in rows}
+
+    def ensure_companion_tables(self, conn: psycopg.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rv_inventory_sync_state (
+              identity_key TEXT PRIMARY KEY,
+              listing_id INTEGER NOT NULL,
+              dealer_domain TEXT NOT NULL,
+              source_url TEXT,
+              last_run_id TEXT NOT NULL,
+              first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              sold_at TIMESTAMPTZ
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rv_price_changes (
+              id BIGSERIAL PRIMARY KEY,
+              listing_id INTEGER NOT NULL,
+              identity_key TEXT NOT NULL,
+              previous_price INTEGER NOT NULL,
+              new_price INTEGER NOT NULL,
+              reduction_amount INTEGER NOT NULL,
+              changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rv_price_alert_subscriptions (
+              id BIGSERIAL PRIMARY KEY,
+              customer_id INTEGER NOT NULL,
+              listing_id INTEGER,
+              identity_key TEXT,
+              email TEXT,
+              opted_in BOOLEAN NOT NULL DEFAULT TRUE,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rv_price_change_notifications (
+              id BIGSERIAL PRIMARY KEY,
+              customer_id INTEGER NOT NULL,
+              listing_id INTEGER NOT NULL,
+              price_change_id BIGINT NOT NULL,
+              previous_price INTEGER NOT NULL,
+              new_price INTEGER NOT NULL,
+              reduction_amount INTEGER NOT NULL,
+              payload JSONB NOT NULL,
+              queued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              sent_at TIMESTAMPTZ
+            )
+            """
+        )
+
+    def table_columns(self, conn: psycopg.Connection, table_name: str) -> set[str]:
+        rows = conn.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = current_schema() AND table_name = %s
+            """,
+            (table_name,),
+        ).fetchall()
+        return {str(row["column_name"]) for row in rows}
+
+    def get_or_create_dealer(
+        self,
+        conn: psycopg.Connection,
+        dealer_columns: set[str],
+        listing: Listing,
+    ) -> int:
+        domain = listing.dealer_domain
+        if "domain" in dealer_columns:
+            row = conn.execute(
+                f"SELECT id FROM {self.dealers_table} WHERE domain = %s LIMIT 1",
+                (domain,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                f"SELECT id FROM {self.dealers_table} WHERE name = %s LIMIT 1",
+                (listing.dealer_name,),
+            ).fetchone()
+        if row:
+            return int(row["id"])
+
+        values = {
+            "name": listing.dealer_name,
+            "domain": domain,
+            "city": (listing.dealer_location or "Unknown").split(",")[0],
+            "state": "WA",
+            "total_listings": 0,
+        }
+        allowed = {k: v for k, v in values.items() if k in dealer_columns}
+        columns = ", ".join(allowed)
+        placeholders = ", ".join(["%s"] * len(allowed))
+        inserted = conn.execute(
+            f"INSERT INTO {self.dealers_table} ({columns}) VALUES ({placeholders}) RETURNING id",
+            tuple(allowed.values()),
+        ).fetchone()
+        return int(inserted["id"])
+
+    def lookup_sync_state(self, conn: psycopg.Connection, identity: str) -> dict[str, Any] | None:
+        return conn.execute(
+            "SELECT listing_id FROM rv_inventory_sync_state WHERE identity_key = %s LIMIT 1",
+            (identity,),
+        ).fetchone()
+
+    def insert_sync_state(
+        self,
+        conn: psycopg.Connection,
+        identity: str,
+        listing_id: int,
+        listing: Listing,
+        run_id: str,
+    ) -> None:
+        conn.execute(
+            """
+            INSERT INTO rv_inventory_sync_state
+              (identity_key, listing_id, dealer_domain, source_url, last_run_id, last_seen_at, sold_at)
+            VALUES (%s, %s, %s, %s, %s, NOW(), NULL)
+            """,
+            (identity, listing_id, listing.dealer_domain, listing.source_url, run_id),
+        )
+
+    def touch_sync_state(
+        self,
+        conn: psycopg.Connection,
+        identity: str,
+        listing: Listing,
+        run_id: str,
+    ) -> None:
+        conn.execute(
+            """
+            UPDATE rv_inventory_sync_state
+            SET source_url = %s, last_run_id = %s, last_seen_at = NOW(), sold_at = NULL
+            WHERE identity_key = %s
+            """,
+            (listing.source_url, run_id, identity),
+        )
+
+    def listing_values(self, listing_columns: set[str], listing: Listing, dealer_id: int) -> dict[str, Any]:
+        rv_type = normalize_type(listing.rv_type) or "Other"
+        title = listing.title or "Untitled RV"
+        make = listing.manufacturer or listing.brand or "Unknown"
+        model = listing.model or listing.floorplan or "Unknown"
+        values = {
+            "title": title,
+            "make": make,
+            "manufacturer": listing.manufacturer,
+            "brand": listing.brand,
+            "model": model,
+            "floorplan": listing.floorplan,
+            "year": listing.year,
+            "type": rv_type,
+            "rv_type": rv_type,
+            "price": listing.price,
+            "location": listing.dealer_location or "WA",
+            "state": "WA",
+            "dealer_id": dealer_id,
+            "dealer_name": listing.dealer_name,
+            "images": Json(listing.photos),
+            "image_urls": Json(listing.photos),
+            "description": listing.description,
+            "features": Json([]),
+            "specs": Json(listing.specs),
+            "vin": listing.vin,
+            "stock_number": listing.stock_number,
+            "source_url": listing.source_url,
+            "condition": (listing.condition or "used").lower(),
+            "is_new": "new" in (listing.condition or "").lower(),
+            "slides": self.spec_int(listing, "slides"),
+            "sleeps": self.spec_int(listing, "sleeps") or self.spec_int(listing, "sleep capacity") or 2,
+            "length": self.spec_number(listing, "length"),
+            "market_value": listing.price,
+            "deal_score": "fair_deal",
+            "days_on_market": 0,
+            "updated_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc),
+            "is_sold": False,
+            "sold_at": None,
+            "price_history": Json([{"date": datetime.now(timezone.utc).date().isoformat(), "price": listing.price}]),
+        }
+        return {k: v for k, v in values.items() if k in listing_columns}
+
+    def insert_listing(
+        self,
+        conn: psycopg.Connection,
+        listing_columns: set[str],
+        listing: Listing,
+        dealer_id: int,
+    ) -> int:
+        values = self.listing_values(listing_columns, listing, dealer_id)
+        values.pop("updated_at", None)
+        columns = ", ".join(values)
+        placeholders = ", ".join(["%s"] * len(values))
+        row = conn.execute(
+            f"INSERT INTO {self.listings_table} ({columns}) VALUES ({placeholders}) RETURNING id",
+            tuple(values.values()),
+        ).fetchone()
+        return int(row["id"])
+
+    def update_listing(
+        self,
+        conn: psycopg.Connection,
+        listing_columns: set[str],
+        listing_id: int,
+        listing: Listing,
+        dealer_id: int,
+    ) -> None:
+        values = self.listing_values(listing_columns, listing, dealer_id)
+        values.pop("created_at", None)
+        assignments = ", ".join(f"{column} = %s" for column in values)
+        conn.execute(
+            f"UPDATE {self.listings_table} SET {assignments} WHERE id = %s",
+            (*values.values(), listing_id),
+        )
+
+    def current_price(self, conn: psycopg.Connection, listing_id: int) -> int | None:
+        row = conn.execute(
+            f"SELECT price FROM {self.listings_table} WHERE id = %s LIMIT 1",
+            (listing_id,),
+        ).fetchone()
+        return int(row["price"]) if row and row["price"] is not None else None
+
+    def record_price_change(
+        self,
+        conn: psycopg.Connection,
+        listing_id: int,
+        listing: Listing,
+        previous_price: int,
+        new_price: int,
+    ) -> int:
+        identity = build_listing_identity(listing)
+        reduction = max(0, previous_price - new_price)
+        row = conn.execute(
+            """
+            INSERT INTO rv_price_changes
+              (listing_id, identity_key, previous_price, new_price, reduction_amount)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (listing_id, identity, previous_price, new_price, reduction),
+        ).fetchone()
+        price_change_id = int(row["id"])
+
+        # Price-change notifications are queued only for opted-in customers.
+        # The payload includes previous/new price and reduction amount so the
+        # mail/SMS worker can send without re-querying historical prices.
+        subscriptions = conn.execute(
+            """
+            SELECT customer_id, email
+            FROM rv_price_alert_subscriptions
+            WHERE opted_in = TRUE
+              AND (listing_id = %s OR identity_key = %s)
+            """,
+            (listing_id, identity),
+        ).fetchall()
+        for subscription in subscriptions:
+            payload = {
+                "customer_id": subscription["customer_id"],
+                "email": subscription["email"],
+                "listing_id": listing_id,
+                "title": listing.title,
+                "source_url": listing.source_url,
+                "previous_price": previous_price,
+                "new_price": new_price,
+                "reduction_amount": reduction,
+            }
+            conn.execute(
+                """
+                INSERT INTO rv_price_change_notifications
+                  (customer_id, listing_id, price_change_id, previous_price,
+                   new_price, reduction_amount, payload)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+                """,
+                (
+                    subscription["customer_id"],
+                    listing_id,
+                    price_change_id,
+                    previous_price,
+                    new_price,
+                    reduction,
+                    json.dumps(payload),
+                ),
+            )
+        return len(subscriptions)
+
+    def mark_missing_as_sold(
+        self,
+        conn: psycopg.Connection,
+        listing_columns: set[str],
+        seen_identities: set[str],
+        run_id: str,
+    ) -> int:
+        rows = conn.execute(
+            """
+            SELECT identity_key, listing_id
+            FROM rv_inventory_sync_state
+            WHERE sold_at IS NULL AND last_run_id <> %s
+            """,
+            (run_id,),
+        ).fetchall()
+        stale = [row for row in rows if row["identity_key"] not in seen_identities]
+        for row in stale:
+            listing_id = int(row["listing_id"])
+            if "is_sold" in listing_columns or "sold_at" in listing_columns:
+                updates: list[str] = []
+                params: list[Any] = []
+                if "is_sold" in listing_columns:
+                    updates.append("is_sold = TRUE")
+                if "sold_at" in listing_columns:
+                    updates.append("sold_at = NOW()")
+                if "updated_at" in listing_columns:
+                    updates.append("updated_at = NOW()")
+                conn.execute(f"UPDATE {self.listings_table} SET {', '.join(updates)} WHERE id = %s", (listing_id,))
+            else:
+                conn.execute(f"DELETE FROM {self.listings_table} WHERE id = %s", (listing_id,))
+            conn.execute(
+                "UPDATE rv_inventory_sync_state SET sold_at = NOW() WHERE identity_key = %s",
+                (row["identity_key"],),
+            )
+        return len(stale)
+
+    def refresh_dealer_counts(self, conn: psycopg.Connection, dealer_columns: set[str]) -> None:
+        if "total_listings" not in dealer_columns:
+            return
+        conn.execute(
+            f"""
+            UPDATE {self.dealers_table} d
+            SET total_listings = COALESCE((
+              SELECT COUNT(*) FROM {self.listings_table} l
+              WHERE l.dealer_id = d.id
+            ), 0)
+            """
+        )
+
+    def spec_int(self, listing: Listing, key: str) -> int | None:
+        value = listing.specs.get(key)
+        if value is None:
+            return None
+        from .normalize import parse_int
+
+        return parse_int(value)
+
+    def spec_number(self, listing: Listing, key: str) -> float | None:
+        value = listing.specs.get(key)
+        if value is None:
+            return None
+        import re
+
+        match = re.search(r"\d+(\.\d+)?", str(value).replace(",", ""))
+        return float(match.group(0)) if match else None
+
+
+###################################################################
+# FILE: rv_inventory_scraper/scraper.py
+###################################################################
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import threading
+import time
+from collections import Counter, deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
+from typing import Iterable
+from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
+
+import requests
+from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+
+from .models import Dealer, Listing
+from .normalize import clean_text, dealer_domain, infer_type_from_text, parse_int, parse_price, parse_title_parts
+
+LOGGER = logging.getLogger(__name__)
+
+LISTING_URL_HINTS = (
+    "for-sale",
+    "stock-",
+    "/rvs/",
+    "inventory",
+    "new-rvs",
+    "used-rvs",
+)
+
+PAGE_PARAM_NAMES = ("page", "paged", "pg", "pagenumber")
+
+# Query params that identify a single unit on dealer SaaS platforms.
+DETAIL_QUERY_PARAMS = {
+    "vehicleid",
+    "vehicle_id",
+    "stocknumber",
+    "stock_number",
+    "stocknum",
+    "stockno",
+    "stock",
+    "unit",
+    "unitid",
+    "unit_id",
+    "inventoryid",
+    "inventory_id",
+    "vid",
+    "vin",
+}
+
+# Path fragments that mark a single-unit detail page on the platforms in
+# wa-dealers.json (/inventory/unit/12345, /new/rvs/detail/stock/A12345, ...).
+DETAIL_PATH_RE = re.compile(
+    r"""
+    /(unit|detail|vehicle)s?/         # /unit/, /detail/, /vehicle/ segments
+    | stock[-=/][a-z0-9]              # stock-K12345, stock=A99, /stock/A12345
+    | -i\d{3,}(?:/|$)                 # InteractRV-style trailing unit id: ...-i123456
+    | --x?inventorydetail             # InteractRV detail handler pages
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# Year-prefixed slug used by /rv-for-sale/2024-keystone-cougar-29rks style URLs.
+YEAR_SLUG_RE = re.compile(r"/(19|20)\d{2}-[a-z0-9][a-z0-9-]{4,}", re.IGNORECASE)
+
+# Pagination path suffixes (/page/2/, /inventory/3/).
+PAGINATION_PATH_RE = re.compile(r"/(page/)?\d+/?$")
+
+# Sitemap / feed locations commonly exposed by dealer SaaS platforms. The
+# /rv-search platform (EasyDealerWebsite-style) publishes /rv-search.xml;
+# WordPress dealers publish /sitemap.xml or /wp-sitemap.xml; most others have
+# a standard /sitemap.xml or a sitemap index.
+FEED_CANDIDATE_PATHS = (
+    "/rv-search.xml",
+    "/inventory-sitemap.xml",
+    "/sitemap.xml",
+    "/sitemap_index.xml",
+    "/wp-sitemap.xml",
+    "/sitemap/sitemap.xml",
+)
+
+# Speculative JSON inventory endpoints exposed by some dealer platforms.
+JSON_FEED_CANDIDATE_PATHS = (
+    "/api/inventory",
+    "/api/inventory/search",
+    "/rv-search.json",
+)
+
+# Child sitemaps worth recursing into when a sitemap index is found.
+FEED_CHILD_HINTS = ("inventory", "unit", "product", "stock", "listing", "rv", "vehicle", "page")
+
+# Non-inventory site pages that dealer sitemaps list with inventory-style
+# query params (e.g. sumnerrv.com/creditapp?UnitId=3098865). The UnitId param
+# alone would make looks_like_detail_url() accept them, so the PATH is checked
+# against this denylist first. `^` is correct here even with re.search():
+# without re.MULTILINE, `^` matches only at the start of the string, and each
+# alternative carries its own anchor, so e.g. `/apply-for-credit/contact` is
+# matched (starts with /apply...) while `/inventory/contact-form-unit` is not.
+NON_INVENTORY_PATH_RE = re.compile(
+    r"""
+    ^/credit(?:app|-app|-application)  # /creditapp, /credit-app
+    | ^/financ                          # /financing, /finance
+    | ^/apply(?:/|$|-)                  # /apply, /apply-for-credit
+    | ^/contact                         # /contact, /contact-us, /contact-us-trade-ins
+    | ^/trade-?in                       # /trade-in, /tradein
+    | ^/service(?:s)?(?:/|$|-)          # /service, /services, /service-department
+    | ^/parts(?:/|$|-)                  # /parts
+    | ^/schedule                        # /schedule-service
+    | ^/about(?:/|$|-)                  # /about, /about-us
+    | ^/blog(?:/|$|-)                   # /blog
+    | ^/news(?:/|$|-)                   # /news
+    | ^/careers?(?:/|$|-)               # /careers
+    | ^/warranty(?:/|$|-)               # /warranty
+    | ^/testimonials?(?:/|$|-)          # /testimonials
+    | ^/directions?(?:/|$|-)            # /directions
+    | ^/insurance(?:/|$|-)              # /insurance
+    | ^/rv-shows?(?:/|$|-)              # /rv-shows
+    | ^/events?(?:/|$|-)                # /events
+    | ^/gallery(?:/|$|-)                # /gallery
+    | ^/privacy                         # /privacy-policy
+    | ^/terms                           # /terms-of-use
+    | ^/sitemap                         # /sitemap pages
+    | ^/employment                      # /employment
+    | ^/login | ^/account | ^/cart      # account/commerce chrome
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# `window.__INITIAL_STATE__ = {...}` style hydration blobs on React/Vue/Next
+# dealer sites (Blue Compass, Tacoma RV, ...). The JSON object that follows
+# the `=` is decoded with json.JSONDecoder().raw_decode.
+STATE_BLOB_RE = re.compile(
+    r"window\.(?:__INITIAL_STATE__|__PRELOADED_STATE__|__NEXT_DATA__|__APOLLO_STATE__|__props|__PRELOADED__)\s*=\s*",
+)
+
+# Image URLs embedded in <script> JSON (allows JSON-escaped slashes `\/`).
+SCRIPT_IMG_URL_RE = re.compile(
+    r"""https?:(?:\\/\\/|//)[^"'\s\\)<>]+?\.(?:jpe?g|png|webp)(?:\?[^"'\s\\)<>]*)?""",
+    re.IGNORECASE,
+)
+
+# Last-resort core-field patterns scanned across raw <script> content when the
+# DOM, JSON-LD, and state blobs all failed to yield price/year/manufacturer.
+SCRIPT_PRICE_RE = re.compile(
+    r'"(?:price|salePrice|sale_price|sellingPrice|selling_price|listPrice|list_price|ourPrice|our_price|msrp)"'
+    r'\s*:\s*"?\$?\s*([0-9][0-9,]*(?:\.[0-9]+)?)"?',
+    re.IGNORECASE,
+)
+SCRIPT_YEAR_RE = re.compile(
+    r'"(?:year|modelYear|model_year)"\s*:\s*"?((?:19|20)\d{2})"?',
+    re.IGNORECASE,
+)
+SCRIPT_MANUFACTURER_RE = re.compile(
+    r'"(?:manufacturer|manufacturerName|make|makeName|brandName|brand)"\s*:\s*"([A-Za-z][A-Za-z0-9 .&\'-]{1,40})"',
+    re.IGNORECASE,
+)
+
+BLOCKED_STATUSES = (401, 403, 429)
+
+
+_BRIGHT_DATA_HOST = "brd.superproxy.io"
+_BRIGHT_DATA_PORT = 22225
+_BRIGHT_DATA_SB_PORT = 9222
+
+# Patterns that indicate a Cloudflare JS challenge page rather than real content.
+_CF_CHALLENGE_MARKERS = (
+    "cdn-cgi/challenge-platform",
+    "challenges.cloudflare.com",
+    "__cf_chl_rt_tk",
+    "turnstile/v0",
+)
+
+# Throttle concurrent Chromium LAUNCHES (not sessions). Each launch spawns a
+# Node.js driver + Chromium process tree (~50 OS threads); 8 detail workers
+# launching at once exhausts the Replit container's ~1000-thread budget and
+# pthread_create fails with EAGAIN. Three at a time staggers the burst; once
+# launched, all 8 per-thread browsers run concurrently as before.
+_BROWSER_LAUNCH_SEM = threading.Semaphore(int(os.getenv("BROWSER_LAUNCH_CONCURRENCY", "3")))
+
+
+def _is_cf_challenge(html: str) -> bool:
+    """Return True if the HTML is a Cloudflare challenge/Turnstile page."""
+    sample = html[:8000].lower()
+    return any(m in sample for m in _CF_CHALLENGE_MARKERS)
+
+
+def _bright_data_proxy_url() -> str | None:
+    """Build Bright Data residential proxy URL from env vars."""
+    import os  # noqa: PLC0415
+    username = os.getenv("BRIGHT_DATA_USERNAME")
+    password = os.getenv("BRIGHT_DATA_PASSWORD")
+    if username and password:
+        return f"http://{username}:{password}@{_BRIGHT_DATA_HOST}:{_BRIGHT_DATA_PORT}"
+    return None
+
+
+def _bright_data_sb_endpoint() -> str | None:
+    """Build Bright Data Scraping Browser WSS endpoint from env vars.
+
+    Requires BRIGHT_DATA_CUSTOMER_ID + BRIGHT_DATA_SB_ZONE + BRIGHT_DATA_PASSWORD.
+    The Scraping Browser zone name is typically 'scraping_browser' in the dashboard.
+    """
+    import os  # noqa: PLC0415
+    customer_id = os.getenv("BRIGHT_DATA_CUSTOMER_ID")
+    sb_zone = os.getenv("BRIGHT_DATA_SB_ZONE")
+    password = os.getenv("BRIGHT_DATA_PASSWORD")
+    if customer_id and sb_zone and password:
+        username = f"brd-customer-{customer_id}-zone-{sb_zone}"
+        return f"wss://{username}:{password}@{_BRIGHT_DATA_HOST}:{_BRIGHT_DATA_SB_PORT}"
+    return None
+
+
+class InventoryScraper:
+    def __init__(
+        self,
+        *,
+        timeout: int = 30,
+        delay_seconds: float = 0.25,
+        max_pages_per_dealer: int = 0,
+        detail_workers: int = 8,
+        max_detail_urls_per_dealer: int = 0,
+        browser_fallback: bool = False,
+        bright_data: bool = True,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.timeout = timeout
+        self.delay_seconds = delay_seconds
+        self.max_pages_per_dealer = max_pages_per_dealer
+        self.detail_workers = max(1, detail_workers)
+        self.max_detail_urls_per_dealer = max_detail_urls_per_dealer
+        self.browser_fallback = browser_fallback
+
+        # Bright Data residential proxy — auto-detected from env vars.
+        proxy_url = _bright_data_proxy_url() if bright_data else None
+        if proxy_url:
+            LOGGER.info("Bright Data residential proxy enabled (%s:%d)", _BRIGHT_DATA_HOST, _BRIGHT_DATA_PORT)
+            self._proxy_session: requests.Session | None = self._build_proxy_session(proxy_url)
+        else:
+            self._proxy_session = None
+
+        # Bright Data Scraping Browser (CDP) — handles Cloudflare Turnstile.
+        self._sb_endpoint: str | None = _bright_data_sb_endpoint() if bright_data else None
+        if self._sb_endpoint:
+            LOGGER.info("Bright Data Scraping Browser enabled (%s:%d)", _BRIGHT_DATA_HOST, _BRIGHT_DATA_SB_PORT)
+
+        self.session = session or requests.Session()
+        self.session.mount(
+            "http://",
+            HTTPAdapter(pool_connections=self.detail_workers + 4, pool_maxsize=self.detail_workers + 4),
+        )
+        self.session.mount(
+            "https://",
+            HTTPAdapter(pool_connections=self.detail_workers + 4, pool_maxsize=self.detail_workers + 4),
+        )
+        self.session.headers.update(
+            {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+        )
+        self.skip_reasons: Counter[str] = Counter()
+        # Per-thread browser storage so ThreadPoolExecutor workers each get
+        # their own Playwright browser instance (sync_playwright is not
+        # thread-safe across instances).
+        self._thread_local = threading.local()
+
+    @staticmethod
+    def _build_proxy_session(proxy_url: str) -> requests.Session:
+        """Create a requests.Session pre-configured with the Bright Data proxy."""
+        s = requests.Session()
+        s.proxies = {"http": proxy_url, "https": proxy_url}
+        s.verify = False  # Bright Data MITM cert — expected for proxy inspection
+        s.headers.update(
+            {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+        )
+        s.mount("http://", HTTPAdapter(pool_connections=16, pool_maxsize=16))
+        s.mount("https://", HTTPAdapter(pool_connections=16, pool_maxsize=16))
+        return s
+
+    # ── Browser lifecycle ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _find_chromium_executable() -> str | None:
+        """Return the system Chromium path, preferring NixOS-native builds."""
+        import shutil  # noqa: PLC0415
+        for name in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable"):
+            path = shutil.which(name)
+            if path:
+                return path
+        return None
+
+    def _get_browser(self):
+        """Return a Playwright Chromium browser for the current thread, lazily created.
+
+        Concurrent LAUNCHES are gated by _BROWSER_LAUNCH_SEM so that 8 detail
+        workers cold-starting at once don't spawn 8 Node.js+Chromium process
+        trees simultaneously (pthread_create EAGAIN on Replit). The semaphore
+        is acquired only on a cache miss and released as soon as the launch
+        completes — it throttles the launch burst, not the browser session.
+        """
+        if not getattr(self._thread_local, "browser", None):
+            try:
+                from playwright.sync_api import sync_playwright  # noqa: PLC0415
+            except ImportError as exc:
+                raise RuntimeError(
+                    "playwright is not installed. Run: python -m pip install playwright && python -m playwright install chromium"
+                ) from exc
+
+            # APScheduler worker threads can carry a running asyncio event
+            # loop; Playwright's sync API refuses to start inside one, so we
+            # temporarily swap in a fresh loop for the driver startup.
+            import asyncio  # noqa: PLC0415
+            _old_loop = None
+            try:
+                _old_loop = asyncio.get_event_loop()
+                if _old_loop.is_running():
+                    asyncio.set_event_loop(asyncio.new_event_loop())
+            except RuntimeError:
+                pass
+
+            chromium_path = self._find_chromium_executable()
+            launch_kwargs: dict = {
+                "headless": True,
+                "args": ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            }
+            if chromium_path:
+                launch_kwargs["executable_path"] = chromium_path
+                LOGGER.debug("Using system Chromium: %s", chromium_path)
+
+            _BROWSER_LAUNCH_SEM.acquire()
+            try:
+                try:
+                    pw = sync_playwright().start()
+                finally:
+                    if _old_loop is not None:
+                        try:
+                            asyncio.set_event_loop(_old_loop)
+                        except Exception:
+                            pass
+                try:
+                    browser = pw.chromium.launch(**launch_kwargs)
+                except Exception:
+                    # Don't leak the Node driver if the Chromium launch fails.
+                    try:
+                        pw.stop()
+                    except Exception:
+                        pass
+                    raise
+            finally:
+                _BROWSER_LAUNCH_SEM.release()
+
+            self._thread_local.playwright = pw
+            self._thread_local.browser = browser
+            LOGGER.debug("Playwright Chromium browser started (thread %s)", threading.current_thread().name)
+        return self._thread_local.browser
+
+    def _close_thread_browser(self) -> None:
+        browser = getattr(self._thread_local, "browser", None)
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+            self._thread_local.browser = None
+        pw = getattr(self._thread_local, "playwright", None)
+        if pw:
+            try:
+                pw.stop()
+            except Exception:
+                pass
+            self._thread_local.playwright = None
+
+    # ── Fetch ────────────────────────────────────────────────────────────────
+
+    def fetch(self, url: str, *, optional: bool = False) -> str | None:
+        """Fetch a URL with a tiered fallback chain:
+        1. Direct HTTP request
+        2. Bright Data residential proxy  (bypasses IP-based blocks)
+        3. Bright Data Scraping Browser   (bypasses Cloudflare Turnstile / JS challenges)
+        4. Local headless Chromium        (--browser-fallback flag)
+
+        optional=True marks speculative probes (feed/sitemap discovery): 404s
+        and misses are expected, so failures are logged at DEBUG and are not
+        counted in skip_reasons.
+        """
+        try:
+            time.sleep(self.delay_seconds)
+            response = self.session.get(url, timeout=self.timeout)
+            if response.status_code in BLOCKED_STATUSES:
+                LOGGER.info("HTTP %d for %s", response.status_code, url)
+            elif _is_cf_challenge(response.text):
+                LOGGER.info("Cloudflare challenge on direct fetch for %s", url)
+            else:
+                response.raise_for_status()
+                return response.text
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else 0
+            if 400 <= status < 500:
+                # Definitive client error (404/410/...): retrying through the
+                # proxy or a browser won't change the answer.
+                if optional:
+                    LOGGER.debug("Optional fetch missed for %s: HTTP %d", url, status)
+                else:
+                    LOGGER.warning("Fetch failed for %s: HTTP %d", url, status)
+                    self.skip_reasons["fetch_failed"] += 1
+                return None
+            if optional:
+                LOGGER.debug("Optional fetch missed for %s: %s", url, exc)
+                return None
+            LOGGER.warning("Fetch failed for %s; trying fallbacks: %s", url, exc)
+        except requests.RequestException as exc:
+            if optional:
+                LOGGER.debug("Optional fetch missed for %s: %s", url, exc)
+                return None
+            LOGGER.warning("Fetch failed for %s; trying fallbacks: %s", url, exc)
+
+        # 1st fallback: Bright Data residential proxy
+        if self._proxy_session is not None:
+            result = self.fetch_with_proxy(url)
+            if result is not None:
+                return result
+
+        # Speculative feed probes stop at the cheap tiers: spending a slow
+        # browser round-trip on each of ~6 candidate sitemap paths per dealer
+        # would blow the run-time budget. Real page fetches continue below.
+        if optional:
+            LOGGER.debug("Optional fetch blocked at cheap tiers for %s", url)
+            return None
+
+        # 2nd fallback: Bright Data Scraping Browser (handles Cloudflare Turnstile)
+        if self._sb_endpoint is not None:
+            result = self.fetch_with_scraping_browser(url)
+            if result is not None:
+                return result
+
+        # 3rd fallback: local headless Chromium
+        if self.browser_fallback:
+            result = self.fetch_with_browser(url)
+            if result is not None:
+                return result
+
+        LOGGER.warning("All fallbacks exhausted for %s", url)
+        self.skip_reasons["fetch_blocked"] += 1
+        return None
+
+    def fetch_with_proxy(self, url: str) -> str | None:
+        """Fetch through the Bright Data residential proxy.
+        Returns None if still blocked OR if the response is a Cloudflare challenge page.
+        """
+        try:
+            import urllib3  # noqa: PLC0415
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            response = self._proxy_session.get(url, timeout=self.timeout + 15)
+            if response.status_code in BLOCKED_STATUSES:
+                LOGGER.info("Bright Data proxy blocked (HTTP %d) for %s — trying next fallback", response.status_code, url)
+                self.skip_reasons["proxy_blocked"] += 1
+                return None
+            response.raise_for_status()
+            if _is_cf_challenge(response.text):
+                LOGGER.info("Bright Data proxy got Cloudflare challenge for %s — trying Scraping Browser", url)
+                self.skip_reasons["proxy_cf_challenge"] += 1
+                return None
+            LOGGER.info("Bright Data proxy succeeded for %s (%d bytes)", url, len(response.text))
+            self.skip_reasons["proxy_success"] += 1
+            return response.text
+        except requests.RequestException as exc:
+            LOGGER.warning("Bright Data proxy failed for %s: %s", url, exc)
+            self.skip_reasons["proxy_failed"] += 1
+            return None
+
+    def fetch_with_scraping_browser(self, url: str) -> str | None:
+        """Fetch via Bright Data Scraping Browser (CDP).
+        This runs a real browser in Bright Data's cloud and can solve Cloudflare Turnstile.
+        Requires BRIGHT_DATA_CUSTOMER_ID + BRIGHT_DATA_SB_ZONE + BRIGHT_DATA_PASSWORD env vars.
+        """
+        try:
+            from playwright.sync_api import sync_playwright  # noqa: PLC0415
+        except ImportError:
+            LOGGER.warning("playwright not installed — cannot use Scraping Browser")
+            return None
+        try:
+            with sync_playwright() as pw:
+                browser = pw.chromium.connect_over_cdp(self._sb_endpoint, timeout=30000)
+                ctx = browser.new_context()
+                page = ctx.new_page()
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=(self.timeout + 30) * 1000)
+                    page.wait_for_timeout(5000)
+                    html = page.content()
+                    if _is_cf_challenge(html):
+                        LOGGER.warning("Scraping Browser still got CF challenge for %s", url)
+                        self.skip_reasons["sb_cf_challenge"] += 1
+                        return None
+                    LOGGER.info("Scraping Browser succeeded for %s (%d bytes)", url, len(html))
+                    self.skip_reasons["sb_success"] += 1
+                    return html
+                finally:
+                    page.close()
+                    ctx.close()
+                    browser.close()
+        except Exception as exc:
+            LOGGER.warning("Scraping Browser failed for %s: %s", url, exc)
+            self.skip_reasons["sb_failed"] += 1
+            return None
+
+    def fetch_with_browser(self, url: str) -> str | None:
+        """Fetch a URL using a headless Chromium browser.
+
+        Returns None (instead of the challenge HTML) when Cloudflare serves a
+        JS challenge / Turnstile page. A plain headless Chromium usually cannot
+        pass managed challenges, but non-interactive JS challenges sometimes
+        clear after a few seconds, so we poll briefly before giving up.
+        """
+        try:
+            browser = self._get_browser()
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1280, "height": 900},
+                java_script_enabled=True,
+            )
+            page = context.new_page()
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
+                # Wait for network to go idle so SPA/AJAX inventory loads fully.
+                # Many dealer sites (Blue Compass, RnR, etc.) render listings via
+                # API calls after initial DOM load — networkidle catches those.
+                # We cap the wait at 8 s to avoid hanging on sites that poll.
+                try:
+                    page.wait_for_load_state("networkidle", timeout=8000)
+                except Exception:
+                    pass
+                # Extra fixed pause for late-resolving React/Vue renders.
+                page.wait_for_timeout(2000)
+                html = page.content()
+
+                # Cloudflare detection: if we got a challenge page, give the
+                # in-page JS up to ~12 s (4 × 3 s) to solve a non-interactive
+                # challenge and redirect to the real content.
+                attempts = 0
+                while _is_cf_challenge(html) and attempts < 4:
+                    attempts += 1
+                    page.wait_for_timeout(3000)
+                    html = page.content()
+                if _is_cf_challenge(html):
+                    LOGGER.info(
+                        "Browser fallback got Cloudflare challenge for %s (%d bytes) — rejecting",
+                        url,
+                        len(html),
+                    )
+                    self.skip_reasons["browser_fallback_cf_challenge"] += 1
+                    return None
+
+                LOGGER.info("Browser fallback succeeded for %s (%d bytes)", url, len(html))
+                self.skip_reasons["browser_fallback_success"] += 1
+                return html
+            finally:
+                page.close()
+                context.close()
+        except Exception as exc:
+            LOGGER.warning("Browser fallback failed for %s: %s", url, exc)
+            self.skip_reasons["browser_fallback_failed"] += 1
+            return None
+
+    # ── Dealer scraping ──────────────────────────────────────────────────────
+
+    def scrape_dealers(self, dealers: Iterable[Dealer]) -> list[Listing]:
+        listings: list[Listing] = []
+        for dealer in dealers:
+            LOGGER.info("Scraping %s (%s)", dealer.name, dealer.url)
+            try:
+                listings.extend(self.scrape_dealer(dealer))
+            except Exception as exc:
+                LOGGER.exception("Dealer %s failed; continuing with next dealer: %s", dealer.name, exc)
+                self.skip_reasons["dealer_failed"] += 1
+        # Clean up the main-thread browser if it was started.
+        self._close_thread_browser()
+        return listings
+
+    def scrape_dealer(self, dealer: Dealer) -> list[Listing]:
+        started = time.monotonic()
+        detail_urls: set[str] = set()
+
+        # Prefer public inventory feeds (rv-search.xml / sitemaps / JSON APIs):
+        # these are usually served without Cloudflare protection, so they work
+        # for the ~60 dealers whose HTML pages return challenges.
+        feed_urls = self.discover_feed_detail_urls(dealer.url)
+        if feed_urls:
+            LOGGER.info("Dealer %s: %d detail URLs from public feed", dealer.name, len(feed_urls))
+            self.skip_reasons["feed_discovery_success"] += 1
+            detail_urls.update(feed_urls)
+        else:
+            page_urls = self.discover_inventory_pages(dealer.url)
+            for page_url in page_urls:
+                html = self.fetch(page_url)
+                if not html:
+                    continue
+                detail_urls.update(self.extract_listing_urls(html, page_url))
+
+        ordered_detail_urls = sorted(detail_urls)
+
+        # Lazydays.com: their sitemap mixes individual listing pages (e.g.
+        # /rvs/tampa-fl/class-a/used/2024/make-model-1234567) with model/category
+        # pages (e.g. /rvs/2025-forest-river-grand-design) that always return 403.
+        # Individual listings always end in a 6+-digit numeric stock ID (optionally
+        # followed by 1-2 alpha chars). Filtering to those cuts the URL pool from
+        # ~3005 → ~1400 and prevents the per-dealer timeout from firing.
+        if "lazydays.com" in dealer.url.lower():
+            _stock_re = re.compile(r"-\d{6,}[a-z]{0,2}$", re.IGNORECASE)
+            before = len(ordered_detail_urls)
+            ordered_detail_urls = [
+                u for u in ordered_detail_urls
+                if _stock_re.search(urlparse(u).path)
+            ]
+            LOGGER.info(
+                "Dealer %s: lazydays stock-ID filter reduced %d → %d URLs",
+                dealer.name,
+                before,
+                len(ordered_detail_urls),
+            )
+
+        if self.max_detail_urls_per_dealer and len(ordered_detail_urls) > self.max_detail_urls_per_dealer:
+            LOGGER.warning(
+                "Dealer %s found %d detail URLs; limiting to %d by --max-detail-urls-per-dealer",
+                dealer.name,
+                len(ordered_detail_urls),
+                self.max_detail_urls_per_dealer,
+            )
+            ordered_detail_urls = ordered_detail_urls[: self.max_detail_urls_per_dealer]
+
+        results: list[Listing] = []
+        if ordered_detail_urls:
+            with ThreadPoolExecutor(max_workers=self.detail_workers) as executor:
+                futures = {
+                    executor.submit(self.scrape_listing_detail, detail_url, dealer): detail_url
+                    for detail_url in ordered_detail_urls
+                }
+                for index, future in enumerate(as_completed(futures), start=1):
+                    listing = future.result()
+                    if listing is not None:
+                        results.append(listing)
+                    if index % 100 == 0:
+                        LOGGER.info(
+                            "Dealer %s: parsed %d/%d detail pages, %d valid listings",
+                            dealer.name,
+                            index,
+                            len(ordered_detail_urls),
+                            len(results),
+                        )
+            # Clean up any per-thread browsers spawned by the pool workers.
+            executor.shutdown(wait=True)
+
+        elapsed = time.monotonic() - started
+        LOGGER.info(
+            "Dealer %s: %d listings after validation from %d detail URLs in %.1fs",
+            dealer.name,
+            len(results),
+            len(ordered_detail_urls),
+            elapsed,
+        )
+        return results
+
+    def scrape_listing_detail(self, detail_url: str, dealer: Dealer) -> Listing | None:
+        html = self.fetch(detail_url)
+        if not html:
+            self.skip_reasons["fetch_failed"] += 1
+            return None
+        try:
+            return self.parse_listing(html, detail_url, dealer)
+        except Exception as exc:
+            LOGGER.warning("Listing parse failed for %s: %s", detail_url, exc)
+            self.skip_reasons["listing_parse_failed"] += 1
+            return None
+
+    # ── Public feed discovery ────────────────────────────────────────────────
+
+    def discover_feed_detail_urls(self, start_url: str) -> set[str]:
+        """Find listing detail URLs from public feeds instead of HTML scraping.
+
+        Probes, in order:
+        1. XML feeds / sitemaps (/rv-search.xml, /sitemap.xml, /wp-sitemap.xml...)
+           including one level of sitemap-index recursion.
+        2. JSON inventory endpoints (/api/inventory, /rv-search.json).
+
+        Returns the first non-empty set of same-domain detail URLs, or an empty
+        set so the caller falls back to HTML page discovery.
+        """
+        parsed = urlparse(start_url)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        root_domain = dealer_domain(start_url)
+
+        for path in FEED_CANDIDATE_PATHS:
+            xml = self.fetch(base + path, optional=True)
+            if not xml or "<" not in xml[:200]:
+                continue
+            urls = self._detail_urls_from_xml_feed(xml, base, root_domain)
+            if urls:
+                LOGGER.info("Feed %s%s yielded %d detail URLs", base, path, len(urls))
+                return urls
+
+        for path in JSON_FEED_CANDIDATE_PATHS:
+            raw = self.fetch(base + path, optional=True)
+            if not raw:
+                continue
+            urls = self._detail_urls_from_json_feed(raw, base, root_domain)
+            if urls:
+                LOGGER.info("JSON feed %s%s yielded %d detail URLs", base, path, len(urls))
+                return urls
+        return set()
+
+    def _detail_urls_from_xml_feed(self, xml: str, base: str, root_domain: str) -> set[str]:
+        """Extract detail URLs from a sitemap / RSS-style XML feed.
+
+        Handles both <loc> (sitemaps) and <link> (RSS / dealer feeds) entries,
+        and recurses one level into child sitemaps of a sitemap index.
+        """
+        locs = re.findall(r"<(?:loc|link)>\s*(?:<!\[CDATA\[)?\s*(https?://[^<\]\s]+)", xml, re.IGNORECASE)
+        child_maps: list[str] = []
+        urls: set[str] = set()
+        for raw in locs:
+            url = self.safe_join(base, raw)
+            if not url:
+                continue
+            if urlparse(url).netloc.lower().removeprefix("www.") != root_domain:
+                continue
+            if url.lower().rstrip("/").endswith(".xml"):
+                child_maps.append(url)
+            elif self.looks_like_detail_url(url):
+                urls.add(url)
+
+        if not urls and child_maps:
+            # Sitemap index: fetch the child sitemaps most likely to contain
+            # inventory pages (capped to keep the run fast and polite).
+            ranked = sorted(
+                child_maps,
+                key=lambda u: 0 if any(h in u.lower() for h in FEED_CHILD_HINTS) else 1,
+            )
+            for child in ranked[:15]:
+                child_xml = self.fetch(child, optional=True)
+                if not child_xml:
+                    continue
+                for raw in re.findall(
+                    r"<(?:loc|link)>\s*(?:<!\[CDATA\[)?\s*(https?://[^<\]\s]+)", child_xml, re.IGNORECASE
+                ):
+                    url = self.safe_join(base, raw)
+                    if (
+                        url
+                        and urlparse(url).netloc.lower().removeprefix("www.") == root_domain
+                        and not url.lower().rstrip("/").endswith(".xml")
+                        and self.looks_like_detail_url(url)
+                    ):
+                        urls.add(url)
+        return urls
+
+    def _detail_urls_from_json_feed(self, raw: str, base: str, root_domain: str) -> set[str]:
+        """Extract same-domain detail URLs from an arbitrary JSON payload."""
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            return set()
+        urls: set[str] = set()
+
+        def walk(value: object) -> None:
+            if isinstance(value, dict):
+                for child in value.values():
+                    walk(child)
+            elif isinstance(value, list):
+                for child in value:
+                    walk(child)
+            elif isinstance(value, str) and ("/" in value):
+                candidate = value if value.startswith("http") else (base + value if value.startswith("/") else None)
+                if not candidate:
+                    return
+                url = self.safe_join(base, candidate)
+                if (
+                    url
+                    and urlparse(url).netloc.lower().removeprefix("www.") == root_domain
+                    and self.looks_like_detail_url(url)
+                ):
+                    urls.add(url)
+
+        walk(payload)
+        return urls
+
+    # ── Page discovery ───────────────────────────────────────────────────────
+
+    def discover_inventory_pages(self, start_url: str) -> list[str]:
+        """Discover all reachable inventory pages without a listing-count cap.
+
+        The old pipeline trusted upstream run output and treated large dealer
+        payloads as errors. This crawler follows pagination links and stops only
+        when no new inventory pages are found. max_pages_per_dealer is a loop
+        guard, not a listing limit; 0 means unlimited.
+        """
+        root_domain = dealer_domain(start_url)
+        queue: deque[str] = deque([self.canonical_url(start_url)])
+        seen: set[str] = set()
+        pages: list[str] = []
+
+        while queue:
+            if self.max_pages_per_dealer and len(seen) >= self.max_pages_per_dealer:
+                LOGGER.warning("Page guard reached for %s at %d pages", start_url, len(seen))
+                break
+            url = queue.popleft()
+            if url in seen:
+                continue
+            seen.add(url)
+            html = self.fetch(url)
+            if not html:
+                continue
+            pages.append(url)
+            soup = BeautifulSoup(html, "html.parser")
+            for link in soup.select("a[href]"):
+                href = self.safe_join(url, link.get("href", ""))
+                if not href:
+                    continue
+                parsed = urlparse(href)
+                if parsed.netloc.lower().removeprefix("www.") != root_domain:
+                    continue
+                if href in seen:
+                    continue
+                if self.looks_like_inventory_page(href, link.get_text(" "), start_url):
+                    queue.append(href)
+        return pages
+
+    def looks_like_inventory_page(self, url: str, link_text: str = "", start_url: str | None = None) -> bool:
+        parsed = urlparse(url)
+        text = f"{parsed.path} {parsed.query} {link_text}".lower()
+
+        # Individual listing detail pages are identified by a stock number in
+        # the URL (e.g. /rvs/stock-K12345 or /inventory/stock=A99). These are
+        # never inventory list pages and should not be crawled for pagination.
+        # NOTE: "for-sale" alone does NOT mean detail page — many dealers
+        # paginate with URLs like /inventory/for-sale/page/2/ and excluding
+        # them causes the scraper to stop at page 1 (~12 listings per dealer).
+        if re.search(r"stock[-=][a-z0-9-]+", text):
+            return False
+
+        if start_url:
+            start = urlparse(start_url)
+            start_path = start.path.rstrip("/") or "/"
+            current_path = parsed.path.rstrip("/") or "/"
+            if not (
+                current_path == start_path
+                or current_path.startswith(start_path + "/")
+                or re.search(r"/(page/)?\d+/?$", current_path)
+            ):
+                return False
+
+        if re.search(r"/(page/)?\d+/?$", parsed.path):
+            return True
+        if any(name in parse_qs(parsed.query) for name in PAGE_PARAM_NAMES):
+            return True
+        return False
+
+    def extract_listing_urls(self, html: str, base_url: str) -> set[str]:
+        soup = BeautifulSoup(html, "html.parser")
+        root_domain = dealer_domain(base_url)
+        urls: set[str] = set()
+        for link in soup.select("a[href]"):
+            href = self.safe_join(base_url, link.get("href", ""))
+            if not href:
+                continue
+            parsed = urlparse(href)
+            if parsed.netloc.lower().removeprefix("www.") != root_domain:
+                continue
+            if self.looks_like_detail_url(href):
+                urls.add(href)
+        return urls
+
+    def is_category_page(self, url: str) -> bool:
+        """Return True for inventory LIST/category pages, which must never be
+        queued as single-listing detail pages.
+
+        Examples: /new-rvs-for-sale, /used-rvs-for-sale/page/2/, /--inventory,
+        /rv-search, /rvs-for-sale/fife-wa-inventory/, ...--xAllInventory.
+        """
+        parsed = urlparse(url)
+        path = parsed.path.lower().rstrip("/")
+        query = parse_qs(parsed.query)
+
+        # Strong detail signals override everything else — /inventory/unit/12345
+        # ends in digits but is a unit page, not pagination.
+        if DETAIL_PATH_RE.search(url) or any(name.lower() in DETAIL_QUERY_PARAMS for name in query):
+            return False
+        # Pagination is always a list page.
+        if PAGINATION_PATH_RE.search(parsed.path) or any(name in query for name in PAGE_PARAM_NAMES):
+            return True
+        # Known platform landing/list paths.
+        last = path.rsplit("/", 1)[-1]
+        if path.endswith(("/--inventory", "/rv-search")) or path in ("/--inventory", "/rv-search"):
+            return True
+        if "xallinventory" in path or "brands-inventory" in path:
+            return True
+        # "...-for-sale" / "...inventory" segments with no digits anywhere in
+        # the path are category pages (e.g. /rvs-for-sale/dealer/tacoma-washington).
+        if ("for-sale" in path or "for_sale" in path or "inventory" in path or last in ("rvs", "inventory")) and not re.search(
+            r"\d", path
+        ):
+            return True
+        return False
+
+    def looks_like_detail_url(self, url: str, link_text: str = "") -> bool:
+        """Return True if the URL points at a single-unit listing detail page.
+
+        Covers the URL shapes used by the platforms in wa-dealers.json:
+        - /rvs/stock-K12345, /inventory?stock=A99       (stock-number pages)
+        - /inventory/unit/12345, /new/rvs/detail/stock/A12345
+        - ?vehicleId=..., ?stockNumber=..., ?unit=...   (query-param platforms)
+        - /rv-for-sale/2024-keystone-cougar-29rks       (year-slug pages)
+        - ...-i123456, ...--xInventoryDetail            (InteractRV /--inventory platform)
+        Category/list pages are explicitly excluded first.
+        """
+        if self.is_category_page(url):
+            return False
+        parsed = urlparse(url)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+
+        # Sitemap pollution guard: credit apps / contact forms / service pages
+        # that carry a UnitId-style query param are NOT listings. Checked
+        # before the query-param test below, which would otherwise accept them.
+        if NON_INVENTORY_PATH_RE.search(path):
+            return False
+
+        if DETAIL_PATH_RE.search(url):
+            return True
+        if any(name.lower() in DETAIL_QUERY_PARAMS for name in query):
+            return True
+        if YEAR_SLUG_RE.search(path) and any(
+            hint in path.lower() for hint in ("for-sale", "inventory", "rv", "product")
+        ):
+            return True
+        # Long alphanumeric slug under an inventory-ish path: detail pages on
+        # most dealer SaaS sites end in a slug that mixes letters and digits
+        # (model/floorplan codes), while category slugs are digit-free.
+        last = path.rstrip("/").rsplit("/", 1)[-1]
+        if (
+            len(last) >= 8
+            and re.search(r"\d", last)
+            and re.search(r"[a-z]", last, re.IGNORECASE)
+            and any(hint in path.lower() for hint in ("for-sale", "for_sale", "/inventory/", "/rvs/", "/rv/"))
+        ):
+            return True
+        haystack = f"{url} {link_text}".lower()
+        return bool(re.search(r"stock[-=][a-z0-9-]+", haystack))
+
+    # ── Listing parsing ──────────────────────────────────────────────────────
+
+    def parse_listing(self, html: str, url: str, dealer: Dealer) -> Listing | None:
+        soup = BeautifulSoup(html, "html.parser")
+        structured = self.extract_structured_data(soup)
+        title = (
+            self.meta_content(soup, "og:title")
+            or clean_text(soup.title.string if soup.title else None)
+            or clean_text(structured.get("name"))
+            or url
+        )
+        title = re.sub(r"\s*\|\s*.*$", "", title)
+        title_parts = parse_title_parts(title)
+        specs = self.extract_specs(soup)
+
+        price = (
+            parse_price(structured.get("price"))
+            or parse_price(self.meta_content(soup, "product:price:amount"))
+            or parse_price(specs.get("price"))
+            or self._price_from_page_text(soup)
+        )
+        photos = self.extract_photos(soup, structured, url)
+        description = (
+            clean_text(structured.get("description"))
+            or self.meta_content(soup, "description")
+            or self.extract_description(soup)
+        )
+
+        rv_type = (
+            infer_type_from_text(specs.get("type"), specs.get("rv type"), title, url)
+            or infer_type_from_text(structured.get("@type"))
+        )
+        manufacturer = clean_text(
+            specs.get("manufacturer")
+            or specs.get("make")
+            or specs.get("brand")
+            or structured.get("brand")
+            or title_parts["manufacturer"]
+        )
+        brand = clean_text(specs.get("brand") or structured.get("brand") or manufacturer)
+        model = clean_text(specs.get("model") or structured.get("model") or title_parts["model"])
+        floorplan = clean_text(
+            specs.get("floorplan")
+            or specs.get("floor plan")
+            or specs.get("trim")
+            or title_parts["floorplan"]
+        )
+        year = parse_int(specs.get("year")) or parse_int(structured.get("year")) or title_parts["year"]
+        vin = clean_text(specs.get("vin") or structured.get("vin"))
+        stock = clean_text(
+            specs.get("stock") or specs.get("stock #") or specs.get("stock number") or structured.get("stock")
+        )
+        condition = clean_text(specs.get("condition") or structured.get("condition"))
+
+        # Last resort: if the DOM, JSON-LD, and state blobs all failed to
+        # produce the fields the validation gates require, regex-scan the raw
+        # <script> content before giving up on this listing.
+        if price is None or year is None or not manufacturer:
+            fallback = self.scan_scripts_for_core_fields(soup)
+            if price is None:
+                price = fallback.get("price")  # already validated by parse_price
+            if year is None:
+                year = fallback.get("year")
+            if not manufacturer:
+                manufacturer = clean_text(fallback.get("manufacturer"))
+                brand = brand or manufacturer
+
+        listing = Listing(
+            dealer_name=dealer.name,
+            dealer_domain=dealer.domain,
+            dealer_location=dealer.city,
+            source_url=url,
+            title=title,
+            rv_type=rv_type,
+            condition=condition,
+            year=year if isinstance(year, int) else None,
+            manufacturer=manufacturer,
+            brand=brand,
+            model=model,
+            floorplan=floorplan,
+            price=price,
+            vin=vin,
+            stock_number=stock,
+            description=description,
+            photos=photos,
+            specs=specs,
+        )
+
+        if not listing.has_required_media():
+            self.skip_reasons["zero_photos"] += 1
+            return None
+        if not listing.has_required_core_fields():
+            self.skip_reasons["missing_required_core_fields"] += 1
+            return None
+        return listing
+
+    # ── HTML extraction helpers ──────────────────────────────────────────────
+
+    def extract_structured_data(self, soup: BeautifulSoup) -> dict[str, object]:
+        """Extract a product-like data node from the page, trying in order:
+        1. <script type="application/ld+json"> (JSON-LD Product/Vehicle)
+        2. <script type="application/json"> blocks (incl. Next.js __NEXT_DATA__)
+        3. window.__INITIAL_STATE__ / __PRELOADED_STATE__ / __NEXT_DATA__ /
+           __APOLLO_STATE__ / __props assignment blobs inside plain <script>s
+        """
+        # 1. JSON-LD
+        for script in soup.select('script[type="application/ld+json"]'):
+            raw = script.string or script.get_text()
+            if not raw:
+                continue
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            candidates = payload if isinstance(payload, list) else [payload]
+            for item in candidates:
+                found = self.find_product_json(item)
+                if found:
+                    return self._normalize_product_node(found)
+
+        # 2. application/json blocks (Next.js hydration data and friends)
+        for script in soup.select('script[type="application/json"]'):
+            raw = script.string or script.get_text()
+            if not raw:
+                continue
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            found = self.find_product_json(payload)
+            if found:
+                return self._normalize_product_node(found)
+            node = self._find_listing_like_node(payload)
+            if node:
+                return self._normalize_state_node(node)
+
+        # 3. window.__STATE__-style assignment blobs in plain scripts
+        for script in soup.find_all("script"):
+            raw = script.string or script.get_text() or ""
+            if not raw or "window." not in raw:
+                continue
+            for match in STATE_BLOB_RE.finditer(raw):
+                payload = self._decode_json_at(raw, match.end())
+                if payload is None:
+                    continue
+                found = self.find_product_json(payload)
+                if found:
+                    return self._normalize_product_node(found)
+                node = self._find_listing_like_node(payload)
+                if node:
+                    return self._normalize_state_node(node)
+        return {}
+
+    def _normalize_product_node(self, found: dict[str, object]) -> dict[str, object]:
+        """Flatten a JSON-LD Product/Vehicle node into the shape parse_listing expects."""
+        offers = found.get("offers") if isinstance(found.get("offers"), dict) else {}
+        brand = found.get("brand")
+        if isinstance(brand, dict):
+            brand = brand.get("name")
+        return {
+            **found,
+            "price": offers.get("price") or found.get("price"),
+            "brand": brand,
+        }
+
+    def _decode_json_at(self, text: str, idx: int) -> object | None:
+        """Decode the JSON value starting at text[idx] (`window.X = {...};` blobs).
+
+        raw_decode tolerates the trailing `;` and any code that follows the
+        object, so we don't need to find the closing brace ourselves.
+        """
+        while idx < len(text) and text[idx] in " \t\r\n":
+            idx += 1
+        if idx >= len(text) or text[idx] not in "{[":
+            return None
+        try:
+            payload, _ = json.JSONDecoder().raw_decode(text, idx)
+        except (json.JSONDecodeError, ValueError):
+            return None
+        return payload if isinstance(payload, (dict, list)) else None
+
+    # Keys that mark a dict inside a state blob as "this is the vehicle".
+    _PRICE_KEYS = (
+        "price", "saleprice", "sale_price", "sellingprice", "selling_price",
+        "listprice", "list_price", "ourprice", "our_price", "msrp",
+    )
+    _MEDIA_OR_ID_KEYS = (
+        "images", "photos", "image", "gallery", "imageurls", "image_urls",
+        "vin", "stocknumber", "stock_number", "stockno",
+    )
+
+    def _find_listing_like_node(self, value: object, depth: int = 0) -> dict[str, object] | None:
+        """Recursively find a dict that looks like a single-vehicle record:
+        it has a price-ish key AND an images/VIN/stock-ish key."""
+        if depth > 10:
+            return None
+        if isinstance(value, dict):
+            keys = {str(k).lower() for k in value}
+            if keys.intersection(self._PRICE_KEYS) and keys.intersection(self._MEDIA_OR_ID_KEYS):
+                return value
+            for child in value.values():
+                found = self._find_listing_like_node(child, depth + 1)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value[:100]:
+                found = self._find_listing_like_node(child, depth + 1)
+                if found:
+                    return found
+        return None
+
+    def _normalize_state_node(self, node: dict[str, object]) -> dict[str, object]:
+        """Map a state-blob vehicle dict onto the keys parse_listing reads."""
+        lowered = {str(k).lower(): v for k, v in node.items()}
+
+        def get(*names: str) -> object | None:
+            for name in names:
+                if name in lowered and lowered[name] not in (None, "", []):
+                    return lowered[name]
+            return None
+
+        return {
+            "name": get("name", "title", "adtitle", "ad_title"),
+            "price": get(*self._PRICE_KEYS),
+            "image": get("images", "photos", "gallery", "imageurls", "image_urls", "image"),
+            "brand": get("brand", "brandname", "make", "makename", "manufacturer", "manufacturername"),
+            "model": get("model", "modelname"),
+            "year": get("year", "modelyear", "model_year"),
+            "vin": get("vin"),
+            "stock": get("stocknumber", "stock_number", "stockno", "stock"),
+            "description": get("description", "comments"),
+            "condition": get("condition", "newused", "new_used"),
+        }
+
+    def _price_from_page_text(self, soup: BeautifulSoup) -> int | None:
+        """Find a $-anchored price in the rendered page text.
+
+        The old fallback ran parse_price() over the whole page text, which
+        returned the FIRST number >= 1000 — almost always the model year in
+        the title ("2022 Keystone Cougar..." -> price=2022). Requiring a
+        leading dollar sign avoids that; "Call for Price" pages return None.
+        """
+        text = soup.get_text(" ", strip=True)
+        for match in re.finditer(r"\$\s?([0-9][0-9,]*(?:\.[0-9]+)?)", text):
+            price = parse_price(match.group(1))
+            if price is not None:
+                return price
+        return None
+
+    def scan_scripts_for_core_fields(self, soup: BeautifulSoup) -> dict[str, object]:
+        """Best-effort regex scan of raw <script> content for price / year /
+        manufacturer when every structured source came up empty. Only called
+        as a last resort from parse_listing."""
+        out: dict[str, object] = {}
+        for script in soup.find_all("script"):
+            raw = script.string or script.get_text() or ""
+            if not raw or len(raw) < 20:
+                continue
+            if "price" not in out:
+                match = SCRIPT_PRICE_RE.search(raw)
+                if match:
+                    price = parse_price(match.group(1))
+                    if price is not None:
+                        out["price"] = price
+            if "year" not in out:
+                match = SCRIPT_YEAR_RE.search(raw)
+                if match:
+                    year = parse_int(match.group(1))
+                    if year is not None:
+                        out["year"] = year
+            if "manufacturer" not in out:
+                match = SCRIPT_MANUFACTURER_RE.search(raw)
+                if match:
+                    value = clean_text(match.group(1))
+                    if value and value.lower() not in ("null", "none", "undefined", "true", "false"):
+                        out["manufacturer"] = value
+            if len(out) == 3:
+                break
+        return out
+
+    def find_product_json(self, value: object) -> dict[str, object] | None:
+        if isinstance(value, dict):
+            type_value = value.get("@type")
+            types = type_value if isinstance(type_value, list) else [type_value]
+            if any(str(t).lower() in {"product", "vehicle", "car"} for t in types if t):
+                return value
+            for child in value.values():
+                found = self.find_product_json(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = self.find_product_json(child)
+                if found:
+                    return found
+        return None
+
+    def extract_specs(self, soup: BeautifulSoup) -> dict[str, object]:
+        specs: dict[str, object] = {}
+        for row in soup.select("tr"):
+            cells = [clean_text(c.get_text(" ")) for c in row.select("th,td")]
+            cells = [c for c in cells if c]
+            if len(cells) >= 2:
+                specs[self.spec_key(cells[0])] = cells[1]
+        for dl in soup.select("dl"):
+            terms = dl.select("dt")
+            values = dl.select("dd")
+            for term, value in zip(terms, values):
+                key = self.spec_key(term.get_text(" "))
+                specs[key] = clean_text(value.get_text(" "))
+        text = soup.get_text("\n", strip=True)
+        patterns = {
+            "vin": r"\bVIN[:\s#-]+([A-Z0-9]{8,})",
+            "stock": r"\bStock(?:\s*#|\s*Number)?[:\s#-]+([A-Z0-9-]+)",
+            "length": r"\bLength[:\s]+([0-9'\" .-]+)",
+            "slides": r"\bSlides?[:\s]+(\d+)",
+            "sleeps": r"\bSleeps[:\s]+(\d+)",
+            "year": r"\bYear[:\s]+(20\d{2}|19\d{2})",
+        }
+        for key, pattern in patterns.items():
+            if key not in specs:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    specs[key] = clean_text(match.group(1))
+        return specs
+
+    def extract_description(self, soup: BeautifulSoup) -> str | None:
+        selectors = [
+            ".description",
+            ".product-description",
+            "#description",
+            ".woocommerce-product-details__short-description",
+            "[itemprop='description']",
+        ]
+        for selector in selectors:
+            node = soup.select_one(selector)
+            if node:
+                return clean_text(node.get_text(" "))
+        return None
+
+    def extract_photos(self, soup: BeautifulSoup, structured: dict[str, object], base_url: str) -> list[str]:
+        seen: set[str] = set()
+        photos: list[str] = []
+
+        def add(value: object | None) -> None:
+            if not value:
+                return
+            url = self.safe_join(base_url, value)
+            if not url:
+                return
+            if not re.search(r"\.(jpe?g|png|webp)(\?|$)", url, re.IGNORECASE):
+                return
+            if any(token in url.lower() for token in ("/common/", "logo", "placeholder", "comingsoon")):
+                return
+            if url not in seen:
+                seen.add(url)
+                photos.append(url)
+
+        # 1. Structured data (JSON-LD image, or images/photos list from a state blob)
+        image_value = structured.get("image")
+        if isinstance(image_value, list):
+            for item in image_value:
+                if isinstance(item, dict):
+                    add(item.get("url") or item.get("src") or item.get("imageUrl") or item.get("image_url"))
+                else:
+                    add(item)
+        elif isinstance(image_value, dict):
+            add(image_value.get("url") or image_value.get("src"))
+        else:
+            add(image_value)
+        add(self.meta_content(soup, "og:image"))
+
+        # 2. <img>/<source> tags — direct, lazy-load, and srcset variants
+        for image in soup.select(
+            "img[src], img[data-src], img[data-lazy-src], img[data-lazy], img[data-original], "
+            "img[srcset], img[data-srcset], source[srcset], source[data-srcset]"
+        ):
+            add(
+                image.get("src")
+                or image.get("data-src")
+                or image.get("data-lazy-src")
+                or image.get("data-lazy")
+                or image.get("data-original")
+            )
+            srcset = image.get("srcset") or image.get("data-srcset")
+            if srcset:
+                # "url1 640w, url2 1280w" — take the URL part of each entry.
+                for entry in str(srcset).split(","):
+                    candidate = entry.strip().split(" ")[0]
+                    add(candidate)
+
+        # 3. CSS background-image in inline style attributes
+        for node in soup.select('[style*="background"]'):
+            style = node.get("style") or ""
+            for match in re.finditer(r"url\(\s*['\"]?([^'\")\s]+)['\"]?\s*\)", style):
+                add(match.group(1))
+
+        # 4. Image URLs embedded in <script> JSON (React/SPA galleries that
+        #    never render <img> tags server-side). JSON-escaped slashes are
+        #    unescaped before adding.
+        if len(photos) < 24:
+            for script in soup.find_all("script"):
+                raw = script.string or script.get_text() or ""
+                if not raw or len(raw) < 40:
+                    continue
+                for match in SCRIPT_IMG_URL_RE.finditer(raw):
+                    add(match.group(0).replace("\\/", "/"))
+                if len(photos) >= 24:
+                    break
+
+        return photos[:24]
+
+    def meta_content(self, soup: BeautifulSoup, name: str) -> str | None:
+        node = soup.select_one(f"meta[property='{name}'], meta[name='{name}']")
+        return clean_text(node.get("content")) if node and node.get("content") else None
+
+    def spec_key(self, value: object) -> str:
+        text = clean_text(value) or ""
+        return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+    def canonical_url(self, url: str) -> str:
+        parsed = urlparse(url)
+        parsed = parsed._replace(fragment="")
+        return urlunparse(parsed)
+
+    def safe_join(self, base_url: str, href: object | None) -> str | None:
+        try:
+            value = str(href or "").strip()
+            if not value or value.startswith(("mailto:", "tel:", "javascript:")):
+                return None
+            return self.canonical_url(urljoin(base_url, value))
+        except ValueError:
+            self.skip_reasons["malformed_url"] += 1
+            return None
+
+    def spec_int(self, listing: Listing, *keys: str) -> int | None:
+        for key in keys:
+            val = listing.specs.get(key)
+            if val is not None:
+                result = parse_int(val)
+                if result is not None:
+                    return result
+        return None
+
+    def spec_number(self, listing: Listing, *keys: str) -> float | None:
+        for key in keys:
+            val = listing.specs.get(key)
+            if val is not None:
+                match = re.search(r"[\d.]+", str(val))
+                if match:
+                    try:
+                        return float(match.group(0))
+                    except ValueError:
+                        pass
+        return None
+
+
+def listing_to_dict(listing: Listing) -> dict[str, object]:
+    return asdict(listing)
+
+
+###################################################################
+# FILE: rv_inventory_scraper/pipeline.py
+###################################################################
+
+from __future__ import annotations
+
+import concurrent.futures
+import json
+import logging
+import os
+import time
+from collections import Counter
+from pathlib import Path
+from typing import Iterable
+
+import psycopg
+from psycopg.rows import dict_row
+
+from .db import InventorySync
+from .models import Dealer, Listing
+from .normalize import build_listing_identity
+from .scraper import InventoryScraper, listing_to_dict
+
+LOGGER = logging.getLogger(__name__)
+
+
+def load_dealers(path: str | Path) -> list[Dealer]:
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    dealers: list[Dealer] = []
+    seen_urls: set[str] = set()
+    for row in raw:
+        url = str(row["url"]).strip()
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        dealers.append(
+            Dealer(
+                name=str(row["name"]).strip(),
+                city=str(row.get("city") or "WA").strip(),
+                url=url,
+            )
+        )
+    return dealers
+
+
+def filter_dealers(dealers: list[Dealer], query: str | None) -> list[Dealer]:
+    if not query:
+        return dealers
+    needle = query.lower()
+    return [
+        dealer
+        for dealer in dealers
+        if needle in dealer.name.lower() or needle in dealer.city.lower() or needle in dealer.domain.lower()
+    ]
+
+
+def apply_business_deduplication(listings: Iterable[Listing]) -> list[Listing]:
+    """Apply the category-scoped dedup rule exactly once before DB sync.
+
+    build_listing_identity only collapses Class C, fifth wheel, and travel
+    trailer records by dealer/year/manufacturer/brand/model/floorplan. All
+    other categories use unit-level keys, so every Class A, Class B, toy hauler,
+    popup, truck camper, etc. record is retained.
+    """
+    retained: dict[str, Listing] = {}
+    for listing in listings:
+        identity = build_listing_identity(listing)
+        current = retained.get(identity)
+        if current is None or completeness_score(listing) > completeness_score(current):
+            retained[identity] = listing
+    return list(retained.values())
+
+
+def completeness_score(listing: Listing) -> int:
+    score = 0
+    score += len(listing.photos) * 2
+    score += len(listing.specs)
+    score += 3 if listing.description else 0
+    score += 2 if listing.vin else 0
+    score += 2 if listing.stock_number else 0
+    return score
+
+
+def write_snapshot(path: str | Path, listings: Iterable[Listing]) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = [listing_to_dict(listing) for listing in listings]
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+WA_CITY_COORDS: dict[str, tuple[float, float]] = {
+    "seattle": (47.6062, -122.3321), "tacoma": (47.2529, -122.4443),
+    "kent": (47.3809, -122.2348), "auburn": (47.3073, -122.2285),
+    "everett": (47.9790, -122.2021), "spokane": (47.6588, -117.4260),
+    "vancouver": (45.6387, -122.6615), "olympia": (47.0379, -122.9007),
+    "bellingham": (48.7519, -122.4787), "yakima": (46.6021, -120.5059),
+    "mount vernon": (48.4213, -122.3341), "marysville": (48.0518, -122.1771),
+    "puyallup": (47.1854, -122.2929), "poulsbo": (47.7354, -122.6468),
+    "bremerton": (47.5673, -122.6326), "silverdale": (47.6479, -122.6943),
+    "port orchard": (47.5401, -122.6329), "gig harbor": (47.3318, -122.5793),
+    "federal way": (47.3223, -122.3126), "renton": (47.4829, -122.2171),
+    "bellevue": (47.6101, -122.2015), "kirkland": (47.6815, -122.2087),
+    "redmond": (47.6740, -122.1215), "issaquah": (47.5301, -122.0326),
+    "lynnwood": (47.8209, -122.3151), "edmonds": (47.8107, -122.3779),
+    "shoreline": (47.7543, -122.3429), "burien": (47.4704, -122.3468),
+    "des moines": (47.4018, -122.3243), "tukwila": (47.4742, -122.2612),
+    "lakewood": (47.1718, -122.5185), "pasco": (46.2396, -119.1006),
+    "kennewick": (46.2113, -119.1372), "richland": (46.2804, -119.2752),
+    "wenatchee": (47.4235, -120.3103), "walla walla": (46.0646, -118.3430),
+    "moses lake": (47.1301, -119.2779), "ellensburg": (46.9965, -120.5487),
+    "aberdeen": (46.9754, -123.8154), "centralia": (46.7162, -122.9543),
+    "longview": (46.1382, -122.9382), "port angeles": (48.1181, -123.4307),
+    "sequim": (48.0793, -123.1007), "oak harbor": (48.2929, -122.6429),
+    "anacortes": (48.5126, -122.6126), "burlington": (48.4754, -122.3279),
+    "monroe": (47.8554, -121.9715), "snohomish": (47.9126, -122.0987),
+    "arlington": (48.1654, -122.1251), "stanwood": (48.2415, -122.3743),
+    "bonney lake": (47.1779, -122.1762), "maple valley": (47.3690, -122.0479),
+    "enumclaw": (47.2021, -121.9921), "yelm": (46.9429, -122.6093),
+    "lacey": (47.0340, -122.8232), "tumwater": (47.0076, -122.9085),
+    "shelton": (47.2151, -123.1007), "covington": (47.3601, -122.1029),
+}
+
+
+def _geocode_location(location: str) -> tuple[float, float] | None:
+    city = location.split(",")[0].strip().lower()
+    if city in WA_CITY_COORDS:
+        return WA_CITY_COORDS[city]
+    try:
+        import urllib.request
+        import urllib.parse
+        query = urllib.parse.quote(location)
+        url = f"https://nominatim.openstreetmap.org/search?q={query}&format=json&limit=1&countrycodes=us"
+        req = urllib.request.Request(url, headers={"User-Agent": "MatchRV/1.0 (contact@matchrv.com)"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            results = json.loads(resp.read())
+        if results:
+            return (float(results[0]["lat"]), float(results[0]["lon"]))
+    except Exception:
+        pass
+    return None
+
+
+def geocode_new_listings(database_url: str) -> dict[str, int]:
+    """Geocode any listings that have a location string but no lat/lng yet."""
+    stats = {"geocoded": 0, "failed": 0, "skipped": 0}
+    try:
+        with psycopg.connect(database_url, row_factory=dict_row) as conn:
+            rows = conn.execute(
+                "SELECT id, location FROM listings WHERE latitude IS NULL AND location IS NOT NULL ORDER BY id"
+            ).fetchall()
+            LOGGER.info("[geocode] %d listings need geocoding", len(rows))
+            for row in rows:
+                coords = _geocode_location(row["location"])
+                if coords:
+                    conn.execute(
+                        "UPDATE listings SET latitude = %s, longitude = %s WHERE id = %s",
+                        (coords[0], coords[1], row["id"]),
+                    )
+                    stats["geocoded"] += 1
+                    city = row["location"].split(",")[0].strip().lower()
+                    if city not in WA_CITY_COORDS:
+                        time.sleep(1.1)
+                else:
+                    stats["failed"] += 1
+                    LOGGER.warning("[geocode] failed: %r (id=%s)", row["location"], row["id"])
+            conn.commit()
+    except Exception as exc:
+        LOGGER.error("[geocode] error: %s", exc)
+    LOGGER.info("[geocode] done — geocoded=%d failed=%d", stats["geocoded"], stats["failed"])
+    return stats
+
+
+def run_full_sync(
+    *,
+    dealers_file: str | Path,
+    database_url: str | None,
+    output_file: str | Path | None = None,
+    max_pages_per_dealer: int = 0,
+    detail_workers: int = 8,
+    max_detail_urls_per_dealer: int = 0,
+    dealer_filter: str | None = None,
+    browser_fallback: bool = False,
+    bright_data: bool = True,
+    skip_finalize: bool = False,
+) -> dict[str, int]:
+    dealers = filter_dealers(load_dealers(dealers_file), dealer_filter)
+    scraper = InventoryScraper(
+        max_pages_per_dealer=max_pages_per_dealer,
+        detail_workers=detail_workers,
+        max_detail_urls_per_dealer=max_detail_urls_per_dealer,
+        browser_fallback=browser_fallback,
+        bright_data=bright_data,
+    )
+
+    # Persist run_id in rv_scraper_meta so a container restart can resume the
+    # same run rather than starting from dealer #1 again.
+    db: InventorySync | None = None
+    run_id = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    listing_columns: set[str] = set()
+    dealer_columns: set[str] = set()
+    completed_domains: set[str] = set()
+
+    if database_url:
+        db = InventorySync(database_url)
+        with db.connect() as conn:
+            db.ensure_companion_tables(conn)
+            listing_columns = db.table_columns(conn, db.listings_table)
+            dealer_columns = db.table_columns(conn, db.dealers_table)
+            run_id = db.get_or_create_run_id(conn)
+            completed_domains = db.completed_dealer_domains(conn, run_id)
+
+    if completed_domains:
+        LOGGER.info(
+            "Resuming run %s — %d dealer domain(s) already done: %s",
+            run_id,
+            len(completed_domains),
+            ", ".join(sorted(completed_domains)),
+        )
+
+    all_raw: list[Listing] = []
+    seen_identities: set[str] = set()
+    db_inserted = db_updated = db_price_changes = 0
+    dealers_skipped = 0
+
+    for dealer in dealers:
+        # Skip dealers whose domain was already upserted in this run.
+        if db and dealer.domain in completed_domains:
+            LOGGER.info("Dealer %s already scraped this run — skipping", dealer.name)
+            dealers_skipped += 1
+            # Still need their identities so finalize_run doesn't mark them sold.
+            with db.connect() as conn:
+                seen_identities |= db.dealer_identities_in_run(conn, dealer.domain, run_id)
+            continue
+
+        LOGGER.info("Scraping %s (%s)", dealer.name, dealer.url)
+        dealer_raw: list[Listing] = []
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
+                _fut = _ex.submit(scraper.scrape_dealer, dealer)
+                try:
+                    _timeout = int(os.environ.get("DEALER_SCRAPE_TIMEOUT", "1800"))
+                    dealer_raw = _fut.result(timeout=_timeout)
+                except concurrent.futures.TimeoutError:
+                    _timeout_used = int(os.environ.get("DEALER_SCRAPE_TIMEOUT", "1800"))
+                    LOGGER.warning(
+                        "Dealer %s timed out after %ds — skipping",
+                        dealer.name,
+                        _timeout_used,
+                    )
+                    scraper.skip_reasons["dealer_timeout"] += 1
+        except Exception as exc:
+            LOGGER.exception("Dealer %s failed; continuing: %s", dealer.name, exc)
+            scraper.skip_reasons["dealer_failed"] += 1
+
+        dealer_deduped = apply_business_deduplication(dealer_raw)
+        all_raw.extend(dealer_raw)
+        for listing in dealer_deduped:
+            seen_identities.add(build_listing_identity(listing))
+
+        # Write this dealer to DB immediately — a container restart after this
+        # point only loses the *next* dealer, not everything scraped so far.
+        if db:
+            db_write_ok = False  # track whether we should mark this dealer done
+            if dealer_deduped:
+                try:
+                    upsert_stats = db.upsert_dealer(
+                        dealer_deduped,
+                        run_id,
+                        listing_columns=listing_columns,
+                        dealer_columns=dealer_columns,
+                    )
+                    db_inserted += upsert_stats.get("inserted", 0)
+                    db_updated += upsert_stats.get("updated", 0)
+                    db_price_changes += upsert_stats.get("price_changes", 0)
+                    LOGGER.info(
+                        "Dealer %s synced — inserted=%d updated=%d",
+                        dealer.name,
+                        upsert_stats.get("inserted", 0),
+                        upsert_stats.get("updated", 0),
+                    )
+                    db_write_ok = True
+                except Exception as exc:
+                    LOGGER.error(
+                        "DB upsert failed for dealer %s: %s — will NOT mark done so it "
+                        "can be re-scraped on resume.",
+                        dealer.name,
+                        exc,
+                    )
+            else:
+                # 0 listings returned — protect existing records from deletion.
+                # A zero-result scrape almost always means bot detection, a site
+                # outage, or a structure change — NOT a dealer selling every unit
+                # overnight.  Inject existing live identities into seen_identities
+                # so finalize_run leaves them untouched.
+                try:
+                    with db.connect() as conn:
+                        protected = db.live_dealer_identities(conn, dealer.domain)
+                    if protected:
+                        LOGGER.warning(
+                            "Dealer %s returned 0 listings — protecting %d existing records "
+                            "from deletion (likely bot block or site change). "
+                            "Run with --dealer-filter to re-scrape manually.",
+                            dealer.name,
+                            len(protected),
+                        )
+                        seen_identities |= protected
+                    else:
+                        LOGGER.info("Dealer %s: 0 listings and no existing records — nothing to protect", dealer.name)
+                except Exception as exc:
+                    LOGGER.error("live_dealer_identities failed for %s: %s", dealer.name, exc)
+                # A 0-listing dealer is genuinely "done" for this run (intentionally skipped)
+                db_write_ok = True
+            # Only mark done when the upsert committed — if upsert raised an
+            # exception the transaction rolled back and we want to retry on resume.
+            if db_write_ok:
+                try:
+                    with db.connect() as conn:
+                        db.mark_dealer_complete(conn, dealer.domain, run_id)
+                except Exception as exc:
+                    LOGGER.error("mark_dealer_complete failed for %s: %s", dealer.name, exc)
+
+    # Clean up per-thread browsers.
+    scraper._close_thread_browser()
+
+    final_listings = apply_business_deduplication(all_raw)
+
+    stats: dict[str, int | str] = {
+        "dealers": len(dealers),
+        "dealers_skipped_resume": dealers_skipped,
+        "scraped": len(all_raw),
+        "after_dedup": len(final_listings),
+        "skipped": sum(scraper.skip_reasons.values()),
+        "db_inserted": db_inserted,
+        "db_updated": db_updated,
+        "db_price_changes": db_price_changes,
+    }
+    for reason, count in scraper.skip_reasons.items():
+        stats[f"skipped_{reason}"] = count
+
+    if output_file:
+        write_snapshot(output_file, final_listings)
+
+    if db:
+        if skip_finalize:
+            LOGGER.info(
+                "skip_finalize=True — skipping mark-sold step. "
+                "Use this only for single-dealer recovery runs."
+            )
+            stats["db_sold"] = 0
+        else:
+            try:
+                sold_stats = db.finalize_run(seen_identities, run_id)
+                stats["db_sold"] = sold_stats.get("sold", 0)
+            except Exception as exc:
+                LOGGER.error("finalize_run failed: %s", exc)
+        geo_stats = geocode_new_listings(database_url)
+        stats.update({f"geo_{key}": value for key, value in geo_stats.items()})
+    else:
+        LOGGER.warning("DATABASE_URL not set; wrote snapshot only")
+
+    return stats
+
+
+###################################################################
+# FILE: rv_inventory_scraper/scheduler.py
+###################################################################
+
+from __future__ import annotations
+
+import logging
+import os
+import signal
+import threading
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+from .pipeline import run_full_sync
+from .push_to_prod import push_db_to_production
+
+LOGGER = logging.getLogger(__name__)
+
+# Prevents two concurrent syncs (startup thread vs. APScheduler cron).
+_SYNC_LOCK = threading.Lock()
+
+# Last-sync tracking so we can detect missed 3AM runs when the Replit
+# container restarts (dev containers sleep and miss cron windows).
+#
+# Primary store: PostgreSQL (rv_scraper_meta table) — survives container
+# restarts, which wipe /tmp. The file is kept as a best-effort fallback for
+# runs without DATABASE_URL.
+_LAST_SYNC_FILE = Path(os.getenv("SCRAPER_LAST_SYNC_FILE", "/tmp/rv_scraper_last_sync.txt"))
+_STARTUP_SYNC_THRESHOLD_HOURS = float(os.getenv("STARTUP_SYNC_THRESHOLD_HOURS", "20"))
+_LAST_SYNC_KEY = "last_completed_sync_at"
+
+
+def _ensure_meta_table(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS rv_scraper_meta (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """
+    )
+
+
+def _record_sync_time() -> None:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        try:
+            import psycopg  # noqa: PLC0415
+
+            with psycopg.connect(database_url) as conn:
+                _ensure_meta_table(conn)
+                conn.execute(
+                    """
+                    INSERT INTO rv_scraper_meta (key, value, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+                    """,
+                    (_LAST_SYNC_KEY, now_iso),
+                )
+                conn.commit()
+        except Exception as exc:
+            LOGGER.warning("Could not write last-sync timestamp to DB: %s", exc)
+    try:
+        _LAST_SYNC_FILE.write_text(now_iso)
+    except Exception as exc:
+        LOGGER.warning("Could not write last-sync timestamp file: %s", exc)
+
+
+def _read_last_sync_time() -> datetime | None:
+    """Read the last completed sync time: DB first, /tmp file as fallback."""
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        try:
+            import psycopg  # noqa: PLC0415
+
+            with psycopg.connect(database_url) as conn:
+                _ensure_meta_table(conn)
+                row = conn.execute(
+                    "SELECT value FROM rv_scraper_meta WHERE key = %s",
+                    (_LAST_SYNC_KEY,),
+                ).fetchone()
+                conn.commit()
+            if row and row[0]:
+                return datetime.fromisoformat(str(row[0]))
+        except Exception as exc:
+            LOGGER.warning("Could not read last-sync timestamp from DB: %s", exc)
+    try:
+        raw = _LAST_SYNC_FILE.read_text().strip()
+        return datetime.fromisoformat(raw)
+    except Exception:
+        return None
+
+
+def _hours_since_last_sync() -> float:
+    """Return hours since the last recorded sync, or inf if never synced."""
+    last = _read_last_sync_time()
+    if last is None:
+        return float("inf")
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - last).total_seconds() / 3600
+
+
+def scheduled_sync() -> None:
+    """Run one full inventory sync, then push results to production.
+
+    Each scheduled run scrapes the full dealer list, excludes zero-photo
+    listings, applies the scoped dedupe rule, upserts active inventory, marks
+    missing listings sold, queues opted-in price-change notifications, and
+    finally pushes the updated dev DB to the production API so the live site
+    always shows fresh inventory.
+    """
+    if not _SYNC_LOCK.acquire(blocking=False):
+        LOGGER.info("Sync already in progress — skipping this trigger.")
+        return
+    try:
+        _scheduled_sync_impl()
+    finally:
+        _SYNC_LOCK.release()
+
+
+def _scheduled_sync_impl() -> None:
+    skip_finalize = os.getenv("SKIP_FINALIZE", "false").lower() not in ("0", "false", "no")
+    stats = run_full_sync(
+        dealers_file=Path(os.getenv("DEALERS_FILE", "wa-dealers.json")),
+        database_url=os.getenv("DATABASE_URL"),
+        output_file=Path(os.getenv("SCRAPER_OUTPUT", "output/wa-rv-inventory.json")),
+        max_pages_per_dealer=int(os.getenv("MAX_PAGES_PER_DEALER", "0")),
+        detail_workers=int(os.getenv("DETAIL_WORKERS", "8")),
+        max_detail_urls_per_dealer=int(os.getenv("MAX_DETAIL_URLS_PER_DEALER", "0")),
+        dealer_filter=os.getenv("DEALER_FILTER"),
+        browser_fallback=os.getenv("BROWSER_FALLBACK", "true").lower() not in ("0", "false", "no"),
+        skip_finalize=skip_finalize,
+    )
+    LOGGER.info("Scheduled sync complete: %s", stats)
+
+    try:
+        push_stats = push_db_to_production()
+        LOGGER.info("Production push complete: %s", push_stats)
+    except Exception as exc:
+        LOGGER.error("Production push failed (dev DB is still updated): %s", exc)
+
+    # Record completion time AFTER the sync finishes so the startup-sync guard
+    # correctly measures elapsed time since the last *completed* run.
+    _record_sync_time()
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    scheduler = BackgroundScheduler(timezone=os.getenv("SCRAPER_TIMEZONE", "America/Los_Angeles"))
+    scheduler.add_job(
+        scheduled_sync,
+        CronTrigger(hour=3, minute=0),
+        id="daily-wa-rv-inventory-sync",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.start()
+
+    # Replit dev containers restart frequently and may be asleep at 3 AM, so
+    # the cron trigger alone is unreliable. On every startup we check how long
+    # ago the last sync ran and kick off an immediate background sync if it has
+    # been longer than STARTUP_SYNC_THRESHOLD_HOURS (default 20 h).
+    hours_ago = _hours_since_last_sync()
+    if hours_ago >= _STARTUP_SYNC_THRESHOLD_HOURS:
+        LOGGER.info(
+            "Last sync was %.1f hours ago (threshold %.0f h) — starting immediate sync in background.",
+            hours_ago,
+            _STARTUP_SYNC_THRESHOLD_HOURS,
+        )
+        threading.Thread(target=scheduled_sync, name="startup-sync", daemon=True).start()
+    else:
+        LOGGER.info(
+            "Last sync was %.1f hours ago — skipping startup sync (next 3:00 AM Pacific).",
+            hours_ago,
+        )
+
+    stop = False
+
+    def handle_stop(*_: object) -> None:
+        nonlocal stop
+        stop = True
+
+    signal.signal(signal.SIGINT, handle_stop)
+    signal.signal(signal.SIGTERM, handle_stop)
+    while not stop:
+        time.sleep(1)
+    scheduler.shutdown(wait=False)
+
+
+if __name__ == "__main__":
+    main()
+
+
+###################################################################
+# FILE: rv_inventory_scraper/push_to_prod.py
+###################################################################
+
+"""Push all listings from the local (dev) database to the production API.
+
+The production deployment uses a separate Helium PostgreSQL instance that the
+scraper cannot reach directly.  After every sync we call
+  POST https://matchrv.com/api/import/listings
+with the current inventory so the live site always shows fresh data.
+
+Strategy:
+  1. Push all dealers first (tiny payload, ensures dealer IDs exist in prod DB)
+  2. Push listings in small batches of 10 (each batch ~25KB, well under any
+     reverse-proxy body-size limit)
+
+Environment variables used:
+  IMPORT_API_KEY          – shared secret validated by the production API
+  PROD_API_BASE_URL       – override the base URL (default: https://matchrv.com)
+  DATABASE_URL            – local dev DB to read from
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import time
+from typing import Any
+
+import psycopg2
+import psycopg2.extras
+import urllib.request
+import urllib.error
+
+LOGGER = logging.getLogger(__name__)
+
+PROD_API_BASE = os.getenv("PROD_API_BASE_URL", "https://matchrv.com").rstrip("/")
+LISTING_BATCH_SIZE = 10
+
+
+def _synthetic_domain(name: str) -> str:
+    """Return a stable synthetic domain for dealers that have no real domain.
+
+    The value is consistent across pushes so production can upsert by domain.
+    """
+    slug = name.lower().strip()
+    slug = "".join(c if c.isalnum() else "-" for c in slug).strip("-")
+    return f"{slug}.matchrv.local"
+
+
+def _effective_domain(domain: str | None, name: str) -> str:
+    """Return the dealer's real domain, or a synthetic one if it is blank."""
+    return domain.strip() if domain and domain.strip() else _synthetic_domain(name)
+
+
+def _post_json(url: str, payload: dict, api_key: str, timeout: int = 120) -> dict:
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        msg = exc.read().decode(errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} from {url}: {msg[:200]}") from exc
+
+
+def push_db_to_production(database_url: str | None = None) -> dict[str, Any]:
+    """Read all listings/dealers from the dev DB and upsert into production.
+
+    Returns a stats dict with keys: dealers_sent, batches, inserted, updated,
+    skipped, errors.
+    """
+    api_key = os.getenv("IMPORT_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("IMPORT_API_KEY not set — cannot push to production")
+
+    db_url = database_url or os.getenv("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL not set")
+
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cur.execute("""
+        SELECT name, domain, city, state, phone,
+               rating, review_count, avg_response_time,
+               beginner_friendly, years_in_business
+        FROM dealers
+        ORDER BY id
+    """)
+    dealers = []
+    for row in cur.fetchall():
+        dealer_name = row["name"] or ""
+        dealers.append({
+            "domain": _effective_domain(row["domain"], dealer_name),
+            "name": dealer_name,
+            "city": row["city"] or "",
+            "state": row["state"] or "WA",
+            "phone": row["phone"],
+            "rating": float(row["rating"]) if row["rating"] else None,
+            "reviewCount": row["review_count"],
+            "avgResponseTime": row["avg_response_time"],
+            "beginnerFriendly": row["beginner_friendly"],
+            "yearsInBusiness": row["years_in_business"],
+        })
+
+    cur.execute("SELECT COUNT(*) FROM listings")
+    total = cur.fetchone()[0]
+    LOGGER.info("push_to_prod: %d dealers, %d listings to push", len(dealers), total)
+
+    url = f"{PROD_API_BASE}/api/import/listings"
+    stats: dict[str, Any] = {
+        "dealers_sent": len(dealers),
+        "total_listings": total,
+        "batches": 0,
+        "inserted": 0,
+        "updated": 0,
+        "skipped": 0,
+        "errors": 0,
+    }
+
+    # ── Step 1: push dealers alone ──────────────────────────────────────────
+    try:
+        result = _post_json(url, {"dealers": dealers, "listings": []}, api_key)
+        LOGGER.info(
+            "push_to_prod dealers: inserted=%s updated=%s",
+            result.get("dealers", {}).get("inserted", 0),
+            result.get("dealers", {}).get("updated", 0),
+        )
+    except Exception as exc:
+        LOGGER.error("push_to_prod dealer push failed: %s", exc)
+        stats["errors"] += 1
+
+    # ── Step 2: push listings in small batches ──────────────────────────────
+    offset = 0
+    while True:
+        cur.execute("""
+            SELECT l.title, l.make, l.model, l.year, l.type, l.price,
+                   l.mileage, l.length, l.slides, l.sleeps, l.location,
+                   l.condition, l.description, l.features, l.images,
+                   l.dealer_name, l.vin,
+                   l.width_ft, l.height_ft, l.dry_weight, l.gvwr,
+                   l.hitch_weight, l.fresh_water, l.grey_water, l.black_water,
+                   l.generator, l.solar, l.awning, l.outdoor_kitchen,
+                   l.washer_dryer, l.price_history,
+                   d.domain AS dealer_domain
+            FROM listings l
+            LEFT JOIN dealers d ON l.dealer_id = d.id
+            ORDER BY l.id
+            LIMIT %s OFFSET %s
+        """, (LISTING_BATCH_SIZE, offset))
+
+        rows = cur.fetchall()
+        if not rows:
+            break
+
+        listings_batch = []
+        for r in rows:
+            def _parse_json_field(v: Any) -> Any:
+                if isinstance(v, (list, dict)):
+                    return v
+                if isinstance(v, str):
+                    try:
+                        return json.loads(v)
+                    except Exception:
+                        return []
+                return []
+
+            images = _parse_json_field(r["images"]) or []
+            features = _parse_json_field(r["features"]) or []
+            price_history = _parse_json_field(r["price_history"]) or []
+
+            listings_batch.append({
+                "title": r["title"],
+                "make": r["make"],
+                "model": r["model"],
+                "year": r["year"],
+                "type": r["type"],
+                "price": float(r["price"]) if r["price"] else 0,
+                "mileage": r["mileage"],
+                "length": float(r["length"]) if r["length"] else None,
+                "slides": r["slides"],
+                "sleeps": r["sleeps"],
+                "location": r["location"],
+                "condition": r["condition"],
+                "description": r["description"],
+                "features": features,
+                "images": images,
+                "dealer_name": r["dealer_name"],
+                "dealer_domain": _effective_domain(r["dealer_domain"], r["dealer_name"] or ""),
+                "vin": r["vin"],
+                "width": float(r["width_ft"]) if r["width_ft"] else None,
+                "height": float(r["height_ft"]) if r["height_ft"] else None,
+                "dry_weight": float(r["dry_weight"]) if r["dry_weight"] else None,
+                "gvwr": float(r["gvwr"]) if r["gvwr"] else None,
+                "hitch_weight": float(r["hitch_weight"]) if r["hitch_weight"] else None,
+                "fresh_water_capacity": float(r["fresh_water"]) if r["fresh_water"] else None,
+                "gray_water_capacity": float(r["grey_water"]) if r["grey_water"] else None,
+                "black_water_capacity": float(r["black_water"]) if r["black_water"] else None,
+                "generator": bool(r["generator"]) if r["generator"] is not None else None,
+                "solar": bool(r["solar"]) if r["solar"] is not None else None,
+                "awning": bool(r["awning"]) if r["awning"] is not None else True,
+                "outdoor_kitchen": bool(r["outdoor_kitchen"]) if r["outdoor_kitchen"] is not None else None,
+                "washer_dryer": bool(r["washer_dryer"]) if r["washer_dryer"] is not None else None,
+                "price_history": price_history,
+            })
+
+        try:
+            result = _post_json(url, {"dealers": [], "listings": listings_batch}, api_key)
+            batch_inserted = result.get("listings", {}).get("inserted", 0)
+            batch_updated = result.get("listings", {}).get("updated", 0)
+            batch_skipped = result.get("listings", {}).get("skipped", 0)
+            stats["inserted"] += batch_inserted
+            stats["updated"] += batch_updated
+            stats["skipped"] += batch_skipped
+            stats["batches"] += 1
+            if stats["batches"] % 20 == 0:
+                LOGGER.info(
+                    "push_to_prod progress: %d/%d listings pushed",
+                    offset + len(rows), total,
+                )
+        except Exception as exc:
+            LOGGER.error("push_to_prod batch at offset=%d failed: %s", offset, exc)
+            stats["errors"] += 1
+
+        offset += LISTING_BATCH_SIZE
+
+    cur.close()
+    conn.close()
+    LOGGER.info("push_to_prod complete: %s", stats)
+    return stats
+
+
+if __name__ == "__main__":
+    import sys
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    try:
+        result = push_db_to_production()
+        print(json.dumps(result, indent=2))
+        sys.exit(0 if result["errors"] == 0 else 1)
+    except Exception as exc:
+        LOGGER.error("push_to_prod failed: %s", exc)
+        sys.exit(1)
+
+
+###################################################################
+# FILE: rv_inventory_scraper/cli.py
+###################################################################
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+from pathlib import Path
+
+from .pipeline import run_full_sync
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Scrape and sync Washington RV dealer inventory.")
+    parser.add_argument("--dealers", default="wa-dealers.json", help="Path to WA dealer JSON list.")
+    parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"), help="Postgres DATABASE_URL.")
+    parser.add_argument("--output", default="output/wa-rv-inventory.json", help="Snapshot JSON output path.")
+    parser.add_argument(
+        "--max-pages-per-dealer",
+        type=int,
+        default=0,
+        help="Loop guard for pagination. 0 means unlimited; this is not a listing cap.",
+    )
+    parser.add_argument(
+        "--detail-workers",
+        type=int,
+        default=8,
+        help="Concurrent detail-page fetch/parse workers per dealer.",
+    )
+    parser.add_argument(
+        "--max-detail-urls-per-dealer",
+        type=int,
+        default=0,
+        help="Emergency guard for bad sites that expose endless detail-like URLs. 0 means unlimited.",
+    )
+    parser.add_argument(
+        "--dealer-filter",
+        default=None,
+        help="Scrape only dealers whose name, city, or domain contains this text.",
+    )
+    parser.add_argument(
+        "--browser-fallback",
+        action="store_true",
+        default=False,
+        help=(
+            "When a normal HTTP fetch returns 401, 403, or 429, retry that URL using "
+            "a headless Playwright Chromium browser. Requires: python -m playwright install chromium"
+        ),
+    )
+    parser.add_argument(
+        "--no-bright-data",
+        action="store_true",
+        default=False,
+        help="Disable the Bright Data residential proxy fallback even if credentials are set in env vars.",
+    )
+    parser.add_argument(
+        "--skip-finalize",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the mark-sold / finalize step after scraping. "
+            "Use only for single-dealer recovery runs where running finalize "
+            "would incorrectly mark all other dealers' listings as sold."
+        ),
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose scraper logging.")
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    stats = run_full_sync(
+        dealers_file=Path(args.dealers),
+        database_url=args.database_url,
+        output_file=Path(args.output),
+        max_pages_per_dealer=args.max_pages_per_dealer,
+        detail_workers=args.detail_workers,
+        max_detail_urls_per_dealer=args.max_detail_urls_per_dealer,
+        dealer_filter=args.dealer_filter,
+        browser_fallback=args.browser_fallback,
+        bright_data=not args.no_bright_data,
+        skip_finalize=args.skip_finalize,
+    )
+    print(json.dumps(stats, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
+

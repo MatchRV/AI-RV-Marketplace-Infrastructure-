@@ -1,0 +1,426 @@
+"use client";
+
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Caravan, Smartphone, Ruler, RotateCcw, Info, X, ChevronDown, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
+// ─── RV Presets ────────────────────────────────────────────────────────────────
+// Swap these for different RV models. Each entry needs:
+//   - glb: URL to a glTF/GLB 3D model file
+//   - usdz: URL to a USDZ file (for iOS Quick Look AR) — optional
+//   - lengthFt / widthFt / heightFt: real-world dimensions for overlay labels
+//   - label: display name
+
+interface RVModel {
+  id: string;
+  label: string;
+  glb: string;
+  usdz?: string;
+  lengthFt: number;
+  widthFt: number;
+  heightFt: number;
+  poster?: string;
+}
+
+const RV_PRESETS: RVModel[] = [
+  {
+    id: "travel-trailer-28",
+    label: '28\' Travel Trailer',
+    // Placeholder GLB — replace with your actual RV model
+    glb: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    lengthFt: 28,
+    widthFt: 8,
+    heightFt: 11,
+  },
+  {
+    id: "fifth-wheel-36",
+    label: '36\' Fifth Wheel',
+    glb: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    lengthFt: 36,
+    widthFt: 8.5,
+    heightFt: 13,
+  },
+  {
+    id: "class-a-34",
+    label: '34\' Class A Motorhome',
+    glb: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    lengthFt: 34,
+    widthFt: 8.5,
+    heightFt: 12.5,
+  },
+  {
+    id: "class-c-25",
+    label: '25\' Class C Motorhome',
+    glb: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    lengthFt: 25,
+    widthFt: 8,
+    heightFt: 11,
+  },
+  {
+    id: "class-b-19",
+    label: '19\' Class B Van',
+    glb: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    lengthFt: 19,
+    widthFt: 7,
+    heightFt: 9.5,
+  },
+];
+
+// ─── How It Works Modal ────────────────────────────────────────────────────────
+
+function HowItWorksModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+          How It Works
+        </h3>
+        <ol className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+            <span>Select an RV size from the dropdown, or arrive here from a listing page.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+            <span>Tap <strong>&ldquo;Place RV in My Driveway&rdquo;</strong> and allow camera access.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">3</span>
+            <span>Point your phone at your driveway. The AR system will detect the ground surface.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">4</span>
+            <span>Tap the driveway to place the RV. Use one finger to move, two fingers to rotate.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">5</span>
+            <span>Check if the RV fits! Look at the dimension labels overlaid on the model.</span>
+          </li>
+        </ol>
+        <button
+          onClick={onClose}
+          className="mt-5 w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AR Viewer (client-side model-viewer) ──────────────────────────────────────
+
+function ARViewer({ model }: { model: RVModel }) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    // Dynamically import model-viewer (web component, client-only)
+    import("@google/model-viewer").then(() => setLoaded(true));
+  }, []);
+
+  if (!loaded) {
+    return (
+      <div className="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
+        <div className="animate-pulse text-slate-400">Loading 3D viewer...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full">
+      {/* @ts-expect-error model-viewer is a web component */}
+      <model-viewer
+        src={model.glb}
+        ios-src={model.usdz || ""}
+        poster={model.poster || ""}
+        alt={`3D model of ${model.label}`}
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="fixed"
+        camera-controls
+        touch-action="pan-y"
+        auto-rotate
+        shadow-intensity="1"
+        environment-image="neutral"
+        style={{
+          width: "100%",
+          height: "400px",
+          borderRadius: "1rem",
+          backgroundColor: "#f1f5f9",
+        }}
+      >
+        {/* AR button slot — custom styled */}
+        <button
+          slot="ar-button"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 bg-blue-600 text-white rounded-full font-semibold text-sm shadow-lg hover:bg-blue-700 transition flex items-center gap-2"
+        >
+          <Smartphone className="h-4 w-4" />
+          Place RV in My Driveway
+        </button>
+
+        {/* Loading bar */}
+        <div slot="progress-bar" className="w-full h-1 bg-blue-100 rounded-full overflow-hidden">
+          <div className="h-full bg-blue-600 animate-pulse" style={{ width: "100%" }} />
+        </div>
+      {/* @ts-expect-error model-viewer is a web component */}
+      </model-viewer>
+
+      {/* Dimension overlay labels */}
+      <div className="absolute top-3 right-3 bg-black/70 text-white text-xs rounded-lg px-3 py-2 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Ruler className="h-3 w-3" />
+          <span>{model.lengthFt} ft long</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Ruler className="h-3 w-3 rotate-90" />
+          <span>{model.widthFt} ft wide</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Ruler className="h-3 w-3" />
+          <span>{model.heightFt} ft tall</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page Content ─────────────────────────────────────────────────────────
+
+function ARDrivewayContent() {
+  const searchParams = useSearchParams();
+  const [selectedModel, setSelectedModel] = useState<RVModel>(RV_PRESETS[0]);
+  const [showHowTo, setShowHowTo] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+
+    // Check for first-time visit
+    const visited = localStorage.getItem("ar-driveway-visited");
+    if (!visited && mobile) {
+      setShowHowTo(true);
+      localStorage.setItem("ar-driveway-visited", "true");
+    }
+  }, []);
+
+  // Accept dimensions from query params (from listing detail page)
+  useEffect(() => {
+    const lengthParam = searchParams.get("length");
+    const widthParam = searchParams.get("width");
+    const heightParam = searchParams.get("height");
+    const nameParam = searchParams.get("name");
+
+    if (lengthParam) {
+      setSelectedModel((prev) => ({
+        ...prev,
+        id: "custom",
+        label: nameParam || `${lengthParam}' RV`,
+        lengthFt: parseFloat(lengthParam),
+        widthFt: widthParam ? parseFloat(widthParam) : prev.widthFt,
+        heightFt: heightParam ? parseFloat(heightParam) : prev.heightFt,
+      }));
+    }
+  }, [searchParams]);
+
+  const handleReset = useCallback(() => {
+    setSelectedModel(RV_PRESETS[0]);
+  }, []);
+
+  return (
+    <>
+      {showHowTo && <HowItWorksModal onClose={() => setShowHowTo(false)} />}
+
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+        {/* Header */}
+        <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-40">
+          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Caravan className="h-6 w-6 text-blue-600" />
+              <span className="font-bold text-lg text-slate-900 dark:text-white">
+                Driveway Fit Check
+              </span>
+            </div>
+            <button
+              onClick={() => setShowHowTo(true)}
+              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <Info className="h-4 w-4" />
+              How It Works
+            </button>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8 max-w-2xl">
+          {/* Intro */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
+              See if This RV Fits in Your Driveway
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+              Use your phone&apos;s camera to place a life-size RV model in your
+              driveway. Check length, width, and clearance before you buy.
+            </p>
+          </div>
+
+          {/* RV Size Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Select RV Size
+            </label>
+            <div className="relative">
+              <select
+                value={selectedModel.id}
+                onChange={(e) => {
+                  const found = RV_PRESETS.find((p) => p.id === e.target.value);
+                  if (found) setSelectedModel(found);
+                }}
+                className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 pr-10 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {RV_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label} — {preset.lengthFt}L x {preset.widthFt}W x {preset.heightFt}H ft
+                  </option>
+                ))}
+                {selectedModel.id === "custom" && (
+                  <option value="custom">{selectedModel.label}</option>
+                )}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* 3D Viewer + AR */}
+          <ARViewer model={selectedModel} />
+
+          {/* Mobile AR prompt */}
+          {isMobile && (
+            <p className="text-center text-sm text-blue-600 dark:text-blue-400 mt-3 font-medium">
+              Tap the blue button on the 3D model above to start AR
+            </p>
+          )}
+
+          {/* Desktop: QR code to open on phone */}
+          {!isMobile && (
+            <div className="mt-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <QrCode className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Scan to View in Your Driveway
+                </h3>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 max-w-sm mx-auto">
+                Scan this QR code with your phone&apos;s camera to open the AR
+                experience and place this RV in your driveway.
+              </p>
+              <div className="inline-block bg-white p-4 rounded-xl shadow-sm">
+                <QRCodeSVG
+                  value={typeof window !== "undefined" ? window.location.href : ""}
+                  size={200}
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
+                <Smartphone className="h-3.5 w-3.5" />
+                <span>Works on iPhone and Android</span>
+              </div>
+            </div>
+          )}
+
+          {/* Dimension cards */}
+          <div className="grid grid-cols-3 gap-3 mt-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {selectedModel.lengthFt}<span className="text-sm font-normal text-slate-400"> ft</span>
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Length</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {selectedModel.widthFt}<span className="text-sm font-normal text-slate-400"> ft</span>
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Width</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {selectedModel.heightFt}<span className="text-sm font-normal text-slate-400"> ft</span>
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Height</p>
+            </div>
+          </div>
+
+          {/* Reset button */}
+          <button
+            onClick={handleReset}
+            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset to default size
+          </button>
+
+          {/* Disclaimer */}
+          <div className="mt-8 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              <strong>Visual guide only.</strong> Always measure your driveway
+              and check local parking rules, HOA restrictions, and utility
+              clearances before purchasing. The 3D model is approximate and may
+              not reflect the exact shape of every RV. Actual dimensions vary by
+              manufacturer and floor plan.
+            </p>
+          </div>
+
+          {/* Tips */}
+          <div className="mt-6 mb-12 space-y-3">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+              Tips for the best AR experience
+            </h3>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2">
+              <li className="flex gap-2">
+                <span className="text-blue-500">1.</span>
+                Go outside in good lighting — AR works best in daylight.
+              </li>
+              <li className="flex gap-2">
+                <span className="text-blue-500">2.</span>
+                Point your camera at the ground first and move slowly so the surface can be detected.
+              </li>
+              <li className="flex gap-2">
+                <span className="text-blue-500">3.</span>
+                Place the model at the start of your driveway to check total length.
+              </li>
+              <li className="flex gap-2">
+                <span className="text-blue-500">4.</span>
+                Walk around the model to check side clearance and height near garage doors.
+              </li>
+            </ul>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
+
+// ─── Page wrapper with Suspense for useSearchParams ────────────────────────────
+
+export default function ARDrivewayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse text-slate-400">Loading...</div>
+        </div>
+      }
+    >
+      <ARDrivewayContent />
+    </Suspense>
+  );
+}

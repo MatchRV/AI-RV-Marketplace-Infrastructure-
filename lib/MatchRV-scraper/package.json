@@ -1,0 +1,19 @@
+{
+  "name": "matchrv-scraper",
+  "version": "1.0.0",
+  "description": "Production-grade RV inventory scraper for MatchRV marketplace",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scraper/run.js",
+    "scrape:debug": "DEBUG=true HEADLESS=false node scraper/run.js",
+    "sync": "node scraper/scheduled-run.js",
+    "sync:debug": "DEBUG=true HEADLESS=false node scraper/scheduled-run.js",
+    "install:browsers": "npx playwright install chromium",
+    "schedule:install": "powershell -ExecutionPolicy Bypass -File ./scripts/install-schedule.ps1",
+    "schedule:remove": "schtasks /Delete /TN \"MatchRV-Inventory-Sync\" /F"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0",
+    "dotenv": "^16.4.0"
+  }
+}

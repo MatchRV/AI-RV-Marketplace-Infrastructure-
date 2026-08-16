@@ -1,0 +1,182 @@
+Use this **Replit prompt** as-is. It gives tight directions, focuses on the most likely weaknesses, and pushes for a premium rebuild aimed at UX, SEO, conversion, and traffic growth.
+
+## Replit prompt
+
+You are a senior product designer, technical SEO specialist, CRO expert, and full-stack frontend engineer. Audit and rebuild LotLink.io so it feels like a 9.9/10 premium marketplace brand, loads fast, ranks well, converts better, and clearly beats competing RV listing sites in both search visibility and monthly visitors.
+
+Your mission:
+- Fix the current website weaknesses.
+- Keep the brand name LotLink.
+- Make the site look elite, trustworthy, modern, and conversion-focused.
+- Optimize for SEO, organic traffic, direct traffic, and lead generation.
+- Build improvements that give LotLink a clear edge over RV Trader, Facebook Marketplace listings, dealer websites, and generic RV directories.
+
+Context about current problems to fix:
+- The value proposition is not yet sharp enough; users should instantly understand why LotLink is better within 3 seconds.[1]
+- The site appears early-stage / pre-launch, so it needs more trust, more proof, more structure, and stronger conversion paths.[1]
+- Messaging is likely too feature-led and not outcome-led; shift copy toward “find the right RV faster, compare smarter, and connect with real inventory.”[1]
+- The site needs stronger information architecture for SEO, including crawlable category pages, location pages, buyer guides, comparison content, and structured internal linking.[1]
+- It likely over-relies on a landing-page style experience instead of a scalable marketplace content engine, which limits SEO and monthly visitor growth.[1]
+- It needs stronger EEAT signals: transparent company story, expert content, dealer credibility, FAQs, trust badges, privacy clarity, and real shopper/dealer proof.[1]
+- It needs better technical SEO, Core Web Vitals, schema, metadata, image optimization, and semantic HTML to compete at scale.[1]
+
+Deliverables:
+1. A full homepage rebuild.
+2. A complete new sitemap and SEO architecture.
+3. High-converting copy for the homepage.
+4. UI/UX improvements that make the site feel premium and easier to use.
+5. Technical SEO fixes.
+6. CRO fixes to increase signup, waitlist, lead form, and inventory engagement.
+7. Content strategy to grow monthly visitors.
+8. A competitor-advantage strategy.
+9. Production-ready code changes, not just recommendations.
+10. A final changelog explaining what was improved and why.
+
+Execution rules:
+- Do not give generic advice.
+- Do not use filler copy like “empowering your journey” or “all-in-one solution.”
+- Write specific, sharp, believable copy.
+- Make every section serve SEO, conversion, trust, or product clarity.
+- Prioritize speed, clarity, and authority.
+- Use semantic HTML, accessible components, strong heading hierarchy, and mobile-first responsive design.
+- Design should feel like a premium marketplace startup, not a template.
+- Make the site visually cleaner, more confident, and more credible than typical RV websites.
+- Avoid cliché SaaS gradients and generic AI aesthetics.
+- Use strong typography, clean spacing, clear CTA hierarchy, and trust-building sections.
+
+Homepage requirements:
+- Above the fold must clearly answer:
+  - What is LotLink?
+  - Who is it for?
+  - Why is it better?
+  - What should the visitor do next?
+- Include:
+  - Strong headline and subheadline
+  - Primary CTA and secondary CTA
+  - Trust/credibility strip
+  - “How it works” section
+  - Benefits for shoppers
+  - Benefits for dealers
+  - Featured inventory preview
+  - AI assistant explanation
+  - Comparison table: LotLink vs traditional RV shopping
+  - SEO-rich FAQ section
+  - Final CTA
+- Add stronger social proof placeholders that can later be replaced with real metrics, testimonials, and logos.
+- Add a section explaining real-time inventory aggregation and why that matters.
+- Add a section that reduces buyer anxiety: stale listings, hidden pricing, too many sites, poor filters, wasted time.
+- Add a dealer growth section focused on better leads, fresher exposure, and less dependence on outdated listing models.
+
+SEO architecture requirements:
+Create a scalable sitemap for:
+- /rvs-for-sale
+- /travel-trailers-for-sale
+- /fifth-wheels-for-sale
+- /class-a-rvs-for-sale
+- /class-b-rvs-for-sale
+- /class-c-rvs-for-sale
+- /toy-haulers-for-sale
+- /rv-dealers
+- /rv-dealers/[state]
+- /rv-dealers/[city]
+- /rvs-for-sale/[state]
+- /rvs-for-sale/[state]/[city]
+- /compare/[model-a]-vs-[model-b]
+- /guides/best-rvs-for-full-time-living
+- /guides/best-rvs-for-families
+- /guides/how-to-buy-a-used-rv
+- /guides/towing-guide
+- /guides/rv-financing-guide
+- /guides/motorhome-vs-travel-trailer
+
+For each page type, generate:
+- SEO title formula
+- Meta description formula
+- H1 format
+- Internal linking rules
+- Schema type
+- Recommended content blocks
+- Conversion CTA
+
+Technical SEO requirements:
+- Improve Core Web Vitals.
+- Ensure proper title tags and meta descriptions.
+- Add canonical tags.
+- Add Open Graph and Twitter card tags.
+- Add JSON-LD schema for Organization, WebSite, SearchAction, FAQPage, Product/Vehicle where relevant, and BreadcrumbList.
+- Improve heading structure.
+- Improve semantic HTML.
+- Compress/lazy-load media.
+- Use descriptive alt text.
+- Generate robots.txt recommendations.
+- Generate sitemap.xml recommendations.
+- Add internal linking modules throughout the site.
+- Ensure pages are indexable and crawl-friendly.
+- Build pages to rank for transactional, informational, and comparison intent.
+
+CRO requirements:
+- Improve CTA placement and clarity.
+- Reduce friction in signup/waitlist forms.
+- Add trust-building microcopy near forms.
+- Add comparison and objection-handling sections.
+- Add sticky mobile CTA.
+- Add stronger dealer lead capture.
+- Improve browse-to-lead flow.
+- Add email capture hooks for buyers not ready to convert.
+- Build around measurable conversion goals.
+
+Content strategy requirements:
+Create a traffic plan that helps LotLink beat competitors over time:
+- Programmatic SEO for city/state/category pages
+- Comparison pages
+- Buyer guides
+- Dealer pages
+- Seasonal trend content
+- Used vs new RV content
+- Family, towing, boondocking, luxury, and full-time RV living clusters
+- Internal linking flywheel between listings, guides, dealers, and compare pages
+
+Need from you:
+- First, audit the current site structure and identify design, UX, copy, trust, SEO, speed, and conversion weaknesses.
+- Then produce a prioritized execution roadmap:
+  - Quick wins in 1 day
+  - High-impact fixes in 1 week
+  - Growth moat work in 30-60 days
+- Then implement the redesigned homepage and supporting SEO structure in code.
+- Then provide a written explanation of how these changes improve rankings, visitors, trust, and conversions.
+
+Output format:
+1. Audit findings
+2. Priority roadmap
+3. New sitemap and SEO architecture
+4. Revised homepage copy
+5. UI/UX upgrade plan
+6. Technical SEO fixes
+7. CRO fixes
+8. Content moat strategy
+9. Full code implementation
+10. Changelog with business impact
+
+Success standard:
+When finished, the site should feel credible enough for investors, polished enough for premium dealers, simple enough for first-time RV buyers, and structured well enough to become an SEO machine.
+
+## Notes to tailor it
+A stronger version is to add your real stack at the top, for example:
+- “Frontend is Next.js”
+- “Backend/database is Supabase”
+- “Current deployment is on Replit”
+- “Do not break existing auth, forms, or analytics”
+
+That makes Replit produce more usable code on the first pass.
+
+## Best add-on
+Append this line at the end of the prompt:
+
+“Before coding, ask me for the current file tree and then make changes file-by-file with exact replacement code.”
+
+That forces a more controlled refactor and usually gets better results.[1]
+
+Would you like me to turn this into an even more aggressive **master prompt** for Replit that also tells it exactly how to rewrite the hero, FAQs, schema, and page architecture?
+
+Sources
+[1] LotLink — AI-Powered RV Marketplace https://www.lotlink.io

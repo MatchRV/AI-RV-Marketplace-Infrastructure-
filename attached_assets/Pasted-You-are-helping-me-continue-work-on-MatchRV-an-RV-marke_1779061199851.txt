@@ -1,0 +1,52 @@
+You are helping me continue work on MatchRV, an RV marketplace. Apply the source files in this handoff bundle to my Replit project, preserving the same paths. Then verify the app builds and the dealer workflow works.
+
+Business goal:
+I need MatchRV to produce high-value dealer leads. Customers shopping for RVs should be tracked throughout the site using first-party buyer-intent signals: pages viewed, listings viewed, filters clicked/changed, location/proximity intent from explicit city/state/filter inputs, saves, tow checks, contact opens, dealer contact submissions, price alerts, AI Outfitter activity, and match/pricing lead forms. This should be attached to each lead so dealers can see why the lead is valuable.
+
+What was changed:
+1. Added dealer login flow:
+   - /dealers/login is a dealer login page.
+   - Main nav/footer “For Dealers” points to /dealers/login.
+   - Demo mode accepts any dealer email/password and stores a local dealer session.
+   - /dealers redirects to login when no dealer session exists.
+
+2. Added local dev auth fallback:
+   - App no longer hard-crashes when Clerk publishable key is missing or a placeholder.
+   - AuthProvider can run in local unauthenticated mode.
+
+3. Added buyer intent tracking:
+   - New src/lib/buyer-intent.ts stores a first-party profile in localStorage under matchrv_buyer_intent_profile.
+   - It computes intentScore / 
+eadinessScore, tags, recent activity, viewed listings, latest filters, location intent, and event trail.
+   - It reuses the analytics session ID from src/lib/analytics.ts.
+   - It sends production analytics events through the existing /api/analytics/event endpoint.
+
+4. Hooked tracking into the site:
+   - App page views.
+   - Browse filter changes and explicit city/state location search.
+   - Listing detail views, saves, contact opens, dealer contact, tow checks, price alerts.
+   - Discover listing card views and saved swipes.
+   - AI Outfitter session milestones.
+   - Match report and buyers-agent lead forms.
+   - Pricing buyers-agent lead form.
+
+5. Enriched leads:
+   - rtifacts/api-server/src/routes/leads.ts now enriches uyerProfile.matchrvIntent using the frontend buyer profile and recent analytics events for the same session ID.
+   - Public /api/leads and /api/price-alerts store the enriched profile.
+
+6. Dealer portal improvements:
+   - Lead cards now show proximity/location signal, filter summary, and intent trail.
+   - Live admin leads map buyerProfile intent score/tags/signals into the dealer view.
+
+Important constraints:
+- Do not add silent precise geolocation. Only use explicit customer-provided location/search/filter signals unless a separate consent UI is built later.
+- Preserve the existing API schema. No database migration should be needed because analytics metadata and buyer lead profile are already JSON fields.
+- After applying, run build and fix any project-specific path/import issues.
+
+Suggested verification:
+1. Start the app.
+2. Go to / -> click “For Dealers” -> /dealers/login.
+3. Enter any dealer email/password -> confirm redirect to /dealers and dashboard renders.
+4. Go to /browse, click several filters, choose a city/state if Google Places is configured, then inspect localStorage key matchrv_buyer_intent_profile.
+5. Open a listing, click Contact Dealer, submit lead, confirm payload includes uyerProfile.matchrvIntent.
+6. In dealer portal, confirm lead card shows readiness/proximity/filter/intent trail.

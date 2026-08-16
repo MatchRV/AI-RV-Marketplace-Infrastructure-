@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sell My RV | MatchRV Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&amp;family=DM+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#161d1d",
+                    "on-tertiary-fixed": "#2d1600",
+                    "inverse-surface": "#2b3232",
+                    "inverse-on-surface": "#ebf2f2",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#dde4e3",
+                    "on-primary-fixed": "#002020",
+                    "surface-container-low": "#eef5f4",
+                    "secondary-container": "#dde3ec",
+                    "surface-tint": "#00696b",
+                    "surface-container": "#e8efef",
+                    "on-secondary-fixed-variant": "#41474e",
+                    "on-surface-variant": "#3b4949",
+                    "on-secondary-container": "#5f656c",
+                    "on-secondary-fixed": "#161c22",
+                    "tertiary-fixed-dim": "#ffb876",
+                    "background": "#f4fbfa",
+                    "outline": "#6b7a7a",
+                    "surface-container-high": "#e2eae9",
+                    "caution-gold": "#FFE08B",
+                    "on-tertiary": "#ffffff",
+                    "silver-road": "#E2E8F0",
+                    "primary-fixed-dim": "#2ddbde",
+                    "on-primary": "#ffffff",
+                    "secondary": "#595f66",
+                    "tertiary": "#8d4f00",
+                    "on-tertiary-container": "#6f3d00",
+                    "surface-container-lowest": "#ffffff",
+                    "deep-teal": "#004329",
+                    "primary-container": "#00ced1",
+                    "on-tertiary-fixed-variant": "#6b3b00",
+                    "tertiary-fixed": "#ffdcc0",
+                    "primary": "#00696b",
+                    "midnight-slate": "#0B1117",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#bac9c9",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#c1c7cf",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f4fbfa",
+                    "surface-variant": "#dde4e3",
+                    "secondary-fixed": "#dde3ec",
+                    "on-surface": "#161d1d",
+                    "on-primary-fixed-variant": "#004f51",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#ffa54a",
+                    "on-primary-container": "#005354",
+                    "surface": "#f4fbfa",
+                    "surface-dim": "#d4dbdb",
+                    "primary-fixed": "#5af8fb",
+                    "horizon-cyan": "#00CED1",
+                    "inverse-primary": "#2ddbde"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "gutter": "24px",
+                    "unit": "4px",
+                    "margin-desktop": "64px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "label-bold": ["DM Sans"],
+                    "headline-lg": ["Outfit"],
+                    "headline-lg-mobile": ["Outfit"],
+                    "body-lg": ["DM Sans"],
+                    "headline-md": ["Outfit"],
+                    "display-lg": ["Outfit"],
+                    "body-md": ["DM Sans"]
+            },
+            "fontSize": {
+                    "label-bold": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                    "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                    "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                    "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                    "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-number {
+            -webkit-text-stroke: 1px #00CED1;
+            color: transparent;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md antialiased overflow-x-hidden">
+<!-- TopAppBar -->
+<nav class="sticky top-0 z-[100] bg-surface border-b border-silver-road h-20 flex items-center">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface cursor-pointer md:hidden">menu</span>
+<span class="font-display-lg text-display-lg italic font-black text-on-surface">MatchRV</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors" href="#">Explore</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors" href="#">Inventory</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors" href="#">Saved</a>
+<a class="font-label-bold text-label-bold text-horizon-cyan font-bold border-b-2 border-horizon-cyan" href="#">Sell</a>
+</div>
+<button class="bg-horizon-cyan text-midnight-slate px-6 py-2.5 font-label-bold text-label-bold uppercase tracking-wider hover:opacity-90 transition-all scale-95 active:scale-90">
+                Sell My RV
+            </button>
+</div>
+</nav>
+<main>
+<!-- Hero Section -->
+<section class="relative min-h-[751px] flex items-center overflow-hidden">
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 bg-gradient-to-r from-midnight-slate/80 to-transparent z-10"></div>
+<img class="w-full h-full object-cover" data-alt="A professional high-resolution photograph of a luxury Class A motorhome parked at a scenic mountain overlook during a golden hour sunset. The lighting is warm and dramatic, highlighting the sleek metallic finish of the RV. The image conveys a premium, high-value marketplace feel with a vast, expansive landscape in the background, matching the rugged yet modern MatchRV brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIfplUWv9HOxrYAYgvsqTz7YAqd-_MDLGa408HFx0KbqW9m-SGrmR7Rtneh2YfRUBrGnAIldX-ap2vPcHeyQNOifEbhvW8WuqXlnI6JkylKkqwmQ_QgtVMxWkJowNvNEI2-NeYjaNeZG7gOtEhqWv8BsI86UtILN_EsCY9rCLLzijhRYiF5drcySfuTfAmfChqeLGWHzRX4QqjzEgVI8dsuxSkVU2SgwFoX70c7wwAmVwgxWB13SX1zxYAmVtT0vj7CPeM5E2ocOfO"/>
+</div>
+<div class="relative z-20 w-full px-margin-desktop max-w-container-max mx-auto py-24">
+<div class="max-w-2xl">
+<span class="bg-horizon-cyan text-midnight-slate font-label-bold text-label-bold px-4 py-1 uppercase tracking-widest inline-block mb-6">Premium Marketplace</span>
+<h1 class="font-display-lg text-display-lg text-surface-container-lowest mb-6 leading-tight">
+                        Sell Your RV <span class="text-horizon-cyan">Faster</span> for More.
+                    </h1>
+<p class="font-body-lg text-body-lg text-surface-variant mb-10 max-w-lg">
+                        Connect with the world's most qualified buyers. Our high-precision brokerage platform ensures your high-value asset moves quickly and at the right price.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="bg-horizon-cyan text-midnight-slate px-10 py-5 font-label-bold text-label-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-xl">
+                            Start Your Listing
+                        </button>
+<button class="border-2 border-surface-container-lowest text-surface-container-lowest px-10 py-5 font-label-bold text-label-bold uppercase tracking-widest hover:bg-surface-container-lowest hover:text-midnight-slate transition-all">
+                            How It Works
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats / Proof Points -->
+<section class="bg-midnight-slate py-12 border-b border-outline/20">
+<div class="px-margin-desktop max-w-container-max mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="text-center md:text-left">
+<div class="text-horizon-cyan font-display-lg text-[40px] leading-none mb-1">14 Days</div>
+<div class="text-surface-variant font-label-bold text-label-bold uppercase tracking-tighter">Avg. Sale Time</div>
+</div>
+<div class="text-center md:text-left">
+<div class="text-horizon-cyan font-display-lg text-[40px] leading-none mb-1">98%</div>
+<div class="text-surface-variant font-label-bold text-label-bold uppercase tracking-tighter">Asking Price Ratio</div>
+</div>
+<div class="text-center md:text-left">
+<div class="text-horizon-cyan font-display-lg text-[40px] leading-none mb-1">50k+</div>
+<div class="text-surface-variant font-label-bold text-label-bold uppercase tracking-tighter">Verified Buyers</div>
+</div>
+<div class="text-center md:text-left">
+<div class="text-horizon-cyan font-display-lg text-[40px] leading-none mb-1">$0</div>
+<div class="text-surface-variant font-label-bold text-label-bold uppercase tracking-tighter">Listing Fee</div>
+</div>
+</div>
+</section>
+<!-- Process Section -->
+<section class="py-24 px-margin-desktop max-w-container-max mx-auto">
+<div class="text-center mb-20">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-4 uppercase tracking-tight">The Precision Process</h2>
+<div class="w-24 h-1 bg-horizon-cyan mx-auto"></div>
+</div>
+<div class="grid md:grid-cols-3 gap-12">
+<!-- Step 1 -->
+<div class="group relative pt-12">
+<span class="absolute top-0 left-0 step-number font-black text-[120px] leading-none opacity-20 group-hover:opacity-40 transition-opacity">1</span>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-horizon-cyan text-5xl mb-6">description</span>
+<h3 class="font-headline-md text-headline-md mb-4 uppercase">Enter Details</h3>
+<p class="text-on-surface-variant font-body-md">Tell us about your RV’s make, model, year, and custom upgrades. Our automated valuation engine estimates your optimal market position instantly.</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="group relative pt-12">
+<span class="absolute top-0 left-0 step-number font-black text-[120px] leading-none opacity-20 group-hover:opacity-40 transition-opacity">2</span>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-horizon-cyan text-5xl mb-6">hub</span>
+<h3 class="font-headline-md text-headline-md mb-4 uppercase">Get Matched</h3>
+<p class="text-on-surface-variant font-body-md">We push your listing to our exclusive network of high-intent buyers and outdoor enthusiasts who are actively looking for your specific configuration.</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="group relative pt-12">
+<span class="absolute top-0 left-0 step-number font-black text-[120px] leading-none opacity-20 group-hover:opacity-40 transition-opacity">3</span>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-horizon-cyan text-5xl mb-6">handshake</span>
+<h3 class="font-headline-md text-headline-md mb-4 uppercase">Sell</h3>
+<p class="text-on-surface-variant font-body-md">Review offers, manage inquiries through our secure platform, and finalize the transaction with confidence using our brokerage-grade tools.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Testimonials -->
+<section class="bg-surface-container-low py-24">
+<div class="px-margin-desktop max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row items-end justify-between mb-16 gap-8">
+<div class="max-w-xl">
+<h2 class="font-headline-lg text-headline-lg text-on-surface uppercase mb-4">Market Success Stories</h2>
+<p class="text-on-surface-variant">Real experiences from sellers who upgraded their lifestyle with MatchRV.</p>
+</div>
+<div class="flex gap-4">
+<button class="w-12 h-12 flex items-center justify-center border border-outline hover:bg-horizon-cyan hover:text-midnight-slate transition-all group">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center border border-outline hover:bg-horizon-cyan hover:text-midnight-slate transition-all group">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid md:grid-cols-2 gap-8">
+<div class="glass-card p-10 flex flex-col md:flex-row gap-8">
+<div class="w-24 h-24 shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A portrait of a satisfied middle-aged couple standing in front of their luxury camper van in a lush coastal setting. They look confident and happy. The lighting is crisp and natural, with the MatchRV brand's professional and modern aesthetic clearly visible in the sharp focus and clean composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIGR6fjed_JLDOn30tWCZhI54aSRUOiCnzlhJMmthot5aR7jQovbr6E0B63w8b0kTwFqIE0aoWX-RJqqZQXc_962bj5sOlSRqRlsJXDeM2nvLtrzGr2jiMIM-DasGXyxvaXKquraSaE93qhAQe5UFMyw3fjEfYw4h8ndA2uksPGQdkE1kqOvpL3_svw_gYM8H_JnSI6JjcSaAL4TbaMmR3alNBqPhRy6EWht79ulDjO1zRi7pwwj5cCMBoBgDsZcLc1uDfl886NbWL"/>
+</div>
+<div>
+<div class="flex text-horizon-cyan mb-4">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-on-surface mb-6 italic">"The process was incredibly smooth. I listed my Airstream on a Monday, and by Thursday I had three qualified cash offers. The brokerage tools made the paperwork a breeze."</p>
+<h4 class="font-label-bold text-label-bold uppercase tracking-wider">— Robert &amp; Sarah Jenkins</h4>
+</div>
+</div>
+<div class="glass-card p-10 flex flex-col md:flex-row gap-8">
+<div class="w-24 h-24 shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A portrait of a professional-looking outdoor adventurer in his 30s leaning against his modern off-road expedition vehicle. The scene is a desert landscape with dramatic lighting. The image style is rugged and premium, using high contrast and sharp details to evoke the reliability of the MatchRV marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8Rk2zF54-XJpXzLNQv28A7UOigkDfcyV0wUVHcMUrrMXhHlHFaWxZgiXvDZcBhxQ4gQibs4d_3P3haIGc7Dzl_8pFynI0c493GtmYIFQP7k0lYkUaFY2nLPTXs6r69261ziMsaLUOeJIDOFpQUSwow18fnIMTT10iDz7W_F-QpoLPBYx9x6SJrGv8xdw0WrIC_GnlbdQiDHME61O_Xmr2VA3SuK8AkTbNJqSDc4cctrgwbDMGbNRWVGALlhg3iZrfWclkeHB-LhGl"/>
+</div>
+<div>
+<div class="flex text-horizon-cyan mb-4">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-md text-on-surface mb-6 italic">"I've used other sites before, but MatchRV attracts a different level of buyer. No tire-kickers. The platform filter ensures you only talk to people who are ready to pull the trigger."</p>
+<h4 class="font-label-bold text-label-bold uppercase tracking-wider">— Marcus Thorne</h4>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- FAQs -->
+<section class="py-24 px-margin-desktop max-w-[800px] mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-surface uppercase mb-4">Frequently Asked Questions</h2>
+<p class="text-on-surface-variant font-body-md">Everything you need to know about selling on MatchRV.</p>
+</div>
+<div class="space-y-4">
+<details class="group bg-surface-container border border-silver-road overflow-hidden open:ring-1 open:ring-horizon-cyan transition-all">
+<summary class="flex justify-between items-center p-6 cursor-pointer list-none font-label-bold text-label-bold uppercase tracking-wide">
+                        What does it cost to list my RV?
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="px-6 pb-6 text-on-surface-variant font-body-md">
+                        Standard listings are completely free for all sellers. We offer optional premium placement packages for owners of ultra-high-end assets who want maximum visibility across our partner network.
+                    </div>
+</details>
+<details class="group bg-surface-container border border-silver-road overflow-hidden open:ring-1 open:ring-horizon-cyan transition-all">
+<summary class="flex justify-between items-center p-6 cursor-pointer list-none font-label-bold text-label-bold uppercase tracking-wide">
+                        How long does a typical sale take?
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="px-6 pb-6 text-on-surface-variant font-body-md">
+                        While individual results vary, our platform average for a luxury RV is roughly 14-21 days from listing to accepted offer. Highly sought-after models often move within the first week.
+                    </div>
+</details>
+<details class="group bg-surface-container border border-silver-road overflow-hidden open:ring-1 open:ring-horizon-cyan transition-all">
+<summary class="flex justify-between items-center p-6 cursor-pointer list-none font-label-bold text-label-bold uppercase tracking-wide">
+                        Is my data secure?
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="px-6 pb-6 text-on-surface-variant font-body-md">
+                        Yes. MatchRV uses bank-level encryption for all messages and data transfers. We never share your personal contact information with potential buyers until you choose to reveal it.
+                    </div>
+</details>
+<details class="group bg-surface-container border border-silver-road overflow-hidden open:ring-1 open:ring-horizon-cyan transition-all">
+<summary class="flex justify-between items-center p-6 cursor-pointer list-none font-label-bold text-label-bold uppercase tracking-wide">
+                        Do you help with financing?
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="px-6 pb-6 text-on-surface-variant font-body-md">
+                        Absolutely. We provide buyers with instant access to our network of preferred lenders, making it easier for them to secure funding for your RV, which facilitates a faster sale for you.
+                    </div>
+</details>
+</div>
+</section>
+<!-- Final CTA Section -->
+<section class="bg-on-background py-24 text-center">
+<div class="px-margin-desktop max-w-container-max mx-auto">
+<h2 class="font-display-lg text-display-lg text-surface-container-lowest mb-8">Ready to transition to your <span class="text-horizon-cyan italic">next</span> adventure?</h2>
+<p class="font-body-lg text-body-lg text-surface-variant max-w-2xl mx-auto mb-12">
+                    Join thousands of satisfied sellers who have found the perfect buyer on MatchRV. Start your professional listing today in less than 10 minutes.
+                </p>
+<button class="bg-horizon-cyan text-midnight-slate px-12 py-6 font-label-bold text-label-bold uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_40px_rgba(0,206,209,0.3)]">
+                    Start My Listing Now
+                </button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-on-background py-16 px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-container-max mx-auto border-t border-outline/20">
+<div class="col-span-1 md:col-span-1">
+<span class="font-display-lg text-display-lg text-surface-container-lowest italic mb-6 block">MatchRV</span>
+<p class="text-surface-variant font-body-md">The premier brokerage-grade marketplace for modern RV enthusiasts and high-value transactions.</p>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold uppercase mb-6">Marketplace</h5>
+<ul class="space-y-4">
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Browse Inventory</a></li>
+<li><a class="text-horizon-cyan underline" href="#">Sell Your RV</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Financing</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Valuation Tool</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold uppercase mb-6">Company</h5>
+<ul class="space-y-4">
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">About Us</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Terms of Service</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Press Inquiries</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold uppercase mb-6">Newsletter</h5>
+<p class="text-surface-variant font-body-md mb-4">Get the latest market trends and inventory updates.</p>
+<div class="flex">
+<input class="bg-midnight-slate border border-outline text-surface-container-lowest px-4 py-2 w-full focus:ring-1 focus:ring-horizon-cyan focus:outline-none rounded-none" placeholder="Email Address" type="email"/>
+<button class="bg-horizon-cyan text-midnight-slate px-4 py-2 font-label-bold text-label-bold uppercase">Join</button>
+</div>
+</div>
+<div class="col-span-1 md:col-span-4 pt-12 border-t border-outline/10 text-center">
+<p class="text-surface-variant/50 font-body-md">© 2024 MatchRV Marketplace. All rights reserved.</p>
+</div>
+</footer>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="fixed bottom-0 w-full flex justify-around items-center py-3 bg-surface border-t border-silver-road shadow-lg md:hidden z-50">
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-bold text-[10px] uppercase">Explore</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">rv_hookup</span>
+<span class="font-label-bold text-[10px] uppercase">Inventory</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-bold text-[10px] uppercase">Saved</span>
+</div>
+<div class="flex flex-col items-center justify-center text-horizon-cyan">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sell</span>
+<span class="font-label-bold text-[10px] uppercase">Sell</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions and subtle scroll reveal
+        document.addEventListener('DOMContentLoaded', () => {
+            const steps = document.querySelectorAll('.group.relative.pt-12');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, index) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => {
+                            entry.target.classList.add('opacity-100', 'translate-y-0');
+                        }, index * 200);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            steps.forEach(step => {
+                step.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700');
+                observer.observe(step);
+            });
+        });
+    </script>
+</body></html>

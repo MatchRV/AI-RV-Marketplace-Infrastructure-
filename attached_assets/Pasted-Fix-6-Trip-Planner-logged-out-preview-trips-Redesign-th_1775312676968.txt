@@ -1,0 +1,185 @@
+Fix 6 — Trip Planner logged-out preview (/trips)
+
+Redesign the logged-out state to preview value before asking for auth:
+
+
+
+
+
+Sample itinerary cards
+
+
+
+Example campgrounds or route stops
+
+
+
+Teaser map or trip modules
+
+
+
+Explanation of what the planner does
+
+One clear CTA: "Sign in to save your trip" or "Start planning free"
+
+Keep full trip saving behind auth, but eliminate the dead-end empty wall.
+
+Done when: Logged-out users understand the feature and feel desire before hitting the auth gate.
+
+
+
+Fix 7 — AI Outfitter onboarding progress UX (/outfitter)
+
+Audit the progress logic and replace with something intuitive:
+
+
+
+
+
+Start at 0% before any input, or show "Step 1 of N" until sufficient data exists for a meaningful percentage
+
+
+
+Never show a discouraging low percentage (like 11%) as the starting state
+
+Structure the flow into clear stages: budget → usage → size/sleeps → towability/drivability → camping style → optional preferences
+
+Add:
+
+
+
+
+
+Immediate feedback after each step
+
+
+
+Completion reward messaging: improved matches, better Discover recommendations, dealer readiness, smarter filtering
+
+
+
+Consistent progress indicator across mobile and desktop
+
+Done when: Progress starts logically. Users always know what comes next. Completion feels meaningful.
+
+
+
+Fix 8 — Mobile navigation and small-screen layout
+
+Implement a high-quality mobile nav pattern (hamburger drawer or compact bottom nav):
+
+
+
+
+
+Primary destinations: Browse, Discover, Sell, Trips, Outfitter, account/profile
+
+
+
+Large tap targets
+
+
+
+Drawer closes reliably
+
+
+
+Active route is highlighted
+
+
+
+No overlap with hero content, no clipped menu items
+
+Full mobile audit: Review all primary routes at phone widths and fix overflow, broken grids, collapsed filters, and CTA issues.
+
+Done when: Mobile nav is polished. No horizontal overflow on primary pages. Core flows are fully usable on phone-sized screens.
+
+
+
+Additional quality improvements (implement while you are in each file)
+
+
+
+
+
+Add empty, loading, and error states everywhere a data fetch occurs
+
+
+
+Consistent CTA hierarchy across all routes
+
+
+
+Page-specific headings and metadata on all major routes
+
+
+
+Remove all placeholder and generic filler copy
+
+
+
+Improve internal linking between /browse, /discover, /outfitter, /trips, /tow-guide, and /sell
+
+
+
+Save/favorite affordances where practical
+
+
+
+Proper disabled, success, and error states on all buttons and forms
+
+
+
+Accessibility basics: semantic headings, form labels, keyboard navigation, image alt text, color contrast, focus states
+
+
+
+Performance basics: lazy-loaded images, no unoptimized image payloads, no blocking client-side loops on browse
+
+
+
+Dealer page (/dealers)
+
+Inspect /dealers for broken loading states, dead buttons, fake metrics, or placeholder workflows, but treat dealer improvements as secondary unless they block trust or demos—that area already appears more developed than the consumer-side listing detail experience.
+
+
+
+Definition of done
+
+Work is complete only when:
+
+
+
+
+
+Listing detail pages render real content reliably for all valid IDs
+
+
+
+LotLink branding is consistent across every user-facing surface
+
+
+
+Browse cards display working images with clean fallbacks
+
+
+
+Discover cycles through real inventory with real match rationale
+
+
+
+Browse pagination or load-more is visible and functional
+
+
+
+Trips has a useful logged-out preview with a clear CTA
+
+
+
+Outfitter progress starts logically and guides users through clear stages
+
+
+
+Mobile nav is polished and all primary pages are responsive and stable
+
+Build this as if LotLink is being shown to investors, dealers, and retail buyers this week.

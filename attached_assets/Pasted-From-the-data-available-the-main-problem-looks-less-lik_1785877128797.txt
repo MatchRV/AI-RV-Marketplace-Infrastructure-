@@ -1,0 +1,40 @@
+From the data available, the main problem looks less like “people are doing the Match Report and it’s hidden” and more like “very few people are reaching it, and almost nobody is completing a lead action.” Over the last 7 days, your site had 24 total sessions, 18 unique users, and only 1 session reached `/match-report`, while Clarity recorded just 1 form submission session and 1 contact-us session overall.[1]
+
+## What the data says
+
+Clarity shows 24 sessions in the last 7 days, with 18 unique users and 75% new users, so your traffic volume is still very low for a marketplace that depends on lead flow.  Top pages were the homepage with 10 sessions, `/contact` with 3, `/match` with 3, and `/match-report` with only 1, which strongly suggests almost nobody is making it all the way through the Match Report funnel.[1]
+
+That also explains why you have not been “told” many people completed it: based on this view, only 1 session even hit the Match Report page in the selected period.  Clarity also shows only 1 “Submit form” smart event total, so there is no evidence here of a steady stream of hidden Match Reports or unit leads being generated.[1]
+
+## Likely issues
+
+The clearest issue is **traffic volume**. With only 24 sessions in a week, even a decent conversion rate would still produce very few leads.  Your referrers show just 3 visits from Google and 3 from LinkedIn, which means there is not yet enough qualified traffic hitting the site consistently.[1]
+
+The second issue is funnel leakage. Users are reaching `/match` only 3 times and `/match-report` only once, so either the call-to-action is not compelling enough, the path is confusing, or users are dropping before completion.  Clarity also flags 2 sessions with dead clicks and 2 with quick backs, which can signal confusing UI, non-working expectations, or weak page-message alignment.[1]
+
+A third issue is performance. Clarity’s performance card shows a score of 53/100 from sampled pageviews, with poor LCP at 20 seconds and poor CLS at 0.3, which can absolutely hurt engagement and form completion.  If the page loads slowly or shifts around while someone is trying to read and act, you will lose already-scarce traffic.[1]
+
+## Direct answers
+
+How many people have done your Match Report, based on this dashboard view for the last 7 days: only 1 session reached `/match-report`.  How many leads/actions are visible from Clarity smart events: 1 submit-form session and 1 contact-us session total.[1]
+
+Why you are not getting leads on units: the combination of very low traffic, very few visits to the match flow, and weak technical performance means there simply are not enough users reaching the point where they can convert.  Nothing in this dashboard suggests a hidden pile of completed Match Reports that is failing to notify you.[1]
+
+## What you’re missing
+
+Clarity can show behavior, but it does not automatically tell you who filled out the report or which units they matched with unless your app is explicitly storing that event and exposing it in your backend.  To see “who did the report and what units they matched with,” your site needs to log each Match Report submission with fields like name, email, timestamp, result set, and matched listing IDs in your database, then trigger an internal notification.[2][1]
+
+Right now, your public site messaging does advertise a free personalized Match Report, but the analytics shown here do not prove that the completed report data is being captured in a lead-management workflow.[2][1]
+
+## Next checks
+
+1. Verify whether `/match` actually saves a submission record to your database and whether `/match-report` is just a results page or the final step.[1]
+2. In Clarity Recordings, review the sessions that visited `/match`, `/match-report`, “Submit form,” dead clicks, and quick backs to see exactly where people stop.[1]
+3. Add tracking for: Match started, Match completed, Report viewed, Lead created, and Listing clicked. Without those events, you cannot diagnose the funnel cleanly.[1]
+4. Fix speed and layout shift first, because a 20-second LCP is a major conversion killer.[1]
+
+Most likely diagnosis: not enough traffic, not enough users entering the Match Report flow, and insufficient backend/event tracking to tell you who matched to what.  Would you like me to help you map the exact funnel and tracking events you should add to MatchRV?[1]
+
+Sources
+[1] MatchRV - Clarity https://clarity.microsoft.com/projects/view/wrzebeqx7e/dashboard?date=Last%207%20days
+[2] MatchRV — RV Marketplace: Browse RVs for Sale — Live ... https://matchrv.com/

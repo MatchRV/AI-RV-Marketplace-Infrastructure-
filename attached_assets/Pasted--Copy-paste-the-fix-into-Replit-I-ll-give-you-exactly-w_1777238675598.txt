@@ -1,0 +1,411 @@
+ Copy-paste the fix into Replit. I'll give you exactly what to change in routes/outfitter.ts. There are 3 edits:
+
+  ---
+  Edit 1 — Add this RIGHT BEFORE router.post("/outfitter/chat"...
+
+  This is the new matching engine (~150 lines). Paste it above the chat route:
+
+  Read 1 file (ctrl+o to expand)
+
+● OK here's the simplest way to do this. Since I can't edit Replit directly, let me give you the complete fixed
+  outfitter.ts as a standalone file you can paste over the existing one in Replit:
+
+● Reading 1 file… (ctrl+o to expand)
+  ⎿  # AI Outfitter — Complete Source Bu.txt
+
+● Write(outfitter-fixed.ts)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Create file
+ outfitter-fixed.ts
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+    1 import { Router, type IRouter } from "express";
+    2 import { anthropic } from "@workspace/integrations-anthropic-ai";
+    3 import { db, listingsTable } from "@workspace/db";
+    4 import { sql } from "drizzle-orm";
+    5
+    6 const router: IRouter = Router();
+    7
+    8 const OUTFITTER_SYSTEM_PROMPT = `You are the RV Outfitter AI — a friendly, knowledgeable RV expert and trusted
+      advisor for RV Marketplace. You guide buyers through finding their perfect RV using the proven Sobel University
+       Golden Ticket methodology.
+    9
+   10 YOUR PERSONALITY:
+   11 - Warm, honest, and knowledgeable — like a trusted friend who happens to be the #1 RV salesperson
+   12 - You ask questions and LISTEN more than you talk
+   13 - You sometimes recommend LESS expensive options that fit better (this builds trust)
+   14 - You NEVER pressure or rush the buyer
+   15 - You're genuinely excited about helping people find their dream RV
+   16
+   17 YOUR CONVERSATION FLOW (Golden Ticket methodology):
+   18 1. WANT - Ask what type of RV they're looking for (or start broader if they don't know)
+   19 2. USE - How do they plan to use it? (weekends, full-time, seasonal, etc.)
+   20 3. WHO - Who's traveling? (Ask smart follow-ups about frequency for family)
+   21 4. TRADE - Do they have a trade-in?
+   22 5. TOW VEHICLE - What do they drive? (only if looking at towables)
+   23 6. SIZE - Any length preference? (Use the "stretch technique" gently)
+   24 7. BUDGET - Ask "Do you plan to make payments or pay cash?" first. If payments, ask their comfortable monthly p
+      ayment range. Then anchor on down payment: "And how much were you thinking for a down payment?" — this is criti
+      cal for financing.
+   25 8. MATCHING - Provide personalized recommendations
+   26
+   27 KEY RULES:
+   28 - Ask ONE question at a time
+   29 - Keep messages SHORT and conversational
+   30 - NEVER ask about features or amenities — only discuss them if the customer brings them up first
+   31 - Match on lifestyle and use case, NOT on a feature checklist
+   32 - For the "who" question, ask follow-up about frequency: "How often will the grandkids come?" changes the recom
+      mendation
+   33 - For size: gently expand parameters ("If the perfect unit was 2ft longer with everything you want, would that
+      be open to looking?")
+   34 - For budget: ask "payments or cash?" first, then monthly payment range, then ALWAYS ask about down payment bef
+      ore moving to matching
+   35 - NEVER show anything over budget
+   36 - If first-time buyer, be educational and reassuring
+   37 - The RV market is $35.9B — don't be intimidated by any budget
+   38
+   39 PROFILE EXTRACTION:
+   40 After each message, extract any buyer profile data you've learned. Output a JSON block at the END of your messa
+      ge (after your conversational text) in this exact format:
+   41 <profile>
+   42 {
+   43   "rvType": "travel_trailer|fifth_wheel|class_a|class_b|class_c|toy_hauler|popup_camper|truck_camper|null",
+   44   "useCase": "weekends|full_time|seasonal|tailgating|other|null",
+   45   "activities": ["camping", "hiking", "biking", "boondocking", "fishing", "kids", "pets"],
+   46   "travelers": null,
+   47   "hasKids": null,
+   48   "hasPets": null,
+   49   "hasTrade": null,
+   50   "towVehicle": null,
+   51   "paymentType": "payments|cash|null",
+   52   "minBudget": null,
+   53   "maxBudget": null,
+   54   "monthlyPayment": null,
+   55   "downPayment": null,
+   56   "minLength": null,
+   57   "maxLength": null,
+   58   "mustHaves": [],
+   59   "timeline": null,
+   60   "experience": "first_time|some_experience|experienced|null",
+   61   "campingStyle": "full_hookup|boondocking|mixed|null"
+   62 }
+   63 </profile>
+   64
+   65 Only include fields you've actually learned. Use null for unknown fields. The conversational text comes BEFORE
+      the profile block.
+   66
+   67 STAGE TRACKING:
+   68 Also output the current stage at the very end:
+   69 <stage>want|use|activities|who|trade|tow_vehicle|size|budget|matching|complete</stage>`;
+   70
+   71 // ─── Tow capacity lookup (lbs) for common vehicles ───
+   72 const TOW_CAPACITY: Record<string, number> = {
+   73   "f150": 13000, "f250": 20000, "f350": 37000,
+   74   "silverado_1500": 13300, "silverado_2500": 20000, "silverado_3500": 36000,
+   75   "ram_1500": 12750, "ram_2500": 20000, "ram_3500": 37090,
+   76   "tundra": 12000, "tacoma": 6800, "colorado": 7700, "ranger": 7500,
+   77   "gladiator": 7700, "ridgeline": 5000, "frontier": 6720,
+   78   "suburban": 8300, "tahoe": 8400, "expedition": 9300,
+   79   "yukon": 8400, "4runner": 5000, "pilot": 5000,
+   80   "highlander": 5000, "explorer": 5600, "durango": 8700,
+   81 };
+   82
+   83 function estimateTowCapacity(vehicle: string | null | undefined): number | null {
+   84   if (!vehicle) return null;
+   85   const v = String(vehicle).toLowerCase().replace(/[^a-z0-9]/g, "_");
+   86   for (const [key, cap] of Object.entries(TOW_CAPACITY)) {
+   87     if (v.includes(key.replace("_", ""))) return cap;
+   88   }
+   89   return null;
+   90 }
+   91
+   92 // ─── Step 1: Build SQL filters from the FULL buyer profile ───
+   93 function buildListingFilters(profile: Record<string, unknown>): string[] {
+   94   const conditions: string[] = [];
+   95
+   96   // RV Type — hard filter
+   97   const allowedTypes = ["travel_trailer","fifth_wheel","class_a","class_b","class_c","toy_hauler","popup_camper
+      ","truck_camper"];
+   98   if (profile.rvType && allowedTypes.includes(String(profile.rvType))) {
+   99     conditions.push(`rv_type = '${String(profile.rvType).replace(/'/g, "''")}'`);
+  100   }
+  101
+  102   // Budget — hard filter, NEVER exceed maxBudget
+  103   if (profile.maxBudget && !isNaN(Number(profile.maxBudget))) {
+  104     conditions.push(`COALESCE(sale_price, price) <= ${Number(profile.maxBudget)}`);
+  105   }
+  106   if (profile.minBudget && !isNaN(Number(profile.minBudget))) {
+  107     conditions.push(`COALESCE(sale_price, price) >= ${Number(profile.minBudget)}`);
+  108   }
+  109
+  110   // Sleeps — must accommodate the travel party
+  111   if (profile.travelers && !isNaN(Number(profile.travelers))) {
+  112     conditions.push(`sleeps >= ${Number(profile.travelers)}`);
+  113   }
+  114
+  115   // Length constraints
+  116   if (profile.maxLength && !isNaN(Number(profile.maxLength))) {
+  117     conditions.push(`length <= ${Number(profile.maxLength)}`);
+  118   }
+  119   if (profile.minLength && !isNaN(Number(profile.minLength))) {
+  120     conditions.push(`length >= ${Number(profile.minLength)}`);
+  121   }
+  122
+  123   // Tow vehicle capacity — prevent recommending RVs they can't tow
+  124   const towCap = estimateTowCapacity(profile.towVehicle as string);
+  125   if (towCap) {
+  126     const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
+  127     if (profile.rvType && towableTypes.includes(String(profile.rvType))) {
+  128       conditions.push(`COALESCE(gvwr, dry_weight) <= ${towCap}`);
+  129     }
+  130   }
+  131
+  132   // New vs used preference (if expressed)
+  133   if (profile.condition === "new") {
+  134     conditions.push(`condition = 'new'`);
+  135   } else if (profile.condition === "used") {
+  136     conditions.push(`condition = 'used'`);
+  137   }
+  138
+  139   // Only show available inventory
+  140   conditions.push(`inventory_status = 'available'`);
+  141
+  142   return conditions;
+  143 }
+  144
+  145 // ─── Step 2: AI Re-ranking — Claude picks the best 3 from candidates ───
+  146 const RERANK_SYSTEM_PROMPT = `You are the RV Outfitter matching engine. You receive a buyer profile and a list
+      of candidate RV listings. Your job is to select the TOP 3 listings that BEST match this specific buyer's needs.
+  147
+  148 MATCHING PRIORITIES (in order):
+  149 1. BUDGET — NEVER recommend anything over their maxBudget. This is non-negotiable.
+  150 2. RV TYPE — Must match what they asked for.
+  151 3. CAMPING STYLE — Boondocking needs: generator, large fresh water tank (40+ gal), solar-ready. Full hookup: sl
+      ideouts, washer/dryer prep matter more. Mixed: balance both.
+  152 4. USE CASE — Full-timers need durability, storage, residential features. Weekenders need easy setup/teardown.
+      Seasonal needs weatherproofing.
+  153 5. TRAVELERS — Sleeps count, bunkhouse for kids, floorplan suitability.
+  154 6. TOW VEHICLE — If towable, GVWR must be within tow capacity. Recommend lighter options if their vehicle is bo
+      rderline.
+  155 7. ACTIVITIES — Toy hauler for bikers/ATVs, outdoor kitchen for tailgaters, bike rack compatibility, pet-friend
+      ly features.
+  156
+  157 For each of your top 3 picks, write a personalized 2-3 sentence "whyMatch" explanation that references the buye
+      r's SPECIFIC stated needs (their camping style, who's coming, what they do, their budget). Do NOT be generic —
+      tie it directly to what they told us.
+  158
+  159 Respond in this exact JSON format:
+  160 {
+  161   "matches": [
+  162     {
+  163       "listingId": "<id of the listing>",
+  164       "rank": 1,
+  165       "whyMatch": "personalized explanation referencing their specific needs",
+  166       "matchScore": 95
+  167     }
+  168   ]
+  169 }
+  170
+  171 Return ONLY valid JSON, no other text.`;
+  172
+  173 async function rerankWithAI(
+  174   profile: Record<string, unknown>,
+  175   candidates: Record<string, unknown>[]
+  176 ): Promise<Record<string, unknown>[]> {
+  177   if (candidates.length === 0) return [];
+  178
+  179   const candidateSummaries = candidates.map((c) => ({
+  180     id: c.id,
+  181     title: c.title,
+  182     make: c.make,
+  183     model: c.model,
+  184     year: c.year,
+  185     rv_type: c.rv_type,
+  186     price: Number(c.sale_price || c.price),
+  187     condition: c.condition,
+  188     sleeps: c.sleeps,
+  189     length: c.length,
+  190     dry_weight: c.dry_weight,
+  191     gvwr: c.gvwr,
+  192     hitch_weight: c.hitch_weight,
+  193     slideouts: c.slideouts,
+  194     fresh_water_capacity: c.fresh_water_capacity,
+  195     gray_water_capacity: c.gray_water_capacity,
+  196     generator: c.generator,
+  197     bunkhouse: c.bunkhouse,
+  198     toy_hauler: c.toy_hauler,
+  199     washer_dryer_prep: c.washer_dryer_prep,
+  200     leveling_jacks: c.leveling_jacks,
+  201     awning: c.awning,
+  202     air_conditioner: c.air_conditioner,
+  203     description: String(c.description || "").slice(0, 300),
+  204     features: Array.isArray(c.features) ? c.features.slice(0, 20) : [],
+  205     dealer_name: c.dealer_name,
+  206     dealer_location: c.dealer_location,
+  207   }));
+  208
+  209   const rerankResponse = await anthropic.messages.create({
+  210     model: "claude-sonnet-4-6",
+  211     max_tokens: 2048,
+  212     system: RERANK_SYSTEM_PROMPT,
+  213     messages: [
+  214       {
+  215         role: "user",
+  216         content: `BUYER PROFILE:\n${JSON.stringify(profile, null, 2)}\n\nCANDIDATE LISTINGS (${candidates.lengt
+      h} total):\n${JSON.stringify(candidateSummaries, null, 2)}`,
+  217       },
+  218     ],
+  219   });
+  220
+  221   const rerankText = rerankResponse.content[0]?.type === "text" ? rerankResponse.content[0].text : "";
+  222
+  223   try {
+  224     const parsed = JSON.parse(rerankText.trim());
+  225     const matches = parsed.matches || [];
+  226
+  227     return matches
+  228       .sort((a: { rank: number }, b: { rank: number }) => a.rank - b.rank)
+  229       .slice(0, 3)
+  230       .map((match: { listingId: string; whyMatch: string; matchScore: number }) => {
+  231         const listing = candidates.find((c) => String(c.id) === String(match.listingId));
+  232         if (!listing) return null;
+  233         return {
+  234           ...listing,
+  235           whyMatch: match.whyMatch,
+  236           matchScore: match.matchScore,
+  237         };
+  238       })
+  239       .filter(Boolean);
+  240   } catch {
+  241     console.error("AI re-ranking parse failed, falling back to SQL order");
+  242     return candidates.slice(0, 3);
+  243   }
+  244 }
+  245
+  246 // ─── Combined matching pipeline ───
+  247 async function getMatchedListings(
+  248   profile: Record<string, unknown>
+  249 ): Promise<Record<string, unknown>[]> {
+  250   const conditions = buildListingFilters(profile);
+  251   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  252
+  253   // Pull 15 candidates so the AI has good options to choose from
+  254   const recRows = await db.execute(
+  255     sql.raw(`SELECT * FROM listings ${whereClause} ORDER BY is_featured DESC, COALESCE(sale_price, price) ASC L
+      IMIT 15`)
+  256   );
+  257
+  258   const candidates = (recRows as { rows?: Record<string, unknown>[] }).rows ?? [];
+  259
+  260   if (candidates.length === 0) return [];
+  261
+  262   // AI re-ranks and picks the best 3 with personalized descriptions
+  263   return rerankWithAI(profile, candidates);
+  264 }
+  265
+  266 // ─── Routes ───
+  267
+  268 router.post("/outfitter/chat", async (req, res) => {
+  269   try {
+  270     const { messages = [], sessionId, buyerProfile } = req.body;
+  271
+  272     const sessionIdOut = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  273
+  274     const chatMessages = messages.map((m: { role: string; content: string }) => ({
+  275       role: m.role as "user" | "assistant",
+  276       content: m.content,
+  277     }));
+  278
+  279     const response = await anthropic.messages.create({
+  280       model: "claude-sonnet-4-6",
+  281       max_tokens: 8192,
+  282       system: OUTFITTER_SYSTEM_PROMPT,
+  283       messages: chatMessages,
+  284     });
+  285
+  286     const rawText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  287
+  288     // Extract profile JSON
+  289     const profileMatch = rawText.match(/<profile>([\s\S]*?)<\/profile>/);
+  290     const stageMatch = rawText.match(/<stage>([\s\S]*?)<\/stage>/);
+  291
+  292     let updatedProfile = buyerProfile || {};
+  293     if (profileMatch) {
+  294       try {
+  295         const extracted = JSON.parse(profileMatch[1].trim());
+  296         updatedProfile = { ...updatedProfile };
+  297         for (const [key, value] of Object.entries(extracted)) {
+  298           if (value !== null && value !== undefined) {
+  299             (updatedProfile as Record<string, unknown>)[key] = value;
+  300           }
+  301         }
+  302       } catch {
+  303         // ignore parse errors
+  304       }
+  305     }
+  306
+  307     const stage = (stageMatch ? stageMatch[1].trim() : "want") as string;
+  308
+  309     // Strip the profile and stage tags from the message
+  310     const cleanMessage = rawText
+  311       .replace(/<profile>[\s\S]*?<\/profile>/g, "")
+  312       .replace(/<stage>[\s\S]*?<\/stage>/g, "")
+  313       .trim();
+  314
+  315     // If we're in the matching stage, fetch recommendations using FULL profile
+  316     let recommendations: Record<string, unknown>[] = [];
+  317     if ((stage === "matching" || stage === "complete") && updatedProfile) {
+  318       recommendations = await getMatchedListings(updatedProfile as Record<string, unknown>);
+  319     }
+  320
+  321     res.json({
+  322       message: cleanMessage,
+  323       sessionId: sessionIdOut,
+  324       updatedProfile,
+  325       recommendations,
+  326       stage,
+  327     });
+  328   } catch (err) {
+  329     console.error("Outfitter chat error:", err);
+  330     res.status(500).json({ message: "Outfitter is temporarily unavailable. Please try again." });
+  331   }
+  332 });
+  333
+  334 router.post("/outfitter/recommendations", async (req, res) => {
+  335   try {
+  336     const profile = req.body as Record<string, unknown>;
+  337
+  338     // Use the same full-profile matching pipeline
+  339     const matched = await getMatchedListings(profile);
+  340
+  341     const listings = matched.map((r) => ({
+  342       id: r.id,
+  343       title: r.title,
+  344       make: r.make,
+  345       model: r.model,
+  346       year: r.year,
+  347       type: r.rv_type,
+  348       price: Number(r.sale_price || r.price),
+  349       msrp: Number(r.msrp ?? 0),
+  350       location: r.dealer_location,
+  351       dealerName: r.dealer_name,
+  352       images: (r.image_urls as string[]) ?? [],
+  353       sleeps: Number(r.sleeps ?? 2),
+  354       length: r.length,
+  355       condition: r.condition,
+  356       slideouts: r.slideouts,
+  357       freshWaterCapacity: r.fresh_water_capacity,
+  358       generator: r.generator,
+  359       bunkhouse: r.bunkhouse,
+  360       whyMatch: r.whyMatch ?? null,
+  361       matchScore: r.matchScore ?? null,
+  362     }));
+  363
+  364     res.json({ listings, explanation: "AI-ranked matches based on your complete profile." });
+  365   } catch (err) {
+  366     console.error("Recommendations error:", err);
+  367     res.status(500).json({ message: "Internal server error" });
+  368   }
+  369 });
+  370
+  371 export default router;

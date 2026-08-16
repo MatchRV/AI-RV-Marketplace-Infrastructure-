@@ -1,0 +1,1176 @@
+================================================================================
+FILE 1: artifacts/rv-marketplace/src/pages/match.tsx
+================================================================================
+
+import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
+import { Layout } from "@/components/layout";
+import { SEO } from "@/components/seo";
+import { useChatSession } from "@/hooks/use-chat-session";
+import { trackEvent } from "@/lib/analytics";
+import { buildLeadBuyerProfile } from "@/lib/buyer-intent";
+import { useAppAuth } from "@/contexts/auth-context";
+import type { BuyerProfile } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { ExpansionSuggestion } from "@/hooks/use-chat-session";
+import {
+  Send, Loader2, Sparkles, CheckCircle2,
+  ArrowRight, Shield, Star, AlertTriangle, User, Phone,
+  Compass, Heart, TreePine, Mic, MicOff,
+} from "lucide-react";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+
+const AGENT_PRICE_FROM = 499;
+
+function MatchReadyCard({
+  count, onViewReport, isGenerating, hasFailed,
+}: {
+  count: number; onViewReport: () => void; isGenerating: boolean; hasFailed: boolean;
+}) {
+  return (
+    <div className="bg-white border-2 border-[#0B1117] rounded-3xl overflow-hidden shadow-xl">
+      <div className="bg-[#0B1117] px-5 py-5 text-white text-center">
+        <div className="w-12 h-12 rounded-full bg-[#00CED1]/20 flex items-center justify-center mx-auto mb-3">
+          {isGenerating ? (
+            <Loader2 className="w-6 h-6 text-[#00CED1] animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-6 h-6 text-[#00CED1]" />
+          )}
+        </div>
+        <div className="text-[10px] font-black uppercase tracking-widest text-[#00CED1] mb-1">
+          {isGenerating ? "Building Your Report" : "Your Report Is Ready"}
+        </div>
+        <div className="font-display font-black text-xl">
+          {isGenerating
+            ? "Finding the 3 RVs that fit your life..."
+            : `Your Top ${count} RV Picks Are Ready`
+          }
+        </div>
+        <div className="text-white/60 text-xs mt-1">
+          {isGenerating
+            ? "Analyzing live inventory against your camping lifestyle"
+            : "Personalized to how you actually camp"
+          }
+        </div>
+        {isGenerating && (
+          <div className="text-[#00CED1]/70 text-[11px] mt-1 font-medium">
+            Hang tight — usually about 15 seconds…
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 pt-5 pb-2">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            "Matched to your lifestyle",
+            "Honest tradeoffs included",
+            "Live dealer inventory",
+            "Why each one fits YOU",
+          ].map(f => (
+            <div key={f} className="flex items-start gap-1.5 text-xs text-[#404942]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#0B1117] flex-shrink-0 mt-0.5" />
+              {f}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-5 pb-5 space-y-2.5 mt-4">
+        {hasFailed && !isGenerating && (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
+            Something went wrong building your report. Tap below to try again.
+          </div>
+        )}
+        <button
+          onClick={onViewReport}
+          disabled={isGenerating}
+          className="w-full py-4 rounded-2xl bg-[#0B1117] text-white font-black text-base hover:bg-[#002829] transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {isGenerating ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Building report...</>
+          ) : hasFailed ? (
+            <><ArrowRight className="w-4 h-4" /> Try Again</>
+          ) : (
+            <><Star className="w-4 h-4" /> See My {count} Matches</>
+          )}
+        </button>
+        <div className="flex items-center justify-center gap-3 text-[10px] text-[#707972]">
+          <div className="flex items-center gap-1"><Heart className="w-3 h-3" /> 100% free</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgentInterestCard({ profile, onDone }: { profile: BuyerProfile; onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !email.trim()) return;
+    setLoading(true);
+    try {
+      await fetch(`/api/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactName: name.trim(),
+          contactEmail: email.trim(),
+          contactPhone: phone.trim() || null,
+          buyerProfile: buildLeadBuyerProfile(profile as Record<string, unknown>, { leadSource: "buyers_agent_inquiry" }),
+          message: `Buyers Agent Inquiry — Starting at $${AGENT_PRICE_FROM}`,
+          leadSource: "buyers_agent_inquiry",
+        }),
+      });
+    } catch { /* silent */ }
+    setLoading(false);
+    setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="bg-amber-50 border border-amber-300 rounded-3xl p-6 text-center">
+        <CheckCircle2 className="w-10 h-10 text-amber-600 mx-auto mb-2" />
+        <div className="font-black text-[#1b1c1c] mb-1">We'll be in touch!</div>
+        <p className="text-sm text-[#707972] mb-4">Expect a call or email within 1 business day.</p>
+        <button onClick={onDone} className="text-xs text-[#707972] underline">Close</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-amber-300 rounded-3xl p-5 shadow-lg">
+      <div className="font-display font-black text-lg text-[#1b1c1c] mb-1">Want a real person doing this?</div>
+      <div className="text-sm text-[#707972] mb-3 leading-relaxed">
+        A dedicated buyers agent handles your entire search — from shortlisting to negotiating the deal.
+      </div>
+      <div className="text-base font-black text-amber-900 mb-3">Starting at ${AGENT_PRICE_FROM}</div>
+      <ul className="space-y-1.5 text-xs text-[#404942] mb-5">
+        {[
+          "Dedicated agent assigned within 24 hours",
+          "Curated shortlist from all WA dealer inventory",
+          "Scheduling & coordination with dealers",
+          "Professional negotiation on your behalf",
+          "Guidance through paperwork & closing",
+        ].map(f => (
+          <li key={f} className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#0B1117] flex-shrink-0 mt-0.5" />
+            {f}
+          </li>
+        ))}
+      </ul>
+      <div className="space-y-2.5">
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707972]" />
+          <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
+            className="w-full pl-9 pr-4 py-3 rounded-xl border border-[#e3e2e2] text-sm focus:outline-none focus:border-[#0B1117] bg-[#faf9f8]" />
+        </div>
+        <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border border-[#e3e2e2] text-sm focus:outline-none focus:border-[#0B1117] bg-[#faf9f8]" />
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707972]" />
+          <input type="tel" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)}
+            className="w-full pl-9 pr-4 py-3 rounded-xl border border-[#e3e2e2] text-sm focus:outline-none focus:border-[#0B1117] bg-[#faf9f8]" />
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={loading || !name.trim() || !email.trim()}
+          className="w-full py-3.5 rounded-2xl bg-amber-600 text-white font-black text-sm hover:bg-amber-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Request a Buyers Agent"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Match() {
+  const {
+    messages, sendMessage, isTyping, profile,
+    recommendations, stage, noMatch,
+    expansionSuggestions,
+  } = useChatSession();
+  useAppAuth();
+
+  const [, navigate] = useLocation();
+  const [input, setInput] = useState("");
+  const [showAgent, setShowAgent] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportFailed, setReportFailed] = useState(false);
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    trackEvent("page_view", { metadata: { page: "match_quiz_chat" } });
+  }, []);
+
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages, isTyping]);
+
+  // Auto-generate report when matches are ready
+  const matchesReady = stage === "complete" && recommendations.length > 0;
+  const reportGenerated = useRef(false);
+
+  useEffect(() => {
+    if (matchesReady && !reportGenerated.current && !isGeneratingReport) {
+      reportGenerated.current = true;
+      generateReport();
+    }
+  }, [matchesReady]);
+
+  const generateReport = async () => {
+    setIsGeneratingReport(true);
+    setReportFailed(false);
+    try {
+      // Build quiz payload from the profile
+      const quizPayload = {
+        useCase: profile.useCase,
+        travelers: profile.travelers,
+        hasKids: profile.hasKids,
+        hasPets: profile.hasPets,
+        driveType: profile.rvType
+          ? (["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"].includes(profile.rvType) ? "towable" : "drivable")
+          : "either",
+        rvType: profile.rvType,
+        towVehicle: profile.towVehicle,
+        towCapacity: profile.towVehicle ? undefined : undefined, // Let server estimate
+        budgetMin: profile.minBudget,
+        budgetMax: profile.maxBudget,
+        campingStyle: profile.campingStyle,
+        mustHaves: profile.mustHaves,
+        experience: profile.experience,
+        activities: profile.activities,
+        intendedUse: profile.intendedUse,
+      };
+
+      const res = await fetch(`/api/match-report/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quiz: quizPayload }),
+      });
+
+      if (res.ok) {
+        const report = await res.json();
+        sessionStorage.setItem("matchrv_report", JSON.stringify(report));
+        trackEvent("match_report_generated", {
+          metadata: { reportId: report.reportId, picksCount: report.picks?.length },
+        });
+      } else {
+        setReportFailed(true);
+      }
+    } catch (err) {
+      console.error("Report generation failed:", err);
+      setReportFailed(true);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const handleViewReport = () => {
+    const stored = sessionStorage.getItem("matchrv_report");
+    if (stored) {
+      navigate("/match-report");
+    } else if (!isGeneratingReport) {
+      reportGenerated.current = false;
+      setReportFailed(false);
+      generateReport().then(() => {
+        const s = sessionStorage.getItem("matchrv_report");
+        if (s) navigate("/match-report");
+      });
+    }
+  };
+
+  const { status: micStatus, toggle: toggleMic } = useSpeechToText({
+    onResult: (transcript) => setInput(prev => prev ? `${prev} ${transcript}` : transcript),
+  });
+
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const text = input.trim();
+    if (!text || isTyping) return;
+    setInput("");
+    await sendMessage(text);
+  };
+
+  const reportReady = !isGeneratingReport && !!sessionStorage.getItem("matchrv_report");
+
+  return (
+    <Layout>
+      <SEO
+        title="Find Your RV — Free Personalized Match Report"
+        description="Tell us about your camping lifestyle and we'll match you with 3 RVs from live dealer inventory. No pressure, just honest guidance."
+        canonical="https://matchrv.com/match"
+      />
+
+      <div className="flex flex-col" style={{ height: "calc(100vh - 5rem)" }}>
+
+        <section className="bg-[#0B1117] text-white py-6 px-4 flex-shrink-0">
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 mb-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20">
+              <Compass className="w-3.5 h-3.5 text-[#00CED1]" />
+              <span className="text-xs font-black uppercase tracking-widest text-[#00CED1]">RV Guide</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tighter mb-1">
+              Let's Find What Fits Your Life
+            </h1>
+            <p className="text-white/70 text-sm leading-relaxed max-w-lg mx-auto">
+              No pressure, no sales pitch. Just tell me about your camping plans and I'll show you 3 RVs that actually make sense for how you live.
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-white/50">
+              <span className="flex items-center gap-1"><TreePine className="w-3 h-3" /> No account needed</span>
+              <span>·</span>
+              <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> Free forever</span>
+            </div>
+          </div>
+        </section>
+
+        <div className="flex-1 bg-[#faf9f8] flex flex-col overflow-hidden">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-3">
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              {msg.role === "assistant" && (
+                <div className="w-7 h-7 rounded-full bg-[#0B1117] flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
+                  <Compass className="w-3.5 h-3.5 text-[#00CED1]" />
+                </div>
+              )}
+              <div
+                className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === "user"
+                    ? "bg-[#0B1117] text-white rounded-br-sm"
+                    : "bg-white border border-[#e3e2e2] text-[#1b1c1c] rounded-bl-sm shadow-sm"
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="w-7 h-7 rounded-full bg-[#0B1117] flex items-center justify-center flex-shrink-0 mr-2">
+                <Compass className="w-3.5 h-3.5 text-[#00CED1]" />
+              </div>
+              <div className="bg-white border border-[#e3e2e2] rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                <div className="flex gap-1 items-center h-4">
+                  {[0, 150, 300].map(delay => (
+                    <div
+                      key={delay}
+                      className="w-1.5 h-1.5 bg-[#707972] rounded-full animate-bounce"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {noMatch && !isTyping && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm">
+              <div className="flex items-center gap-2 font-bold text-amber-800 mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                No exact matches for those criteria
+              </div>
+              {expansionSuggestions.length > 0 && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {expansionSuggestions.map((s: ExpansionSuggestion, i: number) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(s.message ?? s.label)}
+                      className="text-left px-3 py-2 bg-white border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {matchesReady && (
+            <MatchReadyCard
+              count={recommendations.length}
+              onViewReport={handleViewReport}
+              isGenerating={isGeneratingReport}
+              hasFailed={reportFailed}
+            />
+          )}
+
+          {matchesReady && reportReady && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowAgent(true)}
+                className="w-full text-left bg-amber-50 border border-amber-200 rounded-2xl p-4 hover:bg-amber-100 transition"
+              >
+                <div className="text-[10px] font-black text-amber-800 uppercase tracking-wider mb-1">Prefer a real person?</div>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  A dedicated buyers agent can handle everything — matching, dealer calls, and negotiation. Starting at ${AGENT_PRICE_FROM}.
+                </p>
+              </button>
+            </div>
+          )}
+
+          {showAgent && (
+            <AgentInterestCard profile={profile} onDone={() => setShowAgent(false)} />
+          )}
+
+            </div>
+          </div>
+
+          {!matchesReady && (
+            <div className="bg-white border-t border-[#e3e2e2] shadow-md flex-shrink-0">
+              <form onSubmit={handleSend} className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder={micStatus === "listening" ? "Listening…" : "Type your answer…"}
+                  className={`flex-1 px-4 py-3 rounded-xl border text-sm focus:outline-none bg-[#faf9f8] transition ${
+                    micStatus === "listening"
+                      ? "border-red-400 focus:border-red-400 bg-red-50"
+                      : "border-[#e3e2e2] focus:border-[#0B1117]"
+                  }`}
+                  disabled={isTyping}
+                />
+                {micStatus !== "unsupported" && (
+                  <button
+                    type="button"
+                    onClick={toggleMic}
+                    disabled={isTyping}
+                    title={micStatus === "listening" ? "Stop recording" : "Speak your answer"}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition flex-shrink-0 disabled:opacity-40 ${
+                      micStatus === "listening"
+                        ? "bg-red-500 text-white animate-pulse"
+                        : "bg-[#f0f0ee] text-[#404942] hover:bg-[#e3e2e2]"
+                    }`}
+                  >
+                    {micStatus === "listening" ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isTyping}
+                  className="w-12 h-12 rounded-xl bg-[#0B1117] text-white flex items-center justify-center hover:bg-[#002829] transition disabled:opacity-40 flex-shrink-0"
+                >
+                  {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </Layout>
+  );
+}
+
+
+================================================================================
+FILE 2: artifacts/rv-marketplace/src/pages/match-report.tsx
+================================================================================
+
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { Layout } from "@/components/layout";
+import { SEO } from "@/components/seo";
+import { trackEvent } from "@/lib/analytics";
+import {
+  ArrowRight, Award, TrendingDown, Sparkles, Check, AlertCircle,
+  MapPin, Calendar, Bed, Ruler, FileDown, RefreshCcw, Mail,
+  Compass, Heart, Shield, MessageCircle,
+} from "lucide-react";
+
+type Pick = {
+  tier: "best_overall" | "best_value" | "upgrade";
+  whyItFits: string;
+  tradeoffs: string[];
+  priceContext: string;
+  listing: {
+    id: number;
+    title: string;
+    make: string;
+    model: string;
+    year: number;
+    type: string;
+    price: number;
+    marketValue: number;
+    dealScore: string;
+    dealSavings: number;
+    length: number | null;
+    sleeps: number;
+    location: string;
+    state: string;
+    dealerName: string;
+    images: string[];
+    daysOnMarket: number;
+    condition: string;
+  };
+};
+
+type Report = {
+  reportId: string;
+  generatedAt: string;
+  expertSummary: string;
+  picks: Pick[];
+  totalConsidered: number;
+  quiz?: {
+    budgetMax?: number;
+    driveType?: string;
+    useCase?: string;
+    [key: string]: unknown;
+  };
+};
+
+const TIER_META = {
+  best_overall: {
+    label: "Best Fit for Your Life",
+    subtitle: "This one matches how you actually camp",
+    icon: Award,
+    color: "bg-[#0B1117] text-[#00CED1]",
+    pillBg: "bg-[#0B1117]",
+    pillText: "text-white",
+  },
+  best_value: {
+    label: "Smart Money Pick",
+    subtitle: "Great fit at a great price",
+    icon: TrendingDown,
+    color: "bg-[#00CED1] text-[#0B1117]",
+    pillBg: "bg-[#00CED1]",
+    pillText: "text-[#0B1117]",
+  },
+  upgrade: {
+    label: "Worth a Look If You Can Stretch",
+    subtitle: "Here's what a little extra budget gets you",
+    icon: Sparkles,
+    color: "bg-[#ffe08b] text-[#241a00]",
+    pillBg: "bg-[#ffe08b]",
+    pillText: "text-[#241a00]",
+  },
+} as const;
+
+function formatType(t: string): string {
+  return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function MatchReport() {
+  const [, navigate] = useLocation();
+  const [report, setReport] = useState<Report | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("matchrv_report");
+    if (!raw) {
+      navigate("/match");
+      return;
+    }
+    try {
+      const r = JSON.parse(raw) as Report;
+      setReport(r);
+      const bestOverall = r.picks.find((p) => p.tier === "best_overall");
+      trackEvent("quiz_complete", {
+        metadata: {
+          report_id: r.reportId,
+          picks_count: r.picks.length,
+          top_pick_type: bestOverall?.listing?.type ?? null,
+          top_pick_price: bestOverall?.listing?.price ?? null,
+          budget_max: r.quiz?.budgetMax ?? null,
+          drive_type: r.quiz?.driveType ?? null,
+          use_case: r.quiz?.useCase ?? null,
+          total_considered: r.totalConsidered ?? null,
+        },
+      });
+    } catch {
+      navigate("/match");
+    }
+  }, [navigate]);
+
+  if (!report) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <p className="text-[#707972]">Loading your report…</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <SEO
+        title="Your RV Match Report — Personalized Picks"
+        description="Your personalized RV recommendations based on your camping lifestyle, budget, and needs. Honest guidance, no sales pressure."
+        canonical="https://matchrv.com/match-report"
+      />
+
+      {/* Hero */}
+      <section className="bg-[#0B1117] text-white py-12 sm:py-16 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <Compass className="w-5 h-5 text-[#00CED1]" />
+            <span className="text-xs font-black uppercase tracking-widest text-[#00CED1]">Your Personal Report</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-display font-black tracking-tighter mb-4">
+            Here's What Fits Your Life
+          </h1>
+          <p className="text-white/80 text-base sm:text-lg leading-relaxed max-w-3xl">
+            {report.expertSummary || "Based on what you told me about your camping plans, here are three RVs worth your attention. Each one fits your life a little differently — read the honest tradeoffs before reaching out."}
+          </p>
+          <div className="flex flex-wrap gap-4 mt-6 text-sm text-white/60">
+            <span>Compared <strong className="text-white">{report.totalConsidered}</strong> live listings</span>
+            <span>•</span>
+            <span>Generated {new Date(report.generatedAt).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center gap-4 mt-4 text-[10px] text-white/40">
+            <span className="flex items-center gap-1"><Shield className="w-3 h-3" /> No sales pressure</span>
+            <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> Honest tradeoffs included</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Picks */}
+      <section className="py-12 px-4 bg-[#faf9f8]">
+        <div className="max-w-5xl mx-auto space-y-8">
+          {report.picks.map((p, idx) => (
+            <PickCard key={p.tier} pick={p} pickNumber={idx + 1} />
+          ))}
+        </div>
+      </section>
+
+      {/* Save / Email Report */}
+      <section className="py-12 px-4 bg-white">
+        <div className="max-w-3xl mx-auto bg-[#f5f3f3] rounded-3xl p-8 sm:p-10 border border-[#e3e2e2]">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-12 h-12 rounded-xl bg-[#0B1117] flex items-center justify-center flex-shrink-0">
+              <Mail className="w-6 h-6 text-[#00CED1]" />
+            </div>
+            <div>
+              <h3 className="text-xl font-display font-black text-[#1b1c1c]">Keep this report handy</h3>
+              <p className="text-sm text-[#707972] mt-1">We'll email it to you — plus alert you if any of these drop in price.</p>
+            </div>
+          </div>
+          {emailSent ? (
+            <div className="flex items-center gap-2 text-[#0B1117] font-bold">
+              <Check className="w-5 h-5" /> Sent! Check your inbox.
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!email) return;
+                trackEvent("match_report_email_save", { metadata: { reportId: report.reportId } });
+                // TODO: wire to lead endpoint
+                setEmailSent(true);
+              }}
+              className="flex flex-col sm:flex-row gap-3"
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="flex-1 px-5 py-3 rounded-full border border-[#e3e2e2] focus:ring-2 focus:ring-[#0B1117] outline-none text-sm"
+              />
+              <button type="submit" className="bg-[#0B1117] text-white px-7 py-3 rounded-full font-black text-sm hover:bg-[#002829] transition-colors flex items-center justify-center gap-2">
+                <FileDown className="w-4 h-4" /> Email Me This Report
+              </button>
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* Next steps */}
+      <section className="py-12 px-4 bg-[#faf9f8]">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-xl font-display font-black text-[#1b1c1c] mb-6 text-center">What would you like to do next?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/match">
+              <button className="w-full h-full bg-white border border-[#e3e2e2] rounded-2xl p-6 text-left hover:border-[#0B1117] transition-colors">
+                <RefreshCcw className="w-6 h-6 text-[#0B1117] mb-3" />
+                <div className="font-bold text-[#1b1c1c]">Retake the quiz</div>
+                <div className="text-sm text-[#707972] mt-1">Adjust your answers and get a fresh report.</div>
+              </button>
+            </Link>
+            <Link href="/outfitter">
+              <button className="w-full h-full bg-white border border-[#e3e2e2] rounded-2xl p-6 text-left hover:border-[#0B1117] transition-colors">
+                <MessageCircle className="w-6 h-6 text-[#0B1117] mb-3" />
+                <div className="font-bold text-[#1b1c1c]">Ask the RV Outfitter</div>
+                <div className="text-sm text-[#707972] mt-1">Have questions about your picks or anything RV-related? Ask away.</div>
+              </button>
+            </Link>
+            <Link href="/browse">
+              <button className="w-full h-full bg-white border border-[#e3e2e2] rounded-2xl p-6 text-left hover:border-[#0B1117] transition-colors">
+                <ArrowRight className="w-6 h-6 text-[#0B1117] mb-3" />
+                <div className="font-bold text-[#1b1c1c]">Browse all inventory</div>
+                <div className="text-sm text-[#707972] mt-1">See every listing and filter on your own terms.</div>
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  );
+}
+
+function PickCard({ pick, pickNumber }: { pick: Pick; pickNumber: number }) {
+  const meta = TIER_META[pick.tier];
+  const Icon = meta.icon;
+  const l = pick.listing;
+  const img = l.images[0];
+
+  return (
+    <article className="bg-white rounded-3xl border border-[#e3e2e2] overflow-hidden shadow-sm">
+      {/* Tier banner */}
+      <div className={`${meta.color} px-6 py-4 flex items-center gap-3`}>
+        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div>
+          <span className="font-black uppercase tracking-widest text-sm block">{meta.label}</span>
+          <span className="text-xs opacity-70">{meta.subtitle}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
+        {/* Image */}
+        <div className="md:col-span-2 bg-[#f5f3f3] aspect-[4/3] md:aspect-auto md:min-h-[280px] relative">
+          {img ? (
+            <img src={img} alt={l.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[#707972] text-sm">No photo</div>
+          )}
+          {l.dealSavings > 0 && (
+            <div className="absolute top-3 left-3 bg-[#0B1117] text-white px-3 py-1 rounded-full text-xs font-black">
+              ${l.dealSavings.toLocaleString()} below market
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="md:col-span-3 p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#707972]">{formatType(l.type)} • {l.condition === "new" ? "New" : "Used"}</p>
+              <h3 className="text-xl sm:text-2xl font-display font-black text-[#1b1c1c] tracking-tight mt-1">
+                {l.year} {l.make} {l.model}
+              </h3>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl sm:text-3xl font-black text-[#0B1117]">${l.price.toLocaleString()}</div>
+              {l.marketValue > 0 && l.marketValue !== l.price && (
+                <div className="text-xs text-[#707972]">Market: ${l.marketValue.toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Specs */}
+          <div className="flex flex-wrap gap-3 mb-5 text-xs text-[#404942]">
+            <span className="inline-flex items-center gap-1.5 bg-[#f5f3f3] px-3 py-1.5 rounded-full"><Bed className="w-3.5 h-3.5" /> Sleeps {l.sleeps}</span>
+            {l.length && <span className="inline-flex items-center gap-1.5 bg-[#f5f3f3] px-3 py-1.5 rounded-full"><Ruler className="w-3.5 h-3.5" /> {l.length}ft</span>}
+            <span className="inline-flex items-center gap-1.5 bg-[#f5f3f3] px-3 py-1.5 rounded-full"><MapPin className="w-3.5 h-3.5" /> {l.location}</span>
+            <span className="inline-flex items-center gap-1.5 bg-[#f5f3f3] px-3 py-1.5 rounded-full"><Calendar className="w-3.5 h-3.5" /> {l.daysOnMarket}d on market</span>
+          </div>
+
+          {/* Why it fits — the key personalized section */}
+          {pick.whyItFits && (
+            <div className="mb-5 bg-[#00CED1]/10 border border-[#00CED1]/30 rounded-2xl p-4">
+              <h4 className="text-xs font-black uppercase tracking-widest text-[#0B1117] mb-2 flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5" /> Why this fits your camping life
+              </h4>
+              <p className="text-sm text-[#1b1c1c] leading-relaxed">{pick.whyItFits}</p>
+            </div>
+          )}
+
+          {/* Tradeoffs — honest and trust-building */}
+          {pick.tradeoffs.length > 0 && (
+            <div className="mb-5">
+              <h4 className="text-xs font-black uppercase tracking-widest text-[#924c00] mb-2 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> Things to consider
+              </h4>
+              <ul className="space-y-1.5">
+                {pick.tradeoffs.map((t, i) => (
+                  <li key={i} className="text-sm text-[#404942] leading-relaxed flex gap-2">
+                    <span className="text-[#924c00]">•</span>{t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Price context */}
+          {pick.priceContext && (
+            <div className="mb-6 text-xs text-[#707972] italic">{pick.priceContext}</div>
+          )}
+
+          {/* CTAs */}
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/listing/${l.id}`}>
+              <button className="bg-[#0B1117] text-white px-6 py-3 rounded-full font-black text-sm flex items-center gap-2 hover:bg-[#002829] transition-colors">
+                See Full Details <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+            <Link href={`/listing/${l.id}#contact`}>
+              <button className="bg-white text-[#0B1117] border-2 border-[#0B1117] px-6 py-3 rounded-full font-black text-sm hover:bg-[#00CED1]/20 transition-colors">
+                Contact Dealer
+              </button>
+            </Link>
+          </div>
+
+          <p className="text-xs text-[#707972] mt-4">{l.dealerName}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+
+================================================================================
+FILE 3: artifacts/api-server/src/routes/match-report.ts
+================================================================================
+
+import { Router, type IRouter } from "express";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { db, listingsTable } from "@workspace/db";
+import { and, gte, lte, inArray, isNull, or, sql, desc, asc } from "drizzle-orm";
+
+const router: IRouter = Router();
+
+type QuizAnswers = {
+  useCase?: string;
+  travelers?: string;
+  hasKids?: boolean;
+  hasPets?: boolean;
+  driveType?: "towable" | "drivable" | "either";
+  rvType?: string | null;
+  towVehicle?: string;
+  towCapacity?: number;
+  budgetMin?: number;
+  budgetMax?: number;
+  campingStyle?: string;
+  mustHaves?: string[];
+  experience?: string;
+  activities?: string[];
+  intendedUse?: string;
+};
+
+const TOWABLE_TYPES = ["travel_trailer", "fifth_wheel", "toy_hauler", "popup_camper", "truck_camper"] as const;
+const DRIVABLE_TYPES = ["class_a", "class_b", "class_c"] as const;
+const ALL_TYPES = [...TOWABLE_TYPES, ...DRIVABLE_TYPES] as const;
+
+type Listing = typeof listingsTable.$inferSelect;
+
+function safeNum(v: unknown, min: number, max: number): number | null {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return n;
+}
+
+function normalize(l: Listing) {
+  return {
+    id: l.id,
+    title: l.title,
+    make: l.make,
+    model: l.model,
+    year: l.year,
+    type: l.type,
+    price: Number(l.price),
+    marketValue: Number(l.marketValue),
+    dealScore: l.dealScore,
+    dealSavings: Number(l.dealSavings ?? 0),
+    length: l.length != null ? Number(l.length) : null,
+    sleeps: l.sleeps,
+    slides: l.slides ?? 0,
+    location: l.location,
+    state: l.state,
+    dealerName: l.dealerName,
+    dealerId: l.dealerId,
+    images: l.images ?? [],
+    daysOnMarket: l.daysOnMarket ?? 0,
+    condition: l.condition,
+    isNew: l.isNew,
+    isFeatured: l.isFeatured,
+    dryWeight: l.dryWeight != null ? Number(l.dryWeight) : null,
+    gvwr: l.gvwr != null ? Number(l.gvwr) : null,
+    outdoorKitchen: l.outdoorKitchen ?? false,
+    washerDryer: l.washerDryer ?? false,
+    generator: l.generator ?? false,
+    solar: l.solar ?? false,
+  };
+}
+
+type NormalizedListing = ReturnType<typeof normalize>;
+
+function dealScoreRank(s: string): number {
+  return ({ great_deal: 0, good_deal: 1, fair_deal: 2, overpriced: 3 } as Record<string, number>)[s] ?? 2;
+}
+
+function scoreFit(l: NormalizedListing, q: QuizAnswers): number {
+  let score = 0;
+  score += (3 - dealScoreRank(l.dealScore)) * 25;
+  if (l.isFeatured) score += 5;
+  const desiredSleeps = q.hasKids ? 6 : (q.travelers === "family" ? 5 : q.travelers === "couple" ? 2 : q.travelers === "solo" ? 1 : 4);
+  if (l.sleeps >= desiredSleeps) score += 15;
+  if (l.sleeps >= desiredSleeps + 2) score += 5;
+  if (q.towCapacity && l.dryWeight && l.dryWeight * 1.15 <= q.towCapacity) score += 20;
+  if (q.campingStyle === "boondocking" && (l.solar || l.generator)) score += 10;
+  if (q.campingStyle === "full_hookup" && l.washerDryer) score += 5;
+  if (q.mustHaves?.includes("outdoor_kitchen") && l.outdoorKitchen) score += 8;
+  if (q.mustHaves?.includes("washer_dryer") && l.washerDryer) score += 8;
+  if (q.mustHaves?.includes("generator") && l.generator) score += 6;
+  if (q.mustHaves?.includes("solar") && l.solar) score += 6;
+  const ageBonus = Math.max(0, 10 - (new Date().getFullYear() - l.year));
+  score += ageBonus;
+  return score;
+}
+
+function resolveAllowedTypes(q: QuizAnswers): readonly string[] {
+  if (q.rvType && (ALL_TYPES as readonly string[]).includes(q.rvType)) return [q.rvType];
+  if (q.driveType === "towable") return TOWABLE_TYPES;
+  if (q.driveType === "drivable") return DRIVABLE_TYPES;
+  return ALL_TYPES;
+}
+
+async function fetchCandidates(q: QuizAnswers, priceMin: number, priceMax: number): Promise<NormalizedListing[]> {
+  const allowed = resolveAllowedTypes(q);
+  const conds = [
+    gte(listingsTable.price, priceMin),
+    lte(listingsTable.price, priceMax),
+    inArray(listingsTable.type, allowed as string[]),
+  ];
+
+  const onlyTowable = allowed.every((t) => (TOWABLE_TYPES as readonly string[]).includes(t));
+  if (q.towCapacity && onlyTowable) {
+    const cap = q.towCapacity;
+    conds.push(
+      or(
+        isNull(listingsTable.dryWeight),
+        lte(listingsTable.dryWeight, cap / 1.15),
+      )!,
+    );
+  }
+
+  const rows = await db
+    .select()
+    .from(listingsTable)
+    .where(and(...conds))
+    .orderBy(desc(listingsTable.isFeatured), asc(listingsTable.dealScore), asc(listingsTable.price))
+    .limit(80);
+
+  return rows.map(normalize);
+}
+
+async function generateCopy(
+  q: QuizAnswers,
+  picks: { tier: string; listing: NormalizedListing }[],
+) {
+  const profileSummary = JSON.stringify({
+    use: q.useCase, travelers: q.travelers, kids: q.hasKids, pets: q.hasPets,
+    drive: q.driveType, tow: q.towVehicle, towCapacity: q.towCapacity,
+    budget: [q.budgetMin, q.budgetMax], style: q.campingStyle,
+    mustHaves: q.mustHaves, experience: q.experience,
+    activities: q.activities, intendedUse: q.intendedUse,
+  });
+
+  const picksSummary = picks.map((p) => {
+    const l = p.listing;
+    return `[${p.tier.toUpperCase()}] ${l.year} ${l.make} ${l.model} — ${l.type} | $${l.price.toLocaleString()} | sleeps ${l.sleeps} | ${l.length ? `${l.length}ft | ` : ""}${l.dryWeight ? `${l.dryWeight}lb dry | ` : ""}deal: ${l.dealScore}${l.dealSavings > 0 ? ` ($${l.dealSavings.toLocaleString()} below market)` : ""} | ${l.location}`;
+  }).join("\n");
+
+  const prompt = `You are a professional RV outfitter writing a personalized RV Match Report for someone who just told you about their camping lifestyle. You are NOT a salesperson — you're a trusted guide helping them understand which RVs fit their life.
+
+Think like a Sobel University trained outfitter: you understand HOW they'll use the RV and you're explaining why each pick supports THEIR specific lifestyle. Be warm, honest, and specific.
+
+BUYER'S CAMPING PROFILE:
+${profileSummary}
+
+THE 3 RVs YOU SELECTED FOR THEM:
+${picksSummary}
+
+Tier definitions:
+- BEST_OVERALL: The RV that best fits how they described their camping life
+- BEST_VALUE: Smart money pick — great fit at a great price
+- UPGRADE: Worth considering if they can stretch — here's what extra money buys them
+
+For EACH pick, write:
+1. "whyItFits" — 2-3 sentences explaining how THIS specific RV supports THEIR camping lifestyle. Reference their actual answers (their use case, who's coming, where they're going, their tow vehicle, etc.). Don't list features — explain how the RV enables the life they described. Sound like a knowledgeable friend, not a brochure.
+
+2. "tradeoffs" — array of 2-3 honest things to consider. Be genuinely candid — this builds trust. Examples: "The shorter length means less storage for extended trips", "No generator means you'll need hookups or aftermarket solar", "At this price point, expect some cosmetic wear". Never say "it's perfect" — nothing is.
+
+3. "priceContext" — 1 sentence about the deal quality. Be specific: mention savings, days on market, or how it compares to similar units.
+
+Also write an "expertSummary" — 2-3 sentences of warm, opinionated advice that ties the whole report together. Address them directly. Sound like a friend who knows RVs inside and out giving them honest guidance. Example tone: "Based on how you described your camping trips, you don't need the biggest rig on the lot — you need something that's easy to set up Friday night and comfortable enough to enjoy all weekend."
+
+Output ONLY valid JSON in this exact shape:
+{
+  "expertSummary": "...",
+  "picks": [
+    { "tier": "best_overall", "whyItFits": "...", "tradeoffs": ["...", "..."], "priceContext": "..." },
+    { "tier": "best_value", "whyItFits": "...", "tradeoffs": ["...", "..."], "priceContext": "..." },
+    { "tier": "upgrade", "whyItFits": "...", "tradeoffs": ["...", "..."], "priceContext": "..." }
+  ]
+}`;
+
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("generateCopy timeout")), 12_000)
+    );
+    const aiCall = anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1200,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const response = await Promise.race([aiCall, timeout]);
+    const text = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in response");
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error("Match report copy generation failed:", err);
+    return {
+      expertSummary: "Based on what you told me about your camping plans, here are three RVs worth your attention. Each one fits your life a little differently — read the honest tradeoffs before reaching out to a dealer.",
+      picks: picks.map((p) => ({
+        tier: p.tier,
+        whyItFits: `The ${p.listing.year} ${p.listing.make} ${p.listing.model} fits the way you described your camping life — it's sized right for your group and priced within your range.`,
+        tradeoffs: ["Confirm tow weight compatibility with the dealer.", "Inspect the unit in person — photos don't show everything."],
+        priceContext: p.listing.dealSavings > 0
+          ? `Priced about $${p.listing.dealSavings.toLocaleString()} below market — that's a solid deal.`
+          : `Priced near market value for this year and condition.`,
+      })),
+    };
+  }
+}
+
+router.post("/match-report/generate", async (req, res) => {
+  try {
+    const raw = (req.body?.quiz ?? {}) as Record<string, unknown>;
+
+    // Validate & sanitize inputs
+    const driveType = raw.driveType === "towable" || raw.driveType === "drivable" || raw.driveType === "either"
+      ? raw.driveType
+      : "either";
+    const rvType = typeof raw.rvType === "string" && (ALL_TYPES as readonly string[]).includes(raw.rvType)
+      ? raw.rvType
+      : null;
+    const budgetMax = safeNum(raw.budgetMax, 5000, 2_000_000) ?? 100000;
+    const budgetMin = safeNum(raw.budgetMin, 1000, budgetMax) ?? Math.max(10000, Math.floor(budgetMax * 0.3));
+    const towCapacity = safeNum(raw.towCapacity, 1000, 50000) ?? undefined;
+    const mustHaves = Array.isArray(raw.mustHaves)
+      ? raw.mustHaves.filter((x): x is string => typeof x === "string").slice(0, 12)
+      : [];
+
+    const quiz: QuizAnswers = {
+      useCase: typeof raw.useCase === "string" ? raw.useCase : undefined,
+      travelers: typeof raw.travelers === "string" ? raw.travelers : undefined,
+      hasKids: typeof raw.hasKids === "boolean" ? raw.hasKids : undefined,
+      hasPets: typeof raw.hasPets === "boolean" ? raw.hasPets : undefined,
+      driveType,
+      rvType,
+      towVehicle: typeof raw.towVehicle === "string" ? raw.towVehicle.slice(0, 200) : undefined,
+      towCapacity,
+      budgetMin,
+      budgetMax,
+      campingStyle: typeof raw.campingStyle === "string" ? raw.campingStyle : undefined,
+      mustHaves,
+      experience: typeof raw.experience === "string" ? raw.experience : undefined,
+      activities: Array.isArray(raw.activities) ? raw.activities.filter((x): x is string => typeof x === "string") : undefined,
+      intendedUse: typeof raw.intendedUse === "string" ? raw.intendedUse : undefined,
+    };
+
+    const inBudget = await fetchCandidates(quiz, budgetMin, budgetMax);
+
+    if (inBudget.length === 0) {
+      res.status(404).json({
+        error: "no_matches",
+        message: "We couldn't find RVs matching your criteria right now. Try widening your budget or being more flexible on RV type — our inventory changes daily.",
+      });
+      return;
+    }
+
+    // Build pool of upgrade candidates (above budget)
+    const upMin = Math.floor(budgetMax * 1.15);
+    const upMax = Math.floor(Math.min(budgetMax * 1.5, 2_000_000));
+    const upgradeCands = upMin < upMax ? await fetchCandidates(quiz, upMin, upMax) : [];
+
+    // Pick distinct listings across tiers
+    const usedIds = new Set<number>();
+
+    // 1) Best overall — highest fit
+    const scored = [...inBudget]
+      .map((l) => ({ listing: l, score: scoreFit(l, quiz) }))
+      .sort((a, b) => b.score - a.score);
+    const bestOverall = scored[0]?.listing;
+    if (bestOverall) usedIds.add(bestOverall.id);
+
+    // 2) Best value — best deal score / highest savings, distinct from best overall
+    const valueRanked = inBudget
+      .filter((l) => !usedIds.has(l.id))
+      .filter((l) => ["great_deal", "good_deal"].includes(l.dealScore) || l.dealSavings > 1000)
+      .sort((a, b) => {
+        const r = dealScoreRank(a.dealScore) - dealScoreRank(b.dealScore);
+        if (r !== 0) return r;
+        return b.dealSavings - a.dealSavings;
+      });
+    const bestValue = valueRanked[0]
+      ?? scored.find((s) => !usedIds.has(s.listing.id))?.listing;
+    if (bestValue) usedIds.add(bestValue.id);
+
+    // 3) Upgrade — prefer above-budget pool, fallback to next-best in-budget, distinct
+    const upgradeRanked = upgradeCands
+      .filter((l) => !usedIds.has(l.id))
+      .map((l) => ({ listing: l, score: scoreFit(l, { ...quiz, budgetMax: upMax }) }))
+      .sort((a, b) => b.score - a.score);
+    const upgrade = upgradeRanked[0]?.listing
+      ?? scored.find((s) => !usedIds.has(s.listing.id))?.listing;
+    if (upgrade) usedIds.add(upgrade.id);
+
+    // Build picks list, only including tiers we actually have a distinct listing for
+    const picks: { tier: string; listing: NormalizedListing }[] = [];
+    if (bestOverall) picks.push({ tier: "best_overall", listing: bestOverall });
+    if (bestValue && bestValue.id !== bestOverall?.id) picks.push({ tier: "best_value", listing: bestValue });
+    if (upgrade && upgrade.id !== bestOverall?.id && upgrade.id !== bestValue?.id) {
+      picks.push({ tier: "upgrade", listing: upgrade });
+    }
+
+    if (picks.length === 0) {
+      res.status(404).json({
+        error: "no_matches",
+        message: "We couldn't find RVs matching your criteria right now. Try widening your budget or being more flexible on RV type.",
+      });
+      return;
+    }
+
+    const copy = await generateCopy(quiz, picks);
+
+    const enrichedPicks = picks.map((p) => {
+      const c = (copy.picks ?? []).find((x: { tier: string }) => x.tier === p.tier) ?? {};
+      return {
+        tier: p.tier,
+        listing: p.listing,
+        whyItFits: c.whyItFits ?? "",
+        tradeoffs: c.tradeoffs ?? [],
+        priceContext: c.priceContext ?? "",
+      };
+    });
+
+    res.json({
+      reportId: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      generatedAt: new Date().toISOString(),
+      quiz,
+      expertSummary: copy.expertSummary ?? "",
+      picks: enrichedPicks,
+      totalConsidered: inBudget.length,
+    });
+  } catch (err) {
+    console.error("Match report error:", err);
+    res.status(500).json({ message: "Could not generate match report. Please try again." });
+  }
+});
+
+export default router;

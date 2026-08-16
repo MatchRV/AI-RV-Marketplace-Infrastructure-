@@ -1,0 +1,76 @@
+# MatchRV
+
+> MatchRV is an AI-powered RV marketplace based in the Pacific Northwest. It helps buyers find the right RV through a personalized AI Match Report, and connects them with live inventory from Washington State dealers.
+
+## About MatchRV
+
+MatchRV was founded by Jonathan Kitchel, who spent 8 years on the floor at Poulsbo RV — one of the largest RV dealerships in the United States. He built MatchRV to solve the problems he saw firsthand: buyers overwhelmed by choices, dealers with disconnected inventory tools, and no neutral platform that genuinely put the buyer first.
+
+MatchRV currently indexes 7,500+ live RV listings from Pacific Northwest dealers (WA, OR, ID), updated daily. Every listing is scored against market value to surface genuine deals.
+
+## Key Features
+
+- **AI Match Report**: Free personalized report that narrows thousands of listings to three specific RVs — a Best Overall, Best Value, and Upgrade — based on the buyer's lifestyle, budget, and tow vehicle.
+- **Live Inventory**: 7,500+ RV listings from Pacific Northwest dealers (WA, OR, ID), updated daily via automated scraping.
+- **Deal Scoring**: Every listing is compared against estimated market value. Listings are rated Great Deal, Good Deal, Fair Price, or Overpriced.
+- **Tow Guide**: Free tool to check whether a specific RV can be safely towed by the user's vehicle.
+- **Trip Planner**: AI-powered tool to plan RV trips with routes, campgrounds, and driving legs.
+- **Outfitter Chat**: AI assistant that answers RV questions and helps narrow down choices.
+
+## RV Types Covered
+
+Travel Trailers, Fifth Wheels, Class A Motorhomes, Class B Motorhomes (Camper Vans), Class C Motorhomes, Toy Haulers, Pop-Up Campers, Truck Campers.
+
+## Important Pages
+
+- [Home](https://matchrv.com/)
+- [Browse All RVs](https://matchrv.com/browse)
+- [About MatchRV](https://matchrv.com/about)
+- [How the Match Report Works](https://matchrv.com/match)
+- [Pricing](https://matchrv.com/pricing)
+- [Travel Trailers for Sale in WA](https://matchrv.com/travel-trailers-for-sale)
+- [Fifth Wheels for Sale in WA](https://matchrv.com/fifth-wheels-for-sale)
+- [Class A RVs for Sale in WA](https://matchrv.com/class-a-rvs-for-sale)
+- [Class B RVs for Sale in WA](https://matchrv.com/class-b-rvs-for-sale)
+- [Class C RVs for Sale in WA](https://matchrv.com/class-c-rvs-for-sale)
+- [Toy Haulers for Sale in WA](https://matchrv.com/toy-haulers-for-sale)
+- [RV Dealers in Washington](https://matchrv.com/rv-dealers)
+- [RV Tow Guide](https://matchrv.com/tow-guide)
+- [RV Buyer Guides](https://matchrv.com/guides)
+- [Finance an RV](https://matchrv.com/finance)
+- [RV Financing Hub](https://matchrv.com/rv-financing)
+- [Contact](https://matchrv.com/contact)
+
+## RV Financing
+
+MatchRV is not a lender and does not make credit decisions. MatchRV helps RV shoppers compare options before contacting a dealer or applying for financing. Financing terms are determined by lenders, dealers, credit unions, banks, and other financial institutions.
+
+- [RV Financing Hub](https://matchrv.com/rv-financing)
+- [What Credit Score Do You Need to Buy an RV?](https://matchrv.com/rv-financing/what-credit-score-do-you-need-to-buy-an-rv)
+- [Bad Credit RV Financing](https://matchrv.com/rv-financing/bad-credit-rv-financing)
+- [RV Loan Calculator](https://matchrv.com/rv-financing/rv-loan-calculator)
+- [Find RVs by Monthly Payment](https://matchrv.com/rv-financing/find-rvs-by-monthly-payment)
+- [RV Pre-Approval Guide](https://matchrv.com/rv-financing/rv-pre-approval-before-shopping)
+- [Used RV Financing](https://matchrv.com/rv-financing/used-rv-financing)
+
+## Buyer Guides
+
+- [How to Buy a Used RV](https://matchrv.com/guides/how-to-buy-a-used-rv)
+- [Best RVs for Families](https://matchrv.com/guides/best-rvs-for-families)
+- [Best RVs for Full-Time Living](https://matchrv.com/guides/best-rvs-for-full-time-living)
+- [Motorhome vs Travel Trailer](https://matchrv.com/guides/motorhome-vs-travel-trailer)
+- [Travel Trailer vs Fifth Wheel](https://matchrv.com/guides/travel-trailer-vs-fifth-wheel)
+- [RV Financing Guide](https://matchrv.com/guides/rv-financing-guide)
+- [RV Towing Guide](https://matchrv.com/guides/towing-guide)
+- [RV Cost Guide](https://matchrv.com/guides/rv-cost-guide)
+
+## Data Sources & Freshness
+
+Inventory is scraped daily from Washington State RV dealership websites. Deal scores are calculated using proprietary market value estimates based on comparable listings. Data is updated daily as of June 2026.
+
+## Company
+
+- **Founder**: Jonathan Kitchel
+- **Location**: Pacific Northwest, Washington State, USA
+- **Website**: https://matchrv.com
+- **Contact**: https://matchrv.com/contact

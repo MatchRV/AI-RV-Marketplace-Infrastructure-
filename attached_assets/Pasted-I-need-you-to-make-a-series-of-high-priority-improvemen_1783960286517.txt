@@ -1,0 +1,62 @@
+I need you to make a series of high-priority improvements to the MatchRV website (matchrv.com). This is an AI-powered RV marketplace where buyers take a "Match Quiz" to get personalized RV recommendations. Here are all the changes needed:
+
+## CRITICAL BUG FIXES
+
+1. **Fix Cumulative Layout Shift (CLS)**: Our Google Core Web Vitals CLS score is 3.5 (should be under 0.1). Fix by:
+   - Adding explicit width and height attributes to every <img> tag
+   - Adding CSS aspect-ratio or min-height to any containers that load dynamic content (listings, images, carousels)
+   - Ensuring fonts load with font-display: swap and reserve space before load
+   - Pre-sizing skeleton loaders that match the real content dimensions
+
+2. **Fix JavaScript error**: Somewhere in the codebase there is a call to `outfitterfab` that is not defined. Find every reference to `outfitterfab` and either properly define/import it or remove the call entirely.
+
+3. **Fix dead clicks**: Audit all elements that have visual affordances of being clickable (hover states, pointer cursor, card designs, images) but have no onClick handler or href. Either wire them up or remove the visual cue. Specifically check: listing card images, nav items, RV type category buttons, and any dashboard UI elements.
+
+## HOMEPAGE REDESIGN
+
+4. **Single dominant CTA**: The hero section should have ONE primary call-to-action button: "Find My Perfect RV →" in a bold teal/green color. Remove or visually subordinate any competing buttons. The hero headline should be specific, e.g. "Answer 5 questions. Get your perfect RV match."
+
+5. **Add a visible trust bar**: Below the hero, add a horizontal strip showing: "651 RV buyers matched | 200+ dealers | Free match report in 2 minutes" — use real or estimated numbers.
+
+6. **Fix mobile layout**: Ensure the homepage works perfectly at 375px width. Check that no content overflows, all buttons are at least 44px tall, and the hero CTA is visible without scrolling.
+
+## MATCH QUIZ / FUNNEL FIXES
+
+7. **Guest-mode results**: When a user completes the match quiz, show them their top 3 RV matches BEFORE asking them to create an account or sign up. After showing results, offer: "Save your matches and get alerts → Create free account". This removes the friction that is blocking sign-ups.
+
+8. **Add a progress indicator**: If the match quiz is multiple steps/questions, add a progress bar (e.g., "Step 2 of 5") so users know how long it takes. This reduces abandonment.
+
+9. **Add inline validation**: On all form inputs in the quiz and sign-up flow, add real-time validation with clear error messages (e.g., "Please select at least one RV type"). Never show generic "Error" messages.
+
+## BROWSE / LISTINGS IMPROVEMENTS
+
+10. **Listings card click area**: Make the entire listing card clickable (not just a "View" button). Wrap the full card in an anchor tag pointing to the listing detail page.
+
+11. **Add skeleton loaders**: When the browse page is loading listings, show skeleton cards (gray shimmer placeholders) that match the exact dimensions of real listing cards. This prevents layout shift and improves perceived speed.
+
+12. **Filter persistence**: When a user applies filters on /browse and then clicks a listing and hits back, their filters should be preserved. Store filter state in the URL query params (e.g., /browse?type=Class+A&budget=50000).
+
+## MATCH REPORT PAGE
+
+13. **Match score visual**: On the match results/report page, display each recommended RV with a visual match percentage (e.g., a circular progress arc showing "94% Match") using CSS/SVG — no external chart libraries needed.
+
+14. **Add a "Contact Dealer" CTA on every match result**: Each matched RV card should have a prominent "Contact Dealer" or "Get Price" button that opens a modal with a pre-filled inquiry form.
+
+## ANALYTICS & TRACKING
+
+15. **Set up Clarity custom events**: Add the following custom event tracking calls throughout the app:
+    - `clarity("set", "quiz_started", "true")` when user begins match quiz
+    - `clarity("set", "quiz_completed", "true")` when user finishes all questions  
+    - `clarity("set", "results_viewed", "true")` when match results are shown
+    - `clarity("set", "dealer_contacted", "true")` when contact form is submitted
+    This will allow us to build conversion funnels in Microsoft Clarity.
+
+16. **Exclude dev/test traffic**: Add a check at the top of the Clarity initialization — if `window.location.hostname` includes "replit.dev" or "localhost", do NOT initialize Clarity tracking. Only track on matchrv.com.
+
+## PERFORMANCE
+
+17. **Add loading="lazy" to all images**: Any <img> tag that is not in the first visible viewport (hero) should have loading="lazy" and decoding="async".
+
+18. **Fix font loading**: Ensure all custom fonts use font-display: swap in their @font-face declarations.
+
+Please make all these changes, test that the JavaScript console shows no errors, verify the mobile layout at 375px, and confirm the CLS-causing elements have been given explicit dimensions.

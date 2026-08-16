@@ -1,0 +1,86 @@
+ I need two features added to the Outfitter AI chat experience:
+
+  FEATURE 1: Budget Input Widget
+
+  When the Outfitter AI reaches the budget stage and asks "Do you plan to make payments or pay cash?", and the user says
+   "finance" or "payments" or "monthly payments" — instead of continuing with plain text questions, render an inline
+  budget form widget inside the chat. The widget should appear as a styled card in the chat stream (not a modal) with:
+
+  - A dropdown or toggle: "Finance" vs "Cash"
+  - If Finance is selected, show:
+    - Down payment input field (dollar amount, with $ prefix, numeric only)
+    - Monthly payment input field (dollar amount, with $ prefix, numeric only)
+    - Loan term selector (36, 48, 60, 72, 84 months — default 60)
+  - If Cash is selected, show:
+    - Total budget input field (dollar amount)
+  - A "Submit" button styled like the existing send button (green, rounded)
+
+  When submitted:
+  - Calculate maxBudget from the financing inputs: maxBudget = downPayment + (monthlyPayment * loanTerm) (rough estimate
+   — good enough for filtering)
+  - Also store minBudget as roughly 60% of maxBudget so we don't show them cheap RVs way below their range
+  - Send a message to the Outfitter like: "I want to finance. Down payment: $[X], monthly payment: $[Y]/month for [Z]
+  months" so the conversation stays natural
+  - The Outfitter continues to the next question
+
+  Detect when to show this widget by checking if the current stage is "budget" OR if the assistant's last message
+  contains words like "payments or cash", "budget", "how much", "monthly payment", "down payment", "finance".
+
+  Style the widget to match the existing chat UI — rounded corners, white background, border-[#bfc9c0]/20, same font
+  sizes.
+
+  FEATURE 2: Post-Match Fork — "Go Deeper" vs "See My Matches"
+
+  After the Outfitter reaches the matching stage and recommendations are returned, instead of just showing the
+  recommendations immediately, present the user with a fork — two option cards in the chat stream:
+
+  Option A: "Go Deeper"
+  - Card with an icon (magnifying glass or compass)
+  - Title: "Perfect My Match"
+  - Description: "Answer a few more questions so I can dial in the exact RV for you"
+  - When clicked:
+    - The stage changes to a new stage called deep_dive
+    - The Outfitter sends a message like: "Great, let's make sure we find THE one. Let me ask a few more specific
+  questions..."
+    - Add these questions to the system prompt's conversation flow as a DEEP DIVE section after the initial 8 steps:
+        i. FLOORPLAN — "Do you prefer a rear bedroom, rear living, front kitchen, bunkhouse, or are you flexible?"
+      ii. MUST-HAVES — "Are there any features you absolutely must have? Things like outdoor kitchen, fireplace, king
+  bed, washer/dryer?"
+      iii. DEALBREAKERS — "Anything you definitely do NOT want?"
+      iv. TRAVEL PLANS — "Where do you plan to go most? Mountains, coast, desert, cross-country? And what time of year?"
+      v. EXPERIENCE LEVEL — "Have you owned an RV before, or is this your first?"
+    - After deep dive questions are answered, re-run the matching engine with the enriched profile
+    - Show the updated top 3 with even more personalized whyMatch descriptions
+
+  Option B: "See My Matches"
+  - Card with an icon (sparkles or list)
+  - Title: "Show My Top Picks"
+  - Description: "See your personalized RV recommendations now"
+  - When clicked:
+    - Show the recommendations panel/cards immediately
+    - Each recommendation card should have:
+        - The RV image, title, price
+      - The whyMatch personalized description
+      - A heart/save icon (clicking it requires login — show login prompt if not authenticated)
+      - A share icon (copies a link or opens share sheet)
+      - A "View Details" button that goes to the listing page
+    - Below the 3 cards, show a "Share All Results" button that generates a shareable link to this match report
+    - If user is NOT logged in, show a subtle banner: "Sign in to save your matches and get notified of price drops"
+  with a Google login button
+
+  For the fork UI, render the two options as side-by-side cards (or stacked on mobile) inside the chat stream, styled
+  like:
+  - Rounded corners (rounded-2xl)
+  - Light border
+  - Hover effect (slight scale or shadow)
+  - The green brand color (#004329) for the selected/hover state
+
+  Update the STAGES array and STAGE_LABELS in the web outfitter.tsx to include the new stages: add deep_dive between
+  matching and complete. Update the progress bar accordingly.
+
+  Add the deep dive questions to the OUTFITTER_SYSTEM_PROMPT — add a new section after the MATCHING step called DEEP
+  DIVE with those 5 questions, and update the stage enum to include deep_dive.
+
+  Do NOT break the existing conversation flow or matching engine. These features layer ON TOP of the existing code.
+
+  ---

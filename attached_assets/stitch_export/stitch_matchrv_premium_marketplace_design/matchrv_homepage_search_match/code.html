@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MatchRV | Find Your Perfect Outdoor Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&amp;family=DM+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            scroll-behavior: smooth;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#ffa54a",
+                        "primary-fixed-dim": "#2ddbde",
+                        "inverse-primary": "#2ddbde",
+                        "secondary-fixed-dim": "#c1c7cf",
+                        "primary": "#00696b",
+                        "on-primary-container": "#005354",
+                        "surface-container-highest": "#dde4e3",
+                        "on-tertiary-fixed-variant": "#6b3b00",
+                        "horizon-cyan": "#00CED1",
+                        "error": "#ba1a1a",
+                        "deep-teal": "#004329",
+                        "silver-road": "#E2E8F0",
+                        "surface-container": "#e8efef",
+                        "primary-container": "#00ced1",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#eef5f4",
+                        "on-tertiary-container": "#6f3d00",
+                        "surface-variant": "#dde4e3",
+                        "surface-tint": "#00696b",
+                        "on-secondary-fixed-variant": "#41474e",
+                        "on-surface-variant": "#3b4949",
+                        "secondary-fixed": "#dde3ec",
+                        "on-secondary-fixed": "#161c22",
+                        "inverse-surface": "#2b3232",
+                        "on-primary-fixed-variant": "#004f51",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#5af8fb",
+                        "surface-container-high": "#e2eae9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d4dbdb",
+                        "on-primary-fixed": "#002020",
+                        "caution-gold": "#FFE08B",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#161d1d",
+                        "on-secondary": "#ffffff",
+                        "background": "#f4fbfa",
+                        "outline": "#6b7a7a",
+                        "on-secondary-container": "#5f656c",
+                        "on-background": "#161d1d",
+                        "secondary": "#595f66",
+                        "tertiary": "#8d4f00",
+                        "inverse-on-surface": "#ebf2f2",
+                        "tertiary-fixed-dim": "#ffb876",
+                        "surface": "#f4fbfa",
+                        "tertiary-fixed": "#ffdcc0",
+                        "surface-bright": "#f4fbfa",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#2d1600",
+                        "midnight-slate": "#0B1117",
+                        "secondary-container": "#dde3ec",
+                        "outline-variant": "#bac9c9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "margin-desktop": "64px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Outfit"],
+                        "body-md": ["DM Sans"],
+                        "label-bold": ["DM Sans"],
+                        "body-lg": ["DM Sans"],
+                        "display-lg": ["Outfit"],
+                        "headline-lg": ["Outfit"],
+                        "headline-md": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background">
+<!-- TopAppBar -->
+<header class="bg-surface sticky top-0 z-50 border-b border-silver-road h-20 flex items-center">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface text-2xl cursor-pointer md:hidden">menu</span>
+<a class="font-display-lg text-display-lg italic font-black text-on-surface" href="#">MatchRV</a>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-label-bold text-label-bold text-horizon-cyan font-bold border-b-2 border-horizon-cyan" href="#">Explore</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Inventory</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Saved</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Sell</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden md:block font-label-bold text-label-bold text-primary px-6 py-2 border-2 border-primary hover:bg-primary hover:text-white transition-all scale-95 active:opacity-80">Sell My RV</button>
+<span class="material-symbols-outlined text-on-surface text-2xl cursor-pointer">account_circle</span>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative w-full overflow-hidden">
+<!-- Hero Image Background -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center brightness-75" data-alt="A professional, high-resolution lifestyle photograph of a luxury Class A motorhome parked in a scenic mountain valley at dusk. The lighting is warm and golden, casting long shadows across a pristine gravel campsite. The overall aesthetic is premium, rugged, and aspirational, with a color palette of deep forest greens, slate grays, and glowing amber lights from the RV interior." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA8JHp_cb5hs5UPd63KIg7MtVqS24qikRs_agMuWm_JtvudgbM3RZ70WKTLNT2Gew6uRg40RDxOpm8YQy2I3rC11XDto3jp_KOpD-BE8GB5Tg7rbXYKkZ6I8V8AjDX1fQnxzvdhNJyYyI-8UbFEIK9QXJTJp3yXmMacWod9oWZWWeKVNIGBrdV-EPY0GZemKZH_8JhjqJ-Cqk1kvbrUT4OiINzl0UsXTPY6uGMajK1Xm8_-Q1frMOuvkLab1NCdRJbIi5LfpEprWFk4')"></div>
+</div>
+<!-- Content Container -->
+<div class="relative z-10 max-w-container-max mx-auto px-margin-desktop py-16 md:py-32 flex flex-col items-center">
+<!-- Match Report Banner -->
+<div class="w-full max-w-4xl glass-effect border border-white/20 p-6 md:p-8 rounded-xl shadow-xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<div class="bg-horizon-cyan/10 p-4 rounded-full">
+<span class="material-symbols-outlined text-horizon-cyan text-4xl" data-weight="fill">assignment_turned_in</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-midnight-slate leading-tight">Take our Match Report!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Find what RVs are right for you in under 2 minutes.</p>
+</div>
+</div>
+<button class="w-full md:w-auto bg-horizon-cyan text-midnight-slate font-bold px-10 py-4 rounded-lg hover:brightness-110 active:scale-95 transition-all">Get Report</button>
+</div>
+<!-- Search UI -->
+<div class="w-full max-w-5xl bg-surface p-6 md:p-10 shadow-2xl rounded-xl border border-silver-road">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-end">
+<div class="md:col-span-4 space-y-2">
+<label class="font-label-bold text-label-bold text-on-surface-variant block">What are you looking for?</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-14 pl-12 pr-4 bg-surface-container-low border border-silver-road focus:border-horizon-cyan focus:ring-0 rounded transition-colors outline-none font-body-md text-body-md" placeholder="Travel Trailer, Fifth Wheel..." type="text"/>
+</div>
+</div>
+<div class="md:col-span-3 space-y-2">
+<label class="font-label-bold text-label-bold text-on-surface-variant block">Condition</label>
+<select class="w-full h-14 px-4 bg-surface-container-low border border-silver-road focus:border-horizon-cyan focus:ring-0 rounded appearance-none font-body-md text-body-md">
+<option>New &amp; Used</option>
+<option>Brand New</option>
+<option>Pre-Owned</option>
+</select>
+</div>
+<div class="md:col-span-3 space-y-2">
+<label class="font-label-bold text-label-bold text-on-surface-variant block">Price Range</label>
+<select class="w-full h-14 px-4 bg-surface-container-low border border-silver-road focus:border-horizon-cyan focus:ring-0 rounded appearance-none font-body-md text-body-md">
+<option>Any Price</option>
+<option>$20k - $50k</option>
+<option>$50k - $100k</option>
+<option>$100k+</option>
+</select>
+</div>
+<div class="md:col-span-2">
+<button class="w-full h-14 bg-midnight-slate text-horizon-cyan font-bold flex items-center justify-center gap-2 hover:bg-on-background transition-colors active:scale-95">
+<span class="material-symbols-outlined">filter_list</span>
+                                Browse
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Discovery Grid -->
+<section class="py-24 px-margin-desktop max-w-container-max mx-auto">
+<div class="flex justify-between items-end mb-12">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-2">Curated for Your Journey</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Top-rated listings based on current market demand.</p>
+</div>
+<button class="hidden md:flex items-center gap-2 text-primary font-bold hover:underline">
+                    View All Inventory
+                    <span class="material-symbols-outlined">arrow_right_alt</span>
+</button>
+</div>
+<!-- Bento-ish Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<div class="group border border-silver-road bg-white overflow-hidden transition-all hover:shadow-lg">
+<div class="aspect-video relative overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="A clean, studio-lit exterior shot of a modern 2024 Airstream travel trailer. The polished aluminum skin reflects a soft, neutral studio environment. The composition is sleek and centered, emphasizing the iconic curved design and high-end craftsmanship of the vehicle." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBsPBTJwe-k-MFLPXHYGNf9RHEPfK3Y5t-LxpK7zFqhmDReZDYuyj1fUBm1RmEe-2WwvTJOehvSAKRPfpFyjumSdxsXbPuXyaz25vcxY74MOt2Su49oN7vfTjzHnkjegnLAMB23M-8VVJjHFfGcJjelypMF8woSn3VSdr6vUmABVofVgxlVfnCrg8w1uTfpGxt8mXFlTkxpYL2WcQhSkAzP32OjiPp7XWoe3055p4PzGMwhgcgTYADGcfvMSSwB31gIFE7pY3ux1oeB')"></div>
+<div class="absolute top-4 left-4 bg-horizon-cyan text-midnight-slate font-bold px-3 py-1 text-xs">NEW ARRIVAL</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md">2024 Airstream International</h3>
+<button class="material-symbols-outlined text-outline hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-horizon-cyan font-bold text-xl mb-4">$89,900</p>
+<div class="flex gap-4 border-t border-silver-road pt-4">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">group</span> 4 Sleep
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">straighten</span> 25ft
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">weight</span> 5,500 lbs
+                            </div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group border border-silver-road bg-white overflow-hidden transition-all hover:shadow-lg">
+<div class="aspect-video relative overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="A high-contrast photo of a rugged off-road camper van, specifically a Mercedes Sprinter 4x4 conversion, parked on a dusty desert trail at sunset. The vehicle features a roof rack with gear, knobby tires, and a matte gray finish. The lighting creates dramatic highlights on the body's texture, emphasizing its heavy-duty build." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAKzvCHupnS3J3fVftMe-Wn9XkKKlucs8XrJet4Z4NS485V0lbekPn3hjKI2CKrQIf2m66dAxtTDWwDoLMB_VQ7e6HZyukdXPdp2rWs6Lk7ISCkV3bwljs5oLkusk9hxpXH5TIUiWZIjLncY7jUfx3EGvc3OkM8qMM8lkPp6dIg-QvwmL1zyuUgS-7itoeohi_C4fz6Dh86kWAhZGvKdU9QqYKv4yQoeFQLrLN-5SZD4DKgm6bQAs7pmbb5Iz2KndsRLkekN7IaZKaz')"></div>
+<div class="absolute top-4 left-4 bg-tertiary-container text-on-tertiary-container font-bold px-3 py-1 text-xs">OFF-ROAD READY</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md">Winnebago Revel 4x4</h3>
+<button class="material-symbols-outlined text-outline hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-horizon-cyan font-bold text-xl mb-4">$142,500</p>
+<div class="flex gap-4 border-t border-silver-road pt-4">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">group</span> 2 Sleep
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">straighten</span> 19ft
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">bolt</span> Solar
+                            </div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group border border-silver-road bg-white overflow-hidden transition-all hover:shadow-lg">
+<div class="aspect-video relative overflow-hidden">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="A wide-angle interior shot of a luxurious Class A diesel pusher motorhome. The interior features cream leather seating, dark walnut cabinetry, and a spacious living area with a large flat-screen TV. The lighting is warm and bright, showcasing the high-end materials and residential-style appliances. The atmosphere is sophisticated and spacious." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBpsMmmjw-KKvZrZr4ga4hCHMwu8eKbTib0GAzLoJv5hYew7Ur6aekcWQSWkG0eEc2l4BdHs5FRmPLkfxN2CTnhlpPpLHD-V3fUBVBJrtyS0Yhv5SyyRYMppxK344H9tOEaPOMmjEqsnDLioBfo6ba2GbekxDscCwYFfyaLker_PHrBSeH8X_NbSje8GD3JO7B75wr6VmpWZcIPKaGIS6A28kGNi1Cq4gQGsLoJQEmwUZsX3_ECew9i9inpxVJLaoNUftlZtlmYuhVT')"></div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md">Tiffin Allegro Bus</h3>
+<button class="material-symbols-outlined text-outline hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-horizon-cyan font-bold text-xl mb-4">$215,000</p>
+<div class="flex gap-4 border-t border-silver-road pt-4">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">group</span> 6 Sleep
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">straighten</span> 40ft
+                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-bold text-sm">
+<span class="material-symbols-outlined text-sm">propane_tank</span> Full Kit
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Call to Action Section -->
+<section class="bg-midnight-slate py-24 px-margin-desktop overflow-hidden relative">
+<div class="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+<div class="relative z-10">
+<span class="text-horizon-cyan font-label-bold text-label-bold mb-4 block uppercase tracking-widest">Marketplace Trusted</span>
+<h2 class="font-display-lg text-display-lg text-white mb-6">List your RV with confidence.</h2>
+<p class="font-body-lg text-body-lg text-surface-variant mb-10 max-w-lg">Get more eyes on your listing than any other platform. Our professional brokerage tools help you price and sell faster.</p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="bg-horizon-cyan text-midnight-slate font-bold px-8 py-4 rounded-lg hover:brightness-110 transition-all">Start Selling</button>
+<button class="border-2 border-white text-white font-bold px-8 py-4 rounded-lg hover:bg-white hover:text-midnight-slate transition-all">How it works</button>
+</div>
+</div>
+<div class="relative">
+<div class="aspect-square bg-horizon-cyan/5 rounded-full absolute -top-20 -right-20 w-96 h-96 blur-3xl"></div>
+<div class="relative z-10 bg-on-background/50 border border-outline/30 p-8 rounded-2xl backdrop-blur-md">
+<div class="flex gap-4 mb-6">
+<div class="w-12 h-12 bg-horizon-cyan rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-midnight-slate">trending_up</span>
+</div>
+<div>
+<h4 class="text-white font-bold text-lg">Market Value Match</h4>
+<p class="text-surface-variant text-sm">We ensure you get the best price for your vehicle based on real-time data.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-caution-gold rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-midnight-slate">verified_user</span>
+</div>
+<div>
+<h4 class="text-white font-bold text-lg">Verified Buyers</h4>
+<p class="text-surface-variant text-sm">All potential buyers are pre-screened for financing and serious intent.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-on-background py-16 px-margin-desktop">
+<div class="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="col-span-1">
+<span class="font-display-lg text-display-lg text-surface-container-lowest block mb-4">MatchRV</span>
+<p class="font-body-md text-body-md text-surface-variant">Elevating the RV buying and selling experience through data and design.</p>
+</div>
+<div class="col-span-1">
+<h4 class="font-label-bold text-label-bold text-horizon-cyan mb-6">Marketplace</h4>
+<ul class="space-y-4">
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Browse Inventory</a></li>
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Sell Your RV</a></li>
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Financing</a></li>
+</ul>
+</div>
+<div class="col-span-1">
+<h4 class="font-label-bold text-label-bold text-horizon-cyan mb-6">Company</h4>
+<ul class="space-y-4">
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">About Us</a></li>
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="font-body-md text-body-md text-surface-variant hover:text-horizon-cyan transition-colors" href="#">Contact</a></li>
+</ul>
+</div>
+<div class="col-span-1">
+<h4 class="font-label-bold text-label-bold text-horizon-cyan mb-6">Stay Updated</h4>
+<div class="flex">
+<input class="bg-midnight-slate border border-outline text-white px-4 py-2 w-full focus:outline-none focus:border-horizon-cyan" placeholder="Email address" type="email"/>
+<button class="bg-horizon-cyan px-4 py-2 text-midnight-slate font-bold">Join</button>
+</div>
+</div>
+</div>
+<div class="max-w-container-max mx-auto mt-16 pt-8 border-t border-outline/20">
+<p class="font-label-bold text-label-bold text-surface-variant">© 2024 MatchRV Marketplace. All rights reserved.</p>
+</div>
+</footer>
+<!-- Mobile Navigation Shell -->
+<nav class="fixed bottom-0 w-full flex justify-around items-center py-3 bg-surface border-t border-silver-road shadow-lg z-50 md:hidden">
+<div class="flex flex-col items-center justify-center text-horizon-cyan">
+<span class="material-symbols-outlined" data-weight="fill">explore</span>
+<span class="font-label-bold text-xs">Explore</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">rv_hookup</span>
+<span class="font-label-bold text-xs">Inventory</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-bold text-xs">Saved</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-label-bold text-xs">Sell</span>
+</div>
+</nav>
+<script>
+        // Micro-interaction for filter inputs
+        document.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('focus', () => {
+                el.parentElement.classList.add('ring-2', 'ring-horizon-cyan/20');
+            });
+            el.addEventListener('blur', () => {
+                el.parentElement.classList.remove('ring-2', 'ring-horizon-cyan/20');
+            });
+        });
+
+        // Sticky header transition
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-md');
+                header.classList.remove('border-b');
+            } else {
+                header.classList.remove('shadow-md');
+                header.classList.add('border-b');
+            }
+        });
+    </script>
+</body></html>

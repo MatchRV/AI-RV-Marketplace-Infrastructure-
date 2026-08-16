@@ -1,0 +1,13 @@
+{
+  "is_scraping": false,
+  "scrape_started_at": "2026-05-03T10:29:30.168Z",
+  "scrape_completed_at": "2026-05-03T10:29:32.011Z",
+  "scrape_pid": null,
+  "scrape_dealers_total": null,
+  "scrape_error": "Exited with code 1",
+  "last_sync_at": null,
+  "last_sync_inserted": null,
+  "last_sync_updated": null,
+  "last_sync_skipped": null,
+  "dealer_counts": {}
+}

@@ -1,0 +1,244 @@
+$ curl https://matchrv.com/robots.txt
+
+Confirm llms.txt is accessible
+curl https://matchrv.com/llms.txt
+
+Simulate each AI crawler — should get full HTML back
+curl -A "GPTBot/1.1" https://matchrv.com/
+curl -A "PerplexityBot/1.0" https://matchrv.com/browse
+curl -A "ClaudeBot" https://matchrv.com/about
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: https://matchrv.com/sitemap.xml
+bash: Confirm: command not found
+# MatchRV
+
+> MatchRV is an AI-powered RV marketplace based in the Pacific Northwest. It helps buyers find the right RV through a personalized AI Match Report, and connects them with live inventory from Washington State dealers.
+
+## About MatchRV
+
+MatchRV was founded by Jonathan Kitchel, who spent 8 years on the floor at Poulsbo RV — one of the largest RV dealerships in the United States. He built MatchRV to solve the problems he saw firsthand: buyers overwhelmed by choices, dealers with disconnected inventory tools, and no neutral platform that genuinely put the buyer first.
+
+MatchRV currently indexes 4,000+ live RV listings from Washington State dealers, updated daily. Every listing is scored against market value to surface genuine deals.
+
+## Key Features
+
+- **AI Match Report**: Free personalized report that narrows thousands of listings to three specific RVs — a Best Overall, Best Value, and Upgrade — based on the buyer's lifestyle, budget, and tow vehicle.
+- **Live Inventory**: 4,000+ RV listings from Washington State dealers, updated daily via automated scraping.
+- **Deal Scoring**: Every listing is compared against estimated market value. Listings are rated Great Deal, Good Deal, Fair Price, or Overpriced.
+- **Tow Guide**: Free tool to check whether a specific RV can be safely towed by the user's vehicle.
+- **Trip Planner**: AI-powered tool to plan RV trips with routes, campgrounds, and driving legs.
+- **Outfitter Chat**: AI assistant that answers RV questions and helps narrow down choices.
+
+## RV Types Covered
+
+Travel Trailers, Fifth Wheels, Class A Motorhomes, Class B Motorhomes (Camper Vans), Class C Motorhomes, Toy Haulers, Pop-Up Campers, Truck Campers.
+
+## Important Pages
+
+- [Home](https://matchrv.com/)
+- [Browse All RVs](https://matchrv.com/browse)
+- [About MatchRV](https://matchrv.com/about)
+- [How the Match Report Works](https://matchrv.com/match)
+- [Pricing](https://matchrv.com/pricing)
+- [Travel Trailers for Sale in WA](https://matchrv.com/travel-trailers-for-sale)
+- [Fifth Wheels for Sale in WA](https://matchrv.com/fifth-wheels-for-sale)
+- [Class A RVs for Sale in WA](https://matchrv.com/class-a-rvs-for-sale)
+- [Class B RVs for Sale in WA](https://matchrv.com/class-b-rvs-for-sale)
+- [Class C RVs for Sale in WA](https://matchrv.com/class-c-rvs-for-sale)
+- [Toy Haulers for Sale in WA](https://matchrv.com/toy-haulers-for-sale)
+- [RV Dealers in Washington](https://matchrv.com/rv-dealers)
+- [RV Tow Guide](https://matchrv.com/tow-guide)
+- [RV Buyer Guides](https://matchrv.com/guides)
+- [Finance an RV](https://matchrv.com/finance)
+- [Contact](https://matchrv.com/contact)
+
+## Buyer Guides
+
+- [How to Buy a Used RV](https://matchrv.com/guides/how-to-buy-a-used-rv)
+- [Best RVs for Families](https://matchrv.com/guides/best-rvs-for-families)
+- [Best RVs for Full-Time Living](https://matchrv.com/guides/best-rvs-for-full-time-living)
+- [Motorhome vs Travel Trailer](https://matchrv.com/guides/motorhome-vs-travel-trailer)
+- [Travel Trailer vs Fifth Wheel](https://matchrv.com/guides/travel-trailer-vs-fifth-wheel)
+- [RV Financing Guide](https://matchrv.com/guides/rv-financing-guide)
+- [RV Towing Guide](https://matchrv.com/guides/towing-guide)
+- [RV Cost Guide](https://matchrv.com/guides/rv-cost-guide)
+
+## Data Sources & Freshness
+
+Inventory is scraped daily from Washington State RV dealership websites. Deal scores are calculated using proprietary market value estimates based on comparable listings. Data is updated daily as of June 2026.
+
+## Company
+
+- **Founder**: Jonathan Kitchel
+- **Location**: Pacific Northwest, Washington State, USA
+- **Website**: https://matchrv.com
+- **Contact**: https://matchrv.com/contact
+bash: Simulate: command not found
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MatchRV — Find the Right RV the First Time</title>
+    <meta name="description" content="Get a personalized RV Match Report based on your lifestyle, budget, and tow vehicle. Free." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00CED1" />
+    <meta property="og:site_name" content="MatchRV" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Microsoft Clarity -->
+    <script type="text/javascript">
+      (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "wrzebeqx7e");
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2C0PN44L2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Y2C0PN44L2', { send_page_view: false });
+    </script>
+    <script type="module" crossorigin src="/assets/index-hs4CMPB6.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D9kpecPA.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MatchRV — Find the Right RV the First Time</title>
+    <meta name="description" content="Get a personalized RV Match Report based on your lifestyle, budget, and tow vehicle. Free." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00CED1" />
+    <meta property="og:site_name" content="MatchRV" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Microsoft Clarity -->
+    <script type="text/javascript">
+      (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "wrzebeqx7e");
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2C0PN44L2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Y2C0PN44L2', { send_page_view: false });
+    </script>
+    <script type="module" crossorigin src="/assets/index-hs4CMPB6.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D9kpecPA.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MatchRV — Find the Right RV the First Time</title>
+    <meta name="description" content="Get a personalized RV Match Report based on your lifestyle, budget, and tow vehicle. Free." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00CED1" />
+    <meta property="og:site_name" content="MatchRV" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Microsoft Clarity -->
+    <script type="text/javascript">
+      (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "wrzebeqx7e");
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2C0PN44L2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Y2C0PN44L2', { send_page_view: false });
+    </script>
+    <script type="module" crossorigin src="/assets/index-hs4CMPB6.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D9kpecPA.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+~/workspace$ 

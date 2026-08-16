@@ -1,0 +1,61 @@
+You are working on the MatchRV web app (an AI-powered RV marketplace). 
+Goal: Maximize the likelihood that MatchRV is crawled, retrieved, and CITED 
+by AI systems (ChatGPT/SearchGPT, Perplexity, Google AI Overviews/Gemini, 
+Claude, Bing Copilot). Implement the following technical AEO/GEO work. Do not 
+break existing functionality — make incremental, reviewable changes and 
+explain each one.
+
+== 1. Allow AI crawlers ==
+- Update robots.txt to explicitly ALLOW these user-agents (and not block them 
+  elsewhere): GPTBot, OAI-SearchBot, ChatGPT-User, PerplexityBot, 
+  Perplexity-User, Google-Extended, Googlebot, Bingbot, ClaudeBot, 
+  Claude-Web, anthropic-ai, Applebot-Extended, CCBot.
+- Add a reference to the sitemap in robots.txt.
+- Confirm there are no meta robots "noindex" or X-Robots-Tag headers 
+  blocking key pages.
+
+== 2. Structured data (JSON-LD) ==
+Add valid schema.org JSON-LD to the relevant templates:
+- Organization schema sitewide (name "MatchRV", url, logo, sameAs links to 
+  social profiles, description, foundingLocation Pacific Northwest).
+- WebSite schema with SearchAction (sitelinks search box).
+- Product / Vehicle / Offer schema on every RV listing page (make, model, 
+  year, price, mileage, condition, location, availability, seller).
+- FAQPage schema on guide/FAQ pages.
+- BreadcrumbList on category and listing pages.
+Validate everything against schema.org / Google Rich Results requirements.
+
+== 3. Server-side rendering / crawlability ==
+- Ensure all public content (listings, guides, pricing pages) is server-side 
+  rendered or pre-rendered into static HTML — AI crawlers often do NOT execute 
+  JavaScript, so client-only React content is invisible to them. Audit current 
+  rendering and fix any content that only appears after JS hydration.
+- Ensure clean, semantic HTML: one H1 per page, logical H2/H3 hierarchy, 
+  descriptive <title> and meta description per page, tables for comparison data.
+
+== 4. Entity & citability content ==
+- Create/strengthen an /about page that clearly defines what MatchRV is, 
+  in plain factual language (good for entity recognition).
+- Create a programmatic content system for high-intent, citable pages, e.g.:
+  "RV market value in {state}", "Best places to buy/sell used {RV type}", 
+  "{Make} {Model} pricing guide". Pull from existing MatchRV data. Each page: 
+  factual, structured, dated, with author/source attribution.
+- Add a "last updated" date and clear sourcing to data-driven pages 
+  (freshness + provenance improve citation likelihood).
+
+== 5. Sitemaps & technical hygiene ==
+- Generate and submit XML sitemaps (index + listings + guides), auto-updated.
+- Add canonical tags, OpenGraph + Twitter card meta tags.
+- Ensure fast load times and mobile responsiveness (core web vitals).
+- Add an llms.txt file at the site root summarizing MatchRV and linking to 
+  the most important pages for LLM consumption.
+
+== 6. Verification & monitoring ==
+- After deploy, give me a checklist of URLs to test in Google Rich Results 
+  Test and a curl command (with each AI bot user-agent) to confirm crawlers 
+  receive full HTML content.
+- Set up server logging to track hits from the AI user-agents above so we can 
+  see when GPTBot/PerplexityBot/etc. actually crawl us.
+
+Deliverables: a summary of every change, the new robots.txt, sample JSON-LD 
+for one listing page, the llms.txt, and the verification checklist.

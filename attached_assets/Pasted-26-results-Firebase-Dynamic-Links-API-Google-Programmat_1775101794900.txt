@@ -1,0 +1,128 @@
+26 results
+
+Firebase Dynamic Links API
+Google
+Programmatically creates and manages Firebase Dynamic Links.
+
+
+Firebase Rules API
+Google
+Creates and manages rules that determine when a Firebase Rules-enabled service should permit a request.
+
+
+Firebase Management API
+Google
+The Firebase Management API enables programmatic setup and management of Firebase projects, including a project's Firebase resources and Firebase apps.
+
+
+Firebase Installations API
+Google
+The Firebase Installations API (currently in limited beta release) provides identifiers, authentication scheme, and GDPR deletion for installations of Firebase applications. Many Firebase services depend on the Firebase Installations API in order to identify app installs and/or authenticate client requests to their servers.
+
+
+Firebase Cloud Messaging API
+Google
+FCM send API that provides a cross-platform messaging solution to reliably deliver messages at no cost.
+
+
+FCM Registration API
+Google
+The Firebase Cloud Messaging registration API is used to manage registrations for FCM clients.
+
+
+Firebase App Hosting API
+Google
+Firebase App Hosting streamlines the development and deployment of dynamic Next.js and Angular applications, offering built-in framework support, GitHub integration, and integration with other Firebase products.
+
+
+Firebase App Check API
+Google
+Firebase App Check works alongside other Firebase services to help protect your backend resources from abuse, such as billing fraud or phishing.
+
+
+Firebase Extensions Publisher API
+Google
+firebaseextensionspublisher.googleapis.com API.
+
+
+Firebase AI Logic API
+Google
+The Firebase AI Logic API provides programmatic access for creating, testing, and managing server prompt templates.
+
+
+Firebase ML API
+Google
+Access custom machine learning models hosted via Firebase ML.
+
+
+Firebase Hosting API
+Google
+The Firebase Hosting REST API enables programmatic and customizable management and deployments to your Firebase-hosted sites. Use this REST API to create and manage channels and sites as well as to deploy new or updated hosting configurations and content files.
+
+
+Cloud Storage for Firebase API
+Google
+The Cloud Storage for Firebase API enables programmatic management of Cloud Storage buckets for use in Firebase projects
+
+
+Firebase Realtime Database Management API
+Google
+The Firebase Realtime Database API enables programmatic provisioning and management of Realtime Database instances.
+
+
+Firebase Remote Config Realtime API
+Google
+The Firebase Remote Config Realtime API allows devices to receive signals indicating that their evaluated Remote Config values may have changed.
+
+
+Firebase In-App Messaging API
+Google
+Publicly accessible APIs that allows firebase in-app messaging SDKs/Clients to communicate with servers for fetching message definitions.
+
+
+Firebase Extensions API
+Google
+
+
+Firebase Data Connect API
+Google
+Firebase Data Connect is a relational database service for mobile and web apps that lets you build and scale using a fully-managed PostgreSQL database powered by Cloud SQL. The REST API lets developers manage the connections to their database, change the schema of their database, and query the database.
+
+
+Firebase App Distribution API
+Google
+Easily manage your internal testers for pre-release testing. Enable this API to access the Firebase App Distribution API, which enables programmatic management of a project's App Distribution resources, including testers and releases. Firebase App Distribution makes distributing your apps to trusted testers painless. By getting your apps onto testers' devices quickly, you can get feedback early and often.
+
+
+Firebase Crashlytics API
+Google
+This service provides an API for mobile app developers to request deletion of user's crash reports.
+
+
+Firebase App Testers API
+Google
+Easily manage your internal testers for pre-release testing. Enable this API to use the Firebase App Distribution SDK, which enables your testers to install your latest app releases and submit feedback directly from the app. Firebase App Distribution makes distributing your apps to trusted testers painless. By getting your apps onto testers' devices quickly, and simplifying the feedback process, you can get high quality feedback early and often.
+
+
+Firebase Remote Config API
+Google
+The Firebase Remote Config API lets developers change the behavior and appearance of their apps without requiring users to download an app update.
+
+
+Firebase Phone Number Verification API
+Google
+Firebase Phone Number Verification API.
+
+
+Firebase Cloud Messaging Data API
+Google
+Provides additional information about Firebase Cloud Messaging (FCM) message sends and deliveries.
+
+
+Cloud Build API
+Google Enterprise API 
+Cloud Build, Google Cloud’s continuous integration (CI) and continuous delivery (CD) platform, lets you build software quickly across all languages. Get complete control over defining custom workflows for building, testing, and deploying across multiple environments such as VMs, serverless, Kubernetes, or Firebase.
+
+
+Google Cloud Firestore API
+Google Enterprise API 

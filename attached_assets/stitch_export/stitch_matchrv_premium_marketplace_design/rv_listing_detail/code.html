@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MatchRV | 2024 Airstream Classic 33FB</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&amp;family=Outfit:wght@600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#161d1d",
+                    "on-tertiary-fixed": "#2d1600",
+                    "inverse-surface": "#2b3232",
+                    "inverse-on-surface": "#ebf2f2",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#dde4e3",
+                    "on-primary-fixed": "#002020",
+                    "surface-container-low": "#eef5f4",
+                    "secondary-container": "#dde3ec",
+                    "surface-tint": "#00696b",
+                    "surface-container": "#e8efef",
+                    "on-secondary-fixed-variant": "#41474e",
+                    "on-surface-variant": "#3b4949",
+                    "on-secondary-container": "#5f656c",
+                    "on-secondary-fixed": "#161c22",
+                    "tertiary-fixed-dim": "#ffb876",
+                    "background": "#f4fbfa",
+                    "outline": "#6b7a7a",
+                    "surface-container-high": "#e2eae9",
+                    "caution-gold": "#FFE08B",
+                    "on-tertiary": "#ffffff",
+                    "silver-road": "#E2E8F0",
+                    "primary-fixed-dim": "#2ddbde",
+                    "on-primary": "#ffffff",
+                    "secondary": "#595f66",
+                    "tertiary": "#8d4f00",
+                    "on-tertiary-container": "#6f3d00",
+                    "surface-container-lowest": "#ffffff",
+                    "deep-teal": "#004329",
+                    "primary-container": "#00ced1",
+                    "on-tertiary-fixed-variant": "#6b3b00",
+                    "tertiary-fixed": "#ffdcc0",
+                    "primary": "#00696b",
+                    "midnight-slate": "#0B1117",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#bac9c9",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#c1c7cf",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f4fbfa",
+                    "surface-variant": "#dde4e3",
+                    "secondary-fixed": "#dde3ec",
+                    "on-surface": "#161d1d",
+                    "on-primary-fixed-variant": "#004f51",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#ffa54a",
+                    "on-primary-container": "#005354",
+                    "surface": "#f4fbfa",
+                    "surface-dim": "#d4dbdb",
+                    "primary-fixed": "#5af8fb",
+                    "horizon-cyan": "#00CED1",
+                    "inverse-primary": "#2ddbde"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "gutter": "24px",
+                    "unit": "4px",
+                    "margin-desktop": "64px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "label-bold": ["DM Sans"],
+                    "headline-lg": ["Outfit"],
+                    "headline-lg-mobile": ["Outfit"],
+                    "body-lg": ["DM Sans"],
+                    "headline-md": ["Outfit"],
+                    "display-lg": ["Outfit"],
+                    "body-md": ["DM Sans"]
+            },
+            "fontSize": {
+                    "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: repeat(2, 300px);
+            gap: 12px;
+        }
+        @media (max-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: 400px;
+            }
+            .hide-mobile { display: none; }
+        }
+        .bento-spec {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-horizon-cyan/30">
+<!-- TopAppBar -->
+<header class="bg-surface sticky top-0 z-[100] border-b border-silver-road">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto h-20">
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">menu</span>
+<a class="font-display-lg text-display-lg italic font-black text-on-surface" href="#">MatchRV</a>
+</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-label-bold text-label-bold text-horizon-cyan font-bold border-b-2 border-horizon-cyan py-2 transition-colors duration-200" href="#">Inventory</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Explore</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-horizon-cyan transition-colors duration-200" href="#">Saved</a>
+</nav>
+<button class="bg-midnight-slate text-horizon-cyan font-label-bold text-label-bold px-6 py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all">
+                Sell My RV
+            </button>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-2 mb-6 text-on-surface-variant font-label-bold text-label-bold overflow-x-auto no-scrollbar whitespace-nowrap">
+<a class="hover:text-primary transition-colors" href="#">Home</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Travel Trailers</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Airstream</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface">2024 Classic 33FB</span>
+</nav>
+<!-- Gallery Section -->
+<section class="relative mb-10 group">
+<div class="gallery-grid overflow-hidden rounded-xl">
+<div class="relative bg-surface-container-highest cursor-zoom-in">
+<img class="w-full h-full object-cover" data-alt="A luxurious, polished aluminum 2024 Airstream Classic 33FB travel trailer parked in a scenic mountain valley at dusk. The trailer's metallic surface reflects the warm orange glow of the setting sun and the cool blue tones of the distant peaks. The setting is premium and serene, with high-end photographic lighting emphasizing the sleek curves of the iconic RV design against a backdrop of pine trees and a clear evening sky." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChyKX26aa424zzuYLsYzQths4iID6G4_iRdkvSxrfEBeBzMcBCRHPdRStOczJ3xqyRt3q0h5tv85EK-bR_Q-IS2jfMn9L-lYN9Z8V1Px98IP0BqBAicb6LWU0exnm_jhRiigLrrY57QDY5bBVOFkCrcpttC31Zfo_ZtH9Kud18b1zfslDugCxIWcYf57h2PaRaMsZJanJMiiyfjv4Thfkqd5kuez2jjq42LNcGZgJolTxGJOuPKTDoht7u7fxwIJ3DTv6hrMWA5Kw4"/>
+</div>
+<div class="hide-mobile grid grid-rows-2 gap-3">
+<div class="bg-surface-container-highest cursor-zoom-in">
+<img class="w-full h-full object-cover" data-alt="The interior of a premium 2024 Airstream Classic, showing a modern kitchen with high-end stainless steel appliances and Corian countertops. The color palette is bright and clean, featuring light-toned cabinetry and soft ambient lighting that creates a spacious, high-end apartment feel. Large windows reveal a blurry outdoor nature scene, reinforcing the adventurous yet comfortable lifestyle this vehicle offers." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQsvw2JJzSNvBZjbGuPnsP9jIgcUpNU8SaNNlysAUvwIHrXf5P1fqGQj2wtoP_J5um9pIPD6eao6yzlTwY-y_JVLuNTWISUzxgCUm07tMw4R-Bqr5owc4DhpEf6Jw-uTkudA6wX8Vq7NIRWuemTBQjae2RXBsO8jEzdEuBJCNajznZsYsLVJu7spAPT5Lt9G1etKo9bvfCODTIblk6RAOMS7aBaY0Ss_q30DhdiH7xSWl1snoLXzzvVc8R-TI6jiYpD6WtZbtYESw5"/>
+</div>
+<div class="bg-surface-container-highest cursor-zoom-in relative">
+<img class="w-full h-full object-cover" data-alt="A close-up shot of the master bedroom suite inside the Airstream Classic 33FB, featuring a king-size bed with crisp white linens and plush pillows. The walls are finished in a signature aluminum texture, and the room is bathed in soft, natural daylight. The image captures a sense of rugged luxury and tranquility, with high-contrast details and a focus on premium textile textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCW2AjK1wXHiydPX93tpFQtI_S78w2n8EoOKA8BihJmy5EhHvBHqGS_f0YKGg2t68isyYmkWYRaq2UVzIapab261g1Tfro-IZKzY49k3XgpfVG2fanHMwSXER1PuG_p6I2SdcHMdFq3qnR4ei7oAe8nQN5lIzvgQRVwj4aIvzOOQccrj0sBap4xcOvmaEg6-oqS4lntNWmWNZNfLRE3K6wL49_tA9D4nZMpty-ebdSNxcJXkkkOGCkNGQJD5KGkHu9B8eX-Y4o9bSJI"/>
+<div class="absolute inset-0 bg-midnight-slate/40 flex items-center justify-center pointer-events-none group-hover:bg-midnight-slate/20 transition-all">
+<span class="bg-surface/90 text-on-surface font-label-bold text-label-bold px-4 py-2 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">photo_library</span>
+                                +24 Photos
+                            </span>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute bottom-4 left-4 md:hidden">
+<span class="bg-midnight-slate/80 text-surface font-label-bold text-label-bold px-3 py-1 rounded-full">1 / 27</span>
+</div>
+</section>
+<!-- Main Content Split -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+<!-- Left Column: Details -->
+<div class="lg:col-span-2 space-y-12">
+<!-- Title and Status -->
+<div>
+<div class="flex flex-wrap items-center gap-3 mb-4">
+<span class="bg-primary-container text-on-primary-container font-label-bold text-label-bold px-3 py-1 rounded">New Arrival</span>
+<span class="bg-surface-container-highest text-on-surface-variant font-label-bold text-label-bold px-3 py-1 rounded">Stock #7724A</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg md:text-display-lg md:font-display-lg text-on-surface mb-2">2024 Airstream Classic 33FB</h1>
+<p class="flex items-center gap-2 text-on-surface-variant font-body-md">
+<span class="material-symbols-outlined text-horizon-cyan">location_on</span>
+                        Portland, OR — 12 miles away
+                    </p>
+</div>
+<!-- Specs Bento Grid -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="w-1.5 h-8 bg-horizon-cyan rounded-full"></span>
+                        Key Specifications
+                    </h2>
+<div class="bento-spec">
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">rv_hookup</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">Type</p>
+<p class="font-headline-md text-[18px] text-on-surface">Travel Trailer</p>
+</div>
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">bed</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">Sleeps</p>
+<p class="font-headline-md text-[18px] text-on-surface">Up to 5</p>
+</div>
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">straighten</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">Length</p>
+<p class="font-headline-md text-[18px] text-on-surface">33 ft 3 in</p>
+</div>
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">weight</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">GVWR</p>
+<p class="font-headline-md text-[18px] text-on-surface">10,000 lbs</p>
+</div>
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">unfold_more</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">Slides</p>
+<p class="font-headline-md text-[18px] text-on-surface">None (Rigid)</p>
+</div>
+<div class="bg-surface-container-lowest border border-silver-road p-5 rounded-xl transition-all hover:border-horizon-cyan">
+<span class="material-symbols-outlined text-horizon-cyan mb-3">propane_tank</span>
+<p class="text-on-surface-variant font-label-bold text-[12px] uppercase">Condition</p>
+<p class="font-headline-md text-[18px] text-on-surface">Brand New</p>
+</div>
+</div>
+</section>
+<!-- Description -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="w-1.5 h-8 bg-horizon-cyan rounded-full"></span>
+                        Description
+                    </h2>
+<div class="prose prose-slate max-w-none space-y-4 text-on-surface-variant font-body-lg">
+<p>Experience the ultimate in travel luxury with the 2024 Airstream Classic 33FB. Designed for long-term living, the Classic floorplan provides everything you’d expect from a high-end residential home, wrapped in the iconic silver shell that has defined outdoor elegance for nearly a century.</p>
+<p>This unit features the stunning 'Estate Brown' interior décor with handcrafted cherry wood cabinetry and ultra-leather seating. The massive rear bathroom includes a heated towel bar and a residential-style shower, while the integrated Smart Control Technology allows you to monitor your RV's vital systems from anywhere in the world.</p>
+<ul class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 pt-4">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-horizon-cyan">check_circle</span> Multiplex lighting system</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-horizon-cyan">check_circle</span> 270W Solar Package</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-horizon-cyan">check_circle</span> Powered ZipDee Patio Awning</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-horizon-cyan">check_circle</span> Alde Hydronic Heating</li>
+</ul>
+</div>
+</section>
+<!-- Location Map -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-6 flex items-center gap-2">
+<span class="w-1.5 h-8 bg-horizon-cyan rounded-full"></span>
+                        Location
+                    </h2>
+<div class="rounded-xl overflow-hidden border border-silver-road h-[300px] relative">
+<div class="absolute inset-0 z-10 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+<img class="w-full h-full object-cover grayscale brightness-90 hover:grayscale-0 transition-all duration-500 cursor-pointer" data-location="Portland, OR" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6h0G9uEduQV2UypYM2SRWc-u1uafCEOvVul99lUAsEhfh94KnYYPXpBLn8nt3yXOjgnnNjkBAW9Gamurf7ZuS9YKQBq6Jn40IkgjNrWVfRzQC-1rQW2mTwudwm_HH-LMxYIQoNnt6GFd-t62ITZlVmJvYu-s9w44S4c0rz0ZJOAemaAwTEPxBeP0sPyb7_zqgB8YedifqbqGXULdsJcTKspQRZgXBkkHKV7EfG-mZHfwNXNSdao2QUoXnrQMtcfjloGjTbqi0J0OR"/>
+<div class="absolute bottom-4 left-4 z-20 bg-surface px-4 py-3 rounded-lg shadow-lg">
+<p class="font-label-bold text-label-bold text-on-surface">Portland Premium RV Center</p>
+<p class="text-sm text-on-surface-variant">4400 SE 82nd Ave, Portland, OR</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Sidebar Action Card -->
+<div class="lg:col-start-3">
+<div class="sticky top-32 space-y-6">
+<!-- Pricing Card -->
+<div class="bg-surface-container-lowest border border-silver-road p-8 rounded-2xl shadow-sm">
+<div class="mb-6">
+<p class="text-on-surface-variant font-label-bold text-label-bold mb-1 uppercase tracking-wider">Market Value</p>
+<h3 class="text-[40px] font-black text-horizon-cyan leading-tight">$189,900</h3>
+<p class="text-sm text-on-surface-variant">Est. Financing from $1,240/mo</p>
+</div>
+<div class="space-y-4">
+<button class="w-full bg-midnight-slate text-horizon-cyan font-headline-md text-[18px] py-4 rounded-xl flex items-center justify-center gap-3 hover:shadow-xl hover:-translate-y-0.5 transition-all active:translate-y-0">
+<span class="material-symbols-outlined">mail</span>
+                                Contact Seller
+                            </button>
+<button class="w-full border-2 border-midnight-slate text-midnight-slate font-headline-md text-[18px] py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-midnight-slate hover:text-surface transition-all active:scale-95">
+<span class="material-symbols-outlined">event_available</span>
+                                Check Availability
+                            </button>
+</div>
+<hr class="my-8 border-silver-road"/>
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of an experienced RV sales consultant in business casual attire against a clean, modern dealership backdrop. The consultant has a friendly, trustworthy expression, reflecting a premium brokerage environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEZ6mdGdnQ9lfSxfKtFLnjGgF0jitxAttPL-x1GF2anJXiuQr01OTRNGtLcCj4GyhiTlHHrP0JIaSL8GxuBKAIoFI7yOMKPxvFzL2fUrGTtkTP36rky0cucs_b7oUOqlAVMcA0AuGxJX27AL4cIswZey9BVilVfB-wfsK6Tsv7fbANBSFk9kD0KH16QrEIDQsF6WFTrw8fwJmjxqe0Vy_0w1CtfVmPMGC7aWN5t_Prj8kFNxEWCG2vy2F8eLBNac-aHh_dT3scMva_"/>
+</div>
+<div>
+<p class="font-label-bold text-on-surface">Marcus Sterling</p>
+<p class="text-xs text-on-surface-variant">Verified Elite Seller</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex flex-col items-center justify-center p-3 rounded-lg border border-silver-road hover:bg-surface-container hover:text-horizon-cyan transition-colors">
+<span class="material-symbols-outlined mb-1">favorite</span>
+<span class="text-xs font-label-bold">Save</span>
+</button>
+<button class="flex flex-col items-center justify-center p-3 rounded-lg border border-silver-road hover:bg-surface-container hover:text-horizon-cyan transition-colors">
+<span class="material-symbols-outlined mb-1">share</span>
+<span class="text-xs font-label-bold">Share</span>
+</button>
+</div>
+</div>
+<!-- Trust Banner -->
+<div class="bg-primary/5 border border-primary/10 p-6 rounded-2xl flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div>
+<p class="font-label-bold text-on-surface text-sm">MatchRV Inspected</p>
+<p class="text-xs text-on-surface-variant mt-1">This vehicle has passed a 150-point quality and safety check by our certified mechanics.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Related Listings -->
+<section class="mt-24">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-display-lg text-headline-lg text-on-surface">Related Listings</h2>
+<p class="text-on-surface-variant">Similar premium trailers you might like</p>
+</div>
+<a class="font-label-bold text-horizon-cyan flex items-center gap-1 hover:underline" href="#">
+                    View all Inventory
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Related Item 1 -->
+<div class="group cursor-pointer">
+<div class="aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-silver-road relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A 2024 Airstream Flying Cloud 25FB parked near a serene coastal campsite. The polished aluminum skin reflects the blue ocean and soft white sand. Modern, high-end photography capturing the essence of luxury nomadism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7hVvsomu5uj6s8U8bYeF5RNptDvHBstNa_nozOV6WX4Xz9nIME-UK7OF_YeyttaI8h1pZwX7nb7mRcoMtakEFPgeWZzzltjaTx8Suvu99F0p3spvkSIrE7zy8viZdIn7WYA-axLoA4o22gzCjPlthajA9qmmQ1mne5bS2e3hQvUFuobEIQFMNzC8vp2ewZ35DnPVBPfxTGkkfB-966ehmQtiFH4ueOdHgz4ZpdKPe44WbLXnw7yMpZwlsbH-HRc1FoYAsyNQvOmsA"/>
+<button class="absolute top-3 right-3 bg-white/80 p-2 rounded-full text-midnight-slate hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+</div>
+<p class="font-label-bold text-xs uppercase tracking-widest text-on-surface-variant mb-1">Airstream</p>
+<h4 class="font-headline-md text-[18px] text-on-surface group-hover:text-horizon-cyan transition-colors">Flying Cloud 25FB</h4>
+<p class="font-headline-md text-horizon-cyan mt-1">$122,500</p>
+<div class="flex items-center gap-3 mt-3 text-xs text-on-surface-variant font-label-bold">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">bed</span> 4</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">straighten</span> 25'</span>
+</div>
+</div>
+<!-- Related Item 2 -->
+<div class="group cursor-pointer">
+<div class="aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-silver-road relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A Grand Design Reflection 28BH fifth wheel RV in a lush forest park. The trailer features a dark grey and white contemporary exterior with sleek graphics. Premium lighting showcases the vehicle's large windows and sturdy construction." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJfT_5zGs00FoQZhxcfr02_-Frv-dyLivts6q8yTr2p_GKJTkmVNxHiXN60vVKrt2_a87q9Ismj7IrTlpqdPCNPl2o7UYeRd4wyex2UOSgQzZt-9fvbV76aHJGg3raOYBlUA8jF3lZMeOjMRY6T4RpCLXOA2rZ6lDtEWFqf0pjkshkOnIayybWfE2SSp5UgxKupemWWm5IcU7Tk4DeXz3RoXxfeVdwUS1vXz-oFR9Fgsam3WeMnRqjZ9vauhpii_4WqrcGP_UYQtuA"/>
+<button class="absolute top-3 right-3 bg-white/80 p-2 rounded-full text-midnight-slate hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+</div>
+<p class="font-label-bold text-xs uppercase tracking-widest text-on-surface-variant mb-1">Grand Design</p>
+<h4 class="font-headline-md text-[18px] text-on-surface group-hover:text-horizon-cyan transition-colors">Reflection 28BH</h4>
+<p class="font-headline-md text-horizon-cyan mt-1">$74,995</p>
+<div class="flex items-center gap-3 mt-3 text-xs text-on-surface-variant font-label-bold">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">bed</span> 8</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">straighten</span> 34'</span>
+</div>
+</div>
+<!-- Related Item 3 -->
+<div class="group cursor-pointer">
+<div class="aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-silver-road relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A Winnebago Micro Minnie FLX 2108DS compact travel trailer on a desert landscape with red rocks in the background. The design is modern, rugged, and efficient, featuring off-road tires and a rooftop solar panel array." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOtfCvUduO0GGRtHwPtBYMMOAHQnY_u06X2Ddlok9TI9hmnqScWMXOEJX0rqIVeRLV8EjEMkm5S_Jy_Ibve_3mSzTqbM-cmCAwDKTxryWmNN_WZXkIjM9-7mMRSA1kx0N5jiEbtXAroVOa59Lnb4q-r41Hek-uXuIjpKHCHxUhpLZWtiFGI3JDxdZ_3kv-ZC2nn56r3mhjTwgvF-uSYfqN67cV8nXkFchKWLu1EkzXMLPl-jtWrfsJjbMXW9BpHYKSnvDHlL_2LtdR"/>
+<button class="absolute top-3 right-3 bg-white/80 p-2 rounded-full text-midnight-slate hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+</div>
+<p class="font-label-bold text-xs uppercase tracking-widest text-on-surface-variant mb-1">Winnebago</p>
+<h4 class="font-headline-md text-[18px] text-on-surface group-hover:text-horizon-cyan transition-colors">Micro Minnie FLX</h4>
+<p class="font-headline-md text-horizon-cyan mt-1">$58,200</p>
+<div class="flex items-center gap-3 mt-3 text-xs text-on-surface-variant font-label-bold">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">bed</span> 3</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">straighten</span> 21'</span>
+</div>
+</div>
+<!-- Related Item 4 -->
+<div class="group cursor-pointer">
+<div class="aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-silver-road relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A bowl-style luxury travel trailer, the Bowlus Heritage Edition, showcasing its mirror-finish aluminum exterior and vintage-inspired aerodynamic shape. Photographed in an open field during the golden hour to emphasize the dramatic reflections and handcrafted quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB37JwMi7Ie8LlkztTsYXMO5bAV0x1xllLvZ2euDoTbx4p_IQfDWUOnx1IgRewhgSweoB0W9SRohgx7z9ZxpG_vtSUTL57dmRWUj-jZ6qBAuAn1PRuC9Tvr-CSM9LAcq0vMqOIyZrWsoMmWJX1pHgXyEWGEG333IX0P8NyMjNVY9hKrIGaDRPnVs51g_UCUWSeWlXNTZ01YXkwO8ltzwv6Tbju1Q72t6tjQG8AMzE3QUF_nXPg2HwScdOJSrUaaEX9NxWD8Dkl_J8Tv"/>
+<button class="absolute top-3 right-3 bg-white/80 p-2 rounded-full text-midnight-slate hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+</div>
+<p class="font-label-bold text-xs uppercase tracking-widest text-on-surface-variant mb-1">Bowlus</p>
+<h4 class="font-headline-md text-[18px] text-on-surface group-hover:text-horizon-cyan transition-colors">Heritage Edition</h4>
+<p class="font-headline-md text-horizon-cyan mt-1">$159,000</p>
+<div class="flex items-center gap-3 mt-3 text-xs text-on-surface-variant font-label-bold">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">bed</span> 4</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">straighten</span> 27'</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-on-background py-16 px-margin-desktop mt-24">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-12">
+<div class="md:col-span-1">
+<p class="font-display-lg text-display-lg text-surface-container-lowest italic font-black mb-6">MatchRV</p>
+<p class="text-surface-variant font-body-md">Connecting adventure seekers with the world's finest mobile habitats. Premium brokerage services for the modern road.</p>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold mb-6">Marketplace</h5>
+<ul class="space-y-4">
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Browse Inventory</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Sell Your RV</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Valuation Tool</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Verified Sellers</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold mb-6">Company</h5>
+<ul class="space-y-4">
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">About Us</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Financing</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Contact Support</a></li>
+<li><a class="text-surface-variant hover:text-horizon-cyan transition-colors font-body-md" href="#">Press Room</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-horizon-cyan font-label-bold text-label-bold mb-6">Join the Community</h5>
+<p class="text-surface-variant font-body-md mb-6">Get the latest market insights and off-grid tips.</p>
+<div class="flex gap-2">
+<input class="bg-surface/10 border border-surface/20 text-surface placeholder:text-surface-variant px-4 py-2 rounded-lg flex-1 focus:ring-1 focus:ring-horizon-cyan focus:outline-none" placeholder="Email address" type="email"/>
+<button class="bg-horizon-cyan text-midnight-slate font-label-bold px-4 py-2 rounded-lg">Join</button>
+</div>
+</div>
+</div>
+<div class="pt-12 border-t border-surface/10 flex flex-col md:flex-row justify-between items-center gap-6">
+<p class="text-surface-variant text-sm font-label-bold">© 2024 MatchRV Marketplace. All rights reserved.</p>
+<div class="flex gap-8 text-sm font-label-bold text-surface-variant">
+<a class="hover:text-horizon-cyan" href="#">Privacy Policy</a>
+<a class="hover:text-horizon-cyan" href="#">Terms of Service</a>
+<a class="hover:text-horizon-cyan" href="#">Cookie Policy</a>
+</div>
+</div>
+</div>
+</footer>
+<!-- Mobile Bottom NavBar -->
+<nav class="fixed bottom-0 w-full flex justify-around items-center py-3 bg-surface border-t border-silver-road z-50 md:hidden shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-bold text-[10px] mt-1 uppercase">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-horizon-cyan" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">rv_hookup</span>
+<span class="font-label-bold text-[10px] mt-1 uppercase">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-bold text-[10px] mt-1 uppercase">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-label-bold text-[10px] mt-1 uppercase">Sell</span>
+</a>
+</nav>
+<script>
+        // Simple Micro-interaction for scroll effects
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-md');
+                header.classList.remove('border-b');
+            } else {
+                header.classList.remove('shadow-md');
+                header.classList.add('border-b');
+            }
+        });
+
+        // CTA pulse animation toggle for high-value items
+        const primaryCTA = document.querySelector('button.bg-midnight-slate');
+        setInterval(() => {
+            primaryCTA.classList.add('ring-2', 'ring-horizon-cyan/20');
+            setTimeout(() => {
+                primaryCTA.classList.remove('ring-2', 'ring-horizon-cyan/20');
+            }, 1000);
+        }, 3000);
+    </script>
+</body></html>

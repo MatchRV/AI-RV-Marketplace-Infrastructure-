@@ -14,12 +14,29 @@
 - [x] Submission docs (README, DEVPOST, JUDGING_MATRIX, DEMO_*, SECURITY,
       CHALLENGE_NOTES, WEBMCP_TEST_RESULTS)
 
+## P0 — remediation round (independent review), all verified · ✅ done
+- [x] Purge 41 MB / 1,096 committed database runtime files; fix data-dir
+      root cause; `.data/` ignored everywhere; clean `git status` after runs
+- [x] Fresh-clone reproducibility: no-env builds, engines + pinned pnpm,
+      documented install-script allowlist, `.env.example`
+- [x] Approval boundary: single-use page-held token, server-enforced;
+      immutability, replay, expiry, forged/missing-token refusals — tested
+- [x] NATIVE WebMCP runtime verification (real Chrome 152
+      `document.modelContext`): discovery + execution, 6/6
+- [x] Test expansion: 53 unit + 23-step E2E (green on dev AND the production
+      bundle) + native suite
+- [x] Secrets/personal values stripped from the tree (rotation still
+      required — in git history)
+
 ## P0 — remaining, needs a human (Jonathan)
+- [ ] **Rotate the Google Places API key** (old value is in git history) —
+      before the repo goes public
 - [ ] Deploy the live URL (render.yaml blueprint ≈10 min; any Node host works)
-- [ ] Verify in the ChatGPT desktop in-app browser + Chrome 149 flag; append
-      results to WEBMCP_TEST_RESULTS.md
+- [ ] ChatGPT desktop in-app browser pass — exact 15-minute procedure +
+      screenshot list in WEBMCP_TEST_RESULTS.md §6
 - [ ] Record the <3 min video (DEMO_SCRIPT.md) and publish on YouTube
-- [ ] Make the repo public; submit on Devpost before the deadline
+- [ ] Make the repo public; re-add Replit secrets (values were stripped from
+      .replit); submit on Devpost before the deadline
 
 ## P1 — meaningfully raises judge score (only after P0)
 - [ ] Warm-start/optimize first paint on the deploy (preload fonts, prune the

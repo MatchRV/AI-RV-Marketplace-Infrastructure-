@@ -142,5 +142,9 @@ agent-readable capability layer for automotive, marine, and equipment.
   agent actions.
 - **Implementation:** 10 imperative WebMCP tools; Zod→JSON-Schema single
   source of truth; deterministic TS engine; embedded-Postgres zero-infra
-  runtime; Playwright E2E over the real executor. Repo: (public GitHub link),
-  MIT.
+  runtime; single-use page-held approval tokens for the consequential
+  action. Verified natively: a real Chrome's own `document.modelContext`
+  (152, WebMCP feature) discovers all ten tools and executes the full
+  workflow — 6/6 automated steps — alongside 53 unit tests and a 23-step
+  browser E2E, all green against the production build. Repo: (public GitHub
+  link), MIT.

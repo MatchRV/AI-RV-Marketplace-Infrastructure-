@@ -9,13 +9,17 @@
 - [ ] ChatGPT **desktop app** signed in; open the deploy URL in the in-app
       browser; confirm the **Site tools** indicator lists MatchRV's 10 tools.
 - [ ] Fallback runtime: Chrome 149+ with `chrome://flags/#enable-webmcp-testing`
-      enabled and relaunched.
+      enabled and relaunched. (CLI equivalent for any [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
+      ≥149 binary: launch with `--enable-features=WebMCPTesting`; verified
+      working on 152.) Sanity-check the native layer any time with
+      `pnpm --filter @workspace/scripts run native-webmcp`.
 - [ ] Second fallback: the `/shop` guided demo runs clean end-to-end (works in
       any browser; pauses at the human-approval step by design).
 - [ ] Network: hardwired or strong Wi-Fi; close bandwidth hogs. Dealer photo
       CDNs (images.poulsborv.com etc.) load — spot-check three result cards.
-- [ ] Server freshly restarted before recording (clears prior lead dedupe so
-      the submit succeeds live): redeploy or restart the process.
+- [ ] Server freshly restarted before recording (clears prior lead dedupe
+      and rate-limit counters so the submit succeeds live): redeploy or
+      restart the process.
 
 ## Exact prompts (copy from here)
 

@@ -102,6 +102,12 @@ Sources:
   a page; the agent discovers and proposes site tools automatically.
 - **Google Chrome 149+** — origin trial; local testing via
   `chrome://flags/#enable-webmcp-testing`.
+- **Empirically verified by us (2026-08-29):** on Chrome for Testing 152,
+  the flag's CLI equivalent is `--enable-features=WebMCPTesting`
+  (`--enable-features=WebMCP`, `--enable-blink-features=WebMCP`, and
+  `--enable-experimental-web-platform-features` also enable it);
+  `document.modelContext` is the only entry point — `navigator.modelContext`
+  is absent, confirming the documented current API shape.
 
 ### API surface (current)
 - Entry point is **`document.modelContext`**. (`navigator.modelContext` was the

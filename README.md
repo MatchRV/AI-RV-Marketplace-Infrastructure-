@@ -70,35 +70,54 @@ until the human clicks **Approve**.
   it: *"lithium: unknown — the dealer doesn't publish it. Want me to ask?"*
   The unknown becomes the reason to contact the dealer.
 
-## Quick start (zero services required)
+## Quick start (zero services, zero env vars)
+
+Requires Node ≥ 22.12 and pnpm 10 (pinned via `packageManager`; `corepack
+enable` gets it).
 
 ```bash
-pnpm install
+pnpm install      # completes with no warnings or prompts
 pnpm dev          # boots API (embedded PGlite DB, auto-seeded) + web app
 # open http://localhost:5173/shop
 ```
 
-No database, no API keys, no accounts. The embedded Postgres (PGlite)
+No database, no API keys, no accounts — every variable in
+[`.env.example`](./.env.example) is optional. The embedded Postgres (PGlite)
 bootstraps its schema and seeds 1,056 real units from the committed snapshot
-on first boot. With `DATABASE_URL` set, the original production Postgres path
-is used unchanged.
+on first boot (runtime DB state lives in gitignored `lib/db/.data/`). With
+`DATABASE_URL` set, the original production Postgres path is used unchanged.
 
 ```bash
-pnpm test         # 39 engine/contract/snapshot unit tests (vitest)
-pnpm e2e          # 16-step Playwright E2E driving the real tool executor
+pnpm test         # 53 unit tests: engine honesty, tool contracts,
+                  #   approval boundary, mocked-runtime registration
+pnpm e2e          # 23-step Playwright E2E driving the tool executor
 pnpm build:web && pnpm build:api && node artifacts/api-server/dist/index.cjs
                   # single-process production deploy (SPA + API + embedded DB)
+pnpm --filter @workspace/scripts run native-webmcp
+                  # NATIVE runtime test — requires any Chrome ≥149 (see below)
 ```
 
 ### Using it with a real agent
 
 - **ChatGPT desktop app:** open the deployed URL in the in-app browser. The
   address bar shows **Site tools**; then just ask for what you want.
-- **Chrome 149+:** enable `chrome://flags/#enable-webmcp-testing`, open the
-  site, and use a WebMCP-capable agent surface.
+- **Chrome 149+:** enable `chrome://flags/#enable-webmcp-testing` (CLI
+  equivalent: `--enable-features=WebMCPTesting`, e.g. with a
+  [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
+  build), open the site, and use a WebMCP-capable agent surface.
 - **Any browser:** the `/shop` page includes a clearly-labeled guided demo
   that replays the exact tool calls an agent would make, through the same
   executor — so the experience is reviewable anywhere.
+
+**Native-runtime verified:** on Chrome for Testing 152 with the WebMCP
+feature enabled, the browser's own `document.modelContext` discovers all ten
+tools (`getTools()`) and drives the full workflow (`executeTool()`) —
+search → shared-state sync in both directions → compare/explain → the
+human-gated dealer contact. 6/6 automated steps, reproducible with
+`pnpm --filter @workspace/scripts run native-webmcp`; evidence in
+[WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md). What that layer cannot
+prove — a real agent phrasing the calls from natural language in ChatGPT's
+browser — is tracked there honestly as the remaining pre-submission check.
 
 ## The WebMCP tool surface
 
@@ -175,13 +194,25 @@ preferences, and the unknowns — with per-fact source tags in the detail view.
 ## Safety & write actions
 
 - `submit_dealer_contact` is **refused server-side** (`409
-  awaiting_human_approval`) until the human clicks Approve on the page — the
-  agent never holds approval authority, and ChatGPT's own confirmation flow
-  layers on top.
-- One submitted lead per unit+email per session (duplicate refusal).
+  awaiting_human_approval`) until the human clicks Approve on the page.
+  Approval itself requires a **single-use token the server issues only to
+  the page** — held in page-private memory, never present in session state
+  or any tool result — so neither an agent nor an out-of-band caller can
+  manufacture the approved state (forged/missing tokens → 403, replay →
+  409, expiry → 410; all tested). ChatGPT's own confirmation flow layers on
+  top.
+- The submitted payload is **immutable**: submit carries only the preview
+  id, and the server sends exactly the stored preview the human reviewed.
+- One submitted lead per unit+email per session (duplicate refusal); per-IP
+  rate limiting on the lead endpoints.
 - All inputs Zod-validated; errors are structured so agents self-correct.
 - Demo environment records leads but **delivers nothing to real
   dealerships** — and says so in the receipt.
+
+**Session model (honest):** the shared shopping session is in-memory per
+page load — it survives SPA navigation, and a reload intentionally starts
+fresh (verified in the E2E). Nothing persists server-side except staged
+previews (30-min TTL) and submitted lead rows.
 
 Details: [SECURITY_NOTES.md](./SECURITY_NOTES.md)
 
@@ -213,14 +244,16 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
 
 ## Tests
 
-- `pnpm test` — 39 unit tests: normalization honesty, three-valued matching,
-  funnel math, tow verdicts, geo, contract shape/limits, malformed-input
-  rejection, snapshot invariants, payload budgets.
-- `pnpm e2e` — 16-step Playwright flow through the real tool executor: search
-  → refine → human edit → compare → explain → tow → availability → shortlist
-  → prepare → blocked submit → human approve → submit → duplicate blocked →
-  malformed args → self-correction hints.
-- Results: [WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md)
+- `pnpm test` — **53 unit tests**: engine honesty (39), the server-enforced
+  approval boundary incl. immutability/replay/expiry (8), and WebMCP
+  registration against a mocked `document.modelContext` (6).
+- `pnpm e2e` — **23-step** Playwright flow through the tool executor,
+  including unauthorized/forged approval attempts, payload immutability,
+  zero-result recovery, and reload semantics; green against both `pnpm dev`
+  and the production bundle.
+- `pnpm --filter @workspace/scripts run native-webmcp` — **6-step NATIVE
+  runtime test** through a real Chrome's own `document.modelContext`.
+- Results + evidence: [WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md)
 
 ## Current limitations
 
@@ -233,6 +266,10 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
   layer. Some legacy TypeScript debt remains (tracked in
   [ROADMAP.md](./ROADMAP.md)).
 - Lead delivery is intentionally disabled in the demo environment.
+- Not yet verified (tracked in WEBMCP_TEST_RESULTS §6): a real agent driving
+  the tools from natural language in ChatGPT's in-app browser, and the
+  public HTTPS deploy — both need a human with the desktop app and hosting
+  access.
 
 ## Roadmap
 

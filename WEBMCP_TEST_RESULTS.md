@@ -1,86 +1,139 @@
-# WEBMCP_TEST_RESULTS — recorded runs (2026-08-29)
+# WEBMCP_TEST_RESULTS — recorded runs (updated 2026-08-29, remediation round)
 
-Two automated layers run green on a fresh clone with zero services, plus a
-manual environment matrix. Reproduce with `pnpm test` and `pnpm e2e`
-(`pnpm dev` running).
+Four verification layers. Every result below was actually executed in this
+repository's environment; the one thing that remains untested is called out
+honestly at the end. Toolchain: Node v22.22.2, pnpm 10.33.0.
 
-## 1. Unit suite — engine, contracts, snapshot invariants
+Reproduce:
 
-`pnpm test` → **39/39 passed** (vitest, 636 ms).
+```bash
+pnpm install          # no warnings, no interactive prompts
+pnpm test             # 53 unit tests across three packages
+pnpm dev              # embedded DB, zero services
+pnpm e2e              # 23-step browser E2E (internal executor)
+pnpm --filter @workspace/scripts run native-webmcp   # NATIVE runtime (needs Chrome ≥149, see §3)
+```
 
-Covered: sale-vs-list price selection with provenance; unknown-stays-unknown
-(no fabricated fields; `solar: "none"` never inferred from silence);
-derived-text and floorplan-code enrichment; junk-feature filtering; rejection
-reasons (removed / typeless / implausible price); deterministic boondocking
-receipts; geo aliases + messy-address city scanning + haversine sanity; tow
-stated-rating margins, configuration-range verdicts (`depends_on_config`),
-dry-weight downgrade, `not_towable`, unknown-weight honesty; three-valued
-matching with funnel math that always sums; unknowns never exclude / verified
-fails always exclude; unknown-place `ConstraintError` with self-correction
-hint; radius filtering on real coordinates; sort overrides; bounded +
-receipt-consistent scores; soft-preference unknowns reported as unknown;
-refine/replace/clear merge semantics; the 10-tool contract surface (names ≤30
-chars, descriptions ≤500, param descriptions ≤160, `readOnlyHint` mapping,
-`$schema`-free JSON Schema); malformed-agent-input rejection; raw natural
-input acceptance; snapshot corpus invariants (unique ids, coords present,
->50% GVWR unknown on real data); flagship query <250 ms; impossible-search
-guidance; compact payload budgets; stale-snapshot honesty.
+## 1. Unit suites — 53/53 passed
 
-## 2. End-to-end — the real tool executor in a real browser
-
-`pnpm e2e` (Playwright/Chromium against `pnpm dev`) → **16/16 passed**.
-This drives `window.__matchrv.executeTool`, i.e. the same handlers
-`document.modelContext.registerTool()` registers — assertions cover both the
-agent-facing payloads and the visible UI state.
-
-| Test | Expected | Actual | Pass | ms |
-| --- | --- | --- | --- | --- |
-| load /shop | page renders with tool bridge | 10 tools exposed (search_inventory … submit_dealer_contact) | ✅ | 25457* |
-| search_inventory (flagship query) | funnel + verified results, UI grid renders | searched 1,056 → 43 verified; agent payload 2,042 chars | ✅ | 689 |
-| refine search (mode=refine) | constraints merge; results update | kept Tacoma/tow/must; applied ≤$35,000 | ✅ | 590 |
-| human edits shared state | UI toggle lands in session + ledger | agent's `get_shopping_session` shows the human-added preference + recent human actions | ✅ | 1311 |
-| compare_units (top 3) | dialog opens with true values | 3 units, best-in-row markers, unknowns intact | ✅ | 679 |
-| explain_match (top 1) | receipts: hard/soft/unknown + score math | score 70, 7/7 hard checks, unknowns incl. solar/lithium | ✅ | 699 |
-| evaluate_tow_fit | honest verdicts incl. dry-weight caveat | "marginal — 3,530 lbs dry (GVWR unknown; loaded runs 1,000–1,500+ lbs higher)" | ✅ | 37 |
-| check_availability | honest snapshot freshness | stale=true, 2,598 h since verification, dataset note | ✅ | 38 |
-| update_shortlist | agent adds 2; hearts appear | 2 entries, ledger logged | ✅ | 34 |
-| prepare_dealer_contact | preview modal, awaiting approval | status awaiting_human_approval; message asks dealer to confirm unknowns | ✅ | 622 |
-| submit before approval | structured refusal | 409 awaiting_human_approval + guidance | ✅ | 63 |
-| human approves in UI | state → approved | Approve click recorded by "You" in ledger | ✅ | 833 |
-| submit after approval | receipt + demo delivery note | lead recorded; "demo environment: nothing delivered to the real dealership" | ✅ | 582 |
-| duplicate submit blocked | already_submitted refusal | 409, agent told not to repeat | ✅ | 70 |
-| malformed args rejected | invalid_arguments with issues | field-level issues listed | ✅ | 28 |
-| unknown place self-correction | error + supported-place hint | "Try one of: Tacoma, Seattle, Spokane, …" | ✅ | 81 |
-
-\* first-load includes cold Vite dev transform; the production build serves
-warm in <1 s (see DEMO_CHECKLIST: warm the page before recording).
-
-## 3. Server-side latency metrics (`GET /api/agent/meta`, same session)
-
-| op | calls | errors | avg ms | max ms |
-| --- | --- | --- | --- | --- |
-| search (1,056 units) | 4 | 1† | 15.1 | 29.9 |
-| compare | 1 | 0 | 1.0 | 1.0 |
-| explain | 1 | 0 | 0.3 | 0.3 |
-| tow_fit | 1 | 0 | 0.2 | 0.2 |
-| availability | 1 | 0 | 0.2 | 0.2 |
-| lead_preview | 1 | 0 | 0.5 | 0.5 |
-| lead_submit | 3 | 0 | 1.4 | 4.0 |
-
-† the deliberate unknown-place test — counted as an error, answered with a
-self-correction hint.
-
-## 4. Environment matrix
-
-| Environment | Status | Notes |
+| Package | Tests | Focus |
 | --- | --- | --- |
-| Chromium (Playwright) via the registered handlers | ✅ 16/16 | Automated above; exercises registration schemas + handlers + UI |
-| Normal browser, no agent runtime | ✅ manual | /shop degrades gracefully: "No agent runtime detected" + working guided demo |
-| Production single-process build (`node dist/index.cjs`) | ✅ | boots embedded DB, seeds 1,056 units, serves SPA + /api/agent/* |
-| ChatGPT desktop in-app browser | ⏳ pending | requires the desktop app on a real machine — run before submission and append: Site-tools indicator, discovery, full script pass |
-| Chrome 149+ with `chrome://flags/#enable-webmcp-testing` | ⏳ pending | same machine session; verify `document.modelContext` registration + toolchange |
+| `@workspace/agent-core` | 39 | Normalization honesty (unknown stays unknown, provenance, floorplan decoding, junk filtering), three-valued matching + funnel math, tow verdicts incl. `depends_on_config` + dry-weight downgrade, geo, merge semantics, tool-contract shape/limits, malformed-input rejection, snapshot invariants, compact payload budgets, stale-snapshot honesty |
+| `@workspace/api-server` | 8 | The approval boundary where it's enforced: token never inside preview payloads; forged/missing/replayed/cross-preview tokens refused with status unchanged; submit blocked before approval and after rejection; expiry (410); **submitted payload byte-identical to the reviewed preview**; duplicate (unit+email) prevention; clean throwaway-PGlite bootstrap writing a real lead row |
+| `@workspace/rv-marketplace` | 6 | Registration against a **mocked current-shape `document.modelContext`**: all ten tools registered exactly once, idempotent on remount, valid `$schema`-free JSON Schemas + annotations handed to the runtime, **no approval capability or token reachable from the tool surface**, malformed args rejected before any network call |
 
-The two pending rows are the human pre-submission step (DEMO_CHECKLIST §1);
-the registration path they exercise is the exact code the automated suite
-drives, feature-detected per OpenAI's published pattern
-(`typeof document.modelContext?.registerTool === "function"`).
+## 2. Browser E2E (internal executor) — 23/23 passed
+
+Playwright/Chromium driving the same handlers `registerTool` wires up, via the
+page's test bridge — asserting both agent-facing payloads and visible UI
+state. Run twice: against `pnpm dev` and against the **production bundle**
+(`node artifacts/api-server/dist/index.cjs` from a clean checkout state) —
+23/23 both times.
+
+| Step | Result |
+| --- | --- |
+| load /shop (10 tools bridged) | ✅ |
+| flagship search — 1,056 searched → 43 verified, funnel reasons, agent payload 2,042 chars | ✅ |
+| refine merges constraints (mode=refine) | ✅ |
+| human UI toggle visible to `get_shopping_session` | ✅ |
+| compare (true values, best markers) / explain (receipts, score math) | ✅ |
+| tow fit with dry-weight caveat / availability stale-flag honesty | ✅ |
+| shortlist sync | ✅ |
+| prepare → awaiting_human_approval | ✅ |
+| submit before approval → 409 refusal | ✅ |
+| **approval without token → 403, status unchanged** | ✅ |
+| **approval with forged token → 403, status unchanged** | ✅ |
+| human Approve in UI → submit → receipt (demo delivery note) | ✅ |
+| duplicate submit → 409 | ✅ |
+| **submitted message byte-identical to the reviewed preview** | ✅ |
+| **decision replay after submission → 409 already_decided** | ✅ |
+| genuine zero-result search → recovery guidance + visible empty state | ✅ |
+| **reload → clean fresh session** (state is per-page-load by design, see §5) | ✅ |
+| malformed args → field-level issues; unknown place → supported-place hint | ✅ |
+
+## 3. NATIVE WebMCP runtime — 6/6 passed (real Chrome, real `document.modelContext`)
+
+**Browser:** Chrome for Testing **152.0.7977.64** (linux64) with
+`--enable-features=WebMCPTesting` (the flag behind
+`chrome://flags/#enable-webmcp-testing`). This is the browser's own WebMCP
+implementation — not the page's internal executor: discovery via
+`document.modelContext.getTools()`, invocation via
+`document.modelContext.executeTool()`. Verified against `pnpm dev` and
+against the production bundle. Evidence: `docs/screenshots/native-0*.png`,
+run log 2026-08-29T02:12Z; rerun with
+`pnpm --filter @workspace/scripts run native-webmcp` (set `NATIVE_CHROME` to
+any Chrome ≥149 binary).
+
+| Step | Result |
+| --- | --- |
+| `document.modelContext` present with registerTool/getTools/executeTool; `navigator.modelContext` absent — matches the current documented API surface | ✅ |
+| **Native discovery: getTools() returns all 10 MatchRV tools**, each with inputSchema + annotations (browser returns them alphabetically, per spec) | ✅ |
+| **Native `executeTool('search_inventory')`** → 1,056 searched / 43 verified; page grid renders (agent→UI sync) | ✅ |
+| Human UI toggle → native `get_shopping_session` call reflects it (human→agent sync) | ✅ |
+| Native compare (3 units) + explain (score 72, verdict pass) | ✅ |
+| Native two-phase contact: prepare → early submit refused → **no approval token in any native tool result** → human Approve click → submit → lead receipt | ✅ |
+
+Flag-matrix probe (same browser): `document.modelContext` is absent with no
+flags (origin-trial gated) and present under `--enable-features=WebMCPTesting`,
+`--enable-features=WebMCP`, `--enable-blink-features=WebMCP`, and
+`--enable-experimental-web-platform-features`.
+
+## 4. Production deployment behavior (single process, clean state)
+
+- `pnpm build:web` and `pnpm build:api` run with **zero env vars**.
+- `node artifacts/api-server/dist/index.cjs` from empty state: embedded DB
+  bootstraps + seeds 1,056 listings in ~5 s, then serves API + SPA.
+- Deep links: `/shop` → 200 in 12 ms (cold), refresh and `/listing/123` → 200
+  (SPA fallback). `/api/healthz` → ok.
+- Warm loads: `/shop` HTML 2.6 ms; main JS bundle 1.7 MB.
+- Server-side tool latencies over the combined suites: search avg **14.9 ms**
+  / max 31.9 ms across 1,056 units; every other op ≤ 4 ms. (The one recorded
+  "error" is the deliberate unknown-place test, answered with a hint.)
+- `git status` stays clean after install → build → run → test (runtime DB
+  state lives in gitignored `lib/db/.data/`).
+- Secret scan of built artifacts + tracked tree: no key material (bundle
+  "AKIA…" hits are case-insensitive false positives inside the model-viewer
+  library; verified not AWS-shaped).
+
+## 5. Session/state model (verified, documented — not overclaimed)
+
+The shared shopping session is **in-memory, per page load**. It survives SPA
+navigation between routes; a browser reload intentionally starts a fresh
+session (verified in §2) and tools re-register cleanly. Nothing is persisted
+server-side except staged lead previews (30-min TTL) and submitted lead rows.
+`localStorage`/session persistence is deliberately not claimed.
+
+## 6. What remains genuinely untested (submission-blocking until done)
+
+1. **A real agent choosing and phrasing the tool calls itself** — i.e. the
+   ChatGPT desktop app's in-app browser (or another WebMCP-capable agent
+   surface) driving these tools from natural language. This container has no
+   ChatGPT desktop app. The native browser layer (§3) proves
+   registration/discovery/execution through the real `document.modelContext`;
+   agent behavior on top of it is not fabricated here.
+2. **The public HTTPS deployment** — no hosting credentials in this
+   environment. Everything §4 verifies is the exact artifact `render.yaml`
+   deploys.
+
+### Manual verification procedure (Jonathan, ~15 minutes, after deploy)
+
+1. Deploy via `render.yaml` (or any Node host: `pnpm install && pnpm build:web
+   && pnpm build:api && node artifacts/api-server/dist/index.cjs`). Confirm
+   `https://<url>/api/healthz` and that `https://<url>/shop` refreshes cleanly.
+2. ChatGPT **desktop app** → open `https://<url>/shop` in the in-app browser.
+   Confirm the **Site tools** indicator lists 10 MatchRV tools →
+   *screenshot 1*.
+3. Paste the main demo prompt (DEMO_CHECKLIST §Prompts). Confirm the page
+   fills with results while the agent answers → *screenshot 2*.
+4. Click the **2 entry doors** chip, then ask: *"what are my current
+   requirements?"* — the agent should mention two entry doors → *screenshot 3*.
+5. Ask it to contact the dealer about the top unit (use a demo name/email).
+   Confirm the approval card appears, the agent reports it is waiting for
+   approval, and only after you click **Approve & allow send** does it get a
+   receipt → *screenshots 4–5*.
+6. Send me the four–five screenshots + the URL + ChatGPT app version; I'll
+   fold them into this file and unblock the submission status.
+
+**Status: implementation is complete and native-runtime verified, but
+submission readiness remains blocked pending the live HTTPS deploy and the
+ChatGPT-agent pass above.**

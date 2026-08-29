@@ -1,4 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import { existsSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
@@ -65,5 +67,17 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 app.use("/api", router);
+
+// Single-process deploys: when the web app has been built
+// (pnpm build:web), serve it from here with an SPA fallback so one Node
+// process is a complete live deployment.
+const webDist = resolvePath(import.meta.dirname, "../../rv-marketplace/dist/public");
+if (existsSync(resolvePath(webDist, "index.html"))) {
+  app.use(express.static(webDist, { maxAge: "1h", index: "index.html" }));
+  app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
+    res.sendFile(resolvePath(webDist, "index.html"));
+  });
+  console.log("[startup] serving built web app from", webDist);
+}
 
 export default app;

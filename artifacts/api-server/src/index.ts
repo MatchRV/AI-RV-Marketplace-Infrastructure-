@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { resolve } from "path";
 import { existsSync } from "fs";
-import { DB_MODE } from "@workspace/db";
+import { DB_MODE, ensureDbReady } from "@workspace/db";
 import { isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
 import app from "./app";
 import { autoImportIfEmpty } from "./lib/auto-import";
@@ -90,6 +90,7 @@ function startScraperCron() {
 }
 
 async function start() {
+  await ensureDbReady();
   if (DB_MODE === "embedded") {
     // Zero-service mode: seed the embedded DB from the committed snapshot.
     await seedEmbeddedFromSnapshot();

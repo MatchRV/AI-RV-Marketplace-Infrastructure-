@@ -1,0 +1,21 @@
+# One-click Render deploy for the MatchRV WebMCP demo.
+# Single Node process: Express API + built SPA + embedded PGlite database.
+# No external services, no secrets required.
+services:
+  - type: web
+    name: matchrv-webmcp
+    runtime: node
+    plan: starter
+    buildCommand: >-
+      corepack enable && corepack prepare pnpm@10.33.0 --activate &&
+      pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." &&
+      BASE_PATH=/ PORT=10000 pnpm run build:web && pnpm run build:api
+    startCommand: node artifacts/api-server/dist/index.cjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.22.0"
+      - key: PGLITE_DATA_DIR
+        value: /tmp/matchrv-pglite

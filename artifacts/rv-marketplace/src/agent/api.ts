@@ -122,6 +122,7 @@ export interface LeadPreviewDto {
   message: string;
   consent: string;
   decidedAt: string | null;
+  submittedAt: string | null;
   submittedLeadId: number | string | null;
 }
 

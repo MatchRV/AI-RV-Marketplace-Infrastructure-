@@ -457,6 +457,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
   }
 
   const sortKey = constraints.sort ?? "best_match";
+  const unknownHard = (m: UnitMatch) => m.hardChecks.filter((h) => h.status === "unknown").length;
   const cmp = (a: UnitMatch, b: UnitMatch): number => {
     switch (sortKey) {
       case "price_asc":
@@ -468,7 +469,15 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
       case "newest_model_year":
         return b.unit.year - a.unit.year;
       default:
-        return b.score - a.score || (a.unit.priceUsd.value ?? Infinity) - (b.unit.priceUsd.value ?? Infinity);
+        // Most-verified first: within the unverified tier, a unit with more
+        // hard requirements actually CONFIRMED outranks one that merely
+        // scores well on soft preferences — "why it ranked here" must reward
+        // verification, not guesswork. (No-op in the all-pass tier.)
+        return (
+          unknownHard(a) - unknownHard(b) ||
+          b.score - a.score ||
+          (a.unit.priceUsd.value ?? Infinity) - (b.unit.priceUsd.value ?? Infinity)
+        );
     }
   };
   passed.sort(cmp);

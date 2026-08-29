@@ -132,6 +132,18 @@ export function UnitDrawer() {
                 </p>
               </div>
             </div>
+            <div className="mt-3 pt-3 border-t border-[#E2E8F0] flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+              <span className="font-bold uppercase tracking-wider text-[#8a9a9a]">Freshness</span>
+              <span className={u.status === "available" ? "text-emerald-700" : "text-[#b45309]"}>
+                {u.status === "available" ? "Listed as available" : `Status: ${u.status}`}
+              </span>
+              <span className="text-[#5c6b6b]">
+                Last verified on the dealer's site {new Date(u.provenance.lastSeenAt).toLocaleDateString()}
+              </span>
+              <span className="text-[#b45309]">
+                Snapshot dataset — confirm current availability with the dealer (your agent can do that below)
+              </span>
+            </div>
           </div>
         )}
       </DialogContent>
@@ -216,9 +228,14 @@ export function LeadApprovalModal() {
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg rounded-[1.25rem]">
         <DialogHeader>
+          {awaiting && (
+            <span className="self-start inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-300 text-[#92400e] text-[11px] font-bold uppercase tracking-wider px-2.5 py-1">
+              Not sent — review before submitting
+            </span>
+          )}
           <DialogTitle className="flex items-center gap-2 font-display tracking-tight text-[#161d1d]">
             <ShieldCheck className="w-5 h-5 text-[#00CED1]" />
-            {awaiting ? "Your agent wants to contact a dealership" : submitted ? "Contact request submitted" : "Approved — agent can submit"}
+            {awaiting ? "Your agent wants to contact a dealership" : submitted ? "Lead sent (demo)" : "Approved — agent can submit"}
           </DialogTitle>
           <DialogDescription className="text-sm text-[#5c6b6b]">
             {awaiting
@@ -258,8 +275,13 @@ export function LeadApprovalModal() {
           </div>
         )}
         {submitted && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
-            Receipt: lead #{String(p.submittedLeadId)} · {p.decidedAt ? `approved ${new Date(p.decidedAt).toLocaleTimeString()}` : ""}
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 space-y-0.5">
+            <p className="font-semibold">✓ Lead sent</p>
+            <p>Dealer: {p.dealer.name}</p>
+            <p>Unit: {p.unitTitle}</p>
+            <p>Time: {new Date(p.submittedAt ?? p.decidedAt ?? Date.now()).toLocaleTimeString()}</p>
+            <p>Reference: #{String(p.submittedLeadId)}</p>
+            <p className="text-[11px] text-emerald-700/80 pt-1">Demo environment — recorded in MatchRV's lead queue; not delivered to the real dealership.</p>
           </div>
         )}
       </DialogContent>

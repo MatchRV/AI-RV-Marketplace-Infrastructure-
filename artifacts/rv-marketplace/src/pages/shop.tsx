@@ -304,6 +304,19 @@ export function Shop() {
                 </>
               )}
 
+              {s.funnel && !s.searching && verified.length === 0 && unverified.length > 0 && (
+                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-6 py-4">
+                  <h2 className="font-display font-semibold text-lg text-[#161d1d]">
+                    No unit satisfies every hard requirement.
+                  </h2>
+                  <p className="text-sm text-[#5c6b6b] mt-1">
+                    MatchRV won't pretend otherwise. The closest candidates are below — each fails nothing, but a
+                    fact you require is unpublished. Have your agent ask the dealer to confirm it, or relax a
+                    constraint (the funnel shows what each one costs).
+                  </p>
+                </div>
+              )}
+
               {unverified.length > 0 && (
                 <>
                   <h2 className="font-display font-semibold text-lg text-[#161d1d] mt-8 mb-1">

@@ -46,6 +46,7 @@ export interface LeadPreview {
   message: string;
   consent: string;
   decidedAt: string | null;
+  submittedAt: string | null;
   submittedLeadId: number | string | null;
 }
 
@@ -113,6 +114,7 @@ export function createPreview(args: {
     message: args.message,
     consent: CONSENT_LINE,
     decidedAt: null,
+    submittedAt: null,
     submittedLeadId: null,
   };
   previews.set(preview.previewId, preview);
@@ -230,7 +232,9 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
     leadId = `mem_${randomBytes(6).toString("base64url")}`;
   }
 
+  const recordedAt = new Date().toISOString();
   p.status = "submitted";
+  p.submittedAt = recordedAt;
   p.submittedLeadId = leadId;
   submittedKeys.add(dedupeKey);
 
@@ -238,7 +242,7 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
     ok: true,
     preview: p,
     leadId,
-    recordedAt: new Date().toISOString(),
+    recordedAt,
     delivery: `Recorded in MatchRV's lead queue (${DB_MODE} database). Demo environment: nothing is delivered to the real dealership.`,
   };
 }

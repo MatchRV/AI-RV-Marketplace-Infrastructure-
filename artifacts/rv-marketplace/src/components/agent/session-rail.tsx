@@ -53,30 +53,48 @@ export function SessionRail() {
     update(next, `removed ${label}`);
   };
 
-  const chips: { text: string; tone: "hard" | "soft"; onRemove: () => void }[] = [];
-  if (c.rvTypes?.length) chips.push({ text: c.rvTypes.map((t) => t.replace(/_/g, " ")).join(" / "), tone: "hard", onRemove: () => drop("rvTypes", "RV type") });
-  if (c.priceMaxUsd != null) chips.push({ text: `≤ $${c.priceMaxUsd.toLocaleString()}`, tone: "hard", onRemove: () => drop("priceMaxUsd", "budget cap") });
-  if (c.lengthMaxFt != null) chips.push({ text: `≤ ${c.lengthMaxFt} ft`, tone: "hard", onRemove: () => drop("lengthMaxFt", "length cap") });
-  if (c.sleepsMin != null) chips.push({ text: `sleeps ${c.sleepsMin}+`, tone: "hard", onRemove: () => drop("sleepsMin", "sleeping capacity") });
-  if (c.towVehicle) chips.push({ text: `tow: ${c.towVehicle}`, tone: "hard", onRemove: () => drop("towVehicle", "tow vehicle") });
-  if (c.maxWeightLbs != null) chips.push({ text: `≤ ${c.maxWeightLbs.toLocaleString()} lbs`, tone: "hard", onRemove: () => drop("maxWeightLbs", "weight cap") });
-  if (c.location) chips.push({ text: `${c.location.radiusMiles} mi of ${c.location.place}`, tone: "hard", onRemove: () => drop("location", "location") });
-  if (c.freshWaterMinGal != null) chips.push({ text: `fresh ≥ ${c.freshWaterMinGal} gal`, tone: "hard", onRemove: () => drop("freshWaterMinGal", "fresh water minimum") });
+  const hardChips: { text: string; tone: "hard" | "soft"; onRemove: () => void }[] = [];
+  const softChips: { text: string; tone: "hard" | "soft"; onRemove: () => void }[] = [];
+  if (c.rvTypes?.length) hardChips.push({ text: c.rvTypes.map((t) => t.replace(/_/g, " ")).join(" / "), tone: "hard", onRemove: () => drop("rvTypes", "RV type") });
+  if (c.priceMaxUsd != null) hardChips.push({ text: `price ≤ $${c.priceMaxUsd.toLocaleString()}`, tone: "hard", onRemove: () => drop("priceMaxUsd", "budget cap") });
+  if (c.lengthMaxFt != null) hardChips.push({ text: `length ≤ ${c.lengthMaxFt} ft`, tone: "hard", onRemove: () => drop("lengthMaxFt", "length cap") });
+  if (c.sleepsMin != null) hardChips.push({ text: `sleeps ${c.sleepsMin}+`, tone: "hard", onRemove: () => drop("sleepsMin", "sleeping capacity") });
+  if (c.towVehicle) hardChips.push({ text: `towable by: ${c.towVehicle}`, tone: "hard", onRemove: () => drop("towVehicle", "tow vehicle") });
+  if (c.maxWeightLbs != null) hardChips.push({ text: `weight ≤ ${c.maxWeightLbs.toLocaleString()} lbs`, tone: "hard", onRemove: () => drop("maxWeightLbs", "weight cap") });
+  if (c.location) hardChips.push({ text: `${c.location.radiusMiles} mi of ${c.location.place}`, tone: "hard", onRemove: () => drop("location", "location") });
+  if (c.freshWaterMinGal != null) hardChips.push({ text: `fresh ≥ ${c.freshWaterMinGal} gal`, tone: "hard", onRemove: () => drop("freshWaterMinGal", "fresh water minimum") });
   for (const f of c.mustHave ?? []) {
-    chips.push({
-      text: `must: ${FEATURE_SHORT[f]}`,
+    hardChips.push({
+      text: FEATURE_SHORT[f],
       tone: "hard",
       onRemove: () => update({ ...c, mustHave: (c.mustHave ?? []).filter((x) => x !== f) }, `dropped must-have ${FEATURE_SHORT[f]}`),
     });
   }
   for (const f of c.prefer ?? []) {
-    chips.push({
-      text: `prefer: ${FEATURE_SHORT[f]}`,
+    softChips.push({
+      text: FEATURE_SHORT[f],
       tone: "soft",
       onRemove: () => update({ ...c, prefer: (c.prefer ?? []).filter((x) => x !== f) }, `dropped preference ${FEATURE_SHORT[f]}`),
     });
   }
-  if (c.boondocking) chips.push({ text: "boondocking priority", tone: "soft", onRemove: () => drop("boondocking", "boondocking priority") });
+  if (c.boondocking) softChips.push({ text: "boondocking readiness", tone: "soft", onRemove: () => drop("boondocking", "boondocking priority") });
+
+  // What the system is honestly unsure about — the "no false precision" panel.
+  const tow = s.towResolution;
+  const assumptions: string[] = [];
+  if (tow) {
+    if (tow.statedRatingLbs != null) {
+      assumptions.push(
+        `Tow: using your stated ${tow.statedRatingLbs.toLocaleString()} lbs rating — "comfortable" means ≤ ${tow.comfortCapLbs?.toLocaleString()} lbs (${tow.safetyMarginPct}% margin). Exact payload still unverified.`,
+      );
+    } else if (tow.rangeLbs) {
+      assumptions.push(
+        `Tow: ${tow.matched?.label ?? tow.input} configuration unknown — ratings span ${tow.rangeLbs.min.toLocaleString()}–${tow.rangeLbs.max.toLocaleString()} lbs. Filtering only above the top rating; per-unit verdicts say "depends on config". Tell your agent the door-sticker rating for precision.`,
+      );
+    } else {
+      assumptions.push(`Tow: "${tow.input}" not in the reference table — weight fit is unverified until you provide a rating.`);
+    }
+  }
 
   const togglePrefer = (f: FeatureKey) => {
     const has = (c.prefer ?? []).includes(f);
@@ -115,13 +133,40 @@ export function SessionRail() {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-2 min-h-[1.75rem]">
-          {chips.length === 0 ? (
-            <span className="text-xs text-white/40">None yet — ask your agent, or use the controls below.</span>
-          ) : (
-            chips.map((chip, i) => <Chip key={`${chip.text}-${i}`} {...chip} />)
-          )}
-        </div>
+        {hardChips.length === 0 && softChips.length === 0 ? (
+          <p className="text-xs text-white/40 mt-2">None yet — ask your agent, or use the controls below.</p>
+        ) : (
+          <div className="mt-2 space-y-2.5">
+            {hardChips.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7ee8ea]/80 mb-1">Hard requirements — must pass</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {hardChips.map((chip, i) => <Chip key={`h-${chip.text}-${i}`} {...chip} />)}
+                </div>
+              </div>
+            )}
+            {softChips.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1">Preferences — affect ranking only</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {softChips.map((chip, i) => <Chip key={`s-${chip.text}-${i}`} {...chip} />)}
+                </div>
+              </div>
+            )}
+            {assumptions.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300/80 mb-1">Assumptions &amp; unknowns</p>
+                <ul className="space-y-1">
+                  {assumptions.map((a, i) => (
+                    <li key={i} className="text-[11px] leading-snug text-amber-100/80 bg-amber-400/10 border border-amber-300/20 rounded-lg px-2.5 py-1.5">
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Human quick controls */}
         <div className="mt-3 flex flex-wrap items-center gap-2">

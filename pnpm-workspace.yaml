@@ -31,7 +31,12 @@ catalog:
 
 minimumReleaseAge: 1440
 
+# Explicit allowlist of dependency install scripts (pnpm blocks the rest).
+# @swc/core, esbuild, unrs-resolver: platform binary setup. msw: worker file
+# generation. @clerk/shared: postinstall notice from an already-trusted auth
+# vendor — allowlisted so fresh installs complete without warnings.
 onlyBuiltDependencies:
+  - '@clerk/shared'
   - '@swc/core'
   - esbuild
   - msw

@@ -1,12 +1,16 @@
 import { spawn } from "child_process";
 import { resolve } from "path";
 import { existsSync } from "fs";
+import { DB_MODE } from "@workspace/db";
+import { isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
 import app from "./app";
 import { autoImportIfEmpty } from "./lib/auto-import";
+import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { startEnrichmentCron } from "./services/listing-enrichment";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
-const rawPort = process.env["PORT"];
+// Default the port in development so `pnpm dev` works on a fresh clone.
+const rawPort = process.env["PORT"] ?? (process.env.NODE_ENV !== "production" ? "8080" : undefined);
 
 if (!rawPort) {
   throw new Error("PORT environment variable is required but was not provided.");
@@ -86,12 +90,25 @@ function startScraperCron() {
 }
 
 async function start() {
-  await autoImportIfEmpty();
+  if (DB_MODE === "embedded") {
+    // Zero-service mode: seed the embedded DB from the committed snapshot.
+    await seedEmbeddedFromSnapshot();
+  } else {
+    await autoImportIfEmpty();
+  }
 
   app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-    startEnrichmentCron();
-    startScraperCron();
+    console.log(`Server listening on port ${port} (db: ${DB_MODE})`);
+    if (isAnthropicConfigured()) {
+      startEnrichmentCron();
+    } else {
+      console.log("[startup] Anthropic integration not configured — AI chat/enrichment disabled; WebMCP agent tools unaffected");
+    }
+    if (DB_MODE === "postgres" && existsSync(resolve(SCRAPER_ROOT, "scraper/scheduled-run.js"))) {
+      startScraperCron();
+    } else {
+      console.log("[startup] scraper cron disabled (embedded db or scraper script not present)");
+    }
   });
 }
 

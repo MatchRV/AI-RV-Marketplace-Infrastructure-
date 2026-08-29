@@ -6,7 +6,7 @@ import type {
   Listing,
   NoMatchFilters,
   ExpansionSuggestion,
-} from "@workspace/api-client-react/src/generated/api.schemas";
+} from "@workspace/api-client-react";
 import { recordBuyerIntent } from "@/lib/buyer-intent";
 
 export type { NoMatchFilters, ExpansionSuggestion };

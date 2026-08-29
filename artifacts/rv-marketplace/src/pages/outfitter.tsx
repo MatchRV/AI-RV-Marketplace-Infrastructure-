@@ -8,7 +8,7 @@ import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { formatCurrency, formatRvType } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import { useAppAuth } from "@/contexts/auth-context";
-import type { BuyerProfile } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { BuyerProfile } from "@workspace/api-client-react";
 import type { ExpansionSuggestion } from "@/hooks/use-chat-session";
 
 // ── Client-side budget helper (mirrors server formula) ──────────────────────

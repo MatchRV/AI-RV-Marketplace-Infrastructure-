@@ -12,6 +12,7 @@ import tripsRouter from "./trips";
 import leadsRouter from "./leads";
 import importRouter from "./import";
 import generateDescriptionRouter from "./generate-description";
+import agentRouter from "./agent";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(tripsRouter);
 router.use(leadsRouter);
 router.use(importRouter);
 router.use(generateDescriptionRouter);
+router.use(agentRouter);
 
 export default router;

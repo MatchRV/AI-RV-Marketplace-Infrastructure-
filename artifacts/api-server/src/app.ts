@@ -32,7 +32,21 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use(clerkMiddleware());
+// Clerk auth is optional: without keys the app runs in anonymous mode
+// (mirrors the frontend's local-auth fallback). Clerk-gated routes
+// (/api/user/*, /api/trips/*) return 503 instead of crashing every request.
+const isClerkConfigured = Boolean(process.env.CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+if (isClerkConfigured) {
+  app.use(clerkMiddleware());
+} else {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (/^\/api\/(user|trips)(\/|$)/.test(req.path) || /^\/api\/listings\/[^/]+\/save/.test(req.path)) {
+      res.status(503).json({ error: "auth_not_configured", detail: "Clerk keys are not set in this environment; account features are disabled." });
+      return;
+    }
+    next();
+  });
+}
 
 const AI_CRAWLERS = [
   "GPTBot", "OAI-SearchBot", "ChatGPT-User",

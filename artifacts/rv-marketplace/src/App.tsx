@@ -7,6 +7,9 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { AuthProvider } from "@/contexts/auth-context";
 import { Home } from "@/pages/home";
 import { Browse } from "@/pages/browse";
+import { Shop } from "@/pages/shop";
+import { registerMatchrvTools } from "@/agent/webmcp";
+import { registerNavigate } from "@/agent/session";
 import { ListingDetail } from "@/pages/listing-detail";
 import { Outfitter } from "@/pages/outfitter";
 import { Match } from "@/pages/match";
@@ -146,13 +149,31 @@ function ReturnVisitDetector() {
   return null;
 }
 
+/**
+ * Registers MatchRV's WebMCP tools at the top level of the page (required by
+ * ChatGPT's in-app browser — tools must live in top-level page JS) and gives
+ * tool handlers a way to navigate the SPA.
+ */
+function AgentBridge() {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    registerNavigate(navigate);
+  }, [navigate]);
+  useEffect(() => {
+    registerMatchrvTools();
+  }, []);
+  return null;
+}
+
 function AppRouter() {
   return (
     <>
       <PageViewTracker />
       <ReturnVisitDetector />
+      <AgentBridge />
       <Switch>
       <Route path="/" component={Home} />
+      <Route path="/shop" component={Shop} />
       <Route path="/browse" component={Browse} />
       <Route path="/listing/:id" component={ListingDetail} />
       <Route path="/outfitter" component={Outfitter} />

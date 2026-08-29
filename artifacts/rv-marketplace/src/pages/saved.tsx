@@ -5,7 +5,7 @@ import { useAppAuth } from "@/contexts/auth-context";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui-elements";
 import { useState, useEffect } from "react";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 
 export function Saved() {
   const { isAuthenticated, login } = useAppAuth();

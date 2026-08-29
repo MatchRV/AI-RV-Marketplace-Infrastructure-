@@ -7,7 +7,7 @@ import { trackEvent } from "@/lib/analytics";
 import { trackClarity } from "@/lib/clarity";
 import { buildLeadBuyerProfile } from "@/lib/buyer-intent";
 import { useAppAuth } from "@/contexts/auth-context";
-import type { BuyerProfile } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { BuyerProfile } from "@workspace/api-client-react";
 import type { ExpansionSuggestion } from "@/hooks/use-chat-session";
 import {
   Send, Loader2, Sparkles, CheckCircle2,

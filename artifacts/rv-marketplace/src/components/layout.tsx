@@ -32,6 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   const navLinks: Array<{ href: string; label: string; badge?: string }> = [
+    { href: "/shop", label: "Agent Shop", badge: "NEW" },
     { href: "/browse", label: "Browse RVs" },
     { href: "/match", label: "Match Report" },
     { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },

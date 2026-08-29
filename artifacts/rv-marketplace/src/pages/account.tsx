@@ -10,7 +10,7 @@ import {
   ArrowRight, Edit2, Check, X, Ruler, LogOut
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL || "/";
 

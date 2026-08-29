@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "e2e-shop": "tsx ./src/e2e-shop.ts",
     "hello": "tsx ./src/hello.ts",
     "parse-dealers": "tsx ./src/parse-dealers.ts",
     "scrape": "tsx ./src/scrape-inventory.ts",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "playwright": "^1.60.0",
     "tsx": "catalog:"
   }
 }

@@ -48,6 +48,9 @@ Thumbs.db
 .cache/
 .local/
 
+# Embedded database (PGlite) data
+lib/db/.data/
+
 # Runtime / secrets
 .config/
 *.log

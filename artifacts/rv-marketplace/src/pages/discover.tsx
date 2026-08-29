@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { useGetListings } from "@workspace/api-client-react";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 import { X, Heart, MapPin, RefreshCw, ArrowRight, Info, Sparkles } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { recordBuyerIntent } from "@/lib/buyer-intent";

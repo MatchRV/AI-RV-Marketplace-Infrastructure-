@@ -1,5 +1,15 @@
 {
   "name": "matchrv-workspace",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "test": "pnpm --filter @workspace/agent-core run test",
+    "e2e": "pnpm --filter @workspace/scripts run e2e-shop",
+    "build-snapshot": "pnpm --filter @workspace/agent-core run build-snapshot",
+    "typecheck:agent": "pnpm --filter @workspace/agent-core run typecheck",
+    "build:web": "pnpm --filter @workspace/rv-marketplace run build",
+    "build:api": "pnpm --filter @workspace/api-server run build"
+  }
 }

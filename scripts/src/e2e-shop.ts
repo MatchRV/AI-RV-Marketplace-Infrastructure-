@@ -190,6 +190,42 @@ async function main() {
     return r.error === "awaiting_human_approval" ? "correctly refused" : `FAIL got ${JSON.stringify(r).slice(0, 120)}`;
   });
 
+  const directDecide = (id: string, body: unknown) =>
+    page.evaluate(
+      async ([pid2, b]) => {
+        const res = await fetch(`/api/agent/leads/${pid2}/approve`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(b),
+        });
+        return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+      },
+      [id, body] as const,
+    );
+
+  await step("approval w/o token blocked", "403 approval_token_required; status unchanged", async () => {
+    const r = await directDecide(pid, {});
+    if (r.status !== 403) return `FAIL status ${r.status}`;
+    const state = await bridgeState();
+    return state.leadStatus === "awaiting_human_approval" ? `403 ${r.body.error}; still awaiting` : `FAIL status became ${state.leadStatus}`;
+  });
+
+  await step("approval w/ forged token blocked", "403 invalid_token; status unchanged", async () => {
+    const r = await directDecide(pid, { approval_token: "apt_forged-token-from-elsewhere-xx" });
+    if (r.status !== 403 || r.body.error !== "invalid_token") return `FAIL ${r.status} ${JSON.stringify(r.body).slice(0, 80)}`;
+    const state = await bridgeState();
+    return state.leadStatus === "awaiting_human_approval" ? "403 invalid_token; still awaiting" : `FAIL status became ${state.leadStatus}`;
+  });
+
+  let reviewedMessage = "";
+  await step("capture reviewed payload", "message text visible in the approval card", async () => {
+    reviewedMessage = (await page.evaluate(() => {
+      const el = [...document.querySelectorAll("p")].find((p) => p.textContent?.startsWith("Hi "));
+      return el?.textContent ?? "";
+    })) as string;
+    return reviewedMessage.length > 20 ? `captured ${reviewedMessage.length} chars` : "FAIL no message captured";
+  });
+
   await step("human approves in UI", "state moves to approved", async () => {
     await page.click("button:has-text('Approve & allow send')");
     await page.waitForTimeout(800);
@@ -208,6 +244,44 @@ async function main() {
   await step("duplicate submit blocked", "already_submitted refusal", async () => {
     const r = (await exec("submit_dealer_contact", { preview_id: pid })) as { error?: string };
     return r.error === "already_submitted" ? "correctly refused" : `FAIL got ${JSON.stringify(r).slice(0, 100)}`;
+  });
+
+  await step("submitted payload is immutable", "server record equals the reviewed preview", async () => {
+    const r = await page.evaluate(async (pid2) => {
+      const res = await fetch(`/api/agent/leads/${pid2}`);
+      return (await res.json()) as { preview?: { message: string; status: string } };
+    }, pid);
+    if (!r.preview) return "FAIL no preview readback";
+    return r.preview.message === reviewedMessage && r.preview.status === "submitted"
+      ? "submitted message byte-identical to reviewed message"
+      : `FAIL mismatch (${r.preview.status})`;
+  });
+
+  await step("replay decision after submission blocked", "409 already_decided", async () => {
+    const r = await directDecide(pid, { approval_token: "apt_replayed-token-after-decision" });
+    return r.status === 409 && r.body.error === "already_decided" ? "409 already_decided" : `FAIL ${r.status} ${JSON.stringify(r.body).slice(0, 80)}`;
+  });
+
+  await step("zero-result search shows recovery UI", "empty state + funnel reasons, no crash", async () => {
+    // condition + price are always dealer-published, so this combination has
+    // verified fails for every unit — a genuinely empty result.
+    const r = (await exec("search_inventory", { mode: "refine", price_max: 2000, condition: "new" })) as {
+      guidance?: string;
+      funnel?: { verifiedMatches: number; unverified: number };
+    };
+    await page.waitForSelector("text=No unit satisfies every hard requirement", { timeout: 6000 });
+    return r.guidance?.includes("Relax") && r.funnel?.unverified === 0
+      ? "recovery guidance + visible empty state"
+      : `FAIL ${JSON.stringify(r).slice(0, 120)}`;
+  });
+
+  await step("reload resets the session cleanly (by design)", "fresh in-memory session, tools re-register, no errors", async () => {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => Boolean((window as unknown as { __matchrv?: unknown }).__matchrv), undefined, { timeout: 30000 });
+    const state = await bridgeState();
+    return state.resultIds.length === 0 && state.leadStatus === null && state.ledgerCount >= 1
+      ? "clean fresh session after reload (state is per-page-load, as documented)"
+      : `FAIL leftover state ${JSON.stringify(state).slice(0, 100)}`;
   });
 
   await step("malformed args rejected", "invalid_arguments with issues list", async () => {

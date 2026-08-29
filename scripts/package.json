@@ -9,7 +9,8 @@
     "parse-dealers": "tsx ./src/parse-dealers.ts",
     "scrape": "tsx ./src/scrape-inventory.ts",
     "sync": "tsx ./src/scrape-inventory.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "native-webmcp": "tsx ./src/native-webmcp-test.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",

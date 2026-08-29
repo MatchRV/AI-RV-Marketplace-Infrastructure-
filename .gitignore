@@ -48,7 +48,8 @@ Thumbs.db
 .cache/
 .local/
 
-# Embedded database (PGlite) data
+# Embedded database (PGlite) runtime data — never commit generated DB state
+.data/
 lib/db/.data/
 
 # Runtime / secrets
@@ -60,5 +61,6 @@ __pycache__/
 *.tar.gz
 *.tgz
 .env*
+!.env.example
 my_secrets.txt
 output/

@@ -55,12 +55,22 @@ function findBootstrapSql(): string {
   throw new Error(`Could not locate lib/db/bootstrap/schema.sql (searched from ${here})`);
 }
 
+/**
+ * One stable location for embedded-database state, whatever the code layout:
+ * anchored beside the bootstrap DDL → always <repo>/lib/db/.data/pglite
+ * (gitignored). Overridable with PGLITE_DATA_DIR for hosts with read-only
+ * checkouts.
+ */
+function defaultDataDir(): string {
+  return resolve(dirname(findBootstrapSql()), "../.data/pglite");
+}
+
 if (DB_MODE === "postgres") {
   pool = new Pool({ connectionString: process.env.DATABASE_URL });
   db = drizzlePg(pool, { schema });
   readyPromise = Promise.resolve();
 } else {
-  const dataDir = process.env.PGLITE_DATA_DIR ?? resolve(import.meta.dirname, "../.data/pglite");
+  const dataDir = process.env.PGLITE_DATA_DIR ?? defaultDataDir();
   mkdirSync(dirname(dataDir), { recursive: true });
 
   const client = new PGlite(dataDir);

@@ -11,6 +11,7 @@
     "sync": "tsx ./src/scrape-inventory.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "native-webmcp": "tsx ./src/native-webmcp-test.ts",
+    "demo-case": "tsx ./src/demo-case.ts",
     "fetch-chrome": "node ./src/fetch-chrome.mjs",
     "record-broll": "tsx ./src/record-broll.ts"
   },

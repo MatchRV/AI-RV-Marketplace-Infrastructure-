@@ -235,7 +235,7 @@ async function main() {
   await step("submit after approval", "receipt with lead id + demo delivery note", async () => {
     const r = (await exec("submit_dealer_contact", { preview_id: pid })) as { receipt?: { leadId: unknown; delivery: string }; error?: string };
     if (!r.receipt) return `FAIL ${JSON.stringify(r).slice(0, 140)}`;
-    await page.waitForSelector("text=Contact request submitted", { timeout: 6000 });
+    await page.waitForSelector("text=Lead sent", { timeout: 6000 });
     await page.waitForTimeout(450);
     await page.screenshot({ path: `${SHOTS}/07-receipt.png` });
     return `lead ${String(r.receipt.leadId)} — ${r.receipt.delivery.slice(0, 80)}`;

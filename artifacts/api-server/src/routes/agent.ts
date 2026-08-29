@@ -220,9 +220,36 @@ router.post("/agent/tow-fit", async (req: Request, res: Response) => {
 
 // ── Lead flow (two-phase, human-gated) ─────────────────────────────────────
 
+// Light abuse throttle on the write-adjacent endpoints (in-memory,
+// per-IP fixed window). Generous for a demo; a structured 429 lets an
+// agent back off cleanly.
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_MAX = 30;
+const rateBuckets = new Map<string, { windowStart: number; count: number }>();
+
+function leadRateLimit(req: Request, res: Response): boolean {
+  const key = req.ip ?? "unknown";
+  const now = Date.now();
+  const bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.windowStart > RATE_WINDOW_MS) {
+    rateBuckets.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  bucket.count += 1;
+  if (bucket.count > RATE_MAX) {
+    res.status(429).json({
+      error: "rate_limited",
+      guidance: "Too many dealer-contact operations from this client — wait a few minutes before retrying.",
+    });
+    return false;
+  }
+  return true;
+}
+
 const previewBody = prepareDealerContactInput.extend({ constraints: constraintsSchema });
 
 router.post("/agent/leads/preview", async (req: Request, res: Response) => {
+  if (!leadRateLimit(req, res)) return;
   const parsed = previewBody.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
   const unit = getInventory().byId.get(parsed.data.unit_id);
@@ -237,14 +264,17 @@ router.post("/agent/leads/preview", async (req: Request, res: Response) => {
     // Constraints may be unresolvable (e.g. unknown place) — draft without them.
   }
   const message = parsed.data.message?.trim() || draftMessage(unit, constraints, unknowns);
-  const preview = await timedAgentOp("lead_preview", () =>
+  const created = await timedAgentOp("lead_preview", () =>
     createPreview({
       unit,
       customer: { name: parsed.data.name, email: parsed.data.email, phone: parsed.data.phone },
       message,
     }),
   );
-  res.status(201).json({ preview });
+  // approvalToken is for the page UI only. The client tool handler must
+  // never include it in a tool result — and the agent-facing schema doesn't
+  // carry it anywhere.
+  res.status(201).json({ preview: created.preview, approvalToken: created.approvalToken });
 });
 
 router.get("/agent/leads/:id", (req: Request, res: Response) => {
@@ -253,20 +283,36 @@ router.get("/agent/leads/:id", (req: Request, res: Response) => {
   res.json({ preview });
 });
 
-// Human decisions — driven by the page UI's Approve/Reject buttons.
-router.post("/agent/leads/:id/approve", (req: Request, res: Response) => {
-  const preview = decidePreview(String(req.params.id), "approved");
-  if (!preview) return void res.status(404).json({ error: "preview_not_found" });
-  res.json({ preview });
-});
+// Human decisions — driven by the page UI's Approve/Reject buttons, and
+// bound to the single-use approval token that only that page holds. Agents
+// have no tool for this, and a caller without the token gets a 403.
+const decideBody = z.object({ approval_token: z.string().min(10).max(80) });
 
-router.post("/agent/leads/:id/reject", (req: Request, res: Response) => {
-  const preview = decidePreview(String(req.params.id), "rejected");
-  if (!preview) return void res.status(404).json({ error: "preview_not_found" });
-  res.json({ preview });
-});
+function handleDecision(req: Request, res: Response, decision: "approved" | "rejected"): void {
+  if (!leadRateLimit(req, res)) return;
+  const parsed = decideBody.safeParse(req.body);
+  if (!parsed.success) {
+    return void res.status(403).json({
+      error: "approval_token_required",
+      detail: "Decisions require the approval token issued to the page that staged this preview.",
+    });
+  }
+  const result = decidePreview(String(req.params.id), decision, parsed.data.approval_token);
+  if (!result.ok) {
+    const status =
+      result.code === "not_found" ? 404 :
+      result.code === "invalid_token" ? 403 :
+      result.code === "expired" ? 410 : 409;
+    return void res.status(status).json({ error: result.code });
+  }
+  res.json({ preview: result.preview });
+}
+
+router.post("/agent/leads/:id/approve", (req: Request, res: Response) => handleDecision(req, res, "approved"));
+router.post("/agent/leads/:id/reject", (req: Request, res: Response) => handleDecision(req, res, "rejected"));
 
 router.post("/agent/leads/submit", async (req: Request, res: Response) => {
+  if (!leadRateLimit(req, res)) return;
   const parsed = submitDealerContactInput.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
   const result = await timedAgentOp("lead_submit", () => submitPreview(parsed.data.preview_id));

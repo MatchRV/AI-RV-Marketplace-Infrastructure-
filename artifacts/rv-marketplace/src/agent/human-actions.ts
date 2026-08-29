@@ -56,12 +56,29 @@ export async function humanFocusUnit(unitId: string): Promise<void> {
   if (res.ok) setFocusedUnit(res.data.unit, "human");
 }
 
+/**
+ * Approval tokens live ONLY here, in page memory — never in the session
+ * store, never in bridge state, never in any tool result. The agent has no
+ * path to them, which is what makes "the human approved" mean a human.
+ */
+const approvalTokens = new Map<string, string>();
+
+export function rememberApprovalToken(previewId: string, token: string): void {
+  approvalTokens.set(previewId, token);
+}
+
 export async function humanDecideLead(preview: LeadPreviewDto, decision: "approve" | "reject"): Promise<void> {
-  const res = await agentApi.leadDecide(preview.previewId, decision);
+  const token = approvalTokens.get(preview.previewId);
+  if (!token) {
+    logLedger("system", "No approval token for this preview in this page session — reload lost it; ask the agent to prepare a fresh preview.");
+    return;
+  }
+  const res = await agentApi.leadDecide(preview.previewId, decision, token);
   if (!res.ok) {
     logLedger("system", `lead ${decision} failed: ${res.error.error}`);
     return;
   }
+  approvalTokens.delete(preview.previewId);
   updateLeadPreview(res.data.preview);
   logLedger(
     "human",

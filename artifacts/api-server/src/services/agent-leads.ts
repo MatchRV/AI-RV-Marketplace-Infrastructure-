@@ -4,20 +4,26 @@
  * The write path is deliberately two-phase and human-gated, enforced
  * SERVER-side (never by trusting the model):
  *
- *   prepare (agent) → awaiting_human_approval
- *   approve/reject (human click in the page UI) → approved | rejected
+ *   prepare (agent) → awaiting_human_approval  [server mints an approval
+ *     token, returned only to the page — tool results never include it]
+ *   approve/reject (human click in the page UI, presenting the token)
+ *     → approved | rejected  [token is single-use and dies with the preview]
  *   submit (agent) → submitted, only from `approved`
  *
- * A submit against anything but an approved preview returns a structured
- * refusal the agent can relay. Duplicate protection: one submitted lead per
- * (unit, email) per server session.
+ * So neither the agent (which never sees the token) nor an out-of-band HTTP
+ * caller (which cannot obtain it) can manufacture the "human approved"
+ * state; and the submitted payload is exactly the stored preview — submit
+ * carries only the preview id, so nothing the agent sends can mutate what
+ * the human reviewed. A submit against anything but an approved preview
+ * returns a structured refusal the agent can relay. Duplicate protection:
+ * one submitted lead per (unit, email) per server session.
  *
  * Demo posture: submitted leads are recorded in MatchRV's buyer_leads table
  * (or in memory when even the embedded DB is unavailable) and NO message is
  * delivered to a real dealership from the demo environment.
  */
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { db, buyerLeadsTable, DB_MODE } from "@workspace/db";
 import type { CanonicalUnit, Constraints } from "@workspace/agent-core";
 
@@ -47,14 +53,20 @@ const PREVIEW_TTL_MS = 30 * 60 * 1000;
 
 const previews = new Map<string, LeadPreview>();
 const submittedKeys = new Set<string>(); // `${unitId}|${email}`
+/** previewId → single-use approval secret. Held only by the page UI. */
+const approvalSecrets = new Map<string, { token: string; consumed: boolean }>();
 
 function sweep(): void {
   const cutoff = Date.now() - PREVIEW_TTL_MS;
   for (const [id, p] of previews.entries()) {
     if (p.status === "awaiting_human_approval" && Date.parse(p.createdAt) < cutoff) {
       p.status = "expired";
+      approvalSecrets.delete(id);
     }
-    if (Date.parse(p.createdAt) < cutoff - PREVIEW_TTL_MS) previews.delete(id);
+    if (Date.parse(p.createdAt) < cutoff - PREVIEW_TTL_MS) {
+      previews.delete(id);
+      approvalSecrets.delete(id);
+    }
   }
 }
 
@@ -78,7 +90,7 @@ export function createPreview(args: {
   unit: CanonicalUnit;
   customer: { name: string; email: string; phone?: string | null };
   message: string;
-}): LeadPreview {
+}): { preview: LeadPreview; approvalToken: string } {
   sweep();
   const preview: LeadPreview = {
     previewId: `prv_${randomBytes(9).toString("base64url")}`,
@@ -104,7 +116,9 @@ export function createPreview(args: {
     submittedLeadId: null,
   };
   previews.set(preview.previewId, preview);
-  return preview;
+  const approvalToken = `apt_${randomBytes(24).toString("base64url")}`;
+  approvalSecrets.set(preview.previewId, { token: approvalToken, consumed: false });
+  return { preview, approvalToken };
 }
 
 export function getPreview(id: string): LeadPreview | null {
@@ -112,13 +126,42 @@ export function getPreview(id: string): LeadPreview | null {
   return previews.get(id) ?? null;
 }
 
-export function decidePreview(id: string, decision: "approved" | "rejected"): LeadPreview | null {
+export type DecideResult =
+  | { ok: true; preview: LeadPreview }
+  | { ok: false; code: "not_found" | "invalid_token" | "already_decided" | "expired" };
+
+/**
+ * Record the human's decision. Requires the single-use approval token that
+ * only the page UI holds — a tool call or out-of-band request without it
+ * cannot flip a preview to approved.
+ */
+export function decidePreview(
+  id: string,
+  decision: "approved" | "rejected",
+  approvalToken: string,
+): DecideResult {
   const p = getPreview(id);
-  if (!p) return null;
-  if (p.status !== "awaiting_human_approval") return p;
+  if (!p) return { ok: false, code: "not_found" };
+  if (p.status === "expired") return { ok: false, code: "expired" };
+  if (p.status !== "awaiting_human_approval") return { ok: false, code: "already_decided" };
+
+  const secret = approvalSecrets.get(id);
+  if (!secret || secret.consumed || !timingSafeEqualStr(secret.token, approvalToken)) {
+    return { ok: false, code: "invalid_token" };
+  }
+  secret.consumed = true;
+  approvalSecrets.delete(id);
+
   p.status = decision;
   p.decidedAt = new Date().toISOString();
-  return p;
+  return { ok: true, preview: p };
+}
+
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }
 
 export type SubmitResult =
@@ -204,4 +247,11 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
 export function __resetLeadStore(): void {
   previews.clear();
   submittedKeys.clear();
+  approvalSecrets.clear();
+}
+
+/** Test hook: force a preview's creation time (expiry testing). */
+export function __agePreview(id: string, ms: number): void {
+  const p = previews.get(id);
+  if (p) p.createdAt = new Date(Date.now() - ms).toISOString();
 }

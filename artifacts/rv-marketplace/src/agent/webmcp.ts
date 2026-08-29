@@ -43,6 +43,7 @@ import {
   type TowFitResult,
 } from "@workspace/agent-core";
 import { agentApi, type LeadPreviewDto } from "./api";
+import { rememberApprovalToken } from "./human-actions";
 import {
   applySearchOutcome,
   describeConstraints,
@@ -311,6 +312,10 @@ async function handleLeadPreview(raw: unknown): Promise<ToolResult> {
   const res = await agentApi.leadPreview({ ...parsed.data, constraints: getSession().constraints });
   if (!res.ok) return { ...res.error } as ToolResult;
   ensureOnShopPage();
+  // The approval token stays with the page (human-actions module) — it is
+  // deliberately NOT part of this tool's return value or any session state
+  // an agent can read.
+  rememberApprovalToken(res.data.preview.previewId, res.data.approvalToken);
   setLeadPreview(res.data.preview, "agent");
   const p = res.data.preview;
   return {

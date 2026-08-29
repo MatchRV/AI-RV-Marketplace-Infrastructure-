@@ -89,10 +89,17 @@ export const agentApi = {
     phone?: string;
     message?: string;
     constraints: Constraints;
-  }) => call<{ preview: LeadPreviewDto }>("/leads/preview", { method: "POST", body: JSON.stringify(args) }),
+  }) =>
+    call<{ preview: LeadPreviewDto; approvalToken: string }>("/leads/preview", {
+      method: "POST",
+      body: JSON.stringify(args),
+    }),
 
-  leadDecide: (previewId: string, decision: "approve" | "reject") =>
-    call<{ preview: LeadPreviewDto }>(`/leads/${encodeURIComponent(previewId)}/${decision}`, { method: "POST" }),
+  leadDecide: (previewId: string, decision: "approve" | "reject", approvalToken: string) =>
+    call<{ preview: LeadPreviewDto }>(`/leads/${encodeURIComponent(previewId)}/${decision}`, {
+      method: "POST",
+      body: JSON.stringify({ approval_token: approvalToken }),
+    }),
 
   leadSubmit: (previewId: string) =>
     call<{ receipt: LeadReceiptDto; preview: LeadPreviewDto }>("/leads/submit", {

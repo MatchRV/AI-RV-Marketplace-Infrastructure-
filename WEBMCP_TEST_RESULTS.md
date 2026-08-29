@@ -1,6 +1,6 @@
-# WEBMCP_TEST_RESULTS — recorded runs (updated 2026-08-29, remediation round)
+# WEBMCP_TEST_RESULTS — recorded runs (updated 2026-08-29, three-pillars round)
 
-Four verification layers. Every result below was actually executed in this
+Five verification layers. Every result below was actually executed in this
 repository's environment; the one thing that remains untested is called out
 honestly at the end. Toolchain: Node v22.22.2, pnpm 10.33.0.
 
@@ -12,7 +12,11 @@ pnpm test             # 53 unit tests across three packages
 pnpm dev              # embedded DB, zero services
 pnpm e2e              # 23-step browser E2E (internal executor)
 pnpm --filter @workspace/scripts run native-webmcp   # NATIVE runtime (needs Chrome ≥149, see §3)
+pnpm --filter @workspace/scripts run demo-case       # the judge's demo conversation, natively (§4)
 ```
+
+`pnpm -r --if-present run typecheck` is clean across **every** workspace
+package (agent slice and legacy marketplace/mobile packages alike).
 
 ## 1. Unit suites — 53/53 passed
 
@@ -48,7 +52,7 @@ state. Run twice: against `pnpm dev` and against the **production bundle**
 | **submitted message byte-identical to the reviewed preview** | ✅ |
 | **decision replay after submission → 409 already_decided** | ✅ |
 | genuine zero-result search → recovery guidance + visible empty state | ✅ |
-| **reload → clean fresh session** (state is per-page-load by design, see §5) | ✅ |
+| **reload → clean fresh session** (state is per-page-load by design, see §6) | ✅ |
 | malformed args → field-level issues; unknown place → supported-place hint | ✅ |
 
 ## 3. NATIVE WebMCP runtime — 6/6 passed (real Chrome, real `document.modelContext`)
@@ -81,7 +85,29 @@ flags (origin-trial gated) and present under `--enable-features=WebMCPTesting`,
 `--enable-features=WebMCP`, `--enable-blink-features=WebMCP`, and
 `--enable-experimental-web-platform-features`.
 
-## 4. Production deployment behavior (single process, clean state)
+## 4. The exact demo conversation — 12/12 passed (native runtime)
+
+`scripts/src/demo-case.ts` walks the demo script's conversation *verbatim*
+through the browser's own `document.modelContext` (same Chrome 152 + flag as
+§3) and asserts the three pillars at every turn. Run log
+2026-08-29T14:34Z; screenshots `docs/screenshots/pillar-*.png`.
+
+| # | Turn | Verified |
+| --- | --- | --- |
+| 1 | runtime | 10 tools discovered natively |
+| 2 | *"…bunkhouse travel trailer under $45k, under 30 ft, within 150 mi of Tacoma, F-150, we boondock, solar+lithium, two entry doors"* | funnel 1,056 → 43 verified · 129 unverified · 884 excluded (sums exactly); verified listed first |
+| 3 | (same turn, UI) | rail separates **Hard requirements — must pass** / **Preferences — affect ranking only**; every chip removable by hand |
+| 4 | (same turn, honesty) | **Assumptions & unknowns**: F-150 config unknown → ratings span 5,000–13,500 lbs, filter only above the top rating, per-unit verdicts say "depends on config", asks for the door-sticker rating |
+| 5 | *"Actually, I'll go to $50k if I can get lithium and two doors."* | refine recomputes over all 1,056 (price → $50k; lithium + 2 doors promoted to hard) |
+| 6 | (zero-verified honesty) | **0 verified** stated plainly — "No unit satisfies every hard requirement." banner + data-gap candidates offered; nothing fabricated |
+| 7 | (ranking) | among unverified, fewest unknown hard checks rank first; agent list = page list (identical top 3) |
+| 8 | *"Compare the best three."* | side-by-side of true values; unpublished cells say **Unknown**; "never fills gaps with guesses" pledge on-screen |
+| 9 | *"Why is #1 better for me than #2?"* | #1 68 vs #2 67 with ✓/△/? receipts, additive score math, and a **Freshness** row (status + last-verified date + snapshot caveat) in the Why panel |
+| 10 | *"Contact the dealer about #1."* | preview card with **NOT SENT — review before submitting** banner, full payload + consent line; approval token absent from every tool result |
+| 11 | (adversarial) | agent submit → refused with guidance; **forged-token HTTP approve → 403**; second submit still refused |
+| 12 | *"Send it."* (after human Approve) | receipt: ✓ Lead sent / Dealer / Unit / Time / Reference #; duplicate submit blocked; delivery line says nothing reaches a real dealership |
+
+## 5. Production deployment behavior (single process, clean state)
 
 - `pnpm build:web` and `pnpm build:api` run with **zero env vars**.
 - `node artifacts/api-server/dist/index.cjs` from empty state: embedded DB
@@ -98,7 +124,7 @@ flags (origin-trial gated) and present under `--enable-features=WebMCPTesting`,
   "AKIA…" hits are case-insensitive false positives inside the model-viewer
   library; verified not AWS-shaped).
 
-## 5. Session/state model (verified, documented — not overclaimed)
+## 6. Session/state model (verified, documented — not overclaimed)
 
 The shared shopping session is **in-memory, per page load**. It survives SPA
 navigation between routes; a browser reload intentionally starts a fresh
@@ -106,7 +132,7 @@ session (verified in §2) and tools re-register cleanly. Nothing is persisted
 server-side except staged lead previews (30-min TTL) and submitted lead rows.
 `localStorage`/session persistence is deliberately not claimed.
 
-## 6. What remains genuinely untested (submission-blocking until done)
+## 7. What remains genuinely untested (submission-blocking until done)
 
 1. **A real agent choosing and phrasing the tool calls itself** — i.e. the
    ChatGPT desktop app's in-app browser (or another WebMCP-capable agent
@@ -115,7 +141,7 @@ server-side except staged lead previews (30-min TTL) and submitted lead rows.
    registration/discovery/execution through the real `document.modelContext`;
    agent behavior on top of it is not fabricated here.
 2. **The public HTTPS deployment** — no hosting credentials in this
-   environment. Everything §4 verifies is the exact artifact `render.yaml`
+   environment. Everything §5 verifies is the exact artifact `render.yaml`
    deploys.
 
 ### Manual verification procedure (Jonathan, ~15 minutes, after deploy)

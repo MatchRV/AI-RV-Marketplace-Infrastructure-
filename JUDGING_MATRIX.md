@@ -1,4 +1,4 @@
-# JUDGING_MATRIX — rescored after independent review + remediation (2026-08-29)
+# JUDGING_MATRIX — rescored after the three-pillars hardening round (2026-08-29)
 
 Official Devpost criteria (equally weighted): **WebMCP Leverage · Execution ·
 Potential Impact · Creativity & Ambition.** Scores reflect *verified
@@ -13,7 +13,8 @@ pointers reference WEBMCP_TEST_RESULTS.md (WTR).
   `getTools()` returns the full surface with schemas + annotations;
   `executeTool()` drives search → bidirectional shared-state sync →
   compare/explain → the human-gated contact. 6/6 automated steps, on dev and
-  on the production bundle (WTR §3, `native-0*.png`).
+  on the production bundle (WTR §3, `native-0*.png`) — plus the judge's demo
+  conversation verbatim, 12/12 natively (WTR §4, `pillar-*.png`).
 - Registration verified against a mocked current-shape runtime too: ten
   tools exactly once, idempotent remount, `$schema`-free JSON Schemas,
   `readOnlyHint`/`untrustedContentHint`, no approval capability reachable
@@ -43,8 +44,9 @@ tier this environment cannot produce. Manual procedure ready (WTR §6).
 
 **Why not higher:** no public HTTPS deployment yet (hosting access is
 outside this environment) — and "a working live app" is a submission
-requirement; legacy pages retain known TypeScript debt (documented, off the
-demo path). Both are the gap between 8 and 10.
+requirement. That single gap is the distance to 10: the codebase itself now
+typechecks clean across every workspace package (the legacy marketplace/mobile
+type debt was paid down in this round, not just documented).
 
 ## 3. Potential Impact — **9/10**
 
@@ -64,6 +66,21 @@ LLM-free deterministic site under an agent-reasoning layer. Showcase check
 (2026-08-29) still shows no comparable high-consideration marketplace entry.
 **Why not 10:** the concept's novelty ultimately gets judged against a field
 we can't fully see until submissions close.
+
+## The three pillars (SEARCH · TRUST · ACTION) — self-audit after hardening
+
+Scored against the product bar ("dramatically better than an agent scraping
+websites"), each verified by the 12-step native demo-case suite (WTR §4):
+
+| Pillar | Score | Evidence |
+| --- | --- | --- |
+| **SEARCH** — messy intent → inspectable, refinable constraints | **9/10** | One sentence with seven mixed requirements compiles to labeled **Hard / Preferences / Assumptions & unknowns** groups, every chip human-removable; refinement recomputes the full 1,056-unit funnel (43→0 verified honestly stated); tow ambiguity surfaces its own range and asks for the door-sticker number instead of guessing. |
+| **TRUST** — every claim has receipts | **9/10** | Per-check ✓/△/? with actual values, additive score math, per-fact source tags, freshness row (status + last-verified + snapshot caveat) in the Why panel; unknowns never rendered as no; zero-verified states say so in words; unverified ranking is fewest-data-gaps-first with agent/page parity. |
+| **ACTION** — write path a human can trust | **9/10** | NOT SENT banner until the human clicks Approve; agent submit refused with guidance; forged-token HTTP approve → 403; immutable reviewed payload; exact ✓ Lead sent / Dealer / Unit / Time / Reference receipt; duplicates blocked; delivery line never claims a real dealership was contacted. |
+
+Why none is a 10: the last point in each pillar belongs to the live
+agent-phrasing pass (WTR §7) — an agent's own wording driving these flows on
+the deployed site.
 
 ## "Why would a judge NOT pick this?" — updated after remediation
 

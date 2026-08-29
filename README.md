@@ -95,6 +95,8 @@ pnpm build:web && pnpm build:api && node artifacts/api-server/dist/index.cjs
                   # single-process production deploy (SPA + API + embedded DB)
 pnpm --filter @workspace/scripts run native-webmcp
                   # NATIVE runtime test — requires any Chrome ≥149 (see below)
+pnpm --filter @workspace/scripts run demo-case
+                  # the full demo conversation, verbatim, through the native runtime
 ```
 
 ### Using it with a real agent
@@ -253,6 +255,12 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
   and the production bundle.
 - `pnpm --filter @workspace/scripts run native-webmcp` — **6-step NATIVE
   runtime test** through a real Chrome's own `document.modelContext`.
+- `pnpm --filter @workspace/scripts run demo-case` — **12-step native run of
+  the demo conversation itself**: constraint compilation with hard/soft/unknown
+  separation, honest zero-verified refinement, most-verified-first ranking,
+  receipts + freshness in the Why panel, and the NOT-SENT → approve → exact
+  receipt contact flow, with forged-token approval attempts refused.
+- `pnpm -r --if-present run typecheck` — clean across every workspace package.
 - Results + evidence: [WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md)
 
 ## Current limitations

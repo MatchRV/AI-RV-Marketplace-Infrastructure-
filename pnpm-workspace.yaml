@@ -43,6 +43,12 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # One @types/react across the workspace: pnpm's hidden hoist otherwise flips
+  # between the web catalog (19.2) and the expo pin (19.1), and libraries that
+  # don't peer-depend on @types/react (react-day-picker, lucide-react) bind
+  # whichever copy wins, breaking typecheck. Types-only; runtime react is 19.1.0.
+  '@types/react': ^19.2.0
+  '@types/react-dom': ^19.2.0
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'

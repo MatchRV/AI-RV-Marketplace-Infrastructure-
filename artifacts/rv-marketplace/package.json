@@ -82,6 +82,7 @@
     "@vitejs/plugin-react": "catalog:",
     "tailwindcss": "catalog:",
     "vite": "catalog:",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/google.maps": "^3.58.1"
   }
 }

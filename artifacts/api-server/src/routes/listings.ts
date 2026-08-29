@@ -141,51 +141,51 @@ router.get("/listings", async (req, res) => {
 
     // ── Size & Capacity ────────────────────────────────────────────────
     if (minSleeps) conditions.push(gte(listingsTable.sleeps, Number(minSleeps)));
-    if (minLength) conditions.push(gte(listingsTable.length as typeof listingsTable.price, Number(minLength)));
-    if (maxLength) conditions.push(lte(listingsTable.length as typeof listingsTable.price, Number(maxLength)));
-    if (minSlides) conditions.push(gte(listingsTable.slides as unknown as typeof listingsTable.sleeps, Number(minSlides)));
-    if (bedSize) conditions.push(eq(listingsTable.bedSize as typeof listingsTable.condition, bedSize));
+    if (minLength) conditions.push(gte(listingsTable.length, Number(minLength)));
+    if (maxLength) conditions.push(lte(listingsTable.length, Number(maxLength)));
+    if (minSlides) conditions.push(gte(listingsTable.slides, Number(minSlides)));
+    if (bedSize) conditions.push(eq(listingsTable.bedSize, bedSize));
 
     // ── Towing & Mechanical ────────────────────────────────────────────
-    if (maxTowWeight) conditions.push(lte(listingsTable.gvwr as typeof listingsTable.price, Number(maxTowWeight)));
-    if (hitchType) conditions.push(eq(listingsTable.hitchType as typeof listingsTable.condition, hitchType));
-    if (maxMileage) conditions.push(lte(listingsTable.mileage as unknown as typeof listingsTable.price, Number(maxMileage)));
+    if (maxTowWeight) conditions.push(lte(listingsTable.gvwr, Number(maxTowWeight)));
+    if (hitchType) conditions.push(eq(listingsTable.hitchType, hitchType));
+    if (maxMileage) conditions.push(lte(listingsTable.mileage, Number(maxMileage)));
 
     // ── Lifestyle ──────────────────────────────────────────────────────
     if (campingStyle === "boondocking") {
-      conditions.push(gte(listingsTable.boondockingScore as unknown as typeof listingsTable.sleeps, 60));
+      conditions.push(gte(listingsTable.boondockingScore, 60));
     } else if (campingStyle === "full_hookup") {
-      conditions.push(gte(listingsTable.slides as unknown as typeof listingsTable.sleeps, 1));
+      conditions.push(gte(listingsTable.slides, 1));
     }
-    if (petFriendly === "true") conditions.push(eq(listingsTable.petFriendly as typeof listingsTable.generator, true));
-    if (fourSeason === "true") conditions.push(eq(listingsTable.fourSeason as typeof listingsTable.generator, true));
+    if (petFriendly === "true") conditions.push(eq(listingsTable.petFriendly, true));
+    if (fourSeason === "true") conditions.push(eq(listingsTable.fourSeason, true));
 
     // ── Features (boolean) ─────────────────────────────────────────────
     if (outdoorKitchen === "true") conditions.push(eq(listingsTable.outdoorKitchen, true));
     if (washerDryer === "true") conditions.push(eq(listingsTable.washerDryer, true));
     if (generator === "true") conditions.push(eq(listingsTable.generator, true));
-    if (hasFireplace === "true") conditions.push(eq(listingsTable.hasFireplace as typeof listingsTable.generator, true));
-    if (hydraulicJacks === "true") conditions.push(eq(listingsTable.hydraulicJacks as typeof listingsTable.generator, true));
-    if (powerAwning === "true") conditions.push(eq(listingsTable.powerAwning as typeof listingsTable.generator, true));
-    if (outdoorShower === "true") conditions.push(eq(listingsTable.outdoorShower as typeof listingsTable.generator, true));
-    if (backupCamera === "true") conditions.push(eq(listingsTable.backupCamera as typeof listingsTable.generator, true));
-    if (theaterSeating === "true") conditions.push(eq(listingsTable.theaterSeating as typeof listingsTable.generator, true));
-    if (enclosedUnderbelly === "true") conditions.push(eq(listingsTable.enclosedUnderbelly as typeof listingsTable.generator, true));
-    if (solarFilter === "ready") conditions.push(eq(listingsTable.solarReady as typeof listingsTable.generator, true));
-    else if (solarFilter === "installed") conditions.push(eq(listingsTable.solarInstalled as typeof listingsTable.generator, true));
+    if (hasFireplace === "true") conditions.push(eq(listingsTable.hasFireplace, true));
+    if (hydraulicJacks === "true") conditions.push(eq(listingsTable.hydraulicJacks, true));
+    if (powerAwning === "true") conditions.push(eq(listingsTable.powerAwning, true));
+    if (outdoorShower === "true") conditions.push(eq(listingsTable.outdoorShower, true));
+    if (backupCamera === "true") conditions.push(eq(listingsTable.backupCamera, true));
+    if (theaterSeating === "true") conditions.push(eq(listingsTable.theaterSeating, true));
+    if (enclosedUnderbelly === "true") conditions.push(eq(listingsTable.enclosedUnderbelly, true));
+    if (solarFilter === "ready") conditions.push(eq(listingsTable.solarReady, true));
+    else if (solarFilter === "installed") conditions.push(eq(listingsTable.solarInstalled, true));
     else if (solarFilter === "any") conditions.push(
       or(
-        eq(listingsTable.solarReady as typeof listingsTable.generator, true),
-        eq(listingsTable.solarInstalled as typeof listingsTable.generator, true),
+        eq(listingsTable.solarReady, true),
+        eq(listingsTable.solarInstalled, true),
       ) as Cond
     );
 
     // ── Floorplan ──────────────────────────────────────────────────────
-    if (rearBedroom === "true") conditions.push(eq(listingsTable.rearBedroom as typeof listingsTable.generator, true));
-    if (rearLiving === "true") conditions.push(eq(listingsTable.rearLiving as typeof listingsTable.generator, true));
-    if (frontKitchen === "true") conditions.push(eq(listingsTable.frontKitchen as typeof listingsTable.generator, true));
-    if (islandKitchen === "true") conditions.push(eq(listingsTable.islandKitchen as typeof listingsTable.generator, true));
-    if (walkAroundBed === "true") conditions.push(eq(listingsTable.walkAroundBed as typeof listingsTable.generator, true));
+    if (rearBedroom === "true") conditions.push(eq(listingsTable.rearBedroom, true));
+    if (rearLiving === "true") conditions.push(eq(listingsTable.rearLiving, true));
+    if (frontKitchen === "true") conditions.push(eq(listingsTable.frontKitchen, true));
+    if (islandKitchen === "true") conditions.push(eq(listingsTable.islandKitchen, true));
+    if (walkAroundBed === "true") conditions.push(eq(listingsTable.walkAroundBed, true));
 
     // ── Deals ──────────────────────────────────────────────────────────
     if (priceDrops === "true") {
@@ -198,7 +198,7 @@ router.get("/listings", async (req, res) => {
       );
     }
     if (newArrivals === "true") {
-      conditions.push(gte(listingsTable.createdAt as unknown as typeof listingsTable.updatedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
+      conditions.push(gte(listingsTable.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
     }
     if (longOnLot === "true") {
       conditions.push(gte(listingsTable.daysOnMarket, 60));
@@ -423,8 +423,8 @@ router.post("/listings", async (req, res) => {
       condition: String(b.condition ?? "used"),
       isNew: Boolean(b.isNew ?? b.condition === "new"),
       images: Array.isArray(b.images) ? b.images.filter((u) => typeof u === "string") : [],
-      location: b.location ? String(b.location) : null,
-      state: b.state ? String(b.state) : null,
+      location: b.location ? String(b.location) : "",
+      state: b.state ? String(b.state) : "",
       dealerName,
       dealerId,
       vin,

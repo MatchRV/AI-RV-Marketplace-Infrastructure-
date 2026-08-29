@@ -973,8 +973,8 @@ export function ListingDetail() {
                                 leadSource: "contact_dealer",
                                 outfitterSession: getOutfitterSession(),
                                 BASE,
-                                contactName: user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null : null,
-                                contactEmail: user?.email ?? null,
+                                contactName: user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined : undefined,
+                                contactEmail: user?.email ?? undefined,
                               });
                               if (ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });

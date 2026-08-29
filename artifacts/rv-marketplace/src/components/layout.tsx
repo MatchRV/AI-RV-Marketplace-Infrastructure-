@@ -566,7 +566,7 @@ function OutfitterFAB() {
                     </div>
                   ) : (
                     <>
-                      {(recommendations as Record<string, unknown>[]).slice(0, 3).map((rec) => (
+                      {(recommendations as unknown as Record<string, unknown>[]).slice(0, 3).map((rec) => (
                         <Link key={String(rec.id)} href={`/listing/${rec.id}`} onClick={() => setIsOpen(false)}>
                           <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden hover:border-[#0B1117] transition cursor-pointer">
                             <div className="flex">
@@ -579,9 +579,9 @@ function OutfitterFAB() {
                               </div>
                               <div className="flex-1 p-2.5 min-w-0">
                                 <p className="text-[10px] text-[#6b7a7a] truncate">{formatRvType(String(rec.type))}</p>
-                                <p className="text-xs font-bold text-[#161d1d] truncate">{rec.year} {rec.make} {rec.model}</p>
+                                <p className="text-xs font-bold text-[#161d1d] truncate">{String(rec.year)} {String(rec.make)} {String(rec.model)}</p>
                                 <p className="text-sm font-black text-[#0B1117] mt-1">{formatCurrency(Number(rec.price))}</p>
-                                {rec.whyMatch && (
+                                {Boolean(rec.whyMatch) && (
                                   <p className="text-[10px] text-[#6b7a7a] mt-0.5 line-clamp-1">{String(rec.whyMatch)}</p>
                                 )}
                               </div>

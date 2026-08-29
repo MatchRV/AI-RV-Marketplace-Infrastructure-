@@ -126,7 +126,7 @@ export function useChatSession() {
           }
 
           // Track knowledge mode engagement
-          if (response.stage === "knowledge" && trackedStage.current !== "knowledge") {
+          if (String(response.stage) === "knowledge" && trackedStage.current !== "knowledge") {
             trackedStage.current = "knowledge";
             recordBuyerIntent("outfitter_knowledge_mode", {
               metadata: { sessionId },

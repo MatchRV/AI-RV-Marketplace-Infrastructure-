@@ -68,8 +68,8 @@ async function fetchAccountData(isAuthenticated: boolean): Promise<AccountData |
       messagesUnread: (messagesData.messages ?? []).filter((m: { read: boolean }) => !m.read).length,
       recentListings: (savedData.listings ?? []).slice(0, 3),
       driveway: {
-        driveway_length_ft: drivewayData.driveway_length_ft ?? null,
-        driveway_width_ft: drivewayData.driveway_width_ft ?? null,
+        driveway_length_ft: (drivewayData as { driveway_length_ft?: number | null }).driveway_length_ft ?? null,
+        driveway_width_ft: (drivewayData as { driveway_width_ft?: number | null }).driveway_width_ft ?? null,
       },
       recentTrips: (tripsData.trips ?? []).slice(0, 3),
     };
@@ -212,7 +212,7 @@ export function Account() {
             <h1 className="text-2xl font-display font-bold truncate">
               {user?.firstName && user?.lastName
                 ? `${user.firstName} ${user.lastName}`
-                : user?.username ?? "My Account"}
+                : ((user ?? {}) as { username?: string }).username ?? "My Account"}
             </h1>
             {user?.email && (
               <p className="text-muted-foreground text-sm mt-1 truncate">{user.email}</p>

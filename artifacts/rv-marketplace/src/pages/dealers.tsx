@@ -1973,7 +1973,7 @@ function UpgradeModal({
   onConfirm: (tier: DealerTier) => void;
   onClose: () => void;
 }) {
-  const upgradeOptions: { tier: DealerTier; name: string; price: string; desc: string; features: string[]; highlight?: boolean }[] = [
+  const allUpgradeOptions: { tier: DealerTier; name: string; price: string; desc: string; features: string[]; highlight?: boolean }[] = [
     {
       tier: "intelligence",
       name: "Inventory Intelligence",
@@ -1989,7 +1989,8 @@ function UpgradeModal({
       features: ["Everything in Intelligence", "5-factor Readiness Score", "Lead tier classification + pricing", "AI-generated sales openers", "24/7 buyer qualification"],
       highlight: true,
     },
-  ].filter((opt) => TIER_RANK[opt.tier] > TIER_RANK[currentTier] || opt.tier === target);
+  ];
+  const upgradeOptions = allUpgradeOptions.filter((opt) => TIER_RANK[opt.tier] > TIER_RANK[currentTier] || opt.tier === target);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">

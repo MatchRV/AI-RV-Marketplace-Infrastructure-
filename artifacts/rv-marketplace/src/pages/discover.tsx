@@ -64,9 +64,9 @@ export function Discover() {
         type: current.type,
         price: current.price,
         location: current.location,
-        dealerName: current.dealer?.name,
-        dealerCity: current.dealer?.city,
-        dealerState: current.dealer?.state,
+        dealerName: (current as unknown as { dealer?: { name?: string } }).dealer?.name,
+        dealerCity: (current as unknown as { dealer?: { city?: string } }).dealer?.city,
+        dealerState: (current as unknown as { dealer?: { state?: string } }).dealer?.state,
       },
       sendAnalytics: false,
     });

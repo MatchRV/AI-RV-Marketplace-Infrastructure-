@@ -278,8 +278,8 @@ export function Outfitter() {
                   ) : (
                     /* ── Authenticated: show cards ── */
                     <>
-                      {recommendations.map((rec: Record<string, unknown>, i: number) => {
-                        const badges = getMatchBadges(rec, profile);
+                      {(recommendations as unknown as Record<string, unknown>[]).map((rec, i) => {
+                        const badges: string[] = getMatchBadges(rec, profile);
                         return (
                           <Link key={String(rec.id)} href={`/listing/${rec.id}`}>
                             <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden hover:border-[#0B1117] transition cursor-pointer shadow-sm">
@@ -298,7 +298,7 @@ export function Outfitter() {
                                     <div className="min-w-0">
                                       <p className="text-xs text-[#3b4949] truncate">{formatRvType(String(rec.type))}</p>
                                       <p className="text-sm font-bold text-[#161d1d] truncate">
-                                        {rec.year} {rec.make} {rec.model}
+                                        {String(rec.year)} {String(rec.make)} {String(rec.model)}
                                       </p>
                                     </div>
                                     <div className="text-right flex-shrink-0">
@@ -316,7 +316,7 @@ export function Outfitter() {
                                     </div>
                                   )}
                                   {/* Why it matches */}
-                                  {rec.whyMatch && (
+                                  {Boolean(rec.whyMatch) && (
                                     <p className="text-xs text-[#3b4949] mt-1.5 line-clamp-2 leading-relaxed">
                                       {String(rec.whyMatch)}
                                     </p>

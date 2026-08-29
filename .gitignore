@@ -64,3 +64,6 @@ __pycache__/
 !.env.example
 my_secrets.txt
 output/
+
+# Locally fetched Chrome for Testing (native WebMCP suite)
+.chrome/

@@ -60,6 +60,14 @@
 
 ## Fallback plan
 
+- **Committed fallback footage:** `docs/demo/native-webmcp-run.webm` — a
+  silent ~70 s capture of the real product driven through a real Chrome's
+  native `document.modelContext` (search → human chip edit → agent refine →
+  explain → compare → approval → receipt). Narrate over it per
+  DEMO_SCRIPT.md if live recording fails. Re-record any time (photos load on
+  a normal network):
+  `pnpm --filter @workspace/scripts run fetch-chrome` then
+  `pnpm --filter @workspace/scripts run record-broll` (with `pnpm dev` up).
 - Agent runtime misbehaving on the day → record the identical flow with the
   guided demo (labeled on screen as simulating the agent's tool calls) and
   show the ChatGPT Site-tools discovery separately at the top.

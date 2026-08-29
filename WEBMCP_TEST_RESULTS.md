@@ -60,9 +60,12 @@ implementation — not the page's internal executor: discovery via
 `document.modelContext.getTools()`, invocation via
 `document.modelContext.executeTool()`. Verified against `pnpm dev` and
 against the production bundle. Evidence: `docs/screenshots/native-0*.png`,
-run log 2026-08-29T02:12Z; rerun with
-`pnpm --filter @workspace/scripts run native-webmcp` (set `NATIVE_CHROME` to
-any Chrome ≥149 binary).
+~70 s of raw footage of the same flow at `docs/demo/native-webmcp-run.webm`,
+run log 2026-08-29T02:12Z. Reproduce in two commands on any machine:
+`pnpm --filter @workspace/scripts run fetch-chrome` (downloads an official
+Chrome for Testing build into gitignored `.chrome/`) then
+`pnpm --filter @workspace/scripts run native-webmcp` (or set `NATIVE_CHROME`
+to any Chrome ≥149 binary).
 
 | Step | Result |
 | --- | --- |

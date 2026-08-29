@@ -8,25 +8,26 @@
  * uses. It proves: native registration, native discovery, native execution,
  * agent→UI state sync, human→agent state sync, and the human-gated write.
  *
- * Run:
- *   NATIVE_CHROME=/path/to/chrome pnpm --filter @workspace/scripts run native-webmcp
- * (defaults to Chrome for Testing under the session scratchpad if present;
- *  requires `pnpm dev` running)
+ * Run (requires `pnpm dev` running):
+ *   pnpm --filter @workspace/scripts run fetch-chrome    # once, downloads into .chrome/
+ *   pnpm --filter @workspace/scripts run native-webmcp
+ * Or point NATIVE_CHROME at any Chrome ≥149 executable.
  */
 
 import { chromium } from "playwright";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { chromeBinaryPath } from "./fetch-chrome.mjs";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:5173";
-const CHROME =
-  process.env.NATIVE_CHROME ??
-  "/tmp/claude-0/-home-user-AI-RV-Marketplace-Infrastructure-/94e01da9-4de3-51b3-8549-c90bfbe90661/scratchpad/chrome-linux64/chrome";
+const CHROME = process.env.NATIVE_CHROME ?? chromeBinaryPath();
 const SHOTS = resolve(import.meta.dirname, "../../docs/screenshots");
 mkdirSync(SHOTS, { recursive: true });
 
 if (!existsSync(CHROME)) {
-  console.error(`No Chrome binary at ${CHROME} — set NATIVE_CHROME to a Chrome ≥149 executable.`);
+  console.error(
+    `No Chrome binary at ${CHROME}.\nRun: pnpm --filter @workspace/scripts run fetch-chrome\n(or set NATIVE_CHROME to a Chrome ≥149 executable)`,
+  );
   process.exit(2);
 }
 

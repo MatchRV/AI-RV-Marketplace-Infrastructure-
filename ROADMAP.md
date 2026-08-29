@@ -39,8 +39,13 @@
       .replit); submit on Devpost before the deadline
 
 ## P1 — meaningfully raises judge score (only after P0)
-- [ ] Warm-start/optimize first paint on the deploy (preload fonts, prune the
-      187 MB legacy `public/rv-images` from the deploy image)
+- [ ] Warm-start/optimize first paint on the deploy (preload fonts,
+      code-split legacy routes out of the 1.7 MB main chunk)
+- [ ] Slim the deploy: `public/rv-images` (187 MB) is referenced only by a
+      seeding script, not the app — but relocating it now would be a
+      1,300-file rename storm in the challenge PR, and production-Postgres
+      rows seeded by that script may reference `/rv-images/*` URLs. Post-
+      challenge: move it out of `public/` and serve via `express.static`
 - [ ] Origin-trial token for WebMCP so unflagged Chrome works on the live
       origin
 - [ ] Mobile pass on /shop overlays (usable today; polish the compare table)

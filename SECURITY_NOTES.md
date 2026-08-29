@@ -67,8 +67,12 @@ The agent layer requires zero secrets. Committed values found during review
 (a Google Places browser key, a personal phone number, an SMS-gateway
 address, vendor account ids in `.replit` and one pasted asset) have been
 **stripped/redacted from the tree**. ⚠️ They remain in git history until it
-is rewritten — **rotate the Google Places key and treat the old values as
-public before making the repository public** (a challenge requirement).
+is rewritten — before making the repository public (a challenge
+requirement), **kill the Google Places key**. Simplest path: *delete* it in
+Google Cloud Console — it is optional (used only by the legacy /browse
+city-autocomplete, which degrades to a plain text input without it; the
+WebMCP demo uses no Google services). Rotate + referrer/API-restrict only
+if you want the autocomplete kept. Treat the other old values as public.
 No Supabase anywhere; no service keys ship to the client (bundle scanned).
 
 ## CORS / same-origin posture

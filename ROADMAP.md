@@ -29,8 +29,11 @@
       required — in git history)
 
 ## P0 — remaining, needs a human (Jonathan)
-- [ ] **Rotate the Google Places API key** (old value is in git history) —
-      before the repo goes public
+- [ ] **Kill the Google Places API key** (old value is in git history) —
+      before the repo goes public. Recommended: just *delete* it in Google
+      Cloud Console; it's optional (legacy /browse autocomplete only, which
+      degrades gracefully; the WebMCP demo uses no Google services). Rotate
+      + restrict instead only if you want autocomplete kept
 - [ ] Deploy the live URL (render.yaml blueprint ≈10 min; any Node host works)
 - [ ] ChatGPT desktop in-app browser pass — exact 15-minute procedure +
       screenshot list in WEBMCP_TEST_RESULTS.md §6

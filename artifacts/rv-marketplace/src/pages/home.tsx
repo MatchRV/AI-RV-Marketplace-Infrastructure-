@@ -277,7 +277,7 @@ export function Home() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#00CED1]/20 text-[#00CED1] rounded text-xs font-bold uppercase tracking-widest mb-5 sm:mb-6 select-none cursor-default">
               <span className="w-2 h-2 bg-[#00CED1] rounded-full animate-pulse" />
-              {inventoryCount ? `${inventoryCount.toLocaleString()} Live RVs` : "7,500+ Live RVs"}
+              {inventoryCount ? `${inventoryCount.toLocaleString()} RVs Listed` : "RVs Listed Across WA"}
             </div>
 
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black text-white tracking-tight mb-4 sm:mb-6 select-none cursor-default">

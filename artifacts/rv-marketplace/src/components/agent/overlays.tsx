@@ -143,6 +143,8 @@ export function CompareSheet() {
   const s = useAgentSession();
   if (!s.comparison) return null;
   const { comparison } = s.comparison;
+  const knownRows = comparison.rows.filter((r) => r.values.some((v) => v !== null));
+  const allUnknown = comparison.rows.filter((r) => r.values.every((v) => v === null));
 
   return (
     <Dialog open onOpenChange={(open) => !open && setComparison(null, "human")}>
@@ -164,7 +166,7 @@ export function CompareSheet() {
               </tr>
             </thead>
             <tbody>
-              {comparison.rows.map((row) => (
+              {knownRows.map((row) => (
                 <tr key={row.spec} className="border-t border-[#eef2f2]">
                   <td className="py-2 pr-3 text-[#5c6b6b]">{row.spec}{row.unit ? ` (${row.unit})` : ""}</td>
                   {row.values.map((v, i) => (
@@ -180,6 +182,12 @@ export function CompareSheet() {
             </tbody>
           </table>
         </div>
+        {allUnknown.length > 0 && (
+          <p className="text-[11px] text-[#b45309] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Not published by any of these dealers: {allUnknown.map((r) => r.spec).join(", ")}. Your agent can
+            include these questions in a dealer contact request.
+          </p>
+        )}
         {comparison.unknownNotes.length > 0 && (
           <p className="text-[11px] text-[#8a9a9a]">{comparison.unknownNotes.join(" · ")}</p>
         )}

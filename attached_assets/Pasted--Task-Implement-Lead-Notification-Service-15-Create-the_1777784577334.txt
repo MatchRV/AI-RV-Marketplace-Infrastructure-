@@ -39,7 +39,7 @@
   }
 
   const NOTIFY_EMAIL = "jonathan@matchrv.com";
-  const NOTIFY_PHONE = "+12538881117";
+  const NOTIFY_PHONE = "[REDACTED_PHONE]";
 
   export async function notifyLead(payload: LeadNotificationPayload): Promise<void> {
     await Promise.allSettled([

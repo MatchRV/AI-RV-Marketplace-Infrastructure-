@@ -53,9 +53,9 @@ packages = ["freetype", "gitFull", "glibcLocales", "orbiton", "playwright-driver
 [userenv]
 
 [userenv.shared]
-VITE_GOOGLE_PLACES_API_KEY = "AIzaSyCUkQNt0Q5d9-G9EoaWmI7-_RXTIUGpMo0"
-SMS_ALERT_TO = "+12538881117"
-BRIGHT_DATA_ZONE = "95329"
-SMS_GATEWAY_EMAIL = "2538881117@vzwpix.com"
-NTFY_TOPIC = "matchrv-leads-jonathan"
-BRIGHT_DATA_CUSTOMER_ID = "hl_92c929dc"
+VITE_GOOGLE_PLACES_API_KEY = "" # set via Replit Secrets — previous committed key must be rotated
+SMS_ALERT_TO = "" # set via Replit Secrets
+BRIGHT_DATA_ZONE = "" # set via Replit Secrets
+SMS_GATEWAY_EMAIL = "" # set via Replit Secrets
+NTFY_TOPIC = "" # set via Replit Secrets
+BRIGHT_DATA_CUSTOMER_ID = "" # set via Replit Secrets

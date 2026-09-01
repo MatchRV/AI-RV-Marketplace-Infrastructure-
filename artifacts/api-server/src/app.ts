@@ -1,5 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
@@ -93,11 +93,30 @@ app.use("/api", router);
 // process is a complete live deployment.
 const webDist = resolvePath(import.meta.dirname, "../../rv-marketplace/dist/public");
 if (existsSync(resolvePath(webDist, "index.html"))) {
-  app.use(express.static(webDist, { maxAge: "1h", index: "index.html" }));
+  const indexPath = resolvePath(webDist, "index.html");
+  // On a database-free deployment the classic marketplace pages cannot
+  // render, so the root becomes the agent-native /shop experience and the
+  // SPA is told it is in demo mode (the layout trims links that would lead
+  // to disabled pages). Everything else is byte-identical.
+  const demo = DB_MODE === "none";
+  const indexHtml = demo
+    ? readFileSync(indexPath, "utf-8").replace(
+        "</head>",
+        '  <meta name="matchrv-mode" content="demo">\n  </head>',
+      )
+    : null;
+  if (demo) {
+    app.get("/", (_req: Request, res: Response) => res.redirect(302, "/shop"));
+  }
+  app.use(express.static(webDist, { maxAge: "1h", index: false }));
   app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
-    res.sendFile(resolvePath(webDist, "index.html"));
+    if (indexHtml) {
+      res.type("html").send(indexHtml);
+    } else {
+      res.sendFile(indexPath);
+    }
   });
-  console.log("[startup] serving built web app from", webDist);
+  console.log(`[startup] serving built web app from ${webDist}${demo ? " (demo mode: / -> /shop)" : ""}`);
 }
 
 export default app;

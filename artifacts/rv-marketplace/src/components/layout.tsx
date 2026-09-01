@@ -9,6 +9,15 @@ import { useChatSession } from "@/hooks/use-chat-session";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import type { ExpansionSuggestion } from "@/hooks/use-chat-session";
 
+/**
+ * The database-free demo deployment injects <meta name="matchrv-mode"
+ * content="demo"> so the chrome can hide links to pages that cannot render
+ * there. Absent on every other host, so nothing changes for matchrv.com.
+ */
+const DEMO_MODE =
+  typeof document !== "undefined" &&
+  document.querySelector('meta[name="matchrv-mode"][content="demo"]') !== null;
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -35,11 +44,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // plus the Get Match Report button. Campgrounds, Buyers Guide, Sell Your RV
   // and For Dealers remain reachable from the footer; Match Report is the
   // button itself.
-  const navLinks: Array<{ href: string; label: string; badge?: string }> = [
-    { href: "/shop", label: "Agent Shop", badge: "NEW" },
-    { href: "/browse", label: "Browse RVs" },
-    { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },
-  ];
+  const navLinks: Array<{ href: string; label: string; badge?: string }> = DEMO_MODE
+    ? [{ href: "/shop", label: "Agent Shop", badge: "WebMCP" }]
+    : [
+        { href: "/shop", label: "Agent Shop", badge: "NEW" },
+        { href: "/browse", label: "Browse RVs" },
+        { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },
+      ];
 
   const bottomNavLinks = [
     { href: "/match", label: "Match", icon: Sparkles },
@@ -54,7 +65,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B1117]/95 backdrop-blur-md shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 md:h-20">
-            <Link href="/" className="flex items-center group" aria-label="MatchRV home">
+            <Link href={DEMO_MODE ? "/shop" : "/"} className="flex items-center group" aria-label="MatchRV home">
               <img
                 src="/matchrv-logo-dark.png"
                 alt="MatchRV"
@@ -100,7 +111,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </button>
               </Link>
               <div className="h-6 w-px bg-border mx-1" />
-              {!isAuthenticated && (
+              {!isAuthenticated && !DEMO_MODE && (
                 <Link href="/match">
                   <button className="bg-[#00CED1] text-[#0B1117] px-5 py-2 rounded font-bold text-sm glow-cyan hover:brightness-110 active:scale-95 transition-all">
                     Get Match Report
@@ -308,6 +319,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-14 w-auto object-contain" />
             <p className="text-white/60 text-sm leading-relaxed">AI-powered RV marketplace. Smarter shopping, selling, matching, and dealer tools — all in one place.</p>
           </div>
+          {!DEMO_MODE && (
+            <>
           <div>
             <h6 className="font-display font-bold text-[#00CED1] mb-5 text-sm uppercase tracking-widest">Browse by Type</h6>
             <ul className="space-y-3 text-sm text-white/60">
@@ -334,16 +347,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <li><Link href="/rv-dealers" className="hover:text-[#00CED1] transition">RV Dealers</Link></li>
             </ul>
           </div>
+            </>
+          )}
           <div>
             <h6 className="font-display font-bold text-[#00CED1] mb-5 text-sm uppercase tracking-widest">Company</h6>
             <ul className="space-y-3 text-sm text-white/60">
               <li><Link href="/about" className="hover:text-[#00CED1] transition">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-[#00CED1] transition">Contact</Link></li>
-              <li><Link href="/dealers/login" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
               <li><Link href="/outfitter" className="hover:text-[#00CED1] transition">AI Outfitter</Link></li>
-              <li><Link href="/trips" className="hover:text-[#00CED1] transition">Trip Planner</Link></li>
-              <li><Link href="/campgrounds" className="hover:text-[#00CED1] transition">Campgrounds</Link></li>
-              <li><Link href="/sell" className="hover:text-[#00CED1] transition">Sell Your RV</Link></li>
+              {!DEMO_MODE && (
+                <>
+                  <li><Link href="/contact" className="hover:text-[#00CED1] transition">Contact</Link></li>
+                  <li><Link href="/dealers/login" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
+                  <li><Link href="/trips" className="hover:text-[#00CED1] transition">Trip Planner</Link></li>
+                  <li><Link href="/campgrounds" className="hover:text-[#00CED1] transition">Campgrounds</Link></li>
+                  <li><Link href="/sell" className="hover:text-[#00CED1] transition">Sell Your RV</Link></li>
+                </>
+              )}
             </ul>
           </div>
           <div>

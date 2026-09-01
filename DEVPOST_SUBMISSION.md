@@ -6,6 +6,10 @@
 where your agent searches, explains, and stays honest — and you approve what
 matters.
 
+**Live demo:** https://matchrv-webmcp.onrender.com/shop
+**Repo (MIT):** https://github.com/MatchRV/AI-RV-Marketplace-Infrastructure-
+**Video:** _YouTube link_
+
 ---
 
 ## Inspiration
@@ -70,10 +74,11 @@ Three things make it feel like the future instead of a wrapper:
 - **React `/shop`** — the shared-session UI: tool handlers mirror every agent
   action into visible state and return compact (~1.5–2 KB) structured
   summaries per WebMCP output guidance.
-- **Zero-infrastructure runnable:** with no `DATABASE_URL`, an embedded
-  PGlite Postgres bootstraps and seeds itself from the committed snapshot —
-  `pnpm install && pnpm dev` is the whole setup, and one Node process serves
-  the production build.
+- **Zero-infrastructure runnable:** `pnpm install && pnpm dev` is the whole
+  setup — no env vars, no services. Locally an embedded PGlite Postgres seeds
+  itself from the committed snapshot; the live deployment runs on a 512 MB
+  instance with **no database at all**, because the agent layer never needed
+  one — it serves the same committed, provenance-tagged snapshot in-process.
 
 ## How WebMCP is used (and why it had to be WebMCP)
 
@@ -101,11 +106,19 @@ give you: the human and the agent are first-class users of the *same page*.
 
 ## Accomplishments we're proud of
 
-- 16/16 end-to-end steps green through the *real* tool executor, including
-  the blocked-then-approved submit and duplicate refusal.
-- 39 unit tests on the engine's honesty properties ("absence of evidence is
-  never evidence of absence" is literally a test).
-- Sub-30 ms deterministic search over 1,056 units — no LLM inside MatchRV at
+- **Verified in a real browser's own WebMCP runtime**: Chrome for Testing 152
+  with the WebMCP feature discovers all ten tools through
+  `document.modelContext.getTools()` and executes the entire workflow through
+  `executeTool()` — search → human chip edit → agent refine → explain →
+  compare → staged contact → forged-token refusal → human approval → receipt.
+  The judge's own demo conversation, run word for word: **12/12**, against the
+  **live deployment**.
+- **61 unit tests** on the engine's honesty properties ("absence of evidence is
+  never evidence of absence" is literally a test), the tool contracts, and the
+  approval boundary — forged, missing, replayed and expired tokens, payload
+  immutability, duplicate refusal — plus a **23-step browser E2E**, all green
+  against the production build.
+- **~15 ms** deterministic search over 1,056 units — no LLM inside MatchRV at
   all. The shopper's agent does the reasoning; the site does the arithmetic.
 - A demo a judge can run three ways: ChatGPT's browser, flagged Chrome, or
   the labeled guided demo anywhere.
@@ -145,6 +158,8 @@ agent-readable capability layer for automotive, marine, and equipment.
   runtime; single-use page-held approval tokens for the consequential
   action. Verified natively: a real Chrome's own `document.modelContext`
   (152, WebMCP feature) discovers all ten tools and executes the full
-  workflow — 6/6 automated steps — alongside 53 unit tests and a 23-step
-  browser E2E, all green against the production build. Repo: (public GitHub
-  link), MIT.
+  workflow — 6/6 automated steps, and the 12-step judge conversation 12/12
+  against the live site — alongside 61 unit tests and a 23-step browser E2E,
+  all green against the production build.
+  **Live:** https://matchrv-webmcp.onrender.com/shop ·
+  **Repo:** https://github.com/MatchRV/AI-RV-Marketplace-Infrastructure- (MIT)

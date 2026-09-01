@@ -691,14 +691,25 @@ async function rerankWithAI(
     }
     const matches = parsed.matches || [];
 
+    const unresolved: string[] = [];
     const ranked = matches
       .sort((a: { rank: number }, b: { rank: number }) => a.rank - b.rank)
       .slice(0, 3)
       .map((match: { listingId: string; whyMatch?: string; matchScore?: number }) => {
+        // Be forgiving about how the model echoes the id back: it may come as a
+        // number, padded, or wrapped ("listing 2", "#2"). Try the value as
+        // given, then trimmed, then the first run of digits in it, before
+        // falling back to a real listing id.
+        const raw = String(match.listingId ?? "").trim();
+        const digits = raw.match(/\d+/)?.[0];
         const listing =
-          byOrdinal.get(String(match.listingId)) ??
-          candidates.find((c) => String(c.id) === String(match.listingId));
-        if (!listing) return null;
+          byOrdinal.get(raw) ??
+          (digits ? byOrdinal.get(digits) : undefined) ??
+          candidates.find((c) => String(c.id) === raw);
+        if (!listing) {
+          unresolved.push(raw);
+          return null;
+        }
         // Backfill from deterministic scoring if the AI omitted either field, so
         // the response is never missing whyMatch/matchScore.
         const fallback = scored.find((d) => String(d.id) === String(listing.id));
@@ -714,6 +725,15 @@ async function rerankWithAI(
     // picks (unknown listingIds, or post-filter removals), backfill from the
     // deterministic ranking, skipping any listing already selected.
     if (ranked.length < 3) {
+      // This is the path that silently degraded the live site: the model
+      // answered, its picks did not resolve, and the response quietly became
+      // deterministic scoring with no error anywhere. Say so.
+      console.error(
+        `[outfitter] rerank resolved ${ranked.length}/${matches.length} picks — ` +
+          `backfilling ${3 - ranked.length} from deterministic scoring. ` +
+          `unresolved ids: ${JSON.stringify(unresolved)} · ` +
+          `valid ordinals: 1-${byOrdinal.size}`,
+      );
       const selectedIds = new Set(ranked.map((r) => String(r.id)));
       for (const candidate of scored) {
         if (ranked.length >= 3) break;

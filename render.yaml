@@ -1,28 +1,25 @@
 # One-click Render deploy for the MatchRV WebMCP demo.
-# Single Node process: Express API + built SPA + embedded PGlite database.
-# No external services, no secrets required.
+# Single Node process: Express API + built SPA. No external services, no
+# secrets, and — on the deployed instance — no database.
 #
-# The embedded database is seeded during the BUILD, not at boot: PGlite is a
-# WASM Postgres and importing 1,056 listings peaks near 715 MB. Seeding on the
-# (larger) build machine keeps that spike off the instance and makes boot ~9s
-# faster; the populated data directory ships with the build like any other
-# build output.
-#
-# The instance still runs on `standard` (2 GB), not `starter` (512 MB).
-# Measured locally, merely *opening* the seeded database peaks at 359 MB RSS,
-# but a 512 MB instance still OOM-killed it during PGlite init: the cgroup
-# limit counts page cache and mapped WASM arenas that process RSS does not.
-# Treat local RSS as a floor, not a budget — 2 GB is the size that is actually
-# verified to run.
+# DISABLE_DB=1 is why this fits a small instance. PGlite is a WASM Postgres
+# that costs ~359 MB just to open — enough to get OOM-killed on a 512 MB box,
+# because the cgroup limit also counts page cache and mapped WASM arenas that
+# process RSS does not report. The WebMCP agent layer never reads the
+# database (every tool serves from the in-memory snapshot), so the deployed
+# demo runs without one: 112 MB peak, and the 12-step demo conversation
+# passes 12/12 against it, lead flow included. The classic marketplace pages
+# answer 503 here; they work normally in local dev, which keeps the embedded
+# database.
 services:
   - type: web
     name: matchrv-webmcp
     runtime: node
-    plan: standard
+    plan: starter
     buildCommand: >-
       corepack enable && corepack prepare pnpm@10.33.0 --activate &&
       pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." &&
-      pnpm run build:web && pnpm run build:api && pnpm run seed:db
+      pnpm run build:web && pnpm run build:api
     startCommand: node artifacts/api-server/dist/index.cjs
     healthCheckPath: /api/healthz
     envVars:
@@ -30,3 +27,5 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22.22.0"
+      - key: DISABLE_DB
+        value: "1"

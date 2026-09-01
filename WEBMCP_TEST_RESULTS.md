@@ -122,13 +122,23 @@ through the browser's own `document.modelContext` (same Chrome 152 + flag as
   instance never runs the import. Verified end to end from a clean clone:
   build seeds, boot skips seeding (0 seed lines), and `/api/healthz`,
   `/shop`, `/api/agent/meta` and `/api/agent/search` all answer.
-- **A 512 MB instance is still not enough, and local RSS does not predict
-  that.** With the import removed, a Starter (512 MB) instance was *still*
-  OOM-killed during PGlite initialization, ~20 s in, before binding a port —
-  even though the same code peaks at 359 MB RSS locally. Render enforces a
-  cgroup limit that also counts page cache and mapped WASM arenas, which
-  process RSS does not report. `render.yaml` therefore runs `standard`
-  (1 CPU / 2 GB). Treat locally-measured RSS as a floor, not a budget.
+- **A 512 MB instance still could not open PGlite, and local RSS did not
+  predict that.** With the import moved to build time, a Starter (512 MB)
+  instance was *still* OOM-killed during PGlite initialization, ~20 s in,
+  before binding a port — even though the same code peaks at 359 MB RSS
+  locally. Render enforces a cgroup limit that also counts page cache and
+  mapped WASM arenas, which process RSS does not report. Treat
+  locally-measured RSS as a floor, not a budget.
+- **The deployed demo therefore runs with no database at all** (`DISABLE_DB=1`,
+  set in `render.yaml`). Every WebMCP tool reads the in-memory inventory
+  snapshot, so nothing the agent layer does needs one; lead submission falls
+  back to its in-memory receipt path, which was already implemented. PGlite is
+  now imported dynamically, so its WASM never loads in this mode. **Peak
+  112 MB** (from 359 MB), and the 12-step demo conversation passes **12/12**
+  against a no-database server, lead flow included. The classic marketplace
+  endpoints answer an explicit `503 database_disabled` rather than a generic
+  500. Local `pnpm dev` is unchanged — it still runs the embedded database and
+  serves those pages normally.
 - Deep links: `/shop` → 200 in 12 ms (cold), refresh and `/listing/123` → 200
   (SPA fallback). `/api/healthz` → ok.
 - Warm loads: `/shop` HTML 2.6 ms; main JS bundle 1.7 MB.

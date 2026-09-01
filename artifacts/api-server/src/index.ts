@@ -90,12 +90,22 @@ function startScraperCron() {
 }
 
 async function start() {
-  await ensureDbReady();
-  if (DB_MODE === "embedded") {
-    // Zero-service mode: seed the embedded DB from the committed snapshot.
-    await seedEmbeddedFromSnapshot();
+  if (DB_MODE === "none") {
+    // No database (DISABLE_DB=1): the WebMCP agent layer serves entirely from
+    // the in-memory snapshot, so /shop and all ten tools work. The classic
+    // marketplace pages, which read the database, answer 503 instead.
+    console.log(
+      "[startup] running without a database (DISABLE_DB=1) — agent tools serve " +
+        "from the inventory snapshot; classic marketplace pages are disabled",
+    );
   } else {
-    await autoImportIfEmpty();
+    await ensureDbReady();
+    if (DB_MODE === "embedded") {
+      // Zero-service mode: seed the embedded DB from the committed snapshot.
+      await seedEmbeddedFromSnapshot();
+    } else {
+      await autoImportIfEmpty();
+    }
   }
 
   app.listen(port, () => {

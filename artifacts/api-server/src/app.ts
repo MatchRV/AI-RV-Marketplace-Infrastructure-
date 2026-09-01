@@ -5,6 +5,7 @@ import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import { DB_MODE } from "@workspace/db";
 
 const app: Express = express();
 
@@ -65,6 +66,24 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   }
   next();
 });
+
+// Without a database (DISABLE_DB=1), the agent endpoints still work — they
+// read the in-memory inventory snapshot — but the classic marketplace
+// endpoints cannot. Answer those with an explicit 503 rather than letting a
+// database error surface as a 500.
+if (DB_MODE === "none") {
+  const DB_FREE = /^\/(agent|healthz)(\/|$)/;
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (DB_FREE.test(req.path)) return next();
+    res.status(503).json({
+      error: "database_disabled",
+      message:
+        "This demo deployment runs without a database. The WebMCP agent tools " +
+        "at /api/agent/* serve from the inventory snapshot and are fully " +
+        "functional; classic marketplace endpoints are not available here.",
+    });
+  });
+}
 
 app.use("/api", router);
 

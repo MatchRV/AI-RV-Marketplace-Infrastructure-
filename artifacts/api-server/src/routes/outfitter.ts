@@ -457,11 +457,15 @@ For each of your top 3 picks, write a personalized "whyMatch" explanation (2-3 s
 - Mentions at least one concrete detail from their profile
 - Sounds like a knowledgeable friend explaining why, not a salesperson pitching
 
+Each candidate has a short "id" ("1", "2", "3", ...). Copy that id verbatim
+into listingId. Do not invent, renumber, or reformat ids, and never return an
+id that is not in the candidate list.
+
 Respond in this exact JSON format:
 {
   "matches": [
     {
-      "listingId": "<id of the listing>",
+      "listingId": "<the id field of the chosen candidate, copied exactly>",
       "rank": 1,
       "whyMatch": "personalized explanation referencing their specific needs",
       "matchScore": 95
@@ -609,8 +613,16 @@ async function rerankWithAI(
   // Keep the AI payload small so the call stays fast: only the top candidates,
   // and only fields that matter for ranking (no descriptions/feature lists).
   const aiCandidates = scored.slice(0, 8);
-  const candidateSummaries = aiCandidates.map((c) => ({
-    id: c.id,
+  // Address candidates by a short ordinal rather than their real id. Listing
+  // ids differ by deployment — small integers from the database, long
+  // "stk:dealer:stock" strings from the snapshot — and a model that has to
+  // echo a long compound id back verbatim sometimes normalises or truncates
+  // it, which silently drops every pick and forces the deterministic
+  // fallback. An ordinal is unambiguous either way.
+  const byOrdinal = new Map<string, Record<string, unknown>>();
+  aiCandidates.forEach((c, i) => byOrdinal.set(String(i + 1), c));
+  const candidateSummaries = aiCandidates.map((c, i) => ({
+    id: String(i + 1),
     title: c.title,
     make: c.make,
     model: c.model,
@@ -660,7 +672,9 @@ async function rerankWithAI(
       .sort((a: { rank: number }, b: { rank: number }) => a.rank - b.rank)
       .slice(0, 3)
       .map((match: { listingId: string; whyMatch?: string; matchScore?: number }) => {
-        const listing = candidates.find((c) => String(c.id) === String(match.listingId));
+        const listing =
+          byOrdinal.get(String(match.listingId)) ??
+          candidates.find((c) => String(c.id) === String(match.listingId));
         if (!listing) return null;
         // Backfill from deterministic scoring if the AI omitted either field, so
         // the response is never missing whyMatch/matchScore.
@@ -687,8 +701,11 @@ async function rerankWithAI(
     }
 
     return ranked.length > 0 ? ranked : deterministicTop3;
-  } catch {
-    console.error("AI re-ranking unavailable, using deterministic scoring");
+  } catch (err) {
+    console.error(
+      "[outfitter] AI re-ranking unavailable, using deterministic scoring:",
+      err instanceof Error ? `${err.name}: ${err.message}` : err,
+    );
     return deterministicTop3;
   }
 }

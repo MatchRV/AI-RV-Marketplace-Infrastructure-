@@ -100,6 +100,9 @@ After each message, extract any buyer profile data you've learned. Output a JSON
   "useCase": "weekends|full_time|seasonal|tailgating|other|null",
   "activities": ["camping", "hiking", "biking", "boondocking", "fishing", "kids", "pets"],
   "travelers": null,
+  "buyerLocation": null,
+  "buyerZip": null,
+  "buyerState": null,
   "hasKids": null,
   "hasPets": null,
   "hasTrade": null,
@@ -124,6 +127,25 @@ After each message, extract any buyer profile data you've learned. Output a JSON
 </profile>
 
 Only include fields you've actually learned. Use null for unknown fields. The conversational text comes BEFORE the profile block.
+
+TRAVELERS RULE — this one decides whether a unit can actually sleep the family:
+- travelers is the TOTAL number of people sleeping in the RV, the buyer included.
+- "me and my wife and two kids" → travelers=4. "two kids" with no other adult
+  mentioned → assume the buyer plus their kids and set travelers accordingly
+  (buyer + 2 = 3 at minimum; if they mention a partner, 4).
+- "just me" → 1. "my wife and I" → 2. Grandkids who visit occasionally count.
+- Set it as soon as you can infer it. Never leave it null once family size is
+  known — a null here means we can recommend a unit that sleeps fewer people
+  than the family, which is the worst mistake we can make.
+
+LOCATION RULE — this decides whether we show them RVs they can actually go see:
+- Capture where the BUYER is, the moment they mention it, in any phrasing:
+  "I'm near Tacoma", "within 150 miles of Tacoma", "98402", "we're in western WA".
+- buyerLocation = the city (and state if given), e.g. "Tacoma, WA".
+- buyerZip = a 5-digit US ZIP if they give one.
+- buyerState = the 2-letter state code when you know it, e.g. "WA".
+- A radius they mention ("within 150 miles") is about the city they named —
+  still set buyerLocation to that city.
 
 LENGTH PARSING RULES:
 - Set rawLengthInput to the buyer's verbatim length answer
@@ -610,7 +632,7 @@ async function rerankWithAI(
   }));
 
   const rerankTimeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Rerank AI timeout")), 10_000)
+    setTimeout(() => reject(new Error("Rerank AI timeout")), 15_000)
   );
 
   try {

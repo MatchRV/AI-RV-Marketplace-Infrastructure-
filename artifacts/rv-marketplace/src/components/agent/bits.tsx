@@ -107,3 +107,53 @@ export function VerifiedPill({ status }: { status: "pass" | "unverified" | "fail
   }
   return <span className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 bg-red-50 text-red-700 border border-red-200">Doesn't fit</span>;
 }
+
+
+import { useState as useStateForPhoto } from "react";
+
+/**
+ * A unit photo that survives dealer CDN rot. Listing image URLs come from
+ * dealer sites and a meaningful share stop resolving after a snapshot is
+ * taken, so this walks the unit's image list on load errors and finally
+ * falls back to a labeled tile rather than a broken image.
+ */
+export function UnitPhoto({
+  images,
+  alt,
+  year,
+  make,
+  rvType,
+  className = "",
+  imgClassName = "",
+  eager = false,
+}: {
+  images: string[];
+  alt: string;
+  year: number;
+  make: string;
+  rvType: string;
+  className?: string;
+  imgClassName?: string;
+  eager?: boolean;
+}) {
+  const [idx, setIdx] = useStateForPhoto(0);
+  const src = idx < images.length ? images[idx] : null;
+  return src ? (
+    <img
+      src={src}
+      alt={alt}
+      loading={eager ? "eager" : "lazy"}
+      onError={() => setIdx((i) => i + 1)}
+      className={imgClassName}
+    />
+  ) : (
+    <div
+      className={`absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-[#0B1117] to-[#1a2b33] text-white/70 ${className}`}
+      data-photo-fallback
+    >
+      <span className="font-display font-semibold text-sm">{year} {make}</span>
+      <span className="text-[11px] uppercase tracking-widest">{rvType.replace(/_/g, " ")}</span>
+      <span className="mt-1 text-[10px] text-white/40">photo not published</span>
+    </div>
+  );
+}

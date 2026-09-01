@@ -9,7 +9,7 @@ import { Check, X as XIcon, HelpCircle, ShieldCheck, MapPin } from "lucide-react
 import type { UnitMatch } from "@workspace/agent-core";
 import { useAgentSession, setFocusedUnit, setComparison, setLeadModalHidden, setLeadPreview } from "@/agent/session";
 import { humanDecideLead } from "@/agent/human-actions";
-import { FactRow, SourceTag, VerifiedPill, ScoreRing } from "./bits";
+import { FactRow, SourceTag, UnitPhoto, VerifiedPill, ScoreRing } from "./bits";
 
 const usd = (v: unknown) => `$${Number(v).toLocaleString()}`;
 const lbs = (v: unknown) => `${Number(v).toLocaleString()} lbs`;
@@ -30,10 +30,16 @@ export function UnitDrawer() {
     <Dialog open onOpenChange={(open) => !open && setFocusedUnit(null, "human")}>
       <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto rounded-[1.25rem] p-0">
         <div className="grid md:grid-cols-2">
-          <div className="relative bg-[#eef5f4] min-h-56">
-            {u.images[0] && (
-              <img src={u.images[0]} alt={u.title} className="absolute inset-0 w-full h-full object-cover" />
-            )}
+          <div className="relative bg-[#eef5f4] min-h-56 overflow-hidden">
+            <UnitPhoto
+              images={u.images}
+              alt={u.title}
+              year={u.year}
+              make={u.make}
+              rvType={u.rvType}
+              eager
+              imgClassName="absolute inset-0 w-full h-full object-cover"
+            />
           </div>
           <div className="p-6">
             <DialogHeader>

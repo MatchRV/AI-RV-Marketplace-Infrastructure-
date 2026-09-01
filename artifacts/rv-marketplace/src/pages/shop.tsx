@@ -27,7 +27,7 @@ import { getToolContractsForDisplay } from "@/agent/webmcp";
 import { runGuidedDemo } from "@/agent/simulated";
 import { humanCompare, humanFocusUnit } from "@/agent/human-actions";
 import { agentApi } from "@/agent/api";
-import { ScoreRing, VerifiedPill } from "@/components/agent/bits";
+import { ScoreRing, UnitPhoto, VerifiedPill } from "@/components/agent/bits";
 import { SessionRail } from "@/components/agent/session-rail";
 import { CompareSheet, LeadApprovalModal, UnitDrawer } from "@/components/agent/overlays";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -98,26 +98,17 @@ function ResultCard({
   const s = useAgentSession();
   const u = match.unit;
   const inShortlist = s.shortlist.some((x) => x.id === u.id);
-  const [imgIdx, setImgIdx] = useState(0);
-  const imgSrc = imgIdx < u.images.length ? u.images[imgIdx] : null;
-
   return (
     <article className="group bg-white rounded-[1.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col border border-[#E2E8F0]">
       <div className="relative aspect-[4/3] overflow-hidden bg-[#eef5f4]">
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt={u.title}
-            loading="lazy"
-            onError={() => setImgIdx((i) => i + 1)}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-[#0B1117] to-[#1a2b33] text-white/70">
-            <span className="font-display font-semibold text-sm">{u.year} {u.make}</span>
-            <span className="text-[11px] uppercase tracking-widest">{u.rvType.replace(/_/g, " ")}</span>
-          </div>
-        )}
+        <UnitPhoto
+          images={u.images}
+          alt={u.title}
+          year={u.year}
+          make={u.make}
+          rvType={u.rvType}
+          imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
         <div className="absolute top-3 left-3">
           <VerifiedPill status={match.hardStatus} />
         </div>

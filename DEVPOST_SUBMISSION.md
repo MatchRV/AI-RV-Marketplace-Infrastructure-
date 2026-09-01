@@ -93,6 +93,10 @@ give you: the human and the agent are first-class users of the *same page*.
 
 ## Challenges we ran into
 
+- **The data keeps changing under you.** Dealer photo URLs rot — roughly
+  half stopped resolving between the snapshot and submission — so every
+  image walks a fallback list and degrades to a labeled tile, never a broken
+  picture. Same rule as the specs: show what's true, label what isn't.
 - **The data is the boss fight.** Real dealer listings gave us junk feature
   strings ("View More »", price CTAs), addresses like "Map & Hours", absurd
   price histories (1e79), and specs published as prose. The answer became the

@@ -6,7 +6,7 @@ explainable, human-approved buying session on the same page.
 
 Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/).
 License: [MIT](./LICENSE) · Live demo: **https://matchrv-webmcp.onrender.com/shop** ·
-Demo video: _added at submission_
+Demo video: [`docs/demo/matchrv-demo.mp4`](docs/demo/matchrv-demo.mp4) (2:08, silent — narration in [`docs/demo/NARRATION.md`](docs/demo/NARRATION.md); YouTube link added at submission)
 
 ![Agent-native shopping on MatchRV](docs/screenshots/02-search-results.png)
 
@@ -273,7 +273,10 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
 ## Current limitations
 
 - Inventory is a labeled snapshot (not live feeds) scoped to the Pacific
-  Northwest; geocoding is an offline city table.
+  Northwest; geocoding is an offline city table. Photo URLs point at the
+  dealers' own CDNs and roughly half have rotted since the snapshot was
+  taken; the UI walks each unit's image list and falls back to a labeled
+  tile rather than a broken image.
 - Tow guidance uses rating ranges + stated ratings; it is planning guidance,
   never a per-VIN safety determination — and says so.
 - The legacy marketplace pages (browse, outfitter chat) predate this work and

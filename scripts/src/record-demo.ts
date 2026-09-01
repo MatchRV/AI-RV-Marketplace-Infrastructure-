@@ -15,7 +15,7 @@
  */
 
 import { chromium, type Page, type Route } from "playwright";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { request as httpsRequest } from "node:https";
 import { request as httpRequest } from "node:http";
 import { resolve } from "node:path";
@@ -117,6 +117,10 @@ async function installOverlay(page: Page) {
       #__card .k { margin-top: 14px; font-size: 22px; font-weight: 700; color: #00CED1; letter-spacing: 3px; text-transform: uppercase; }
     `;
     document.head.appendChild(style);
+    // The legacy Outfitter chat bubble is unrelated to the WebMCP demo; keep it out of frame.
+    for (const el of Array.from(document.querySelectorAll("button"))) {
+      if (el.textContent?.includes("Ask me anything")) (el as HTMLElement).style.display = "none";
+    }
     const cap = document.createElement("div"); cap.id = "__cap"; document.body.appendChild(cap);
     const card = document.createElement("div"); card.id = "__card"; document.body.appendChild(card);
   });
@@ -163,6 +167,11 @@ async function main() {
       [name, input] as const,
     );
 
+  for (const f of readdirSync(OUT_DIR)) {
+    if (f.endsWith(".webm") && !f.startsWith("native-webmcp-run") && !f.startsWith("matchrv-demo")) {
+      try { unlinkSync(resolve(OUT_DIR, f)); } catch { /* ignore */ }
+    }
+  }
   console.log("Recording…");
   await page.goto(`${BASE}/shop`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -266,7 +275,12 @@ async function main() {
   await context.close();
   await browser.close();
 
-  const video = readdirSync(OUT_DIR).find((f) => f.endsWith(".webm") && !f.startsWith("native-webmcp-run") && !f.startsWith("matchrv-demo"));
+  // Playwright names the capture with a hash. A previous run that died
+  // mid-way can leave a truncated stray behind, so take the newest one.
+  const video = readdirSync(OUT_DIR)
+    .filter((f) => f.endsWith(".webm") && !f.startsWith("native-webmcp-run") && !f.startsWith("matchrv-demo"))
+    .map((f) => ({ f, m: statSync(resolve(OUT_DIR, f)).mtimeMs }))
+    .sort((a, b) => b.m - a.m)[0]?.f;
   if (video) {
     const target = resolve(OUT_DIR, "matchrv-demo-raw.webm");
     renameSync(resolve(OUT_DIR, video), target);

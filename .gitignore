@@ -67,3 +67,4 @@ output/
 
 # Locally fetched Chrome for Testing (native WebMCP suite)
 .chrome/
+docs/demo/matchrv-demo-raw.webm

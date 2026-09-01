@@ -213,3 +213,22 @@ certificate checking was disabled.
 **Status: implementation is complete and native-runtime verified, but
 submission readiness remains blocked pending the live HTTPS deploy and the
 ChatGPT-agent pass above.**
+
+## Addendum — 2026-09-01 21:40 UTC, final pre-submission pass
+
+- Live deployment re-verified natively: the 12-step demo conversation ran
+  through Chrome for Testing 152's own `document.modelContext` against
+  https://matchrv-webmcp.onrender.com and passed **12/12** (tunnel method as
+  in §7; TLS verified end to end).
+- Demo-mode landing shipped: on the database-free host `/` now redirects to
+  `/shop`, the header carries only Agent Shop, and footer links to disabled
+  pages are hidden. A judge opening the root URL lands on the WebMCP
+  experience rather than a marketplace homepage whose data calls 503.
+- Dealer photo rot measured on a 40-unit sample: ~45% of listing image URLs
+  still resolve; the rest return 404/410/415 from the dealers' CDNs. The
+  unit drawer previously rendered a broken image in that case; both card and
+  drawer now walk the image list and fall back to a labeled tile.
+- Submission video recorded from the real product through the native runtime
+  (`scripts/src/record-demo.ts`): `docs/demo/matchrv-demo.mp4`, 2:08,
+  1080p, captions burned in; narration script in `docs/demo/NARRATION.md`.
+

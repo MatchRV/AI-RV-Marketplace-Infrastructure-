@@ -1,6 +1,12 @@
 # One-click Render deploy for the MatchRV WebMCP demo.
 # Single Node process: Express API + built SPA + embedded PGlite database.
 # No external services, no secrets required.
+#
+# The embedded database is seeded during the BUILD, not at boot: PGlite is a
+# WASM Postgres and importing 1,056 listings peaks near 715 MB, while opening
+# an already-seeded database peaks near 380 MB. Seeding on the (larger) build
+# machine keeps the running instance small and makes boot ~9s faster. The
+# populated data directory ships with the build, like any other build output.
 services:
   - type: web
     name: matchrv-webmcp
@@ -9,7 +15,7 @@ services:
     buildCommand: >-
       corepack enable && corepack prepare pnpm@10.33.0 --activate &&
       pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." &&
-      pnpm run build:web && pnpm run build:api
+      pnpm run build:web && pnpm run build:api && pnpm run seed:db
     startCommand: node artifacts/api-server/dist/index.cjs
     healthCheckPath: /api/healthz
     envVars:
@@ -17,5 +23,3 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22.22.0"
-      - key: PGLITE_DATA_DIR
-        value: /tmp/matchrv-pglite

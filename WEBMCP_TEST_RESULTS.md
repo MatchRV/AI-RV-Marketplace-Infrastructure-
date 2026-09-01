@@ -112,6 +112,17 @@ through the browser's own `document.modelContext` (same Chrome 152 + flag as
 - `pnpm build:web` and `pnpm build:api` run with **zero env vars**.
 - `node artifacts/api-server/dist/index.cjs` from empty state: embedded DB
   bootstraps + seeds 1,056 listings in ~5 s, then serves API + SPA.
+- **Memory (measured, after a real deploy OOM):** importing the snapshot into
+  PGlite — a WASM Postgres — peaks at **715 MB**, while merely *opening* an
+  already-seeded database peaks at **359 MB**. Smaller insert batches make it
+  worse (776 MB at 50 rows, 728 MB at 10), because the WASM arena grows with
+  total work and never returns it; a Node heap cap does nothing, since the
+  memory is outside the JS heap. `render.yaml` therefore seeds during the
+  **build** (larger machine) and ships the populated data directory, so the
+  running instance stays at 359 MB and fits a 512 MB plan. Verified end to end
+  from a clean clone: build seeds, boot skips seeding (0 seed lines), and
+  `/api/healthz`, `/shop`, `/api/agent/meta` and `/api/agent/search` all
+  answer.
 - Deep links: `/shop` → 200 in 12 ms (cold), refresh and `/listing/123` → 200
   (SPA fallback). `/api/healthz` → ok.
 - Warm loads: `/shop` HTML 2.6 ms; main JS bundle 1.7 MB.

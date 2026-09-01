@@ -32,8 +32,8 @@ tier this environment cannot produce. Manual procedure ready (WTR §6).
 **Verified**
 - Fresh-clone reproducibility, actually run: `pnpm install` (no warnings, no
   prompts) → 53 unit tests → builds with **zero env vars** → clean-state
-  production boot (single process: API + SPA + embedded DB, seeds 1,056
-  units in ~5 s) → deep-link/refresh 200s → 23-step E2E green against the
+  production boot (single process: API + SPA + embedded DB, seeded at build
+  time so the instance peaks at 359 MB) → deep-link/refresh 200s → 23-step E2E green against the
   production bundle → `git status` clean after the full cycle (WTR §2, §4).
 - The 41 MB of accidentally committed database runtime state is purged, its
   root cause fixed, and `.data/` ignored everywhere; committed secrets and

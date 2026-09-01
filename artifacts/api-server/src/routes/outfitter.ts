@@ -651,7 +651,11 @@ async function rerankWithAI(
     const rerankResponse = await Promise.race([
       anthropic.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 1024,
+        // Three 2-3 sentence explanations plus JSON scaffolding. 1024 left no
+        // headroom for a preamble, and a response truncated at the cap is
+        // invalid JSON that extractJsonObject cannot recover — the whole
+        // rerank is then discarded.
+        max_tokens: 2048,
         system: RERANK_SYSTEM_PROMPT,
         messages: [
           {
@@ -665,7 +669,26 @@ async function rerankWithAI(
 
     const rerankText = rerankResponse.content[0]?.type === "text" ? rerankResponse.content[0].text : "";
 
-    const parsed = JSON.parse(extractJsonObject(rerankText));
+    // A truncated response is invalid JSON; name that case rather than
+    // letting it surface as an opaque parse error.
+    if (rerankResponse.stop_reason === "max_tokens") {
+      console.error(
+        `[outfitter] rerank response hit max_tokens (${rerankText.length} chars) — raise the cap`,
+      );
+    }
+
+    let parsed: { matches?: Array<{ listingId: string; rank: number; whyMatch?: string; matchScore?: number }> };
+    try {
+      parsed = JSON.parse(extractJsonObject(rerankText));
+    } catch (parseErr) {
+      // Log what the model actually said — the single most useful signal for
+      // diagnosing a rerank that keeps falling back.
+      console.error(
+        `[outfitter] rerank JSON unparsable (stop_reason=${rerankResponse.stop_reason}):`,
+        rerankText.slice(0, 400),
+      );
+      throw parseErr;
+    }
     const matches = parsed.matches || [];
 
     const ranked = matches

@@ -31,15 +31,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setIsMobileMenuOpen(false);
   }, [location]);
 
+  // Top bar kept deliberately short: the three things a shopper acts on,
+  // plus the Get Match Report button. Campgrounds, Buyers Guide, Sell Your RV
+  // and For Dealers remain reachable from the footer; Match Report is the
+  // button itself.
   const navLinks: Array<{ href: string; label: string; badge?: string }> = [
     { href: "/shop", label: "Agent Shop", badge: "NEW" },
     { href: "/browse", label: "Browse RVs" },
-    { href: "/match", label: "Match Report" },
     { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },
-    { href: "/campgrounds", label: "Campgrounds" },
-    { href: "/guides", label: "Buyers Guide" },
-    { href: "/sell", label: "Sell Your RV (Owner)" },
-    { href: "/dealers", label: "For Dealers" },
   ];
 
   const bottomNavLinks = [
@@ -324,6 +323,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <h6 className="font-display font-bold text-[#00CED1] mb-5 text-sm uppercase tracking-widest">Buyer Resources</h6>
             <ul className="space-y-3 text-sm text-white/60">
+              <li><Link href="/match" className="hover:text-[#00CED1] transition">Match Report</Link></li>
+              <li><Link href="/find-the-right-rv-for-your-tow-vehicle" className="hover:text-[#00CED1] transition">Tow Match</Link></li>
               <li><Link href="/guides" className="hover:text-[#00CED1] transition">Buyer Guides</Link></li>
               <li><Link href="/guides/how-to-buy-a-used-rv" className="hover:text-[#00CED1] transition">How to Buy a Used RV</Link></li>
               <li><Link href="/guides/best-rvs-for-families" className="hover:text-[#00CED1] transition">Best RVs for Families</Link></li>

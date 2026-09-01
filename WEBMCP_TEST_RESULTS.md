@@ -119,10 +119,16 @@ through the browser's own `document.modelContext` (same Chrome 152 + flag as
   total work and never returns it; a Node heap cap does nothing, since the
   memory is outside the JS heap. `render.yaml` therefore seeds during the
   **build** (larger machine) and ships the populated data directory, so the
-  running instance stays at 359 MB and fits a 512 MB plan. Verified end to end
-  from a clean clone: build seeds, boot skips seeding (0 seed lines), and
-  `/api/healthz`, `/shop`, `/api/agent/meta` and `/api/agent/search` all
-  answer.
+  instance never runs the import. Verified end to end from a clean clone:
+  build seeds, boot skips seeding (0 seed lines), and `/api/healthz`,
+  `/shop`, `/api/agent/meta` and `/api/agent/search` all answer.
+- **A 512 MB instance is still not enough, and local RSS does not predict
+  that.** With the import removed, a Starter (512 MB) instance was *still*
+  OOM-killed during PGlite initialization, ~20 s in, before binding a port —
+  even though the same code peaks at 359 MB RSS locally. Render enforces a
+  cgroup limit that also counts page cache and mapped WASM arenas, which
+  process RSS does not report. `render.yaml` therefore runs `standard`
+  (1 CPU / 2 GB). Treat locally-measured RSS as a floor, not a budget.
 - Deep links: `/shop` → 200 in 12 ms (cold), refresh and `/listing/123` → 200
   (SPA fallback). `/api/healthz` → ok.
 - Warm loads: `/shop` HTML 2.6 ms; main JS bundle 1.7 MB.

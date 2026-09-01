@@ -5,7 +5,7 @@ WebMCP capabilities, so a shopper and their AI agent can work one shared,
 explainable, human-approved buying session on the same page.
 
 Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/).
-License: [MIT](./LICENSE) · Live demo: _deploy link added at submission_ ·
+License: [MIT](./LICENSE) · Live demo: **https://matchrv-webmcp.onrender.com/shop** ·
 Demo video: _added at submission_
 
 ![Agent-native shopping on MatchRV](docs/screenshots/02-search-results.png)
@@ -98,6 +98,13 @@ pnpm --filter @workspace/scripts run native-webmcp
 pnpm --filter @workspace/scripts run demo-case
                   # the full demo conversation, verbatim, through the native runtime
 ```
+
+**Live demo:** https://matchrv-webmcp.onrender.com/shop — the full demo
+conversation passes 12/12 against it through a real Chrome's WebMCP runtime
+(see [WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md) §7). The deployed
+instance runs without a database (`DISABLE_DB=1`): every agent tool serves
+from the in-memory snapshot, so the classic marketplace pages answer 503
+there while working normally in local dev.
 
 ### Using it with a real agent
 

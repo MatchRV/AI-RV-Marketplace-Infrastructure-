@@ -159,7 +159,28 @@ session (verified in §2) and tools re-register cleanly. Nothing is persisted
 server-side except staged lead previews (30-min TTL) and submitted lead rows.
 `localStorage`/session persistence is deliberately not claimed.
 
-## 7. What remains genuinely untested (submission-blocking until done)
+## 7. The live deployment — 12/12 against the public URL
+
+**https://matchrv-webmcp.onrender.com** (Render, `starter` 512 MB, no
+database). Verified 2026-09-01:
+
+| Check | Result |
+| --- | --- |
+| The full 12-step demo conversation (§4) re-run against the **deployed** site through Chrome 152's own `document.modelContext` | **12/12** |
+| `/api/healthz` · `/api/agent/meta` | 200; 1,056 units / 28 dealers |
+| `/shop`, refresh, `/listing/123`, `/` (SPA deep links) | 200 in 0.20–0.59 s |
+| `search_inventory` round-trip over the public internet | 0.25–0.42 s |
+| Served JS scanned for key material | none |
+| Classic marketplace endpoints (no database in this deployment) | explicit `503 database_disabled` |
+
+Note on method: this container's egress runs through a TLS-intercepting proxy
+whose CA the test browser does not trust, so Chromium could not reach the
+public URL directly. The run above went through a local plain-HTTP front door
+that forwards to the real origin with upstream TLS **fully verified** against
+the proxy CA bundle — the bytes exercised are the deployed ones; no
+certificate checking was disabled.
+
+## 8. What remains genuinely untested (submission-blocking until done)
 
 1. **A real agent choosing and phrasing the tool calls itself** — i.e. the
    ChatGPT desktop app's in-app browser (or another WebMCP-capable agent
@@ -167,9 +188,8 @@ server-side except staged lead previews (30-min TTL) and submitted lead rows.
    ChatGPT desktop app. The native browser layer (§3) proves
    registration/discovery/execution through the real `document.modelContext`;
    agent behavior on top of it is not fabricated here.
-2. **The public HTTPS deployment** — no hosting credentials in this
-   environment. Everything §5 verifies is the exact artifact `render.yaml`
-   deploys.
+2. ~~The public HTTPS deployment~~ — **done**, see §7:
+   https://matchrv-webmcp.onrender.com
 
 ### Manual verification procedure (Jonathan, ~15 minutes, after deploy)
 

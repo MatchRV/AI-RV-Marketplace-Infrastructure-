@@ -27,7 +27,7 @@ pointers reference WEBMCP_TEST_RESULTS.md (WTR).
 natural language (ChatGPT desktop) is still unverified — the one evidence
 tier this environment cannot produce. Manual procedure ready (WTR §6).
 
-## 2. Execution — **8/10**
+## 2. Execution — **9/10**
 
 **Verified**
 - Fresh-clone reproducibility, actually run: `pnpm install` (no warnings, no
@@ -42,9 +42,14 @@ tier this environment cannot produce. Manual procedure ready (WTR §6).
   product UI with loading/empty/error states, mobile layout, honest
   labeling.
 
-**Why not higher:** no public HTTPS deployment yet (hosting access is
-outside this environment) — and "a working live app" is a submission
-requirement. That single gap is the distance to 10: the codebase itself now
+**Now also verified live** at https://matchrv-webmcp.onrender.com: the
+12-step demo conversation passes 12/12 against the deployed site, SPA deep
+links answer in 0.20–0.59 s, and search round-trips the public internet in
+~0.3 s. Getting there took two OOM failures worth of honest debugging: PGlite
+(a WASM Postgres) cannot open inside 512 MB, so the deployment runs with no
+database at all — the agent layer never read one — at 112 MB.
+
+**Why not higher:**  That single gap is the distance to 10: the codebase itself now
 typechecks clean across every workspace package (the legacy marketplace/mobile
 type debt was paid down in this round, not just documented).
 
@@ -102,9 +107,10 @@ the deployed site.
 | Criterion | Score | Blocking action |
 | --- | --- | --- |
 | WebMCP Leverage | 9 | ChatGPT-desktop agent pass (manual procedure ready) |
-| Execution | 8 | Public HTTPS deploy (render.yaml, ≈10 min) |
+| Execution | 9 | — (live; ChatGPT-agent pass still pending for Leverage) |
 | Potential Impact | 9 | — |
 | Creativity & Ambition | 9 | — |
 
-**Submission status: blocked** until the live deploy exists and the
-ChatGPT-agent pass is done and evidenced — then rescore Execution.
+**Submission status:** the live deploy exists and is verified
+(https://matchrv-webmcp.onrender.com). One check remains before submitting:
+the ChatGPT-agent pass (WTR §8).

@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
-import { db } from "@workspace/db";
+import { anthropic, isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
+import { db, DB_MODE } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { getListingRows } from "../services/outfitter-inventory";
 
 const router: IRouter = Router();
 
@@ -300,57 +301,113 @@ export function parseLengthInput(raw: string): {
   return { lengthFlexibility: false };
 }
 
-// ─── Step 1: Build SQL filters from the full buyer profile ───
-function buildListingFilters(profile: Record<string, unknown>): string[] {
-  const conditions: string[] = [];
+// ─── Step 1: Build the candidate filter from the full buyer profile ───
+/**
+ * The candidate filter, expressed once as data.
+ *
+ * Two code paths consume it: `specToSql` builds the WHERE clause for the
+ * `listings` query, and `matchesSpec` evaluates the same rules in JS for the
+ * database-free deployment. Keeping the decisions in one place is what stops
+ * the two paths from drifting apart.
+ */
+type FilterSpec = {
+  rvType: string | null;
+  maxPrice: number | null;
+  minPrice: number | null;
+  minSleeps: number | null;
+  /** Length bounds already include the flexibility slack. */
+  maxLength: number | null;
+  minLength: number | null;
+  maxTowWeight: number | null;
+  condition: "new" | "used" | null;
+};
 
+function buildFilterSpec(profile: Record<string, unknown>): FilterSpec {
   const allowedTypes = ["travel_trailer","fifth_wheel","class_a","class_b","class_c","toy_hauler","popup_camper","truck_camper"];
-  if (profile.rvType && profile.rvType !== "not_sure" && allowedTypes.includes(String(profile.rvType))) {
-    conditions.push(`type = '${String(profile.rvType).replace(/'/g, "''")}'`);
-  }
+  const rvType =
+    profile.rvType && profile.rvType !== "not_sure" && allowedTypes.includes(String(profile.rvType))
+      ? String(profile.rvType)
+      : null;
 
   const effectiveMax = computeEffectiveMaxBudget(profile);
-  if (effectiveMax && effectiveMax > 0) {
-    conditions.push(`price <= ${effectiveMax}`);
-  }
-  if (profile.minBudget && !isNaN(Number(profile.minBudget))) {
-    conditions.push(`price >= ${Number(profile.minBudget)}`);
-  }
 
   const sleepCount = profile.sleepingCapacity ?? profile.travelers;
-  if (sleepCount && !isNaN(Number(sleepCount))) {
-    conditions.push(`sleeps >= ${Number(sleepCount)}`);
-  }
 
   const flexible = profile.lengthFlexibility === true;
   const slack = flexible ? 5 : 0;
 
-  if (profile.maxLength && !isNaN(Number(profile.maxLength))) {
-    conditions.push(`(length IS NOT NULL AND length <= ${Number(profile.maxLength) + slack})`);
-  }
-  if (profile.minLength && !isNaN(Number(profile.minLength))) {
-    conditions.push(`(length IS NOT NULL AND length >= ${Number(profile.minLength) - slack})`);
-  }
-
+  // Tow capacity only constrains units that are actually towed.
+  const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
   const towCap = estimateTowCapacity(profile.towVehicle as string);
-  if (towCap) {
-    const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
-    if (profile.rvType && towableTypes.includes(String(profile.rvType))) {
-      conditions.push(`COALESCE(gvwr, dry_weight) <= ${towCap}`);
-    }
-  }
+  const maxTowWeight =
+    towCap && profile.rvType && towableTypes.includes(String(profile.rvType)) ? towCap : null;
 
-  if (profile.campingStyle === "boondocking") {
-    conditions.push(`(boondocking_score >= 50 OR generator = true OR solar_installed = true)`);
-  }
+  return {
+    rvType,
+    maxPrice: effectiveMax && effectiveMax > 0 ? effectiveMax : null,
+    minPrice: profile.minBudget && !isNaN(Number(profile.minBudget)) ? Number(profile.minBudget) : null,
+    minSleeps: sleepCount && !isNaN(Number(sleepCount)) ? Number(sleepCount) : null,
+    maxLength: profile.maxLength && !isNaN(Number(profile.maxLength)) ? Number(profile.maxLength) + slack : null,
+    minLength: profile.minLength && !isNaN(Number(profile.minLength)) ? Number(profile.minLength) - slack : null,
+    maxTowWeight,
+    // Note: camping style is deliberately absent. Boondocking is a ranking
+    // signal in scoreCandidatesDeterministic, not a filter — see specToSql.
+    condition: profile.condition === "new" ? "new" : profile.condition === "used" ? "used" : null,
+  };
+}
 
-  if (profile.condition === "new") {
-    conditions.push(`condition = 'new'`);
-  } else if (profile.condition === "used") {
-    conditions.push(`condition = 'used'`);
-  }
-
+/** Render the spec as SQL predicates for the `listings` query. */
+function specToSql(spec: FilterSpec): string[] {
+  const conditions: string[] = [];
+  if (spec.rvType) conditions.push(`type = '${spec.rvType.replace(/'/g, "''")}'`);
+  if (spec.maxPrice != null) conditions.push(`price <= ${spec.maxPrice}`);
+  if (spec.minPrice != null) conditions.push(`price >= ${spec.minPrice}`);
+  if (spec.minSleeps != null) conditions.push(`sleeps >= ${spec.minSleeps}`);
+  if (spec.maxLength != null) conditions.push(`(length IS NOT NULL AND length <= ${spec.maxLength})`);
+  if (spec.minLength != null) conditions.push(`(length IS NOT NULL AND length >= ${spec.minLength})`);
+  if (spec.maxTowWeight != null) conditions.push(`COALESCE(gvwr, dry_weight) <= ${spec.maxTowWeight}`);
+  // No boondocking predicate, deliberately. Solar is stated on fewer than 3%
+  // of dealer listings, so filtering on it discarded every otherwise-qualified
+  // unit and returned nothing — and an unknown is not a no. Off-grid
+  // capability is rewarded in scoreCandidatesDeterministic instead.
+  if (spec.condition) conditions.push(`condition = '${spec.condition}'`);
   return conditions;
+}
+
+/**
+ * Evaluate the spec against one row, matching SQL semantics: a comparison
+ * against NULL is unknown, and an unknown WHERE clause excludes the row. So
+ * a missing length or weight drops the unit exactly as the query would.
+ */
+function matchesSpec(spec: FilterSpec, row: Record<string, unknown>): boolean {
+  const num = (v: unknown): number | null =>
+    v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v);
+
+  if (spec.rvType && String(row.type) !== spec.rvType) return false;
+
+  const price = num(row.price);
+  if (spec.maxPrice != null && (price === null || price > spec.maxPrice)) return false;
+  if (spec.minPrice != null && (price === null || price < spec.minPrice)) return false;
+
+  const sleeps = num(row.sleeps);
+  if (spec.minSleeps != null && (sleeps === null || sleeps < spec.minSleeps)) return false;
+
+  const length = num(row.length);
+  if (spec.maxLength != null && (length === null || length > spec.maxLength)) return false;
+  if (spec.minLength != null && (length === null || length < spec.minLength)) return false;
+
+  if (spec.maxTowWeight != null) {
+    const weight = num(row.gvwr) ?? num(row.dry_weight);
+    if (weight === null || weight > spec.maxTowWeight) return false;
+  }
+
+  if (spec.condition && String(row.condition) !== spec.condition) return false;
+
+  // The SQL path also requires at least one photo.
+  const images = row.images;
+  if (!Array.isArray(images) || images.length === 0) return false;
+
+  return true;
 }
 
 // ─── Step 2: AI Re-ranking — Claude picks the best 3 from candidates ───
@@ -404,6 +461,7 @@ function scoreCandidatesDeterministic(
   const travelers = Number(profile.travelers) || undefined;
   const requiredType =
     profile.rvType && profile.rvType !== "not_sure" ? String(profile.rvType) : undefined;
+  const boondocks = profile.campingStyle === "boondocking";
   const currentYear = new Date().getFullYear();
 
   const scored = candidates.map((c) => {
@@ -459,6 +517,26 @@ function scoreCandidatesDeterministic(
       } else if (d <= 150) {
         score += 3;
         reasons.push(`about ${d} miles away`);
+      }
+    }
+
+    // Off-grid capability, when the buyer boondocks. Dealer listings state
+    // solar on under 3% of units, so a missing value means "not stated", not
+    // "not present" — a confirmed yes is rewarded and silence is left neutral
+    // rather than penalised.
+    if (boondocks) {
+      const boondockScore = Number(c.boondocking_score);
+      const confirmed =
+        c.solar_installed === true ||
+        c.generator === true ||
+        (!isNaN(boondockScore) && c.boondocking_score != null && boondockScore >= 50);
+      if (confirmed) {
+        score += 12;
+        reasons.push(
+          c.solar_installed === true
+            ? "solar is confirmed on the dealer listing — real off-grid capability"
+            : "confirmed off-grid capability for boondocking",
+        );
       }
     }
 
@@ -656,10 +734,7 @@ async function getMatchedListings(
     ...(effectiveMax && !profile.maxBudget ? { maxBudget: effectiveMax } : {}),
   };
 
-  const conditions = buildListingFilters(enrichedProfile);
-  // Never recommend a no-photo unit.
-  conditions.push("jsonb_array_length(images) > 0");
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const spec = buildFilterSpec(enrichedProfile);
 
   const requiredType =
     enrichedProfile.rvType && enrichedProfile.rvType !== "not_sure"
@@ -672,11 +747,23 @@ async function getMatchedListings(
     maxLength: enrichedProfile.maxLength as number | undefined,
   };
 
-  const recRows = await db.execute(
-    sql.raw(`SELECT * FROM listings ${whereClause} ORDER BY is_featured DESC, deal_score ASC LIMIT 50`)
-  );
-
-  let candidates = (recRows as { rows?: Record<string, unknown>[] }).rows ?? [];
+  let candidates: Record<string, unknown>[];
+  if (DB_MODE === "none") {
+    // No database on this deployment — match against the same inventory
+    // snapshot the listings table would have been seeded from.
+    candidates = getListingRows()
+      .filter((row) => matchesSpec(spec, row))
+      .slice(0, 50);
+  } else {
+    const conditions = specToSql(spec);
+    // Never recommend a no-photo unit.
+    conditions.push("jsonb_array_length(images) > 0");
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const recRows = await db.execute(
+      sql.raw(`SELECT * FROM listings ${whereClause} ORDER BY is_featured DESC, deal_score ASC LIMIT 50`)
+    );
+    candidates = (recRows as { rows?: Record<string, unknown>[] }).rows ?? [];
+  }
 
   if (candidates.length === 0) {
     return {
@@ -775,6 +862,19 @@ async function getMatchedListings(
 
 router.post("/outfitter/chat", async (req, res) => {
   try {
+    // The Outfitter is the one part of the site that needs an LLM. Say so
+    // plainly instead of failing as a generic 500.
+    if (!isAnthropicConfigured()) {
+      res.status(503).json({
+        error: "ai_not_configured",
+        message:
+          "The AI Outfitter needs an Anthropic API key. Set ANTHROPIC_API_KEY in this " +
+          "environment and restart. The rest of the site — including the WebMCP agent " +
+          "tools at /api/agent/* — works without it.",
+      });
+      return;
+    }
+
     const { messages = [], sessionId, buyerProfile } = req.body;
 
     const sessionIdOut = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -943,6 +1043,14 @@ router.post("/outfitter/chat", async (req, res) => {
 
 router.post("/outfitter/recommendations", async (req, res) => {
   try {
+    if (!isAnthropicConfigured()) {
+      res.status(503).json({
+        error: "ai_not_configured",
+        message: "The AI Outfitter needs an Anthropic API key. Set ANTHROPIC_API_KEY in this environment and restart.",
+      });
+      return;
+    }
+
     const profile = req.body as Record<string, unknown>;
 
     const { listings: matched } = await getMatchedListings(profile);

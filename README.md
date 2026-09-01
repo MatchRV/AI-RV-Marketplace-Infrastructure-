@@ -276,10 +276,12 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
   Northwest; geocoding is an offline city table.
 - Tow guidance uses rating ranges + stated ratings; it is planning guidance,
   never a per-VIN safety determination — and says so.
-- The legacy marketplace pages (browse, outfitter chat) predate this work;
-  the AI Outfitter requires Anthropic keys and is unrelated to the WebMCP
-  layer. Some legacy TypeScript debt remains (tracked in
-  [ROADMAP.md](./ROADMAP.md)).
+- The legacy marketplace pages (browse, outfitter chat) predate this work and
+  are unrelated to the WebMCP layer. The AI Outfitter is the one feature that
+  needs an LLM: set `ANTHROPIC_API_KEY` to enable it, and it says so plainly
+  when the key is absent. On a deployment without a database it matches
+  against the same committed inventory snapshot the WebMCP tools use. Some
+  legacy TypeScript debt remains (tracked in [ROADMAP.md](./ROADMAP.md)).
 - Lead delivery is intentionally disabled in the demo environment.
 - Not yet verified (tracked in WEBMCP_TEST_RESULTS §6): a real agent driving
   the tools from natural language in ChatGPT's in-app browser, and the

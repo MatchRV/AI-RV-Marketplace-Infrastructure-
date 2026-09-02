@@ -53,6 +53,8 @@ async function buildAll() {
       !allowlist.includes(dep) &&
       !(pkg.dependencies?.[dep]?.startsWith("workspace:")),
   );
+  // PGlite ships WASM assets that must load from node_modules, not a bundle.
+  externals.push("@electric-sql/pglite");
 
   await esbuild({
     entryPoints: [path.resolve(__dirname, "src/index.ts")],

@@ -383,7 +383,7 @@ const DATA_DIR = path.resolve(process.env.HOME ?? "/home/runner", "workspace/Mat
 
 router.put("/import/data/:filename", importAuth, (req, res) => {
   try {
-    const filename = path.basename(req.params.filename);
+    const filename = path.basename(String(req.params.filename));
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(path.join(DATA_DIR, filename), JSON.stringify(req.body));
     res.json({ ok: true, file: filename });

@@ -5,6 +5,16 @@ import { SEO } from "@/components/seo";
 import { Caravan, Smartphone, Ruler, RotateCcw, Info, X, ChevronDown, QrCode, ArrowLeft, Monitor } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
+declare global {
+  namespace React.JSX {
+    interface IntrinsicElements {
+      "model-viewer": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> &
+        Record<string, unknown>;
+    }
+  }
+}
+
+
 interface RVModel {
   id: string;
   label: string;

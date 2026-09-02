@@ -6,7 +6,7 @@ import type {
   Listing,
   NoMatchFilters,
   ExpansionSuggestion,
-} from "@workspace/api-client-react/src/generated/api.schemas";
+} from "@workspace/api-client-react";
 import { recordBuyerIntent } from "@/lib/buyer-intent";
 
 export type { NoMatchFilters, ExpansionSuggestion };
@@ -126,7 +126,7 @@ export function useChatSession() {
           }
 
           // Track knowledge mode engagement
-          if (response.stage === "knowledge" && trackedStage.current !== "knowledge") {
+          if (String(response.stage) === "knowledge" && trackedStage.current !== "knowledge") {
             trackedStage.current = "knowledge";
             recordBuyerIntent("outfitter_knowledge_mode", {
               metadata: { sessionId },

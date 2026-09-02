@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
-import { db } from "@workspace/db";
+import { anthropic, isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
+import { db, DB_MODE } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { getListingRows } from "../services/outfitter-inventory";
 
 const router: IRouter = Router();
 
@@ -99,6 +100,9 @@ After each message, extract any buyer profile data you've learned. Output a JSON
   "useCase": "weekends|full_time|seasonal|tailgating|other|null",
   "activities": ["camping", "hiking", "biking", "boondocking", "fishing", "kids", "pets"],
   "travelers": null,
+  "buyerLocation": null,
+  "buyerZip": null,
+  "buyerState": null,
   "hasKids": null,
   "hasPets": null,
   "hasTrade": null,
@@ -123,6 +127,25 @@ After each message, extract any buyer profile data you've learned. Output a JSON
 </profile>
 
 Only include fields you've actually learned. Use null for unknown fields. The conversational text comes BEFORE the profile block.
+
+TRAVELERS RULE — this one decides whether a unit can actually sleep the family:
+- travelers is the TOTAL number of people sleeping in the RV, the buyer included.
+- "me and my wife and two kids" → travelers=4. "two kids" with no other adult
+  mentioned → assume the buyer plus their kids and set travelers accordingly
+  (buyer + 2 = 3 at minimum; if they mention a partner, 4).
+- "just me" → 1. "my wife and I" → 2. Grandkids who visit occasionally count.
+- Set it as soon as you can infer it. Never leave it null once family size is
+  known — a null here means we can recommend a unit that sleeps fewer people
+  than the family, which is the worst mistake we can make.
+
+LOCATION RULE — this decides whether we show them RVs they can actually go see:
+- Capture where the BUYER is, the moment they mention it, in any phrasing:
+  "I'm near Tacoma", "within 150 miles of Tacoma", "98402", "we're in western WA".
+- buyerLocation = the city (and state if given), e.g. "Tacoma, WA".
+- buyerZip = a 5-digit US ZIP if they give one.
+- buyerState = the 2-letter state code when you know it, e.g. "WA".
+- A radius they mention ("within 150 miles") is about the city they named —
+  still set buyerLocation to that city.
 
 LENGTH PARSING RULES:
 - Set rawLengthInput to the buyer's verbatim length answer
@@ -300,57 +323,113 @@ export function parseLengthInput(raw: string): {
   return { lengthFlexibility: false };
 }
 
-// ─── Step 1: Build SQL filters from the full buyer profile ───
-function buildListingFilters(profile: Record<string, unknown>): string[] {
-  const conditions: string[] = [];
+// ─── Step 1: Build the candidate filter from the full buyer profile ───
+/**
+ * The candidate filter, expressed once as data.
+ *
+ * Two code paths consume it: `specToSql` builds the WHERE clause for the
+ * `listings` query, and `matchesSpec` evaluates the same rules in JS for the
+ * database-free deployment. Keeping the decisions in one place is what stops
+ * the two paths from drifting apart.
+ */
+type FilterSpec = {
+  rvType: string | null;
+  maxPrice: number | null;
+  minPrice: number | null;
+  minSleeps: number | null;
+  /** Length bounds already include the flexibility slack. */
+  maxLength: number | null;
+  minLength: number | null;
+  maxTowWeight: number | null;
+  condition: "new" | "used" | null;
+};
 
+function buildFilterSpec(profile: Record<string, unknown>): FilterSpec {
   const allowedTypes = ["travel_trailer","fifth_wheel","class_a","class_b","class_c","toy_hauler","popup_camper","truck_camper"];
-  if (profile.rvType && profile.rvType !== "not_sure" && allowedTypes.includes(String(profile.rvType))) {
-    conditions.push(`type = '${String(profile.rvType).replace(/'/g, "''")}'`);
-  }
+  const rvType =
+    profile.rvType && profile.rvType !== "not_sure" && allowedTypes.includes(String(profile.rvType))
+      ? String(profile.rvType)
+      : null;
 
   const effectiveMax = computeEffectiveMaxBudget(profile);
-  if (effectiveMax && effectiveMax > 0) {
-    conditions.push(`price <= ${effectiveMax}`);
-  }
-  if (profile.minBudget && !isNaN(Number(profile.minBudget))) {
-    conditions.push(`price >= ${Number(profile.minBudget)}`);
-  }
 
   const sleepCount = profile.sleepingCapacity ?? profile.travelers;
-  if (sleepCount && !isNaN(Number(sleepCount))) {
-    conditions.push(`sleeps >= ${Number(sleepCount)}`);
-  }
 
   const flexible = profile.lengthFlexibility === true;
   const slack = flexible ? 5 : 0;
 
-  if (profile.maxLength && !isNaN(Number(profile.maxLength))) {
-    conditions.push(`(length IS NOT NULL AND length <= ${Number(profile.maxLength) + slack})`);
-  }
-  if (profile.minLength && !isNaN(Number(profile.minLength))) {
-    conditions.push(`(length IS NOT NULL AND length >= ${Number(profile.minLength) - slack})`);
-  }
-
+  // Tow capacity only constrains units that are actually towed.
+  const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
   const towCap = estimateTowCapacity(profile.towVehicle as string);
-  if (towCap) {
-    const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
-    if (profile.rvType && towableTypes.includes(String(profile.rvType))) {
-      conditions.push(`COALESCE(gvwr, dry_weight) <= ${towCap}`);
-    }
-  }
+  const maxTowWeight =
+    towCap && profile.rvType && towableTypes.includes(String(profile.rvType)) ? towCap : null;
 
-  if (profile.campingStyle === "boondocking") {
-    conditions.push(`(boondocking_score >= 50 OR generator = true OR solar_installed = true)`);
-  }
+  return {
+    rvType,
+    maxPrice: effectiveMax && effectiveMax > 0 ? effectiveMax : null,
+    minPrice: profile.minBudget && !isNaN(Number(profile.minBudget)) ? Number(profile.minBudget) : null,
+    minSleeps: sleepCount && !isNaN(Number(sleepCount)) ? Number(sleepCount) : null,
+    maxLength: profile.maxLength && !isNaN(Number(profile.maxLength)) ? Number(profile.maxLength) + slack : null,
+    minLength: profile.minLength && !isNaN(Number(profile.minLength)) ? Number(profile.minLength) - slack : null,
+    maxTowWeight,
+    // Note: camping style is deliberately absent. Boondocking is a ranking
+    // signal in scoreCandidatesDeterministic, not a filter — see specToSql.
+    condition: profile.condition === "new" ? "new" : profile.condition === "used" ? "used" : null,
+  };
+}
 
-  if (profile.condition === "new") {
-    conditions.push(`condition = 'new'`);
-  } else if (profile.condition === "used") {
-    conditions.push(`condition = 'used'`);
-  }
-
+/** Render the spec as SQL predicates for the `listings` query. */
+function specToSql(spec: FilterSpec): string[] {
+  const conditions: string[] = [];
+  if (spec.rvType) conditions.push(`type = '${spec.rvType.replace(/'/g, "''")}'`);
+  if (spec.maxPrice != null) conditions.push(`price <= ${spec.maxPrice}`);
+  if (spec.minPrice != null) conditions.push(`price >= ${spec.minPrice}`);
+  if (spec.minSleeps != null) conditions.push(`sleeps >= ${spec.minSleeps}`);
+  if (spec.maxLength != null) conditions.push(`(length IS NOT NULL AND length <= ${spec.maxLength})`);
+  if (spec.minLength != null) conditions.push(`(length IS NOT NULL AND length >= ${spec.minLength})`);
+  if (spec.maxTowWeight != null) conditions.push(`COALESCE(gvwr, dry_weight) <= ${spec.maxTowWeight}`);
+  // No boondocking predicate, deliberately. Solar is stated on fewer than 3%
+  // of dealer listings, so filtering on it discarded every otherwise-qualified
+  // unit and returned nothing — and an unknown is not a no. Off-grid
+  // capability is rewarded in scoreCandidatesDeterministic instead.
+  if (spec.condition) conditions.push(`condition = '${spec.condition}'`);
   return conditions;
+}
+
+/**
+ * Evaluate the spec against one row, matching SQL semantics: a comparison
+ * against NULL is unknown, and an unknown WHERE clause excludes the row. So
+ * a missing length or weight drops the unit exactly as the query would.
+ */
+function matchesSpec(spec: FilterSpec, row: Record<string, unknown>): boolean {
+  const num = (v: unknown): number | null =>
+    v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v);
+
+  if (spec.rvType && String(row.type) !== spec.rvType) return false;
+
+  const price = num(row.price);
+  if (spec.maxPrice != null && (price === null || price > spec.maxPrice)) return false;
+  if (spec.minPrice != null && (price === null || price < spec.minPrice)) return false;
+
+  const sleeps = num(row.sleeps);
+  if (spec.minSleeps != null && (sleeps === null || sleeps < spec.minSleeps)) return false;
+
+  const length = num(row.length);
+  if (spec.maxLength != null && (length === null || length > spec.maxLength)) return false;
+  if (spec.minLength != null && (length === null || length < spec.minLength)) return false;
+
+  if (spec.maxTowWeight != null) {
+    const weight = num(row.gvwr) ?? num(row.dry_weight);
+    if (weight === null || weight > spec.maxTowWeight) return false;
+  }
+
+  if (spec.condition && String(row.condition) !== spec.condition) return false;
+
+  // The SQL path also requires at least one photo.
+  const images = row.images;
+  if (!Array.isArray(images) || images.length === 0) return false;
+
+  return true;
 }
 
 // ─── Step 2: AI Re-ranking — Claude picks the best 3 from candidates ───
@@ -378,11 +457,15 @@ For each of your top 3 picks, write a personalized "whyMatch" explanation (2-3 s
 - Mentions at least one concrete detail from their profile
 - Sounds like a knowledgeable friend explaining why, not a salesperson pitching
 
+Each candidate has a short "id" ("1", "2", "3", ...). Copy that id verbatim
+into listingId. Do not invent, renumber, or reformat ids, and never return an
+id that is not in the candidate list.
+
 Respond in this exact JSON format:
 {
   "matches": [
     {
-      "listingId": "<id of the listing>",
+      "listingId": "<the id field of the chosen candidate, copied exactly>",
       "rank": 1,
       "whyMatch": "personalized explanation referencing their specific needs",
       "matchScore": 95
@@ -404,6 +487,7 @@ function scoreCandidatesDeterministic(
   const travelers = Number(profile.travelers) || undefined;
   const requiredType =
     profile.rvType && profile.rvType !== "not_sure" ? String(profile.rvType) : undefined;
+  const boondocks = profile.campingStyle === "boondocking";
   const currentYear = new Date().getFullYear();
 
   const scored = candidates.map((c) => {
@@ -462,6 +546,26 @@ function scoreCandidatesDeterministic(
       }
     }
 
+    // Off-grid capability, when the buyer boondocks. Dealer listings state
+    // solar on under 3% of units, so a missing value means "not stated", not
+    // "not present" — a confirmed yes is rewarded and silence is left neutral
+    // rather than penalised.
+    if (boondocks) {
+      const boondockScore = Number(c.boondocking_score);
+      const confirmed =
+        c.solar_installed === true ||
+        c.generator === true ||
+        (!isNaN(boondockScore) && c.boondocking_score != null && boondockScore >= 50);
+      if (confirmed) {
+        score += 12;
+        reasons.push(
+          c.solar_installed === true
+            ? "solar is confirmed on the dealer listing — real off-grid capability"
+            : "confirmed off-grid capability for boondocking",
+        );
+      }
+    }
+
     const year = Number(c.year) || 0;
     if (year && currentYear - year <= 3) score += 5;
     if (String(c.condition) === "new") score += 3;
@@ -509,8 +613,16 @@ async function rerankWithAI(
   // Keep the AI payload small so the call stays fast: only the top candidates,
   // and only fields that matter for ranking (no descriptions/feature lists).
   const aiCandidates = scored.slice(0, 8);
-  const candidateSummaries = aiCandidates.map((c) => ({
-    id: c.id,
+  // Address candidates by a short ordinal rather than their real id. Listing
+  // ids differ by deployment — small integers from the database, long
+  // "stk:dealer:stock" strings from the snapshot — and a model that has to
+  // echo a long compound id back verbatim sometimes normalises or truncates
+  // it, which silently drops every pick and forces the deterministic
+  // fallback. An ordinal is unambiguous either way.
+  const byOrdinal = new Map<string, Record<string, unknown>>();
+  aiCandidates.forEach((c, i) => byOrdinal.set(String(i + 1), c));
+  const candidateSummaries = aiCandidates.map((c, i) => ({
+    id: String(i + 1),
     title: c.title,
     make: c.make,
     model: c.model,
@@ -532,14 +644,18 @@ async function rerankWithAI(
   }));
 
   const rerankTimeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Rerank AI timeout")), 10_000)
+    setTimeout(() => reject(new Error("Rerank AI timeout")), 15_000)
   );
 
   try {
     const rerankResponse = await Promise.race([
       anthropic.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 1024,
+        // Three 2-3 sentence explanations plus JSON scaffolding. 1024 left no
+        // headroom for a preamble, and a response truncated at the cap is
+        // invalid JSON that extractJsonObject cannot recover — the whole
+        // rerank is then discarded.
+        max_tokens: 2048,
         system: RERANK_SYSTEM_PROMPT,
         messages: [
           {
@@ -553,15 +669,47 @@ async function rerankWithAI(
 
     const rerankText = rerankResponse.content[0]?.type === "text" ? rerankResponse.content[0].text : "";
 
-    const parsed = JSON.parse(extractJsonObject(rerankText));
+    // A truncated response is invalid JSON; name that case rather than
+    // letting it surface as an opaque parse error.
+    if (rerankResponse.stop_reason === "max_tokens") {
+      console.error(
+        `[outfitter] rerank response hit max_tokens (${rerankText.length} chars) — raise the cap`,
+      );
+    }
+
+    let parsed: { matches?: Array<{ listingId: string; rank: number; whyMatch?: string; matchScore?: number }> };
+    try {
+      parsed = JSON.parse(extractJsonObject(rerankText));
+    } catch (parseErr) {
+      // Log what the model actually said — the single most useful signal for
+      // diagnosing a rerank that keeps falling back.
+      console.error(
+        `[outfitter] rerank JSON unparsable (stop_reason=${rerankResponse.stop_reason}):`,
+        rerankText.slice(0, 400),
+      );
+      throw parseErr;
+    }
     const matches = parsed.matches || [];
 
+    const unresolved: string[] = [];
     const ranked = matches
       .sort((a: { rank: number }, b: { rank: number }) => a.rank - b.rank)
       .slice(0, 3)
       .map((match: { listingId: string; whyMatch?: string; matchScore?: number }) => {
-        const listing = candidates.find((c) => String(c.id) === String(match.listingId));
-        if (!listing) return null;
+        // Be forgiving about how the model echoes the id back: it may come as a
+        // number, padded, or wrapped ("listing 2", "#2"). Try the value as
+        // given, then trimmed, then the first run of digits in it, before
+        // falling back to a real listing id.
+        const raw = String(match.listingId ?? "").trim();
+        const digits = raw.match(/\d+/)?.[0];
+        const listing =
+          byOrdinal.get(raw) ??
+          (digits ? byOrdinal.get(digits) : undefined) ??
+          candidates.find((c) => String(c.id) === raw);
+        if (!listing) {
+          unresolved.push(raw);
+          return null;
+        }
         // Backfill from deterministic scoring if the AI omitted either field, so
         // the response is never missing whyMatch/matchScore.
         const fallback = scored.find((d) => String(d.id) === String(listing.id));
@@ -577,6 +725,15 @@ async function rerankWithAI(
     // picks (unknown listingIds, or post-filter removals), backfill from the
     // deterministic ranking, skipping any listing already selected.
     if (ranked.length < 3) {
+      // This is the path that silently degraded the live site: the model
+      // answered, its picks did not resolve, and the response quietly became
+      // deterministic scoring with no error anywhere. Say so.
+      console.error(
+        `[outfitter] rerank resolved ${ranked.length}/${matches.length} picks — ` +
+          `backfilling ${3 - ranked.length} from deterministic scoring. ` +
+          `unresolved ids: ${JSON.stringify(unresolved)} · ` +
+          `valid ordinals: 1-${byOrdinal.size}`,
+      );
       const selectedIds = new Set(ranked.map((r) => String(r.id)));
       for (const candidate of scored) {
         if (ranked.length >= 3) break;
@@ -587,8 +744,11 @@ async function rerankWithAI(
     }
 
     return ranked.length > 0 ? ranked : deterministicTop3;
-  } catch {
-    console.error("AI re-ranking unavailable, using deterministic scoring");
+  } catch (err) {
+    console.error(
+      "[outfitter] AI re-ranking unavailable, using deterministic scoring:",
+      err instanceof Error ? `${err.name}: ${err.message}` : err,
+    );
     return deterministicTop3;
   }
 }
@@ -656,10 +816,7 @@ async function getMatchedListings(
     ...(effectiveMax && !profile.maxBudget ? { maxBudget: effectiveMax } : {}),
   };
 
-  const conditions = buildListingFilters(enrichedProfile);
-  // Never recommend a no-photo unit.
-  conditions.push("jsonb_array_length(images) > 0");
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const spec = buildFilterSpec(enrichedProfile);
 
   const requiredType =
     enrichedProfile.rvType && enrichedProfile.rvType !== "not_sure"
@@ -672,11 +829,23 @@ async function getMatchedListings(
     maxLength: enrichedProfile.maxLength as number | undefined,
   };
 
-  const recRows = await db.execute(
-    sql.raw(`SELECT * FROM listings ${whereClause} ORDER BY is_featured DESC, deal_score ASC LIMIT 50`)
-  );
-
-  let candidates = (recRows as { rows?: Record<string, unknown>[] }).rows ?? [];
+  let candidates: Record<string, unknown>[];
+  if (DB_MODE === "none") {
+    // No database on this deployment — match against the same inventory
+    // snapshot the listings table would have been seeded from.
+    candidates = getListingRows()
+      .filter((row) => matchesSpec(spec, row))
+      .slice(0, 50);
+  } else {
+    const conditions = specToSql(spec);
+    // Never recommend a no-photo unit.
+    conditions.push("jsonb_array_length(images) > 0");
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const recRows = await db.execute(
+      sql.raw(`SELECT * FROM listings ${whereClause} ORDER BY is_featured DESC, deal_score ASC LIMIT 50`)
+    );
+    candidates = (recRows as { rows?: Record<string, unknown>[] }).rows ?? [];
+  }
 
   if (candidates.length === 0) {
     return {
@@ -775,6 +944,19 @@ async function getMatchedListings(
 
 router.post("/outfitter/chat", async (req, res) => {
   try {
+    // The Outfitter is the one part of the site that needs an LLM. Say so
+    // plainly instead of failing as a generic 500.
+    if (!isAnthropicConfigured()) {
+      res.status(503).json({
+        error: "ai_not_configured",
+        message:
+          "The AI Outfitter needs an Anthropic API key. Set ANTHROPIC_API_KEY in this " +
+          "environment and restart. The rest of the site — including the WebMCP agent " +
+          "tools at /api/agent/* — works without it.",
+      });
+      return;
+    }
+
     const { messages = [], sessionId, buyerProfile } = req.body;
 
     const sessionIdOut = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -943,6 +1125,14 @@ router.post("/outfitter/chat", async (req, res) => {
 
 router.post("/outfitter/recommendations", async (req, res) => {
   try {
+    if (!isAnthropicConfigured()) {
+      res.status(503).json({
+        error: "ai_not_configured",
+        message: "The AI Outfitter needs an Anthropic API key. Set ANTHROPIC_API_KEY in this environment and restart.",
+      });
+      return;
+    }
+
     const profile = req.body as Record<string, unknown>;
 
     const { listings: matched } = await getMatchedListings(profile);

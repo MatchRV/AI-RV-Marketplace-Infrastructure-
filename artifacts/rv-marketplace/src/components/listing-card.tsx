@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useState } from "react";
 import { MapPin, Maximize2, BedDouble, Calendar, Heart, ArrowRight } from "lucide-react";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 import { formatCurrency, getDealScoreInfo, formatRvType } from "@/lib/utils";
 import { useAppAuth } from "@/contexts/auth-context";
 

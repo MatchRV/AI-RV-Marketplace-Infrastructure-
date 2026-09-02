@@ -233,7 +233,7 @@ router.get("/admin/leads", adminAuth, async (req, res) => {
 // Admin: Update lead status / notes
 router.patch("/admin/leads/:id", adminAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const { status, notes } = req.body;
 
     const updates: Partial<typeof buyerLeadsTable.$inferInsert> = {};
@@ -251,7 +251,7 @@ router.patch("/admin/leads/:id", adminAuth, async (req, res) => {
 // Admin: Retry CRM sync for a failed lead
 router.post("/admin/leads/:id/retry-crm", adminAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id)) {
       return void res.status(400).json({ message: "Invalid lead ID" });
     }

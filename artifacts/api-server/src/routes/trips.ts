@@ -132,7 +132,7 @@ router.get("/campgrounds", async (req: Request, res: Response) => {
 });
 
 router.get("/campgrounds/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid campground ID" }); return; }
   try {
     const [cg] = await db.select().from(campgroundsTable).where(eq(campgroundsTable.id, id));
@@ -263,7 +263,7 @@ router.post("/campgrounds/import", requireAuthMiddleware, async (req: Request, r
 });
 
 function requireAuthMiddleware(req: Request, res: Response, next: () => void) {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (clerkUserId(req) === null) { res.status(401).json({ error: "Unauthorized" }); return; }
   next();
 }
 
@@ -323,13 +323,13 @@ router.post("/trips", async (req: Request, res: Response) => {
  * - All other requests: 401/403
  */
 router.get("/trips/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid trip ID" }); return; }
   try {
     const [trip] = await db.select().from(tripsTable).where(eq(tripsTable.id, id));
     if (!trip) { res.status(404).json({ error: "Trip not found" }); return; }
 
-    const isOwner = req.isAuthenticated() && req.user!.id === trip.userId;
+    const isOwner = clerkUserId(req) === trip.userId;
     const tokenParam = req.query.token as string | undefined;
     const hasValidToken = trip.shareToken && tokenParam === trip.shareToken;
 
@@ -361,14 +361,20 @@ router.get("/trips/:id", async (req: Request, res: Response) => {
   }
 });
 
+/** Clerk-authenticated user id, or null (same claim order as requireAuth). */
+function clerkUserId(req: Request): string | null {
+  const auth = getAuth(req);
+  return (auth?.sessionClaims?.userId as string | undefined) || auth?.userId || null;
+}
+
 function isAuthenticated(req: Request): boolean {
-  return typeof req.isAuthenticated === "function" && req.isAuthenticated();
+  return clerkUserId(req) !== null;
 }
 
 router.put("/trips/:id", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid trip ID" }); return; }
   const { name, startDate, endDate, notes, status } = req.body;
   try {
@@ -390,7 +396,7 @@ router.put("/trips/:id", async (req: Request, res: Response) => {
 router.delete("/trips/:id", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid trip ID" }); return; }
   try {
     await db.delete(tripsTable).where(and(eq(tripsTable.id, id), eq(tripsTable.userId, userId)));
@@ -404,7 +410,7 @@ router.delete("/trips/:id", async (req: Request, res: Response) => {
 router.post("/trips/:id/share", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid trip ID" }); return; }
   try {
     const [trip] = await db.select().from(tripsTable).where(and(eq(tripsTable.id, id), eq(tripsTable.userId, userId)));
@@ -424,7 +430,7 @@ router.post("/trips/:id/share", async (req: Request, res: Response) => {
 router.post("/trips/:id/stops", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const tripId = parseInt(req.params.id, 10);
+  const tripId = parseInt(String(req.params.id), 10);
   if (isNaN(tripId) || tripId <= 0) { res.status(400).json({ error: "Invalid trip ID" }); return; }
   const { campgroundId, arrivalDate, departureDate, nights, notes } = req.body;
   if (!campgroundId || typeof campgroundId !== "number") {
@@ -452,8 +458,8 @@ router.post("/trips/:id/stops", async (req: Request, res: Response) => {
 router.put("/trips/:id/stops/:stopId", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const tripId = parseInt(req.params.id, 10);
-  const stopId = parseInt(req.params.stopId, 10);
+  const tripId = parseInt(String(req.params.id), 10);
+  const stopId = parseInt(String(req.params.stopId), 10);
   if (isNaN(tripId) || isNaN(stopId)) { res.status(400).json({ error: "Invalid IDs" }); return; }
   const { arrivalDate, departureDate, nights, notes, stopOrder } = req.body;
   try {
@@ -475,8 +481,8 @@ router.put("/trips/:id/stops/:stopId", async (req: Request, res: Response) => {
 router.delete("/trips/:id/stops/:stopId", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const tripId = parseInt(req.params.id, 10);
-  const stopId = parseInt(req.params.stopId, 10);
+  const tripId = parseInt(String(req.params.id), 10);
+  const stopId = parseInt(String(req.params.stopId), 10);
   if (isNaN(tripId) || isNaN(stopId)) { res.status(400).json({ error: "Invalid IDs" }); return; }
   try {
     const [trip] = await db.select().from(tripsTable).where(and(eq(tripsTable.id, tripId), eq(tripsTable.userId, userId)));

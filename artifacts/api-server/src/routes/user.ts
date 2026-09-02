@@ -60,7 +60,7 @@ router.get("/user/saved", async (req: Request, res: Response) => {
 router.post("/listings/:id/save", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const listingId = parseInt(req.params.id, 10);
+  const listingId = parseInt(String(req.params.id), 10);
   if (isNaN(listingId) || listingId <= 0) {
     res.status(400).json({ error: "Invalid listing ID" });
     return;
@@ -79,7 +79,7 @@ router.post("/listings/:id/save", async (req: Request, res: Response) => {
 router.delete("/listings/:id/save", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const listingId = parseInt(req.params.id, 10);
+  const listingId = parseInt(String(req.params.id), 10);
   if (isNaN(listingId) || listingId <= 0) {
     res.status(400).json({ error: "Invalid listing ID" });
     return;
@@ -137,7 +137,7 @@ router.post("/user/searches", async (req: Request, res: Response) => {
 router.delete("/user/searches/:id", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) {
     res.status(400).json({ error: "Invalid search ID" });
     return;
@@ -207,7 +207,7 @@ router.post("/user/alerts", async (req: Request, res: Response) => {
 router.delete("/user/alerts/:id", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id) || id <= 0) {
     res.status(400).json({ error: "Invalid alert ID" });
     return;

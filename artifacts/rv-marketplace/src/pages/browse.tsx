@@ -13,7 +13,7 @@ import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { useAppAuth } from "@/contexts/auth-context";
 import { useSearch, useLocation } from "wouter";
 import { LocationSearch } from "@/components/location-search";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL || "/";
 const PAGE_SIZE = 24;

@@ -8,7 +8,7 @@ router.post("/generate-description", async (req, res) => {
     const { year, make, model, type, condition, mileage, price, features, extraNotes } = req.body;
 
     if (!year || !make || !model) {
-      return res.status(400).json({ error: "year, make, and model are required" });
+      return void res.status(400).json({ error: "year, make, and model are required" });
     }
 
     const featureList = Array.isArray(features) && features.length > 0

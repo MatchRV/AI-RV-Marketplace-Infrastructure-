@@ -3,7 +3,7 @@ import { Check, X, Save, Home, Ruler } from "lucide-react";
 import { Button, Input } from "@/components/ui-elements";
 import { useDriveway } from "@/hooks/use-driveway";
 import { useAppAuth } from "@/contexts/auth-context";
-import type { Listing } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Listing } from "@workspace/api-client-react";
 
 interface Props {
   listing: Listing;

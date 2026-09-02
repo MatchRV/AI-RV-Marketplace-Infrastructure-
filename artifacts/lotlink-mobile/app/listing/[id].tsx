@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useGetListing } from "@workspace/api-client-react";
+import { useGetListing, getGetListingQueryKey } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -301,7 +301,7 @@ export default function ListingDetailScreen() {
 
   const numericId = parseInt(id ?? "0", 10);
   const { data: listing, isLoading, isError, refetch } = useGetListing(numericId, {
-    query: { enabled: !isNaN(numericId) && numericId > 0 },
+    query: { queryKey: getGetListingQueryKey(numericId), enabled: !isNaN(numericId) && numericId > 0 },
   });
 
   const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";

@@ -224,7 +224,7 @@ export async function enrichBatch(limit = 20): Promise<EnrichmentRunResult> {
     sql.raw(`SELECT id, title, make, model, year, type, description, features, generator, solar_installed, solar_ready, fresh_water, grey_water, black_water, enclosed_underbelly, heated_tanks, four_season, enrichment_version FROM listings WHERE (enrichment_version IS NULL OR enrichment_version < ${ENRICHMENT_VERSION}) ORDER BY id LIMIT ${limit}`)
   );
 
-  const listings = ((rows as { rows?: RawListing[] }).rows ?? []) as RawListing[];
+  const listings = ((rows as unknown as { rows?: RawListing[] }).rows ?? []) as RawListing[];
   result.processed = listings.length;
 
   for (const listing of listings) {
@@ -272,7 +272,7 @@ export async function enrichBatch(limit = 20): Promise<EnrichmentRunResult> {
   const countRows = await db.execute(
     sql.raw(`SELECT COUNT(*) as cnt FROM listings WHERE (enrichment_version IS NULL OR enrichment_version < ${ENRICHMENT_VERSION})`)
   );
-  result.remaining = Number(((countRows as { rows?: { cnt: string }[] }).rows ?? [])[0]?.cnt ?? 0);
+  result.remaining = Number(((countRows as unknown as { rows?: { cnt: string }[] }).rows ?? [])[0]?.cnt ?? 0);
 
   return result;
 }

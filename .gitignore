@@ -48,6 +48,10 @@ Thumbs.db
 .cache/
 .local/
 
+# Embedded database (PGlite) runtime data — never commit generated DB state
+.data/
+lib/db/.data/
+
 # Runtime / secrets
 .config/
 *.log
@@ -57,5 +61,10 @@ __pycache__/
 *.tar.gz
 *.tgz
 .env*
+!.env.example
 my_secrets.txt
 output/
+
+# Locally fetched Chrome for Testing (native WebMCP suite)
+.chrome/
+docs/demo/matchrv-demo-raw.webm

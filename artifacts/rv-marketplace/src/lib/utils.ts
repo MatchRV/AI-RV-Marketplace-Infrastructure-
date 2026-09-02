@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { DealScore } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { DealScore } from "@workspace/api-client-react";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

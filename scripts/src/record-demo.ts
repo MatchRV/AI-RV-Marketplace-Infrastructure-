@@ -37,6 +37,21 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const t0 = Date.now();
 const scenes: Array<{ t: number; caption: string }> = [];
 
+// Optional per-scene minimum holds (seconds), e.g. from a narration track:
+// index 0 = title card, 1..13 = the thirteen caption scenes, 14 = closing card.
+// Each scene then lasts at least this long, so a voice track placed at scene
+// starts never runs ahead of or behind the picture.
+const MIN_HOLDS: number[] = process.env.SCENE_MIN_HOLDS ? JSON.parse(process.env.SCENE_MIN_HOLDS) : [];
+let sceneIdx = -1;
+let sceneStartedAt = Date.now();
+async function settleCurrentScene() {
+  if (sceneIdx < 0) return;
+  const min = MIN_HOLDS[sceneIdx + 1] ?? 0;
+  const remain = min * 1000 - (Date.now() - sceneStartedAt);
+  if (remain > 0) await wait(remain);
+}
+const holdMs = (index: number, fallbackMs: number) => Math.max(fallbackMs, (MIN_HOLDS[index] ?? 0) * 1000);
+
 // ── External requests via Node (verified TLS through the egress proxy) ──
 const CA_PATH = "/root/.ccr/ca-bundle.crt";
 const ca = existsSync(CA_PATH) ? readFileSync(CA_PATH) : undefined;
@@ -126,6 +141,11 @@ async function installOverlay(page: Page) {
   });
 }
 async function caption(page: Page, html: string) {
+  if (html) {
+    await settleCurrentScene();
+    sceneIdx += 1;
+    sceneStartedAt = Date.now();
+  }
   scenes.push({ t: (Date.now() - t0) / 1000, caption: html.replace(/<[^>]+>/g, "") });
   await page.evaluate((h) => {
     const el = document.getElementById("__cap")!;
@@ -184,7 +204,7 @@ async function main() {
   // 0:00 — title
   await card(page, "Agent-native RV shopping.<br>Built on <b>WebMCP</b>.",
     "Real dealer inventory as ten site tools — one shared session for a shopper and their agent.",
-    "MatchRV · OpenAI WebMCP Challenge", 4200);
+    "MatchRV · OpenAI WebMCP Challenge", holdMs(0, 4200));
 
   // Scene 1 — the problem + the tool surface
   await caption(page, "Buying an RV means <b>30 dealer sites</b> describing the same trailer 30 different ways. On real dealer pages, GVWR is machine-readable <b>under 1%</b> of the time. Agents can't shop on that web.");
@@ -263,13 +283,14 @@ async function main() {
   await shot(page, "6-receipt");
   await caption(page, "An exact receipt: dealer, unit, time, reference. Duplicates are blocked. And it never claims a real dealership was contacted — this is a demo environment, and it says so.");
   await wait(8000);
+  await settleCurrentScene();
   await caption(page, "");
   await wait(600);
 
   // Closing
   await card(page, "The inventory was always online.<br>Now agents can <b>actually understand it</b>.",
     "WebMCP turns pages agents must interpret into capabilities agents can reliably use. MatchRV turns fragmented RV inventory into an agent-native shopping network.",
-    "matchrv-webmcp.onrender.com/shop · MIT · Built on WebMCP", 7500);
+    "matchrv-webmcp.onrender.com/shop · MIT · Built on WebMCP", holdMs(14, 7500));
 
   const total = (Date.now() - t0) / 1000;
   await context.close();

@@ -23,10 +23,10 @@ pointers reference WEBMCP_TEST_RESULTS.md (WTR).
   ~1.5–2 KB outputs, field-level self-correction errors, UI updated after
   every call, session tool for human-edit readback.
 
-**Why not 10:** the real-agent pass (WTR §8) is a single relayed run, with
-the agent app/version and screenshots not yet on file — and it surfaced a
-real gap, a 70 headline with zero confirmed preferences, that is documented
-rather than fixed.
+**Why not 10:** the real-agent pass (WTR §8, OpenAI Codex) is a single
+relayed run — no screenshots, and no record of whether it used the WebMCP
+surface or the page UI — and it surfaced a real gap, a 70 headline with
+zero confirmed preferences, that is documented rather than fixed.
 
 ## 2. Execution — **9/10**
 
@@ -108,7 +108,7 @@ the deployed site.
 
 | Criterion | Score | Blocking action |
 | --- | --- | --- |
-| WebMCP Leverage | 9 | — (real-agent pass recorded, WTR §8; app/version + screenshots still to file) |
+| WebMCP Leverage | 9 | — (real-agent pass recorded, WTR §8 — OpenAI Codex; screenshots not on file) |
 | Execution | 9 | — (live; the agent-found score-headline gap is tracked in ROADMAP P1) |
 | Potential Impact | 9 | — |
 | Creativity & Ambition | 9 | — |

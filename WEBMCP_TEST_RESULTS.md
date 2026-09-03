@@ -183,13 +183,15 @@ certificate checking was disabled.
 
 ## 8. A real agent, from natural language, against the live site — 2026-09-03
 
-This was the one layer this container cannot produce: an LLM agent
-*choosing and phrasing* the tool calls itself — not the scripted demo-case
-of §4 — against https://matchrv-webmcp.onrender.com/shop. Jonathan ran it on
-2026-09-03 and relayed the agent's own end-of-run summary; every figure
-below was then re-checked from this repository against the live
-`/api/agent` endpoints the tools call. (Agent app and version, and the
-screenshots, are not yet on file — pending from Jonathan.)
+This was the one layer this container cannot produce: an LLM agent working
+from natural language and choosing its own steps — not the scripted
+demo-case of §4 — against https://matchrv-webmcp.onrender.com/shop. Jonathan
+ran it on 2026-09-03 in **OpenAI Codex** (ChatGPT's agent, driving the site
+through its browser) and relayed the agent's own end-of-run summary; every
+figure below was then re-checked from this repository against the live
+`/api/agent` endpoints the tools call. Not on file: the Codex version,
+screenshots, and whether its calls went through the browser's WebMCP
+surface or the page UI.
 
 | What the agent did | Agent's report | Re-checked against live |
 | --- | --- | --- |

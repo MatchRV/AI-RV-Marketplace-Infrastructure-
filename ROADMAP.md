@@ -25,19 +25,18 @@
       `document.modelContext`): discovery + execution, 6/6
 - [x] Test expansion: 53 unit + 23-step E2E (green on dev AND the production
       bundle) + native suite
-- [x] Secrets/personal values stripped from the tree (rotation still
-      required — in git history)
+- [x] Secrets/personal values stripped from the tree (the exposed Google
+      Places key was deleted 2026-09-03; the value in history is inert)
 
 ## P0 — remaining, needs a human (Jonathan)
-- [ ] **Kill the Google Places API key** (old value is in git history) —
-      before the repo goes public. Recommended: just *delete* it in Google
-      Cloud Console; it's optional (legacy /browse autocomplete only, which
-      degrades gracefully; the WebMCP demo uses no Google services). Rotate
-      + restrict instead only if you want autocomplete kept
+- [x] **Google Places API key deleted** in Google Cloud Console (2026-09-03)
+      — the value in git history is inert. It was optional anyway (legacy
+      /browse autocomplete only, which degrades gracefully; the WebMCP demo
+      uses no Google services)
 - [x] Deploy the live URL — https://matchrv-webmcp.onrender.com (render.yaml)
 - [x] Real-agent pass from natural language against the live URL — done
-      2026-09-03, recorded in WEBMCP_TEST_RESULTS.md §8 (agent app/version +
-      screenshots still to file)
+      2026-09-03 in OpenAI Codex, recorded in WEBMCP_TEST_RESULTS.md §8
+      (screenshots not on file)
 - [ ] Record the <3 min video (DEMO_SCRIPT.md) and publish on YouTube
 - [ ] Make the repo public; re-add Replit secrets (values were stripped from
       .replit); submit on Devpost before the deadline
@@ -81,7 +80,7 @@
   workspace member, `location-search`/`ar-driveway`/`account` typing, missing
   root-level `tsc -b` orchestration for composite refs
 - Parameterize legacy `sql.raw` call sites; validate legacy `/api/leads`
-- Rotate the committed Google Places key; move `.replit` userenv to secrets
+- ~~Rotate the committed Google Places key~~ (deleted 2026-09-03); move `.replit` userenv to secrets
 - Fix analytics event-type mismatches (5 client events rejected server-side)
 - `replit.md` contains stale claims (auto-import counts, tow-table size,
   seed behavior) — rewrite against current reality

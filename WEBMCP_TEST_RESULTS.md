@@ -97,7 +97,7 @@ through the browser's own `document.modelContext` (same Chrome 152 + flag as
 | 1 | runtime | 10 tools discovered natively |
 | 2 | *"…bunkhouse travel trailer under $45k, under 30 ft, within 150 mi of Tacoma, F-150, we boondock, solar+lithium, two entry doors"* | funnel 1,056 → 43 verified · 129 unverified · 884 excluded (sums exactly); verified listed first |
 | 3 | (same turn, UI) | rail separates **Hard requirements — must pass** / **Preferences — affect ranking only**; every chip removable by hand |
-| 4 | (same turn, honesty) | **Assumptions & unknowns**: F-150 config unknown → ratings span 5,000–13,500 lbs, filter only above the top rating, per-unit verdicts say "depends on config", asks for the door-sticker rating |
+| 4 | (same turn, honesty) | **Assumptions & unknowns**: F-150 config unknown → ratings span 5,000–13,500 lbs, filter only above the top rating, per-unit verdicts say "depends on config"; the tool result carries `askShopper` follow-ups (which engine, Max Trailer Tow package, door-sticker rating) so the agent narrows the range instead of guessing |
 | 5 | *"Actually, I'll go to $50k if I can get lithium and two doors."* | refine recomputes over all 1,056 (price → $50k; lithium + 2 doors promoted to hard) |
 | 6 | (zero-verified honesty) | **0 verified** stated plainly — "No unit satisfies every hard requirement." banner + data-gap candidates offered; nothing fabricated |
 | 7 | (ranking) | among unverified, fewest unknown hard checks rank first; agent list = page list (identical top 3) |

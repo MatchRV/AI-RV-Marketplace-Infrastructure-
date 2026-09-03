@@ -69,7 +69,7 @@ export const searchInventoryInput = z.object({
   max_weight_lbs: z.number().min(500).max(60_000).optional()
     .describe("Hard cap on unit weight (checked against GVWR when known, else dry weight, flagged)"),
   tow_vehicle: z.string().max(120).optional()
-    .describe("Shopper's tow vehicle as stated, e.g. '2024 Ford F-150' or 'F-150 rated 8,000 lbs'. Pass raw — MatchRV resolves ratings"),
+    .describe("Tow vehicle as stated, incl. engine/package if known: '2024 F-150 5.0L V8 Max Tow' or 'F-150 rated 8,000 lbs'. Pass raw; ask any askShopper follow-ups returned"),
   sleeps_min: z.number().int().min(1).max(14).optional(),
   must_have: z.array(featureEnum).max(8).optional().describe("Hard requirements — excludes units that verifiably lack them; units where a dealer doesn't publish the fact are flagged 'unverified', not excluded"),
   prefer: z.array(featureEnum).max(8).optional().describe("Soft preferences — affect ranking only"),
@@ -90,7 +90,7 @@ export const compareUnitsInput = z.object({
 
 export const evaluateTowFitInput = z.object({
   vehicle: z.string().min(2).max(120)
-    .describe("Tow vehicle as the shopper stated it, e.g. '2022 Tundra' or 'F-150 rated 8,000 lbs'"),
+    .describe("Tow vehicle as the shopper stated it, incl. engine/package when known: '2022 Tundra', 'F-150 5.0 V8 Max Tow', 'F-150 rated 8,000 lbs'"),
   unit_ids: z.array(unitId).max(6).optional()
     .describe("Units to evaluate; defaults to the current top results/shortlist"),
 });
@@ -194,7 +194,7 @@ export const TOOL_CONTRACTS: ToolContract[] = [
     name: "evaluate_tow_fit",
     title: "Evaluate tow fit",
     description:
-      "Weight-fit guidance for a tow vehicle against specific units, using MatchRV's manufacturer-rating reference table. Handles configuration ranges honestly (fits-with-margin / marginal / depends-on-config / exceeds / unknown) and never guarantees safety. Also pins the tow vehicle to the shared session.",
+      "Weight-fit guidance for a tow vehicle against specific units, from MatchRV's manufacturer-rating reference table. Handles configuration ranges honestly (fits-with-margin / marginal / depends-on-config / exceeds / unknown) and never guarantees safety. A bare model returns a wide range plus askShopper follow-ups (engine, tow package, door-sticker rating): ask them, never assume a configuration; answers narrow the band. Also pins the tow vehicle to the shared session.",
     schema: evaluateTowFitInput,
     annotations: { readOnlyHint: true },
   },

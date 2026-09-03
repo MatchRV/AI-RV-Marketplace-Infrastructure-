@@ -63,7 +63,9 @@ Three things make it feel like the future instead of a wrapper:
   decoding like `26BHX → bunkhouse`, a receipts-based boondocking score); a
   three-valued matching engine (pass / fail / **unverified** — unknowns
   never silently exclude or include); tow-fit logic that treats a bare
-  "F-150" as the 5,000–13,500 lbs range it really is; offline geography.
+  "F-150" as the 5,000–13,500 lbs range it really is and hands the agent
+  the questions that narrow it (which engine, which tow package, the
+  door-sticker rating); offline geography.
 - **Tool contracts defined once in Zod**, compiled to JSON Schema for
   `document.modelContext.registerTool()` and re-enforced server-side on every
   call — the schema agents see is literally the validator that runs.
@@ -103,8 +105,11 @@ give you: the human and the agent are first-class users of the *same page*.
   product: parse only labeled evidence, tag provenance, keep unknown unknown.
 - **Tow honesty.** A bare "F-150" tows anywhere from 5,000 to 13,500 lbs
   depending on configuration. One fake number would be wrong in both
-  directions — so verdicts include `depends_on_config`, and a stated rating
-  gets a safety margin plus a payload caveat.
+  directions — so verdicts include `depends_on_config`, and every tool result
+  carries `askShopper` follow-ups (which engine, which tow package, the
+  door-sticker rating) so the agent asks instead of guessing. "5.0L V8" alone
+  narrows the band to 8,700–13,000 lbs; "Max Tow" lifts it to 11,000–13,000;
+  a stated rating replaces it and gets a safety margin plus a payload caveat.
 - **Write-action trust.** We refused to let approval live in the model's
   context. It lives in a server-side state machine keyed to a human click.
 

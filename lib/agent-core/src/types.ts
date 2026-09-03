@@ -225,6 +225,22 @@ export interface SearchOutcome {
 
 // ── Tow fit ────────────────────────────────────────────────────────────────
 
+export interface TowVariant {
+  key: string;
+  /** "5.0L V8" */
+  label: string;
+  /** Lower-cased tokens that identify this powertrain in free text; "3.5" also matches "3.5L" / "3.5-liter". */
+  aliases: string[];
+  towLbsMin: number;
+  towLbsMax: number;
+  /** Bottom of the band once the factory tow package is confirmed, where the package moves the band. */
+  packageMinLbs?: number;
+  /** Umbrella tokens ("EcoBoost", "V8") that still need one more answer; `options` lists the candidates. */
+  ambiguous?: boolean;
+  options?: string[];
+  note?: string;
+}
+
 export interface TowVehicleSpec {
   key: string;
   label: string; // "Ford F-150"
@@ -233,11 +249,29 @@ export interface TowVehicleSpec {
   towLbsMin: number;
   towLbsMax: number;
   note: string;
+  /** Powertrain bands, when the model's range is wide enough to be worth narrowing. */
+  variants?: TowVariant[];
+  /** Factory package that unlocks the top of the range, if the model has one worth asking about. */
+  towPackageName?: string;
+  /** Bottom of the band once that package is confirmed (models without per-engine bands). */
+  packageMinLbs?: number;
+}
+
+/** A follow-up the agent should put to the shopper to narrow the tow range. */
+export interface TowQuestion {
+  id: "engine" | "package" | "rating";
+  question: string;
+  options?: string[];
+  why: string;
 }
 
 export interface TowResolution {
   input: string;
   matched: TowVehicleSpec | null;
+  /** Model plus whatever configuration was parsed: "Ford F-150 5.0L V8". Falls back to the input. */
+  resolvedLabel: string;
+  /** Configuration details read from the shopper's own words. */
+  configuration: { modelYear: number | null; engine: string | null; towPackage: boolean | null };
   /** Rating the shopper explicitly stated ("rated 8,000 lbs"), if any. */
   statedRatingLbs: number | null;
   /** Manufacturer range across configurations, when the vehicle is known. */
@@ -248,6 +282,10 @@ export interface TowResolution {
   comfortCapLbs: number | null;
   safetyMarginPct: number;
   caveats: string[];
+  /** Questions that narrow the range (engine, tow package, sticker rating); empty once a rating is stated. */
+  askShopper: TowQuestion[];
+  /** Where the exact rating comes from: door-jamb label, owner's manual, the manufacturer's towing guide. */
+  exactRatingSources: string[];
 }
 
 export type TowVerdict =

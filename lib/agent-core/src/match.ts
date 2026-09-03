@@ -265,11 +265,11 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       // Motorhomes aren't gated by a tow vehicle.
     } else if (ctx.tow.filterCapLbs === null || towFit.verdict === "unknown") {
       unknowns.push("weight (GVWR/dry)");
-      hardChecks.push(check(`towable by ${ctx.tow.matched?.label ?? "your vehicle"}`, "unknown", "weight unknown", null));
+      hardChecks.push(check(`towable by ${ctx.tow.resolvedLabel || "your vehicle"}`, "unknown", "weight unknown", null));
     } else {
       hardChecks.push(
         check(
-          `towable by ${ctx.tow.matched?.label ?? "your vehicle"} (≤ ${ctx.tow.filterCapLbs.toLocaleString()} lbs)`,
+          `towable by ${ctx.tow.resolvedLabel || "your vehicle"} (≤ ${ctx.tow.filterCapLbs.toLocaleString()} lbs)`,
           towFit.verdict === "exceeds" ? "fail" : "pass",
           `${towFit.comparedWeightLbs?.toLocaleString()} lbs (${towFit.comparedWeightField === "gvwrLbs" ? "GVWR" : "dry"}) — ${towFit.verdict.replace(/_/g, " ")}`,
           weightSource,

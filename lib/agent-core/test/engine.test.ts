@@ -161,6 +161,55 @@ describe("tow", () => {
     expect(fit.detail).toContain("dry weight");
   });
 
+  it("narrows a bare F-150 to the stated engine's band", () => {
+    const r = resolveTowVehicle("2024 Ford F-150 5.0L V8");
+    expect(r.rangeLbs).toEqual({ min: 8700, max: 13000 });
+    expect(r.resolvedLabel).toBe("Ford F-150 5.0L V8");
+    expect(r.configuration).toEqual({ modelYear: 2024, engine: "5.0L V8", towPackage: null });
+    expect(r.askShopper.map((q) => q.id)).toEqual(["package", "rating"]);
+    expect(evaluateTowFit(unit({ gvwr: 8500, dry_weight: 6900 }), r).verdict).toBe("marginal");
+  });
+
+  it("asks engine, tow-package and sticker follow-ups for a bare model", () => {
+    const r = resolveTowVehicle("2024 Ford F-150");
+    expect(r.askShopper.map((q) => q.id)).toEqual(["engine", "package", "rating"]);
+    expect(r.askShopper[0].options).toContain("5.0L V8");
+    expect(r.askShopper[0].options).toContain("3.5L EcoBoost V6");
+    expect(r.askShopper[0].options).not.toContain("EcoBoost (2.7L or 3.5L?)");
+    expect(r.askShopper[1].question).toContain("Max Trailer Tow package");
+    expect(r.exactRatingSources.join(" ")).toMatch(/towing guide/i);
+    expect(r.caveats[0]).toMatch(/ask which engine/i);
+  });
+
+  it("keeps a bare 'EcoBoost' ambiguous between 2.7L and 3.5L", () => {
+    const r = resolveTowVehicle("F-150 EcoBoost");
+    expect(r.rangeLbs).toEqual({ min: 7600, max: 13500 });
+    expect(r.askShopper[0].id).toBe("engine");
+    expect(r.askShopper[0].options).toEqual(["2.7L EcoBoost V6", "3.5L EcoBoost V6"]);
+  });
+
+  it("lets a confirmed Max Tow package lift the bottom of the band", () => {
+    const r = resolveTowVehicle("F-150 5.0 V8 with the Max Trailer Tow package");
+    expect(r.configuration.towPackage).toBe(true);
+    expect(r.rangeLbs).toEqual({ min: 11000, max: 13000 });
+    expect(r.askShopper.map((q) => q.id)).toEqual(["rating"]);
+    expect(resolveTowVehicle("F-150 5.0 V8, no tow package").rangeLbs).toEqual({ min: 8700, max: 11000 });
+  });
+
+  it("does not misread displacement or hybrid tokens", () => {
+    expect(resolveTowVehicle("F-150 3.5 PowerBoost hybrid").configuration.engine).toBe("3.5L PowerBoost hybrid");
+    expect(resolveTowVehicle("F-150 3.5-liter EcoBoost").configuration.engine).toBe("3.5L EcoBoost V6");
+    expect(resolveTowVehicle("F-150 5.0 with 3.55 axle").configuration.engine).toBe("5.0L V8");
+    expect(resolveTowVehicle("Silverado 1500 V8").askShopper[0].options).toEqual(["5.3L V8", "6.2L V8"]);
+  });
+
+  it("asks nothing once a rating is stated", () => {
+    const r = resolveTowVehicle("F-150 5.0 V8 rated 11,300 lbs");
+    expect(r.statedRatingLbs).toBe(11300);
+    expect(r.resolvedLabel).toBe("Ford F-150 5.0L V8");
+    expect(r.askShopper).toEqual([]);
+  });
+
   it("marks drivables not_towable and unknown weights unknown", () => {
     const r = resolveTowVehicle("rated 10,000 lbs");
     const rv = unit({ rv_type: "Class C", title: "2025 Coachmen Cross Trail Class C" });

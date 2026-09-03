@@ -4,9 +4,8 @@
 WebMCP capabilities, so a shopper and their AI agent can work one shared,
 explainable, human-approved buying session on the same page.
 
-Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/).
-License: [MIT](./LICENSE) · Live demo: **https://matchrv-webmcp.onrender.com/shop** ·
-Demo video: [`docs/demo/matchrv-demo.mp4`](docs/demo/matchrv-demo.mp4) (2:08) · [**Watch on YouTube**](https://youtu.be/UQceVRCTzBE)
+**[Devpost Submission](https://devpost.com/software/matchrv)** · Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/).
+License: [MIT](./LICENSE) · Live: **https://matchrv-webmcp.onrender.com/shop** · Video: [YouTube](https://youtu.be/UQceVRCTzBE)
 
 ![Agent-native shopping on MatchRV](docs/screenshots/02-search-results.png)
 

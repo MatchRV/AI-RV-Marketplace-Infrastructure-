@@ -1,4 +1,10 @@
-# DEVPOST_SUBMISSION — copy for the submission form
+# DEVPOST_SUBMISSION
+
+**Submission:** https://devpost.com/software/matchrv
+
+---
+
+## Original submission form copy
 
 **Title:** MatchRV — Agent-Native RV Shopping
 

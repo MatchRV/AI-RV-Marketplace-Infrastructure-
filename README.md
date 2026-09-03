@@ -6,7 +6,7 @@ explainable, human-approved buying session on the same page.
 
 Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com/).
 License: [MIT](./LICENSE) · Live demo: **https://matchrv-webmcp.onrender.com/shop** ·
-Demo video: [`docs/demo/matchrv-demo.mp4`](docs/demo/matchrv-demo.mp4) (2:08, silent — narration in [`docs/demo/NARRATION.md`](docs/demo/NARRATION.md); YouTube link added at submission)
+Demo video: [`docs/demo/matchrv-demo.mp4`](docs/demo/matchrv-demo.mp4) (2:08) · [**Watch on YouTube**](https://youtu.be/UQceVRCTzBE)
 
 ![Agent-native shopping on MatchRV](docs/screenshots/02-search-results.png)
 

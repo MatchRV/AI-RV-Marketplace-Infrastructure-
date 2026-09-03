@@ -8,7 +8,7 @@ matters.
 
 **Live demo:** https://matchrv-webmcp.onrender.com/shop
 **Repo (MIT):** https://github.com/MatchRV/AI-RV-Marketplace-Infrastructure-
-**Video:** _YouTube link_
+**Video:** https://youtu.be/UQceVRCTzBE
 **Gallery images:** `docs/screenshots/devpost/` — upload in numbered order;
 `1-cover-search-results.png` is the cover (results + rail + funnel), then the
 Why-this-match panel (receipts, unknowns, freshness) and the NOT SENT approval

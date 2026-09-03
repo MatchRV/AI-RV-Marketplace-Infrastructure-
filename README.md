@@ -124,9 +124,11 @@ tools (`getTools()`) and drives the full workflow (`executeTool()`) —
 search → shared-state sync in both directions → compare/explain → the
 human-gated dealer contact. 6/6 automated steps, reproducible with
 `pnpm --filter @workspace/scripts run native-webmcp`; evidence in
-[WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md). What that layer cannot
-prove — a real agent phrasing the calls from natural language in ChatGPT's
-browser — is tracked there honestly as the remaining pre-submission check.
+[WEBMCP_TEST_RESULTS.md](./WEBMCP_TEST_RESULTS.md). The layer above that —
+a real agent *choosing and phrasing* the calls from natural language against
+the live deployment — was run on 2026-09-03 and is recorded there too (§8),
+every figure re-checked against the live API, including the one UX finding
+it raised.
 
 ## The WebMCP tool surface
 
@@ -286,10 +288,10 @@ Zod v4 (schemas → JSON Schema) · Vitest · Playwright · WebMCP
   against the same committed inventory snapshot the WebMCP tools use. Some
   legacy TypeScript debt remains (tracked in [ROADMAP.md](./ROADMAP.md)).
 - Lead delivery is intentionally disabled in the demo environment.
-- Not yet verified (tracked in WEBMCP_TEST_RESULTS §6): a real agent driving
-  the tools from natural language in ChatGPT's in-app browser, and the
-  public HTTPS deploy — both need a human with the desktop app and hosting
-  access.
+- Score headline vs. evidence (found by the real-agent pass,
+  WEBMCP_TEST_RESULTS §8): a unit can score ~70 from price, distance and
+  model year alone while every off-grid preference is unknown. The receipts
+  disclose it; the headline number doesn't yet. Fix tracked in ROADMAP (P1).
 
 ## Roadmap
 

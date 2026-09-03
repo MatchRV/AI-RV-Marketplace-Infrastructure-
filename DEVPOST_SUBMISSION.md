@@ -122,6 +122,12 @@ give you: the human and the agent are first-class users of the *same page*.
   compare → staged contact → forged-token refusal → human approval → receipt.
   The judge's own demo conversation, run word for word: **12/12**, against the
   **live deployment**.
+- **Driven by a real agent from natural language** against the live URL
+  (Sep 3): its own search phrasing, explain, compare, configuration
+  follow-ups for a bare F-150, and a dealer contact it staged but declined
+  to approve on its own — every number it reported re-checked against the
+  snapshot. It also found our next fix: a 70 with zero confirmed preferences
+  reads stronger than it is (WEBMCP_TEST_RESULTS §8).
 - **61 unit tests** on the engine's honesty properties ("absence of evidence is
   never evidence of absence" is literally a test), the tool contracts, and the
   approval boundary — forged, missing, replayed and expired tokens, payload

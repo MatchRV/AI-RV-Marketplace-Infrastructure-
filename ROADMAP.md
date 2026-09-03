@@ -34,14 +34,19 @@
       Cloud Console; it's optional (legacy /browse autocomplete only, which
       degrades gracefully; the WebMCP demo uses no Google services). Rotate
       + restrict instead only if you want autocomplete kept
-- [ ] Deploy the live URL (render.yaml blueprint ≈10 min; any Node host works)
-- [ ] ChatGPT desktop in-app browser pass — exact 15-minute procedure +
-      screenshot list in WEBMCP_TEST_RESULTS.md §6
+- [x] Deploy the live URL — https://matchrv-webmcp.onrender.com (render.yaml)
+- [x] Real-agent pass from natural language against the live URL — done
+      2026-09-03, recorded in WEBMCP_TEST_RESULTS.md §8 (agent app/version +
+      screenshots still to file)
 - [ ] Record the <3 min video (DEMO_SCRIPT.md) and publish on YouTube
 - [ ] Make the repo public; re-add Replit secrets (values were stripped from
       .replit); submit on Devpost before the deadline
 
 ## P1 — meaningfully raises judge score (only after P0)
+- [ ] Score headline vs. evidence (found by the real-agent pass, WTR §8):
+      show "N of M preferences confirmed" beside the match score and label
+      the headline when coverage is zero — a 70 built only from price,
+      distance and model year currently reads stronger than it is
 - [ ] Warm-start/optimize first paint on the deploy (preload fonts,
       code-split legacy routes out of the 1.7 MB main chunk)
 - [ ] Slim the deploy: `public/rv-images` (187 MB) is referenced only by a

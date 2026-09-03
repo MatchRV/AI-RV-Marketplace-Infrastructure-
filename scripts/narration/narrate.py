@@ -14,6 +14,11 @@ Env: SP=<scratch dir for clips>
 
   holds        -> print SCENE_MIN_HOLDS JSON (clip seconds + margin) for record-demo.ts
   mux VIDEO    -> place each clip exactly at its scene start, mux to matchrv-demo-narrated.mp4
+  trim HEAD END [PAD]
+               -> run last. Drops the page-load lead-in before the title card (HEAD s), cuts
+                  the closing card's fade-out (from END s) and freezes the card for PAD s;
+                  rewrites both cuts in place and shifts NARRATION.md. Sep 3 recording:
+                  python3 scripts/narration/narrate.py trim 4.0 162.65 1.35
 Clips are synthesized once at natural pace (tempo 1.0) into $SP/narr/."""
 import json, os, re, subprocess, sys, wave
 import imageio_ffmpeg
@@ -27,6 +32,20 @@ def clip(i):
     if not os.path.exists(wav):
         subprocess.run([F,"-y","-loglevel","error","-i",mp3,"-ar",str(RATE),"-ac","1","-sample_fmt","s16",wav],check=True)
     with wave.open(wav) as w: return wav, w.getnframes()/w.getframerate()
+if sys.argv[1] == "trim":
+    head, end = float(sys.argv[2]), float(sys.argv[3]); pad = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
+    silent, narrated = f"{D}/matchrv-demo.mp4", f"{D}/matchrv-demo-narrated.mp4"
+    enc = ["-c:v","libx264","-preset","medium","-crf","19","-pix_fmt","yuv420p","-r","30","-movflags","+faststart"]
+    subprocess.run([F,"-y","-loglevel","error","-ss",str(head),"-t",str(end-head),"-i",silent,"-vf",f"tpad=stop_mode=clone:stop_duration={pad}",*enc,"-an",silent+".tmp.mp4"],check=True)
+    subprocess.run([F,"-y","-loglevel","error","-i",silent+".tmp.mp4","-ss",str(head),"-i",narrated,"-map","0:v","-map","1:a","-c:v","copy","-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",narrated+".tmp.mp4"],check=True)
+    os.replace(silent+".tmp.mp4", silent); os.replace(narrated+".tmp.mp4", narrated)
+    md = f"{D}/NARRATION.md"; rows = open(md).read().split("\n")
+    def shift(m):
+        t = max(0.0, int(m.group(1))*60 + int(m.group(2)) - head); return f"| {int(t//60)}:{int(t%60):02d} |"
+    open(md,"w").write("\n".join(re.sub(r"^\| (\d+):(\d\d) \|", shift, r) for r in rows))
+    for v in (silent, narrated):
+        r = subprocess.run([F,"-i",v],capture_output=True,text=True); print(v, re.search(r"Duration: [\d:.]+", r.stderr).group(0))
+    sys.exit()
 clips = [clip(i) for i in range(len(lines))]
 if sys.argv[1] == "holds":
     print(json.dumps([round(d + MARGIN, 2) for _, d in clips])); sys.exit()

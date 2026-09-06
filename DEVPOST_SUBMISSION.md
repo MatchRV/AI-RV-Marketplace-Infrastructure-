@@ -1,4 +1,10 @@
-# DEVPOST_SUBMISSION — copy for the submission form
+# DEVPOST_SUBMISSION
+
+**Submission:** https://devpost.com/software/matchrv
+
+---
+
+## Original submission form copy
 
 **Title:** MatchRV — Agent-Native RV Shopping
 
@@ -8,7 +14,12 @@ matters.
 
 **Live demo:** https://matchrv-webmcp.onrender.com/shop
 **Repo (MIT):** https://github.com/MatchRV/AI-RV-Marketplace-Infrastructure-
-**Video:** _YouTube link_
+**Video:** https://youtu.be/UQceVRCTzBE
+**Gallery images:** `docs/screenshots/devpost/` — upload in numbered order;
+`1-cover-search-results.png` is the cover (results + rail + funnel), then the
+Why-this-match panel (receipts, unknowns, freshness) and the NOT SENT approval
+card. Captured live through Chrome's native WebMCP runtime by
+`pnpm --filter @workspace/scripts run devpost-shots`.
 
 ---
 
@@ -63,7 +74,9 @@ Three things make it feel like the future instead of a wrapper:
   decoding like `26BHX → bunkhouse`, a receipts-based boondocking score); a
   three-valued matching engine (pass / fail / **unverified** — unknowns
   never silently exclude or include); tow-fit logic that treats a bare
-  "F-150" as the 5,000–13,500 lbs range it really is; offline geography.
+  "F-150" as the 5,000–13,500 lbs range it really is and hands the agent
+  the questions that narrow it (which engine, which tow package, the
+  door-sticker rating); offline geography.
 - **Tool contracts defined once in Zod**, compiled to JSON Schema for
   `document.modelContext.registerTool()` and re-enforced server-side on every
   call — the schema agents see is literally the validator that runs.
@@ -103,8 +116,11 @@ give you: the human and the agent are first-class users of the *same page*.
   product: parse only labeled evidence, tag provenance, keep unknown unknown.
 - **Tow honesty.** A bare "F-150" tows anywhere from 5,000 to 13,500 lbs
   depending on configuration. One fake number would be wrong in both
-  directions — so verdicts include `depends_on_config`, and a stated rating
-  gets a safety margin plus a payload caveat.
+  directions — so verdicts include `depends_on_config`, and every tool result
+  carries `askShopper` follow-ups (which engine, which tow package, the
+  door-sticker rating) so the agent asks instead of guessing. "5.0L V8" alone
+  narrows the band to 8,700–13,000 lbs; "Max Tow" lifts it to 11,000–13,000;
+  a stated rating replaces it and gets a safety margin plus a payload caveat.
 - **Write-action trust.** We refused to let approval live in the model's
   context. It lives in a server-side state machine keyed to a human click.
 
@@ -117,6 +133,12 @@ give you: the human and the agent are first-class users of the *same page*.
   compare → staged contact → forged-token refusal → human approval → receipt.
   The judge's own demo conversation, run word for word: **12/12**, against the
   **live deployment**.
+- **Driven by a real agent from natural language** against the live URL
+  (Sep 3): its own search phrasing, explain, compare, configuration
+  follow-ups for a bare F-150, and a dealer contact it staged but declined
+  to approve on its own — every number it reported re-checked against the
+  snapshot. It also found our next fix: a 70 with zero confirmed preferences
+  reads stronger than it is (WEBMCP_TEST_RESULTS §8).
 - **61 unit tests** on the engine's honesty properties ("absence of evidence is
   never evidence of absence" is literally a test), the tool contracts, and the
   approval boundary — forged, missing, replayed and expired tokens, payload

@@ -1,60 +1,60 @@
 {
-  "totalSeconds": 127.832,
+  "totalSeconds": 182.472,
   "scenes": [
     {
-      "t": 7.631,
+      "t": 30.22,
       "caption": "Buying an RV means 30 dealer sites describing the same trailer 30 different ways. On real dealer pages, GVWR is machine-readable under 1% of the time. Agents can't shop on that web."
     },
     {
-      "t": 14.164,
+      "t": 38.142,
       "caption": "MatchRV fixes the layer underneath: this page exposes its real inventory as ten structured WebMCP tools — capabilities, not a chatbot."
     },
     {
-      "t": 21.372,
+      "t": 48.442,
       "caption": "One messy sentence in — F-150, two kids, bunkhouse trailer under $45k, under 30 ft, near Tacoma, we boondock, solar &amp; lithium — and the agent calls search_inventory with typed constraints."
     },
     {
-      "t": 29.542,
+      "t": 62.894,
       "caption": "1,056 real units searched in ~15 ms. Same results on the page and in the agent — and the funnel says exactly what was excluded, and why."
     },
     {
-      "t": 40.886,
+      "t": 75.904,
       "caption": "The tow question is answered honestly: a bare “F-150” is a 5,000–13,500 lb range, so the rail states the range and asks for the door-sticker rating instead of guessing."
     },
     {
-      "t": 47.893,
+      "t": 85.487,
       "caption": "Every recommendation carries receipts: which hard checks passed on verified data, the exact score math, and what is unknown — solar the dealer never published stays a question mark. Unknown is not no."
     },
     {
-      "t": 61.043,
+      "t": 100.708,
       "caption": "Shared state, both directions. The human clicks a preference by hand — two entry doors — and it lands in the same session the agent reads."
     },
     {
-      "t": 66.645,
+      "t": 108.559,
       "caption": "“Drop the budget to $35k.” The agent's next call is a refine: everything else is kept, the whole funnel recomputes, and the ledger shows You, then Agent."
     },
     {
-      "t": 76.994,
+      "t": 120.991,
       "caption": "compare_units returns true values, not prose — best-in-row markers, tow margins spelled out, and unknown cells left visibly Unknown. The agent reasons over real numbers."
     },
     {
-      "t": 91.08,
+      "t": 135.732,
       "caption": "Now the consequential part. The agent can only stage a dealer contact: here is exactly what would be sent, behind a literal NOT SENT banner. The message it drafted asks the dealer to confirm the unknowns."
     },
     {
-      "t": 100.449,
+      "t": 145.933,
       "caption": "If the agent tries to submit early, the server refuses. Approval is a single-use token only this page holds — never in any tool result, never in the model's context."
     },
     {
-      "t": 106.993,
+      "t": 154.455,
       "caption": "The human clicks Approve. Now it goes through — once."
     },
     {
-      "t": 111.288,
+      "t": 159.956,
       "caption": "An exact receipt: dealer, unit, time, reference. Duplicates are blocked. And it never claims a real dealership was contacted — this is a demo environment, and it says so."
     },
     {
-      "t": 119.308,
+      "t": 171.6,
       "caption": ""
     }
   ]

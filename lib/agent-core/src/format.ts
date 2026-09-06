@@ -7,7 +7,8 @@
  * one `get_unit_details` call away, and the human sees everything in the UI.
  */
 
-import type { CanonicalUnit, SearchOutcome, UnitMatch } from "./types.js";
+import type {
+  TowResolution, CanonicalUnit, SearchOutcome, UnitMatch } from "./types.js";
 import { freshnessHours } from "./dataset.js";
 
 const usd = (n: number | null) => (n === null ? null : Math.round(n));
@@ -37,6 +38,33 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
   };
 }
 
+/**
+ * Tow block shared by search_inventory and evaluate_tow_fit results. When the
+ * configuration is unknown it carries the questions the agent should ask —
+ * engine, tow package, door-sticker rating — so the range gets narrowed by
+ * the shopper's answers instead of a guess.
+ */
+export function compactTowResolution(r: TowResolution): Record<string, unknown> {
+  const ask = r.askShopper ?? [];
+  return {
+    resolved: r.resolvedLabel ?? r.matched?.label ?? r.input,
+    ...(r.statedRatingLbs != null ? { statedRatingLbs: r.statedRatingLbs } : {}),
+    ...(r.rangeLbs ? { ratingRangeLbs: `${r.rangeLbs.min}-${r.rangeLbs.max}` } : {}),
+    ...(r.configuration?.engine ? { engine: r.configuration.engine } : {}),
+    ...(r.configuration?.towPackage != null ? { towPackage: r.configuration.towPackage } : {}),
+    capLbs: r.filterCapLbs,
+    note: r.caveats[0],
+    ...(ask.length > 0
+      ? {
+          askShopper: ask.map((q) => (q.options ? `${q.question} Options: ${q.options.join(" / ")}` : q.question)),
+          exactRatingSources: r.exactRatingSources ?? [],
+          guidance:
+            "Ask the shopper these before recommending anything near the top of the range, then re-run with tow_vehicle including the answers (e.g. '2024 F-150 5.0L V8 Max Tow' or 'F-150 rated 11,300 lbs'). Never assume a configuration.",
+        }
+      : {}),
+  };
+}
+
 export function compactSearchResult(
   outcome: SearchOutcome,
   limit: number,
@@ -49,15 +77,7 @@ export function compactSearchResult(
       unverified: outcome.funnel.unverified,
       excluded: outcome.funnel.excluded.slice(0, 6).map((e) => `${e.reason}: ${e.count}`),
     },
-    ...(outcome.towResolution
-      ? {
-          towVehicle: {
-            resolved: outcome.towResolution.matched?.label ?? outcome.towResolution.input,
-            capLbs: outcome.towResolution.filterCapLbs,
-            note: outcome.towResolution.caveats[0],
-          },
-        }
-      : {}),
+    ...(outcome.towResolution ? { towVehicle: compactTowResolution(outcome.towResolution) } : {}),
     results: shown.map(compactUnitSummary),
     ...(shown.length === 0
       ? {

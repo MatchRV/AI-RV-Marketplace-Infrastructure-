@@ -4,10 +4,12 @@
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
+  "type": "module",
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
+    "start": "node server.js",
     "dev": "node dev.mjs",
     "test": "pnpm --filter @workspace/agent-core run test && pnpm --filter @workspace/api-server run test && pnpm --filter @workspace/rv-marketplace run test",
     "e2e": "pnpm --filter @workspace/scripts run e2e-shop",
@@ -16,5 +18,10 @@
     "build:web": "pnpm --filter @workspace/rv-marketplace run build",
     "build:api": "pnpm --filter @workspace/api-server run build",
     "seed:db": "pnpm --filter @workspace/api-server run seed"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
   }
 }

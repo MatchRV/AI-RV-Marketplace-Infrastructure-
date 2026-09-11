@@ -14,7 +14,8 @@
     "demo-case": "tsx ./src/demo-case.ts",
     "fetch-chrome": "node ./src/fetch-chrome.mjs",
     "record-broll": "tsx ./src/record-broll.ts",
-    "record-demo": "tsx ./src/record-demo.ts"
+    "record-demo": "tsx ./src/record-demo.ts",
+    "devpost-shots": "tsx ./src/devpost-shots.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",

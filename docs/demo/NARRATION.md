@@ -1,42 +1,23 @@
-# NARRATION — read this aloud over `matchrv-demo.mp4`
+# Narration — read aloud over docs/demo/matchrv-demo.mp4
 
-Video length: **2:08** (rules cap is 3:00; audio is required). The captions on screen are this text — you are reading what the judge sees, so pace to the caption changes below.
+Timestamps are video time. Each line fits inside its scene; the captions on screen say the same thing, so you can simply read what you see.
 
-## How to produce the final video in one take (≈15 minutes)
-
-1. Open `docs/demo/matchrv-demo.mp4` in any player, full screen, sound off (it's silent).
-2. Start a screen recording **with your microphone on** — QuickTime (⌘⇧5 → Record → Options → your mic), OBS, or Loom.
-3. Press play and read each line below as its caption appears. Calm pace; you have slack.
-4. Stop, export as 1080p MP4, upload to YouTube as **Public** (or Unlisted), title: *MatchRV — agent-native RV shopping with WebMCP*.
-5. Paste the YouTube link into the Devpost form and into `README.md` ("Demo video:").
-
-Optional polish: record audio only (Voice Memos works) and mux it in with any editor — same script, same timings.
-
-## Script, timed to the video
-
-| Time | Say this |
+| Start | Line |
 | --- | --- |
-| 0:00 | *(title card — pause, let it land)* MatchRV. Agent-native RV shopping, built on WebMCP. |
-| 0:08 | Buying an RV means 30 dealer sites describing the same trailer 30 different ways. On real dealer pages, GVWR is machine-readable under 1% of the time. Agents can't shop on that web. |
-| 0:14 | MatchRV fixes the layer underneath: this page exposes its real inventory as ten structured WebMCP tools — capabilities, not a chatbot. |
-| 0:22 | One messy sentence in — F-150, two kids, bunkhouse trailer under $45k, under 30 ft, near Tacoma, we boondock, solar &amp; lithium — and the agent calls search_inventory with typed constraints. |
-| 0:30 | 1,056 real units searched in ~15 ms. Same results on the page and in the agent — and the funnel says exactly what was excluded, and why. |
-| 0:41 | The tow question is answered honestly: a bare “F-150” is a 5,000–13,500 lb range, so the rail states the range and asks for the door-sticker rating instead of guessing. |
-| 0:48 | Every recommendation carries receipts: which hard checks passed on verified data, the exact score math, and what is unknown — solar the dealer never published stays a question mark. Unknown is not no. |
-| 1:01 | Shared state, both directions. The human clicks a preference by hand — two entry doors — and it lands in the same session the agent reads. |
-| 1:07 | “Drop the budget to $35k.” The agent's next call is a refine: everything else is kept, the whole funnel recomputes, and the ledger shows You, then Agent. |
-| 1:17 | compare_units returns true values, not prose — best-in-row markers, tow margins spelled out, and unknown cells left visibly Unknown. The agent reasons over real numbers. |
-| 1:31 | Now the consequential part. The agent can only stage a dealer contact: here is exactly what would be sent, behind a literal NOT SENT banner. The message it drafted asks the dealer to confirm the unknowns. |
-| 1:40 | If the agent tries to submit early, the server refuses. Approval is a single-use token only this page holds — never in any tool result, never in the model's context. |
-| 1:47 | The human clicks Approve. Now it goes through — once. |
-| 1:51 | An exact receipt: dealer, unit, time, reference. Duplicates are blocked. And it never claims a real dealership was contacted — this is a demo environment, and it says so. |
-| end | *(closing card)* The inventory was always online. Now agents can actually understand it. |
+| 0:00 | MatchRV. Agent-native RV shopping, built on WebMCP. |
+| 0:08 | Thirty dealer sites describe one trailer thirty different ways. Agents can't shop on that web. |
+| 0:16 | MatchRV exposes its real inventory as ten structured WebMCP tools. Capabilities, not a chatbot. |
+| 0:26 | One messy sentence in: an F-150, a bunkhouse trailer, under forty-five thousand, near Tacoma, solar and lithium. The agent calls search inventory. |
+| 0:41 | One thousand fifty-six real units searched in fifteen milliseconds. Page and agent see the same results, and the funnel says exactly what was excluded, and why. |
+| 0:54 | A bare F-150 spans five to thirteen thousand pounds. The rail states the range instead of guessing. |
+| 1:03 | Every recommendation carries receipts: which checks passed on verified data, the score math, and what is unknown. Solar the dealer never published stays a question mark. Unknown is not no. |
+| 1:18 | Shared state, both directions. The human clicks; the agent's session already knows. |
+| 1:26 | Drop the budget to thirty-five thousand. The agent refines: everything else is kept, the funnel recomputes, and the ledger shows You, then Agent. |
+| 1:39 | Compare returns true values, not prose: best-in-row markers, tow margins spelled out, unknown cells left visibly unknown. The agent reasons over real numbers. |
+| 1:53 | The agent can only stage a dealer contact, behind a NOT SENT banner. The draft asks the dealer to confirm the unknowns. |
+| 2:04 | Submit early, and the server refuses. Approval is a single-use token only this page holds. |
+| 2:12 | The human clicks Approve. Now it goes through, once. |
+| 2:18 | An exact receipt: dealer, unit, time, reference. Duplicates blocked. And it never claims a real dealership was contacted. |
+| 2:30 | The inventory was always online. Now agents can actually understand it. MatchRV, built on WebMCP. |
 
-## If you want to say more than the captions
-
-Add these where they fit — they're the facts judges reward:
-
-- "All ten tools are discovered and executed through Chrome's own `document.modelContext` — this is a real WebMCP runtime, not a mock."
-- "No LLM runs inside MatchRV. The site does deterministic arithmetic over 1,056 real units; the shopper's agent does the reasoning."
-- "The approval token is minted by the server, held only by this page, single-use, and never appears in any tool result."
-- "Everything you're seeing is live at matchrv-webmcp dot onrender dot com slash shop."
+**Recording your own voice:** play the MP4 full-screen, screen-record with the mic on, read each line as its scene appears. Under 3:00, audio required, upload to YouTube as Public.

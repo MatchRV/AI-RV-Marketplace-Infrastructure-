@@ -29,6 +29,7 @@ import {
   explainMatchInput,
   checkAvailabilityInput,
   compareUnitsInput,
+  compactTowResolution,
   evaluateTowFitInput,
   updateShortlistInput,
   prepareDealerContactInput,
@@ -238,11 +239,11 @@ async function handleTowFit(raw: unknown): Promise<ToolResult> {
 }
 
 function compactTow(r: TowResolution, fits: (TowFitResult & { title: string })[]): ToolResult {
+  const { resolved, note, ...rest } = compactTowResolution(r);
   return {
-    vehicle: r.matched?.label ?? r.input,
-    ...(r.statedRatingLbs ? { statedRatingLbs: r.statedRatingLbs } : {}),
-    ...(r.rangeLbs ? { ratingRangeLbs: `${r.rangeLbs.min}-${r.rangeLbs.max}` } : {}),
-    caveat: r.caveats[0],
+    vehicle: resolved,
+    ...rest,
+    caveat: note,
     fits: fits.map((f) => `${f.title}: ${f.verdict.replace(/_/g, " ")} — ${f.detail}`),
   };
 }

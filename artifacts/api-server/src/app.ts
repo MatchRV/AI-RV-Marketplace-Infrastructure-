@@ -5,6 +5,7 @@ import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import { matchRvMcpNodeHandler } from "./mcp";
 import { DB_MODE } from "@workspace/db";
 
 const app: Express = express();
@@ -12,6 +13,8 @@ const app: Express = express();
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
+// MCP must receive the raw request body; mount it before Express JSON parsing.
+app.all("/mcp", matchRvMcpNodeHandler);
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 

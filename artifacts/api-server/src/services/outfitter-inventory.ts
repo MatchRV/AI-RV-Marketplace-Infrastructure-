@@ -14,8 +14,8 @@
  * feed the ranking pipeline identical data.
  *
  * Honesty rules carried over unchanged: no fabricated market values, deal
- * scores, or days-on-market. Every unit in the snapshot has photos, which is
- * what the SQL path's `jsonb_array_length(images) > 0` guard enforces.
+ * scores, or days-on-market. Expanded inventory can lack photos or dealer
+ * coordinates; preserve empty photos and null coordinates without fabrication.
  */
 
 import type { CanonicalUnit } from "@workspace/agent-core";

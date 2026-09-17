@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import { getListingRows } from "../src/services/outfitter-inventory";
+import { getInventory } from "../src/services/agent-inventory";
 
 const rows = getListingRows();
 
@@ -25,7 +26,8 @@ const REQUIRED_COLUMNS = [
 
 describe("outfitter snapshot inventory", () => {
   it("projects the whole snapshot", () => {
-    expect(rows.length).toBe(1056);
+    expect(rows.length).toBe(getInventory().units.length);
+    expect(rows.map((r) => r.id)).toEqual(getInventory().units.map((u) => u.id));
   });
 
   it("is cached — repeated calls return the same array", () => {
@@ -38,9 +40,10 @@ describe("outfitter snapshot inventory", () => {
     }
   });
 
-  it("never offers a unit without a photo", () => {
-    // The SQL path enforces this with jsonb_array_length(images) > 0.
-    expect(rows.every((r) => Array.isArray(r.images) && r.images.length > 0)).toBe(true);
+  it("preserves supplied photos and leaves missing photos empty", () => {
+    for (const r of rows) {
+      expect(r.images).toEqual(getInventory().byId.get(String(r.id))!.images);
+    }
   });
 
   it("carries the column defaults the database would have applied", () => {
@@ -55,8 +58,12 @@ describe("outfitter snapshot inventory", () => {
     expect(rows.every((r) => r.deal_savings === 0)).toBe(true);
   });
 
-  it("gives every unit a dealer with coordinates, so distance ranking works", () => {
-    expect(rows.every((r) => typeof r.latitude === "number" && typeof r.longitude === "number")).toBe(true);
+  it("preserves dealer coordinates, including unknown locations", () => {
+    for (const r of rows) {
+      const dealer = getInventory().byId.get(String(r.id))!.dealer;
+      expect(r.latitude).toBe(dealer.lat);
+      expect(r.longitude).toBe(dealer.lng);
+    }
     expect(rows.every((r) => typeof r.dealer_name === "string" && (r.dealer_name as string).length > 0)).toBe(true);
   });
 

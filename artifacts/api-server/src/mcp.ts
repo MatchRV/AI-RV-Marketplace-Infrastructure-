@@ -244,7 +244,7 @@ function buildMatchRvServer(): McpServer {
         return textResult({ preview: created.preview, next: "Human approval is required in MatchRV before action=submit can succeed." });
       }
 
-      const result = submitPreview(input.preview_id);
+      const result = await submitPreview(input.preview_id);
       if (!result.ok) {
         return textResult({ error: result.code, guidance: result.guidance ?? "The preview must be approved by the human in MatchRV before submission." }, true);
       }

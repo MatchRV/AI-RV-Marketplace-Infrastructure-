@@ -1,13 +1,17 @@
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { matchingUnits } from "./matching-fixture.js";
 import {
   indexSnapshot,
   runSearch,
   compactSearchResult,
   compactUnitDetail,
   jsonSize,
+  availabilitySummary,
+  evaluateUnit,
+  buildContext,
   type InventorySnapshot,
 } from "../src/index.js";
 
@@ -16,16 +20,19 @@ const snapshot = JSON.parse(
   readFileSync(resolve(here, "../data/inventory.snapshot.json"), "utf-8"),
 ) as InventorySnapshot;
 const idx = indexSnapshot(snapshot);
+afterEach(() => vi.useRealTimers());
 
 describe("committed inventory snapshot", () => {
   it("holds a real, well-formed corpus", () => {
     expect(idx.units.length).toBeGreaterThan(900);
     expect(snapshot.stats.dealers).toBeGreaterThan(20);
-    for (const u of idx.units.slice(0, 200)) {
+    expect(snapshot.stats.units).toBe(idx.units.length);
+    for (const u of idx.units) {
       expect(u.priceUsd.value).toBeGreaterThan(999);
-      expect(u.images.length).toBeGreaterThan(0);
-      expect(u.provenance.lastSeenAt).toBeTruthy();
-      expect(u.dealer.lat).not.toBeNull();
+      expect(Array.isArray(u.images)).toBe(true);
+      expect(Number.isFinite(Date.parse(u.provenance.lastSeenAt))).toBe(true);
+      expect(u.dealer.lat === null || (Number.isFinite(u.dealer.lat) && Math.abs(u.dealer.lat) <= 90)).toBe(true);
+      expect(u.dealer.lng === null || (Number.isFinite(u.dealer.lng) && Math.abs(u.dealer.lng) <= 180)).toBe(true);
     }
   });
 
@@ -40,9 +47,24 @@ describe("committed inventory snapshot", () => {
     expect(falseSolar).toBe(0); // absence of evidence is never evidence of absence
   });
 
+  it("does not verify distance when dealer coordinates are unknown", () => {
+    const u = structuredClone(matchingUnits[0]);
+    u.dealer.lat = null;
+    u.dealer.lng = null;
+    u.images = [];
+    const match = evaluateUnit(u, buildContext({ location: { place: "Tacoma", radiusMiles: 150 } }));
+    expect(match.distanceMiles).toBeNull();
+    expect(match.hardStatus).toBe("unverified");
+    expect(match.unknownFields).toContain("dealerLocation");
+    expect(match.unit.images).toEqual([]);
+  });
+});
+
+describe("matching against stable fixtures", () => {
+
   it("answers the flagship demo query fast with a consistent funnel", () => {
     const t0 = performance.now();
-    const out = runSearch(idx.units, {
+    const out = runSearch(matchingUnits, {
       rvTypes: ["travel_trailer"],
       priceMaxUsd: 45000,
       lengthMaxFt: 30,
@@ -55,8 +77,9 @@ describe("committed inventory snapshot", () => {
     });
     const ms = performance.now() - t0;
     expect(ms).toBeLessThan(250);
-    expect(out.funnel.totalUnits).toBe(idx.units.length);
-    expect(out.funnel.passedHard).toBeGreaterThan(10);
+    expect(out.funnel.totalUnits).toBe(matchingUnits.length);
+    expect(out.funnel.passedHard).toBe(matchingUnits.length);
+    expect(out.results.map((m) => m.unit.id).sort()).toEqual(matchingUnits.map((u) => u.id).sort());
     const excluded = out.funnel.excluded.reduce((a, b) => a + b.count, 0);
     // collapsed identical twins keep the funnel math on raw units
     expect(out.funnel.passedHard + out.funnel.unverified + excluded).toBe(out.funnel.totalUnits);
@@ -67,7 +90,7 @@ describe("committed inventory snapshot", () => {
   });
 
   it("returns empty-but-explained results for impossible searches", () => {
-    const out = runSearch(idx.units, { priceMaxUsd: 1500, mustHave: ["bunkhouse"], sleepsMin: 12 });
+    const out = runSearch(matchingUnits, { priceMaxUsd: 1500, mustHave: ["bunkhouse"], sleepsMin: 12 });
     expect(out.results.length).toBe(0);
     expect(out.funnel.excluded.length).toBeGreaterThan(0);
     const compact = compactSearchResult(out, 5) as { guidance?: string };
@@ -75,7 +98,7 @@ describe("committed inventory snapshot", () => {
   });
 
   it("keeps agent-facing payloads compact", () => {
-    const out = runSearch(idx.units, {
+    const out = runSearch(matchingUnits, {
       rvTypes: ["travel_trailer"],
       priceMaxUsd: 45000,
       location: { place: "Tacoma", radiusMiles: 150 },
@@ -87,9 +110,13 @@ describe("committed inventory snapshot", () => {
     expect(jsonSize(compactUnitDetail(out.results[0].unit))).toBeLessThan(1700);
   });
 
-  it("handles stale data honestly", () => {
-    const u = idx.units[0];
-    const hours = (Date.now() - Date.parse(u.provenance.lastSeenAt)) / 36e5;
-    expect(hours).toBeGreaterThan(48); // this snapshot IS stale — and the tools must say so
+  it("reports freshness from last verification, independent of today's date", () => {
+    const u = matchingUnits[0];
+    const verified = Date.parse(u.provenance.lastSeenAt);
+    vi.useFakeTimers();
+    vi.setSystemTime(verified + 24 * 36e5);
+    expect(availabilitySummary(u, "fixture")).toMatchObject({ stale: false, hoursSinceVerified: 24 });
+    vi.setSystemTime(verified + 72 * 36e5);
+    expect(availabilitySummary(u, "fixture")).toMatchObject({ stale: true, hoursSinceVerified: 72 });
   });
 });

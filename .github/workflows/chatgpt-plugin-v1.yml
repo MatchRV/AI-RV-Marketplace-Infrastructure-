@@ -31,7 +31,6 @@ jobs:
 
     env:
       CI: "true"
-      DISABLE_DB: "1"
       NODE_ENV: "test"
       PORT: "8080"
 
@@ -191,6 +190,16 @@ jobs:
           if (!preview.preview) throw new Error("contact_dealer prepare returned no preview");
           if (preview.approvalToken || preview.approval_token || preview.preview?.approvalToken || preview.preview?.approval_token) {
             throw new Error("Human approval token leaked through MCP transport");
+          }
+
+          // An unapproved preview must be rejected without recording or sending a lead.
+          const blocked = await rpc("tools/call", {
+            name: "contact_dealer",
+            arguments: { action: "submit", preview_id: preview.preview.previewId },
+          });
+          const blockedText = blocked?.content?.find(part => part.type === "text")?.text;
+          if (!blocked?.isError || !blockedText || JSON.parse(blockedText).error !== "awaiting_human_approval") {
+            throw new Error(`Unapproved contact was not rejected correctly: ${JSON.stringify(blocked)}`);
           }
 
           console.log(`MCP smoke test passed: ${expected.join(", ")}`);

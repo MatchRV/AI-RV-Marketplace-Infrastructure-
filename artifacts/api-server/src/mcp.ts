@@ -17,8 +17,11 @@ import { getInventory } from "./services/agent-inventory";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
 const searchInput = z.object({
-  constraints: constraintsSchema,
-  limit: z.number().int().min(1).max(10).optional().default(5),
+  constraints: z.preprocess(
+    (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
+    constraintsSchema,
+  ),
+  limit: z.number().int().min(1).max(10).optional().default(10),
 });
 
 const getRvInput = z.object({ unit_id: z.string().min(3).max(120) });
@@ -41,10 +44,62 @@ const contactInput = z.discriminatedUnion("action", [
   submitDealerContactInput.extend({ action: z.literal("submit") }),
 ]);
 
-function cleanConstraints(value: z.infer<typeof constraintsSchema> | undefined): Constraints {
+function cleanConstraints(value: Record<string, unknown> | undefined | null): Constraints {
+  const aliases: Record<string, string> = {
+    price_max: "priceMaxUsd",
+    price_max_usd: "priceMaxUsd",
+    max_price: "priceMaxUsd",
+    priceMax: "priceMaxUsd",
+    price_min: "priceMinUsd",
+    price_min_usd: "priceMinUsd",
+    min_price: "priceMinUsd",
+    priceMin: "priceMinUsd",
+    rv_types: "rvTypes",
+    types: "rvTypes",
+    type: "rvTypes",
+    body_type: "rvTypes",
+    length_max: "lengthMaxFt",
+    length_max_ft: "lengthMaxFt",
+    max_length: "lengthMaxFt",
+    length_min: "lengthMinFt",
+    length_min_ft: "lengthMinFt",
+    sleeps: "sleepsMin",
+    sleeps_min: "sleepsMin",
+    min_sleeps: "sleepsMin",
+    tow_vehicle: "towVehicle",
+    vehicle: "towVehicle",
+    max_weight: "maxWeightLbs",
+    max_weight_lbs: "maxWeightLbs",
+  };
+  const rvSynonyms: Record<string, string> = {
+    "travel trailer": "travel_trailer",
+    traveltrailer: "travel_trailer",
+    tt: "travel_trailer",
+    "fifth wheel": "fifth_wheel",
+    fifthwheel: "fifth_wheel",
+    "5th wheel": "fifth_wheel",
+    "toy hauler": "toy_hauler",
+    toyhauler: "toy_hauler",
+    "class a": "class_a",
+    "class b": "class_b",
+    "class c": "class_c",
+    "truck camper": "truck_camper",
+    "pop up": "popup_camper",
+    popup: "popup_camper",
+  };
   const out: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value ?? {})) {
-    if (item !== null && item !== undefined) out[key] = item;
+    if (item === null || item === undefined) continue;
+    const mapped = aliases[key] ?? key;
+    let v: unknown = item;
+    if (mapped === "rvTypes") {
+      const arr = Array.isArray(v) ? v : [v];
+      v = arr.map((x) => {
+        const s = String(x).trim().toLowerCase();
+        return rvSynonyms[s] ?? s.replace(/\s+/g, "_");
+      });
+    }
+    if (out[mapped] === undefined) out[mapped] = v;
   }
   return out as Constraints;
 }
@@ -66,7 +121,7 @@ function buildMatchRvServer(): McpServer {
     {
       capabilities: { tools: { listChanged: false } },
       instructions:
-        "MatchRV searches normalized dealer RV inventory. Preserve unknown fields as unknown. Never claim towing safety from a generic vehicle model. Dealer contact is a two-phase action: prepare a preview, require the human to approve it in MatchRV, then submit only the approved preview.",
+        "MatchRV searches normalized dealer RV inventory (~20k priced units). Always cite funnel.totalUnits when describing catalog size — results.length is only the top matches (default 10), never proof the inventory is small. Preserve unknown fields as unknown. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare a preview, require human approval in MatchRV, then submit only the approved preview.",
     },
   );
 
@@ -75,13 +130,13 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search MatchRV's normalized dealer inventory using structured buyer constraints. Returns deterministic match scores, hard/soft match evidence, unknown fields, provenance, and freshness. Use this for natural-language RV shopping after translating the shopper's request into constraints.",
+        "Search MatchRV's normalized dealer inventory (~20k+ priced units) using structured buyer constraints. Always read funnel.totalUnits — a short results array is just the top matches (default limit 10), not a small catalog. Prefer priceMaxUsd/priceMinUsd/rvTypes/condition/sleepsMin/lengthMaxFt. Returns match scores, evidence, unknowns, provenance, and freshness.",
       inputSchema: searchInput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ constraints, limit }) => {
       try {
-        const outcome = runSearch(getInventory().units, cleanConstraints(constraints));
+        const outcome = runSearch(getInventory().units, constraints as Constraints);
         const results = outcome.results.slice(0, limit).map(({ unit, ...match }) => ({ ...match, unit }));
         return textResult({
           funnel: outcome.funnel,

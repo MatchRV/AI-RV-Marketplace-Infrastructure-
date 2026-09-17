@@ -111,6 +111,21 @@ function textResult(payload: unknown, isError = false) {
   };
 }
 
+// The workspace's Zod 3.25 /v4 export predates Standard JSON Schema support.
+// Supply that interface for MCP v2 while retaining the shared validators.
+function mcpSchema<T extends z.ZodType>(schema: T) {
+  const standard: T["~standard"] = schema["~standard"];
+  return {
+    "~standard": {
+      ...standard,
+      jsonSchema: {
+        input: () => z.toJSONSchema(schema, { io: "input" }),
+        output: () => z.toJSONSchema(schema, { io: "output" }),
+      },
+    },
+  };
+}
+
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(
     {
@@ -131,7 +146,7 @@ function buildMatchRvServer(): McpServer {
       title: "Search and match RVs",
       description:
         "Search MatchRV's normalized dealer inventory (~20k+ priced units) using structured buyer constraints. Always read funnel.totalUnits — a short results array is just the top matches (default limit 10), not a small catalog. Prefer priceMaxUsd/priceMinUsd/rvTypes/condition/sleepsMin/lengthMaxFt. Returns match scores, evidence, unknowns, provenance, and freshness.",
-      inputSchema: searchInput,
+      inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ constraints, limit }) => {
@@ -157,7 +172,7 @@ function buildMatchRvServer(): McpServer {
       title: "Get RV details",
       description:
         "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Never invent missing specifications.",
-      inputSchema: getRvInput,
+      inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_id }) => {
@@ -174,7 +189,7 @@ function buildMatchRvServer(): McpServer {
       title: "Compare RVs",
       description:
         "Compare 2-4 MatchRV units side by side against the buyer's constraints. Keeps unknown values explicit and returns deterministic comparison evidence rather than guessed specifications.",
-      inputSchema: compareInput,
+      inputSchema: mcpSchema(compareInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_ids, constraints }) => {
@@ -197,7 +212,7 @@ function buildMatchRvServer(): McpServer {
       title: "Evaluate tow fit",
       description:
         "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs. This is screening guidance, not a towing-safety guarantee. Configuration-specific payload, GVWR/GCWR, hitch ratings, passengers and cargo can change the result.",
-      inputSchema: towInput,
+      inputSchema: mcpSchema(towInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ vehicle, unit_ids }) => {
@@ -219,7 +234,7 @@ function buildMatchRvServer(): McpServer {
       title: "Prepare or submit dealer contact",
       description:
         "Two-phase dealer contact. action=prepare stages the exact dealer/unit/shopper/message preview and sends nothing. The human must approve that preview in MatchRV. action=submit accepts only a preview_id that MatchRV already records as human-approved; otherwise it fails without sending. Never treat prepare as consent to submit.",
-      inputSchema: contactInput,
+      inputSchema: mcpSchema(contactInput),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async (input) => {

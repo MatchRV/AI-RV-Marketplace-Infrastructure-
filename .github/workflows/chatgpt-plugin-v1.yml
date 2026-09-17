@@ -57,7 +57,9 @@ jobs:
         run: pnpm --filter @workspace/agent-core run typecheck
 
       - name: Typecheck API server
-        run: pnpm --filter @workspace/api-server run typecheck
+        run: |
+          pnpm --filter @workspace/agent-core exec tsc -b ../../lib/db ../../lib/api-zod ../../lib/integrations-anthropic-ai
+          pnpm --filter @workspace/api-server run typecheck
 
       - name: Test agent core
         run: pnpm --filter @workspace/agent-core run test

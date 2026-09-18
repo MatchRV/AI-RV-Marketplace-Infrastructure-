@@ -10,9 +10,9 @@
  *     → approved | rejected  [token is single-use and dies with the preview]
  *   submit (agent) → submitted, only from `approved`
  *
- * So neither the agent (which never sees the token) nor an out-of-band HTTP
- * caller (which cannot obtain it) can manufacture the "human approved"
- * state; and the submitted payload is exactly the stored preview — submit
+ * MCP tools never expose the decision token. A browser review link opens
+ * the human confirmation page; visiting it does not approve anything.
+ * The submitted payload is exactly the stored preview — submit
  * carries only the preview id, so nothing the agent sends can mutate what
  * the human reviewed. A submit against anything but an approved preview
  * returns a structured refusal the agent can relay. Duplicate protection:
@@ -37,6 +37,7 @@ export type PreviewStatus =
 export interface LeadPreview {
   previewId: string;
   createdAt: string;
+  expiresAt: string;
   status: PreviewStatus;
   unitId: string;
   unitTitle: string;
@@ -72,7 +73,7 @@ function sweep(): void {
 }
 
 export const CONSENT_LINE =
-  "By approving, you ask MatchRV to send your name, contact info, and this message to the dealership about this unit. Nothing is sent until you approve.";
+  "By approving, you allow MatchRV to record your name, contact info, and this exact message for this RV in its demo lead queue. No message is delivered to the dealership in demo mode.";
 
 export function draftMessage(unit: CanonicalUnit, constraints: Constraints, unknowns: string[]): string {
   const bits: string[] = [];
@@ -96,6 +97,7 @@ export function createPreview(args: {
   const preview: LeadPreview = {
     previewId: `prv_${randomBytes(9).toString("base64url")}`,
     createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + PREVIEW_TTL_MS).toISOString(),
     status: "awaiting_human_approval",
     unitId: args.unit.id,
     unitTitle: args.unit.title,
@@ -126,6 +128,13 @@ export function createPreview(args: {
 export function getPreview(id: string): LeadPreview | null {
   sweep();
   return previews.get(id) ?? null;
+}
+
+/** Browser route only: place the secret in an HttpOnly cookie, never a tool result. */
+export function getBrowserApprovalToken(id: string): string | null {
+  const preview = getPreview(id);
+  if (preview?.status !== "awaiting_human_approval") return null;
+  return approvalSecrets.get(id)?.token ?? null;
 }
 
 export type DecideResult =
@@ -199,7 +208,7 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
     return {
       ok: false,
       code: "duplicate",
-      guidance: "A contact request for this unit and email was already submitted in this session. The dealership has it — don't send another.",
+      guidance: "A contact request for this unit and email was already recorded in this session. Do not submit it again. Demo mode does not deliver to the dealership.",
     };
   }
 

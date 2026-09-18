@@ -15,6 +15,7 @@ import {
 } from "@workspace/agent-core";
 import { getInventory } from "./services/agent-inventory";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
+import { DEMO_DELIVERY_NOTICE, reviewOrigin, reviewUrl } from "./services/agent-review";
 
 const searchInput = z.object({
   constraints: z.preprocess(
@@ -233,12 +234,15 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Prepare or submit dealer contact",
       description:
-        "Two-phase dealer contact. action=prepare stages the exact dealer/unit/shopper/message preview and sends nothing. The human must approve that preview in MatchRV. action=submit accepts only a preview_id that MatchRV already records as human-approved; otherwise it fails without sending. Never treat prepare as consent to submit.",
+        "Two-phase dealer contact. action=prepare returns the exact preview and a reviewUrl: present that link to the human, who must open it and click Approve. Do not open or approve the link on their behalf. action=submit accepts only a preview_id already approved on that page. Chat approval alone cannot bypass this gate. Demo mode records requests only; nothing is delivered to the dealer. Never claim a message was sent.",
       inputSchema: mcpSchema(contactInput),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async (input) => {
       if (input.action === "prepare") {
+        try { reviewOrigin(); } catch {
+          return textResult({ error: "approval_review_unavailable", guidance: "Dealer request review is temporarily unavailable. Nothing was prepared or sent. Contact MatchRV support." }, true);
+        }
         const inv = getInventory();
         const unit = inv.byId.get(input.unit_id);
         if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
@@ -256,12 +260,21 @@ function buildMatchRvServer(): McpServer {
           message,
         });
         // Deliberately do not return approvalToken. Only the MatchRV human UI receives it.
-        return textResult({ preview: created.preview, next: "Human approval is required in MatchRV before action=submit can succeed." });
+        return textResult({
+          preview: created.preview,
+          reviewUrl: reviewUrl(created.preview.previewId),
+          expiresAt: created.preview.expiresAt,
+          deliveryMode: "demo",
+          deliveryNotice: DEMO_DELIVERY_NOTICE,
+          next: "Show the human the reviewUrl as a clickable link. They must open it and click Approve or Reject. Do not open or approve it on their behalf. After approval, submit this same preview_id. Chat consent alone does not record page approval.",
+        });
       }
 
       const result = await submitPreview(input.preview_id);
       if (!result.ok) {
-        return textResult({ error: result.code, guidance: result.guidance ?? "The preview must be approved by the human in MatchRV before submission." }, true);
+        return textResult({ error: result.code, guidance: result.guidance ?? "The preview must be approved by the human in MatchRV before submission.",
+          ...(result.code === "awaiting_human_approval" ? { reviewUrl: reviewUrl(input.preview_id) } : {}),
+        }, true);
       }
       return textResult({
         receipt: {

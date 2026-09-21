@@ -1,0 +1,6 @@
+output/
+*.pdf
+*.xlsx
+report_*.json
+.venv/
+__pycache__/

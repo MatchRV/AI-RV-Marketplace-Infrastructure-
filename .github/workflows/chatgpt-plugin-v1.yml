@@ -33,6 +33,7 @@ jobs:
       CI: "true"
       NODE_ENV: "test"
       PORT: "8080"
+      MATCHRV_PUBLIC_URL: "http://127.0.0.1:8080"
 
     steps:
       - name: Checkout requested ref
@@ -190,6 +191,14 @@ jobs:
             },
           }));
           if (!preview.preview) throw new Error("contact_dealer prepare returned no preview");
+          if (preview.reviewUrl !== `http://127.0.0.1:8080/api/agent/leads/${preview.preview.previewId}/review`) {
+            throw new Error("contact_dealer prepare returned no usable human review link");
+          }
+          const reviewPage = await fetch(preview.reviewUrl);
+          const reviewHtml = await reviewPage.text();
+          if (!reviewPage.ok || !reviewHtml.includes("Approve request") || !reviewHtml.includes("Reject request") || reviewHtml.includes("apt_")) {
+            throw new Error("Human review page is missing its controls or exposes an approval token");
+          }
           if (preview.approvalToken || preview.approval_token || preview.preview?.approvalToken || preview.preview?.approval_token) {
             throw new Error("Human approval token leaked through MCP transport");
           }

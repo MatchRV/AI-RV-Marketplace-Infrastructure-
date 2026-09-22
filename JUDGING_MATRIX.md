@@ -23,9 +23,10 @@ pointers reference WEBMCP_TEST_RESULTS.md (WTR).
   ~1.5–2 KB outputs, field-level self-correction errors, UI updated after
   every call, session tool for human-edit readback.
 
-**Why not 10:** a real agent *choosing and phrasing* these calls from
-natural language (ChatGPT desktop) is still unverified — the one evidence
-tier this environment cannot produce. Manual procedure ready (WTR §6).
+**Why not 10:** the real-agent pass (WTR §8, OpenAI Codex) is a single
+relayed run — no screenshots, and no record of whether it used the WebMCP
+surface or the page UI — and it surfaced a real gap, a 70 headline with
+zero confirmed preferences, that is documented rather than fixed.
 
 ## 2. Execution — **9/10**
 
@@ -93,7 +94,8 @@ the deployed site.
    fixed, diff is now source + seed snapshot + intentional screenshots only.
 2. *"Does it really work in WebMCP, or just in its own test rig?"* → Real
    Chrome's `document.modelContext` discovered and executed everything
-   (WTR §3). Remaining: ChatGPT-agent phrasing, honestly tracked.
+   (WTR §3), and a real agent then drove the live URL from natural language
+   (WTR §8) — every figure it reported re-checked against the snapshot.
 3. *"Can the agent approve its own dealer contact?"* → No: single-use
    page-held token, server-enforced; forged/missing/replay/expiry all
    tested. Payload immutability tested.
@@ -106,11 +108,11 @@ the deployed site.
 
 | Criterion | Score | Blocking action |
 | --- | --- | --- |
-| WebMCP Leverage | 9 | ChatGPT-desktop agent pass (manual procedure ready) |
-| Execution | 9 | — (live; ChatGPT-agent pass still pending for Leverage) |
+| WebMCP Leverage | 9 | — (real-agent pass recorded, WTR §8 — OpenAI Codex; screenshots not on file) |
+| Execution | 9 | — (live; the agent-found score-headline gap is tracked in ROADMAP P1) |
 | Potential Impact | 9 | — |
 | Creativity & Ambition | 9 | — |
 
-**Submission status:** the live deploy exists and is verified
-(https://matchrv-webmcp.onrender.com). One check remains before submitting:
-the ChatGPT-agent pass (WTR §8).
+**Submission status:** live deploy verified (https://matchrv-webmcp.onrender.com);
+real-agent pass recorded (WTR §8). Nothing technical remains before
+submitting — the YouTube link and the Devpost form are human steps.

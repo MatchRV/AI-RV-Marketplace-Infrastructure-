@@ -1,8 +1,9 @@
-# WEBMCP_TEST_RESULTS — recorded runs (updated 2026-08-29, three-pillars round)
+# WEBMCP_TEST_RESULTS — recorded runs (updated 2026-09-03, real-agent pass)
 
-Five verification layers. Every result below was actually executed in this
-repository's environment; the one thing that remains untested is called out
-honestly at the end. Toolchain: Node v22.22.2, pnpm 10.33.0.
+Six verification layers. Every result in §1–§7 was executed in this
+repository's environment. §8 is the one layer this container cannot produce
+— a real agent driving the live site from natural language — run by a human
+on 2026-09-03 and re-checked here, figure by figure, against the live API. Toolchain: Node v22.22.2, pnpm 10.33.0.
 
 Reproduce:
 
@@ -97,7 +98,7 @@ through the browser's own `document.modelContext` (same Chrome 152 + flag as
 | 1 | runtime | 10 tools discovered natively |
 | 2 | *"…bunkhouse travel trailer under $45k, under 30 ft, within 150 mi of Tacoma, F-150, we boondock, solar+lithium, two entry doors"* | funnel 1,056 → 43 verified · 129 unverified · 884 excluded (sums exactly); verified listed first |
 | 3 | (same turn, UI) | rail separates **Hard requirements — must pass** / **Preferences — affect ranking only**; every chip removable by hand |
-| 4 | (same turn, honesty) | **Assumptions & unknowns**: F-150 config unknown → ratings span 5,000–13,500 lbs, filter only above the top rating, per-unit verdicts say "depends on config", asks for the door-sticker rating |
+| 4 | (same turn, honesty) | **Assumptions & unknowns**: F-150 config unknown → ratings span 5,000–13,500 lbs, filter only above the top rating, per-unit verdicts say "depends on config"; the tool result carries `askShopper` follow-ups (which engine, Max Trailer Tow package, door-sticker rating) so the agent narrows the range instead of guessing |
 | 5 | *"Actually, I'll go to $50k if I can get lithium and two doors."* | refine recomputes over all 1,056 (price → $50k; lithium + 2 doors promoted to hard) |
 | 6 | (zero-verified honesty) | **0 verified** stated plainly — "No unit satisfies every hard requirement." banner + data-gap candidates offered; nothing fabricated |
 | 7 | (ranking) | among unverified, fewest unknown hard checks rank first; agent list = page list (identical top 3) |
@@ -180,39 +181,54 @@ that forwards to the real origin with upstream TLS **fully verified** against
 the proxy CA bundle — the bytes exercised are the deployed ones; no
 certificate checking was disabled.
 
-## 8. What remains genuinely untested (submission-blocking until done)
+## 8. A real agent, from natural language, against the live site — 2026-09-03
 
-1. **A real agent choosing and phrasing the tool calls itself** — i.e. the
-   ChatGPT desktop app's in-app browser (or another WebMCP-capable agent
-   surface) driving these tools from natural language. This container has no
-   ChatGPT desktop app. The native browser layer (§3) proves
-   registration/discovery/execution through the real `document.modelContext`;
-   agent behavior on top of it is not fabricated here.
-2. ~~The public HTTPS deployment~~ — **done**, see §7:
-   https://matchrv-webmcp.onrender.com
+This was the one layer this container cannot produce: an LLM agent working
+from natural language and choosing its own steps — not the scripted
+demo-case of §4 — against https://matchrv-webmcp.onrender.com/shop. Jonathan
+ran it on 2026-09-03 in **OpenAI Codex** (ChatGPT's agent, driving the site
+through its browser) and relayed the agent's own end-of-run summary; every
+figure below was then re-checked from this repository against the live
+`/api/agent` endpoints the tools call. Not on file: the Codex version,
+screenshots, and whether its calls went through the browser's WebMCP
+surface or the page UI.
 
-### Manual verification procedure (Jonathan, ~15 minutes, after deploy)
+| What the agent did | Agent's report | Re-checked against live |
+| --- | --- | --- |
+| Search, in its own phrasing | 1,056 searched → **68 verified · 130 unverified** | Reproduced exactly: Tacoma/150 mi, ≤ $45k, travel trailer, ≤ 30 ft, bunkhouse hard, solar/lithium/two doors preferred, boondocking — with **no tow vehicle in the search call**, consistent with the agent evaluating the F-150 in a separate `evaluate_tow_fit` call (which the surface allows). 68 + 130 + 858 excluded = 1,056. |
+| Top result | 2026 Dutchmen Kodiak 130BHS — $15,994, 15.11 ft, 2,300 lbs dry, sleeps 4, 10 mi from Tacoma | All five values match the snapshot (Poulsbo RV, Sumner WA; dealer sale price vs. $22,079 list). |
+| Trust | hard constraints pass; solar, lithium, GVWR, tanks and boondocking readiness stay **unknown** | `hardStatus: pass`; `unknownFields` = solar, lithium, two_entry_doors, boondocking inputs; GVWR null. Nothing guessed. |
+| Explain | the 70% score "exposed its arithmetic and sources" | base 50 + $29,006 under budget 6 + 10 mi away 9 + 2026 model year 5 = **70**; zero preference points. |
+| Freshness | listing says "available" yet is flagged **stale** — last verified May 12, 2026; page says demo snapshot, not live inventory | `check_availability`: status available, `lastVerified` 2026-05-12 (2,736 h), `stale: true`, dataset note present. |
+| Tow, bare "Ford F-150" | configuration follow-up questions and a **marginal** verdict instead of a compatibility claim | range 5,000–13,500 lbs; `askShopper` = engine · Max Trailer Tow package · door-sticker rating; Kodiak verdict `marginal` (2,300 lbs dry, GVWR unknown → downgraded). |
+| Compare | three units side by side, unknown cells preserved | as reported (the compare rendering is asserted in §2 and §4). |
+| Contact | preview staged for qa@example.com, `awaiting_human_approval`, **nothing sent**; the agent stopped at the dialog because approving "would authorize dealer contact" | as reported — exactly the intended boundary. It could not have approved anyway: the token never enters a tool result (§1–§3). |
 
-1. Deploy via `render.yaml` (or any Node host: `pnpm install && pnpm build:web
-   && pnpm build:api && node artifacts/api-server/dist/index.cjs`). Confirm
-   `https://<url>/api/healthz` and that `https://<url>/shop` refreshes cleanly.
-2. ChatGPT **desktop app** → open `https://<url>/shop` in the in-app browser.
-   Confirm the **Site tools** indicator lists 10 MatchRV tools →
-   *screenshot 1*.
-3. Paste the main demo prompt (DEMO_CHECKLIST §Prompts). Confirm the page
-   fills with results while the agent answers → *screenshot 2*.
-4. Click the **2 entry doors** chip, then ask: *"what are my current
-   requirements?"* — the agent should mention two entry doors → *screenshot 3*.
-5. Ask it to contact the dealer about the top unit (use a demo name/email).
-   Confirm the approval card appears, the agent reports it is waiting for
-   approval, and only after you click **Approve & allow send** does it get a
-   receipt → *screenshots 4–5*.
-6. Send me the four–five screenshots + the URL + ChatGPT app version; I'll
-   fold them into this file and unblock the submission status.
+**Finding raised by the agent (recorded, not yet fixed):** a unit can
+headline at 70 from price, distance and model year alone while *every*
+off-grid preference is unknown. The receipts and the unknown list disclose
+this honestly, but a shopper may read the headline number as stronger
+evidence than it is. Proposed fix (ROADMAP P1): show preference coverage
+beside the score — "0 of 4 preferences confirmed" — and label the headline
+when coverage is zero. Not shipped before the deadline: no unreviewed
+scoring change goes to the judged URL.
 
-**Status: implementation is complete and native-runtime verified, but
-submission readiness remains blocked pending the live HTTPS deploy and the
-ChatGPT-agent pass above.**
+### Reproduce it yourself (~15 minutes)
+
+1. Open https://matchrv-webmcp.onrender.com/shop in a WebMCP-capable agent
+   surface — e.g. the ChatGPT desktop app's in-app browser, where the
+   **Site tools** indicator should list 10 MatchRV tools — or in Chrome 149+
+   with `chrome://flags/#enable-webmcp-testing`.
+2. Paste the main demo prompt (DEMO_CHECKLIST §Prompts). The page fills with
+   results while the agent answers.
+3. Click the **2 entry doors** chip, then ask *"what are my current
+   requirements?"* — the agent should mention two entry doors.
+4. Ask it to contact the dealer about the top unit (demo name/email). The
+   approval card appears, the agent reports it is waiting, and only after
+   **Approve & allow send** does it get a receipt.
+
+**Status: implementation complete; native-runtime verified (§3, §4); live
+deployment verified (§7); real-agent pass recorded (§8).**
 
 ## Addendum — 2026-09-01 21:40 UTC, final pre-submission pass
 

@@ -180,8 +180,11 @@ async function main() {
     for (const want of [/assumptions & unknowns/i, /configuration unknown/i, /5,000–13,500 lbs/i, /depends on config/i, /door-sticker rating/i]) {
       if (!want.test(t)) return `FAIL assumptions block missing ${want}`;
     }
+    const tv = s1.towVehicle as { askShopper?: string[]; ratingRangeLbs?: string } | undefined;
+    if (!tv?.askShopper?.some((q) => /engine/i.test(q))) return `FAIL search result lacks the engine follow-up: ${JSON.stringify(tv).slice(0, 200)}`;
+    if (!tv.askShopper.some((q) => /max trailer tow/i.test(q))) return `FAIL search result lacks the tow-package follow-up`;
     await shot(page, "pillar-1-search.png");
-    return "rail: ratings span 5,000–13,500 lbs, filtering only above top rating, per-unit verdicts 'depends on config'";
+    return `rail: ratings span 5,000–13,500 lbs, filtering only above top rating, per-unit verdicts 'depends on config'; tool result asks ${tv.askShopper.length} follow-ups (engine, Max Tow package, door-sticker rating) instead of guessing`;
   });
 
   // ————— Turn 2: the refinement —————

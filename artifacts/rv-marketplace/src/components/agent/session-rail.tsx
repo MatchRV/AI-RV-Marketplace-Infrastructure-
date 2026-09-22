@@ -88,8 +88,13 @@ export function SessionRail() {
         `Tow: using your stated ${tow.statedRatingLbs.toLocaleString()} lbs rating — "comfortable" means ≤ ${tow.comfortCapLbs?.toLocaleString()} lbs (${tow.safetyMarginPct}% margin). Exact payload still unverified.`,
       );
     } else if (tow.rangeLbs) {
+      const range = `${tow.rangeLbs.min.toLocaleString()}–${tow.rangeLbs.max.toLocaleString()} lbs`;
+      const pkg = tow.matched?.towPackageName;
+      const askPackage = pkg && tow.configuration?.towPackage == null;
       assumptions.push(
-        `Tow: ${tow.matched?.label ?? tow.input} configuration unknown — ratings span ${tow.rangeLbs.min.toLocaleString()}–${tow.rangeLbs.max.toLocaleString()} lbs. Filtering only above the top rating; per-unit verdicts say "depends on config". Tell your agent the door-sticker rating for precision.`,
+        tow.configuration?.engine
+          ? `Tow: ${tow.resolvedLabel} — ratings span ${range} by cab, bed, axle ratio${askPackage ? ` and the ${pkg}` : ""}. Filtering only above the top rating; per-unit verdicts say "depends on config". Tell your agent the door-sticker rating for precision.`
+          : `Tow: ${tow.matched?.label ?? tow.input} configuration unknown — ratings span ${range}. Filtering only above the top rating; per-unit verdicts say "depends on config". Your agent will ask which engine${askPackage ? ` and about the ${pkg}` : ""} to narrow it; the door-sticker rating settles it.`,
       );
     } else {
       assumptions.push(`Tow: "${tow.input}" not in the reference table — weight fit is unverified until you provide a rating.`);

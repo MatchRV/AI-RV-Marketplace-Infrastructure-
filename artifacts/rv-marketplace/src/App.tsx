@@ -27,6 +27,7 @@ import { About } from "@/pages/about";
 import { Terms } from "@/pages/terms";
 import { Privacy } from "@/pages/privacy";
 import { DealerLogin } from "@/pages/dealer-login";
+import { ForDealers } from "@/pages/for-dealers";
 import { Dealers } from "@/pages/dealers";
 import { Discover } from "@/pages/discover";
 import { Contact } from "@/pages/contact";
@@ -192,6 +193,8 @@ function AppRouter() {
       <Route path="/terms-and-conditions" component={Terms} />
       <Route path="/terms">{() => <Redirect to="/terms-and-conditions" replace />}</Route>
       <Route path="/privacy" component={Privacy} />
+      <Route path="/for-dealers" component={ForDealers} />
+      <Route path="/dealers/ai">{() => <Redirect to="/for-dealers" replace />}</Route>
       <Route path="/dealers/login" component={DealerLogin} />
       <Route path="/dealer-login">{() => <Redirect to="/dealers/login" replace />}</Route>
       <Route path="/dealers" component={Dealers} />

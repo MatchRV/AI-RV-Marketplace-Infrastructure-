@@ -214,13 +214,23 @@ export interface SearchFunnel {
   excluded: ExclusionBucket[];
 }
 
+export interface SearchCoverage {
+  requestedArea: string | null;
+  radiusMiles: number | null;
+  unitsInArea: number;
+  nationwideTotal: number;
+  /** True when a location was requested and zero units passed the geo hard filter. */
+  noLocalMatches: boolean;
+}
+
 export interface SearchOutcome {
   funnel: SearchFunnel;
   /** hard-pass matches first (by score), then unverified (flagged). */
   results: UnitMatch[];
   appliedConstraints: Constraints;
   towResolution: TowResolution | null;
-  locationResolution: { place: string; lat: number; lng: number } | null;
+  locationResolution: { place: string; lat: number; lng: number; radiusMiles: number } | null;
+  coverage: SearchCoverage;
 }
 
 // ── Tow fit ────────────────────────────────────────────────────────────────

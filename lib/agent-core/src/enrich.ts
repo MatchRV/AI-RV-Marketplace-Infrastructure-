@@ -46,7 +46,7 @@ export function buildCorpus(
 // convention, not a spec — so everything derived this way is confidence
 // "medium" and labeled derived_model_code.
 
-const FLOORPLAN_RE = /\b(\d{2,3})\s?([A-Z]{2,5})\b/;
+const FLOORPLAN_RE = /\b(\d{2,3})\s?([A-Z]{1,6})\b/;
 
 export function extractFloorplanCode(model: string, title: string): string | null {
   const m = model.toUpperCase().match(FLOORPLAN_RE) ?? title.toUpperCase().match(FLOORPLAN_RE);

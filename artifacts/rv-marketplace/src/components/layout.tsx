@@ -357,7 +357,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {!DEMO_MODE && (
                 <>
                   <li><Link href="/contact" className="hover:text-[#00CED1] transition">Contact</Link></li>
-                  <li><Link href="/dealers/login" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
+                  <li><Link href="/for-dealers" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
                   <li><Link href="/trips" className="hover:text-[#00CED1] transition">Trip Planner</Link></li>
                   <li><Link href="/campgrounds" className="hover:text-[#00CED1] transition">Campgrounds</Link></li>
                   <li><Link href="/sell" className="hover:text-[#00CED1] transition">Sell Your RV</Link></li>

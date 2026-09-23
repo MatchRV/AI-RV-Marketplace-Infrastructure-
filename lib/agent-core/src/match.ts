@@ -318,7 +318,9 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
-  // — hard: distance
+  // — hard: distance (area guarantee)
+  // When the shopper names a place, unresolved dealer coords are a FAIL — never
+  // surface FL/AZ inventory as a "local" match for Fife (MAT-34 / MAT-37).
   let distanceMiles: number | null = null;
   if (ctx.location) {
     if (unit.dealer.lat !== null && unit.dealer.lng !== null) {
@@ -338,7 +340,14 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       );
     } else {
       unknowns.push("dealerLocation");
-      hardChecks.push(check(`within ${ctx.location.radiusMiles} mi of ${ctx.location.place}`, "unknown", "dealer location unresolved", null));
+      hardChecks.push(
+        check(
+          `within ${ctx.location.radiusMiles} mi of ${ctx.location.place}`,
+          "fail",
+          "dealer location unresolved — excluded from local results",
+          null,
+        ),
+      );
     }
   }
 
@@ -456,7 +465,8 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
     buckets.set(r, (buckets.get(r) ?? 0) + 1);
   }
 
-  const sortKey = constraints.sort ?? "best_match";
+  // Prefer distance ranking for local demos unless the caller overrides.
+  const sortKey = constraints.sort ?? (ctx.location ? "distance" : "best_match");
   const unknownHard = (m: UnitMatch) => m.hardChecks.filter((h) => h.status === "unknown").length;
   const cmp = (a: UnitMatch, b: UnitMatch): number => {
     switch (sortKey) {
@@ -501,20 +511,45 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
     return out;
   };
 
+  const inArea = evaluated.filter(
+    (m) => m.distanceMiles !== null && ctx.location !== null && m.distanceMiles <= ctx.location.radiusMiles,
+  ).length;
+
+  // Area guarantee: when location is set, never append out-of-area unverified
+  // rows after the local passes. Only return matches that survived hard filters
+  // (passed) plus in-area unverified (e.g. unknown sleeps) — not national spill.
+  const localUnverified = ctx.location
+    ? unverified.filter((m) => m.distanceMiles !== null && m.distanceMiles <= ctx.location!.radiusMiles)
+    : unverified;
+
+  const results = [...collapse(passed), ...collapse(localUnverified)];
+
   return {
     funnel: {
       totalUnits: units.length,
       passedHard: passed.length,
-      unverified: unverified.length,
+      unverified: localUnverified.length,
       excluded: [...buckets.entries()]
         .map(([reason, count]) => ({ reason, count }))
         .sort((a, b) => b.count - a.count),
     },
-    results: [...collapse(passed), ...collapse(unverified)],
+    results,
     appliedConstraints: ctx.constraints,
     towResolution: ctx.tow,
     locationResolution: ctx.location
-      ? { place: ctx.location.place, lat: ctx.location.lat, lng: ctx.location.lng }
+      ? {
+          place: ctx.location.place,
+          lat: ctx.location.lat,
+          lng: ctx.location.lng,
+          radiusMiles: ctx.location.radiusMiles,
+        }
       : null,
+    coverage: {
+      requestedArea: ctx.location?.place ?? null,
+      radiusMiles: ctx.location?.radiusMiles ?? null,
+      unitsInArea: inArea,
+      nationwideTotal: units.length,
+      noLocalMatches: Boolean(ctx.location) && results.length === 0,
+    },
   };
 }

@@ -19,6 +19,9 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     .filter((s) => s.satisfied === true)
     .map((s) => s.preference)
     .slice(0, 3);
+  const sleepsConfirmed =
+    u.sleeps.value !== null &&
+    (u.sleeps.source === "dealer_listing" || u.sleeps.confidence === "high");
   return {
     id: u.id,
     title: u.title,
@@ -26,8 +29,12 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     lengthFt: u.lengthFt.value,
     dryLbs: u.dryWeightLbs.value,
     sleeps: u.sleeps.value,
+    sleepsConfirmed,
+    sleepsSource: u.sleeps.source,
+    sleepsConfidence: u.sleeps.confidence,
     distanceMi: m.distanceMiles,
-    dealer: `${u.dealer.name}, ${u.dealer.city}`,
+    dealer: `${u.dealer.name}, ${u.dealer.city}${u.dealer.state ? `, ${u.dealer.state}` : ""}`,
+    dealerState: u.dealer.state,
     match: m.score,
     verified: m.hardStatus === "pass",
     checks: `${meets}/${m.hardChecks.length}`,
@@ -42,12 +49,25 @@ export function compactSearchResult(
   limit: number,
 ): Record<string, unknown> {
   const shown = outcome.results.slice(0, limit);
+  const coverage = outcome.coverage;
+  const emptyGuidance = coverage?.noLocalMatches
+    ? `No local matches within ${coverage.radiusMiles} mi of ${coverage.requestedArea}. Do not substitute out-of-area inventory. Ask the shopper to widen radius_miles or pick another place.`
+    : "No units satisfy every hard constraint. Relax one (see excluded counts) or move it to a soft preference.";
+
   return {
     funnel: {
       searched: outcome.funnel.totalUnits,
       verifiedMatches: outcome.funnel.passedHard,
       unverified: outcome.funnel.unverified,
       excluded: outcome.funnel.excluded.slice(0, 6).map((e) => `${e.reason}: ${e.count}`),
+    },
+    locationResolution: outcome.locationResolution,
+    coverage: {
+      requested_area: coverage?.requestedArea ?? null,
+      radius_miles: coverage?.radiusMiles ?? null,
+      units_in_area: coverage?.unitsInArea ?? null,
+      nationwide_total: coverage?.nationwideTotal ?? outcome.funnel.totalUnits,
+      no_local_matches: coverage?.noLocalMatches ?? false,
     },
     ...(outcome.towResolution
       ? {
@@ -60,12 +80,9 @@ export function compactSearchResult(
       : {}),
     results: shown.map(compactUnitSummary),
     ...(shown.length === 0
-      ? {
-          guidance:
-            "No units satisfy every hard constraint. Relax one (see excluded counts) or move it to a soft preference.",
-        }
+      ? { guidance: emptyGuidance }
       : {
-          note: "Page shows these same results. explain_match/get_unit_details for depth; 'unknown' = dealer doesn't publish it, not 'no'.",
+          note: "Cite coverage.units_in_area for local inventory size. sleepsConfirmed=false means inferred — say so. get_rv for full detail.",
         }),
   };
 }

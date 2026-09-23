@@ -47,16 +47,47 @@ describe("committed inventory snapshot", () => {
     expect(falseSolar).toBe(0); // absence of evidence is never evidence of absence
   });
 
-  it("does not verify distance when dealer coordinates are unknown", () => {
+  it("excludes units with unresolved dealer coords when location is required (area guarantee)", () => {
     const u = structuredClone(matchingUnits[0]);
     u.dealer.lat = null;
     u.dealer.lng = null;
     u.images = [];
     const match = evaluateUnit(u, buildContext({ location: { place: "Tacoma", radiusMiles: 150 } }));
     expect(match.distanceMiles).toBeNull();
-    expect(match.hardStatus).toBe("unverified");
+    expect(match.hardStatus).toBe("fail");
     expect(match.unknownFields).toContain("dealerLocation");
     expect(match.unit.images).toEqual([]);
+  });
+
+  it("geocodes snapshot dealers and backfills sleeps at index time", () => {
+    const withCoords = idx.units.filter((u) => u.dealer.lat !== null && u.dealer.lng !== null).length;
+    expect(withCoords / idx.units.length).toBeGreaterThan(0.95);
+    const withSleeps = idx.units.filter((u) => u.sleeps.value !== null).length;
+    expect(withSleeps / idx.units.length).toBeGreaterThan(0.95);
+    const wa = idx.units.filter((u) => u.dealer.state === "WA");
+    expect(wa.length).toBeGreaterThan(100);
+    expect(wa.every((u) => u.dealer.lat !== null)).toBe(true);
+  });
+
+  it("Fife WA search returns only regional units with sleeps populated", () => {
+    const t0 = performance.now();
+    const out = runSearch(idx.units, {
+      rvTypes: ["travel_trailer"],
+      sleepsMin: 8,
+      location: { place: "Fife", radiusMiles: 150 },
+    });
+    const ms = performance.now() - t0;
+    expect(ms).toBeLessThan(5000);
+    expect(out.locationResolution?.place).toBe("Fife");
+    expect(out.coverage.noLocalMatches).toBe(false);
+    expect(out.results.length).toBeGreaterThan(0);
+    for (const m of out.results.slice(0, 20)) {
+      expect(["WA", "OR", "ID", "MT"]).toContain(m.unit.dealer.state);
+      expect(m.distanceMiles).not.toBeNull();
+      expect(m.distanceMiles!).toBeLessThanOrEqual(150);
+      expect(m.unit.sleeps.value).not.toBeNull();
+      expect(m.unit.sleeps.value!).toBeGreaterThanOrEqual(8);
+    }
   });
 });
 

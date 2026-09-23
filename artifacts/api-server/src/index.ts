@@ -7,6 +7,7 @@ import app from "./app";
 import { autoImportIfEmpty } from "./lib/auto-import";
 import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { startEnrichmentCron } from "./services/listing-enrichment";
+import { warmInventory } from "./services/agent-inventory";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
 // Default the port in development so `pnpm dev` works on a fresh clone.
@@ -106,6 +107,13 @@ async function start() {
     } else {
       await autoImportIfEmpty();
     }
+  }
+
+  // Preload MCP inventory before accepting traffic (avoids 60–120s first-search cold start).
+  try {
+    warmInventory();
+  } catch (err) {
+    console.warn("[startup] inventory warm failed (agent tools will lazy-load):", err);
   }
 
   app.listen(port, () => {

@@ -3,6 +3,7 @@ import { toNodeHandler } from "@modelcontextprotocol/node";
 import { z } from "zod/v4";
 import {
   buildContext,
+  compactSearchResult,
   compareUnits,
   constraintsSchema,
   evaluateTowFit,
@@ -12,15 +13,22 @@ import {
   runSearch,
   submitDealerContactInput,
   type Constraints,
+  type CanonicalUnit,
 } from "@workspace/agent-core";
 import { getInventory } from "./services/agent-inventory";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
 const searchInput = z.object({
+  // ChatGPT often passes free-form top-level fields instead of nested constraints.
+  query: z.string().max(240).optional(),
+  location: z.string().max(80).optional(),
+  place: z.string().max(80).optional(),
+  radius_miles: z.number().min(1).max(3000).optional(),
+  sleeps_min: z.number().int().min(1).max(14).optional(),
   constraints: z.preprocess(
     (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
     constraintsSchema,
-  ),
+  ).optional().default({}),
   limit: z.number().int().min(1).max(10).optional().default(10),
 });
 
@@ -99,9 +107,80 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
         return rvSynonyms[s] ?? s.replace(/\s+/g, "_");
       });
     }
+    if (mapped === "location") {
+      if (typeof v === "string") {
+        v = { place: v, radiusMiles: 150 };
+      } else if (v && typeof v === "object") {
+        const loc = v as Record<string, unknown>;
+        const place = String(loc.place ?? loc.city ?? loc.name ?? "").trim();
+        const radius = Number(loc.radiusMiles ?? loc.radius_miles ?? loc.radius ?? 150);
+        if (place) v = { place, radiusMiles: Number.isFinite(radius) ? radius : 150 };
+        else continue;
+      }
+    }
     if (out[mapped] === undefined) out[mapped] = v;
   }
   return out as Constraints;
+}
+
+/** Pull structured constraints out of a ChatGPT-style free-text query. */
+function constraintsFromQuery(query: string | undefined): Partial<Constraints> {
+  if (!query?.trim()) return {};
+  const q = query.toLowerCase();
+  const out: Record<string, unknown> = {};
+  const sleeps = /sleeps?\s*:?\s*(\d{1,2})/.exec(q);
+  if (sleeps) out.sleepsMin = Math.min(14, Math.max(1, parseInt(sleeps[1], 10)));
+  const types: string[] = [];
+  const typeMap: [RegExp, string][] = [
+    [/travel\s*trailers?|\btt\b/, "travel_trailer"],
+    [/fifth\s*wheels?|5th\s*wheels?/, "fifth_wheel"],
+    [/toy\s*haulers?/, "toy_hauler"],
+    [/class\s*a\b/, "class_a"],
+    [/class\s*b\b/, "class_b"],
+    [/class\s*c\b/, "class_c"],
+    [/truck\s*campers?/, "truck_camper"],
+    [/pop\s*-?\s*ups?|popup/, "popup_camper"],
+  ];
+  for (const [re, t] of typeMap) if (re.test(q)) types.push(t);
+  if (types.length) out.rvTypes = types;
+  const price = /under\s*\$?([\d,]+)|\$?([\d,]+)\s*(?:or\s*)?less|max(?:imum)?\s*price\s*\$?([\d,]+)/.exec(q);
+  if (price) {
+    const raw = price[1] || price[2] || price[3];
+    const n = parseInt(raw.replace(/,/g, ""), 10);
+    if (Number.isFinite(n) && n > 1000) out.priceMaxUsd = n;
+  }
+  return out as Partial<Constraints>;
+}
+
+function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | undefined>): Constraints {
+  const out: Record<string, unknown> = {};
+  for (const part of parts) {
+    if (!part) continue;
+    for (const [k, v] of Object.entries(part)) {
+      if (v === null || v === undefined) continue;
+      if (out[k] === undefined) out[k] = v;
+    }
+  }
+  return out as Constraints;
+}
+
+/** Prefer regional inventory when a location is set (latency + relevance). */
+function candidateUnits(locationPlace: string | undefined): CanonicalUnit[] {
+  const inv = getInventory();
+  if (!locationPlace) return inv.units;
+  // PNW-focused demo: when searching near WA/OR/ID cities, prefilter to those
+  // states (+MT) before the O(n) match pass. National queries still scan all.
+  const pnW = /\b(wa|washington|or|oregon|id|idaho|mt|montana|fife|tacoma|seattle|spokane|portland|boise)\b/i;
+  if (!pnW.test(locationPlace) && !/near\s+/i.test(locationPlace)) {
+    // Still allow any resolved place; prefilter by nothing.
+    return inv.units;
+  }
+  const regional: CanonicalUnit[] = [];
+  for (const st of ["WA", "OR", "ID", "MT"]) {
+    const bucket = inv.byState?.get(st);
+    if (bucket) regional.push(...bucket);
+  }
+  return regional.length > 0 ? regional : inv.units;
 }
 
 function textResult(payload: unknown, isError = false) {
@@ -136,7 +215,7 @@ function buildMatchRvServer(): McpServer {
     {
       capabilities: { tools: { listChanged: false } },
       instructions:
-        "MatchRV searches normalized dealer RV inventory (~20k priced units). Always cite funnel.totalUnits when describing catalog size — results.length is only the top matches (default 10), never proof the inventory is small. Preserve unknown fields as unknown. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare a preview, require human approval in MatchRV, then submit only the approved preview.",
+        "MatchRV searches normalized dealer RV inventory (~20k priced units). ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
     },
   );
 
@@ -145,23 +224,57 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search MatchRV's normalized dealer inventory (~20k+ priced units) using structured buyer constraints. Always read funnel.totalUnits — a short results array is just the top matches (default limit 10), not a small catalog. Prefer priceMaxUsd/priceMinUsd/rvTypes/condition/sleepsMin/lengthMaxFt. Returns match scores, evidence, unknowns, provenance, and freshness.",
+        "Search MatchRV dealer inventory. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ constraints, limit }) => {
+    async (input) => {
       try {
-        const outcome = runSearch(getInventory().units, constraints as Constraints);
-        const results = outcome.results.slice(0, limit).map(({ unit, ...match }) => ({ ...match, unit }));
+        const t0 = performance.now();
+        const fromQuery = constraintsFromQuery(input.query);
+        const topLocation = input.location || input.place;
+        const fromTop: Partial<Constraints> = {};
+        if (topLocation) {
+          fromTop.location = {
+            place: topLocation.replace(/^near\s+/i, "").trim(),
+            radiusMiles: input.radius_miles ?? 150,
+          };
+        } else if (input.radius_miles != null && input.constraints?.location?.place) {
+          fromTop.location = {
+            place: input.constraints.location.place,
+            radiusMiles: input.radius_miles,
+          };
+        }
+        if (input.sleeps_min != null) fromTop.sleepsMin = input.sleeps_min;
+
+        const constraints = mergeConstraints(
+          cleanConstraints(input.constraints as Record<string, unknown>),
+          fromQuery,
+          fromTop,
+        );
+
+        const place = constraints.location?.place;
+        const corpus = candidateUnits(place);
+        const outcome = runSearch(corpus, constraints);
+        const compact = compactSearchResult(outcome, input.limit ?? 10);
+        const ms = Math.round(performance.now() - t0);
         return textResult({
-          funnel: outcome.funnel,
-          towResolution: outcome.towResolution,
-          locationResolution: outcome.locationResolution,
+          ...compact,
           appliedConstraints: outcome.appliedConstraints,
-          results,
+          timingMs: ms,
         });
       } catch (error) {
-        return textResult({ error: "search_failed", detail: error instanceof Error ? error.message : String(error) }, true);
+        return textResult(
+          {
+            error: "search_failed",
+            detail: error instanceof Error ? error.message : String(error),
+            guidance:
+              error instanceof Error && error.message.includes("Unknown place")
+                ? "Use a supported PNW city (Fife, Tacoma, Seattle, Spokane, Portland, …)."
+                : undefined,
+          },
+          true,
+        );
       }
     },
   );

@@ -4,6 +4,7 @@
  */
 
 import type { CanonicalUnit } from "./types.js";
+import { enrichSnapshotUnits, type EnrichStats } from "./enrich-snapshot.js";
 
 export interface InventorySnapshot {
   schemaVersion: number;
@@ -14,6 +15,9 @@ export interface InventorySnapshot {
     units: number;
     dealers: number;
     rejections: Record<string, number>;
+    uniqueVins?: number;
+    withLength?: number;
+    withSleeps?: number;
   };
   units: CanonicalUnit[];
 }
@@ -24,13 +28,29 @@ export interface InventoryIndex {
   snapshot: InventorySnapshot;
   units: CanonicalUnit[];
   byId: Map<string, CanonicalUnit>;
+  /** Units grouped by dealer.state for fast geo prefilter. */
+  byState: Map<string, CanonicalUnit[]>;
+  enrichStats?: EnrichStats;
 }
 
 /** Index a parsed snapshot (loaders differ per runtime; indexing doesn't). */
 export function indexSnapshot(snapshot: InventorySnapshot): InventoryIndex {
+  // Enrich once at load: geocode dealers + backfill/infer sleeps.
+  const enrichStats = enrichSnapshotUnits(snapshot.units);
+
   const byId = new Map<string, CanonicalUnit>();
-  for (const u of snapshot.units) byId.set(u.id, u);
-  cache = { snapshot, units: snapshot.units, byId };
+  const byState = new Map<string, CanonicalUnit[]>();
+  for (const u of snapshot.units) {
+    byId.set(u.id, u);
+    const st = (u.dealer.state || "").toUpperCase() || "??";
+    let bucket = byState.get(st);
+    if (!bucket) {
+      bucket = [];
+      byState.set(st, bucket);
+    }
+    bucket.push(u);
+  }
+  cache = { snapshot, units: snapshot.units, byId, byState, enrichStats };
   return cache;
 }
 

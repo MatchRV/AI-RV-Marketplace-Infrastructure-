@@ -117,6 +117,11 @@ const CITY_ALIASES: Record<string, string> = {
   "mt vernon": "mount vernon",
   "couer d'alene": "coeur d'alene",
   cda: "coeur d'alene",
+  kitsap: "bremerton",
+  "sea-tac": "seattle",
+  seatac: "seattle",
+  "pierce county": "tacoma",
+  "king county": "seattle",
 };
 
 const STATE_SUFFIX = /,\s*(wa|washington|or|oregon|id|idaho|mt|montana)\.?$/i;

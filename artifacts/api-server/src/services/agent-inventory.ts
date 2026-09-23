@@ -29,11 +29,22 @@ function findSnapshot(): string {
 export function getInventory(): InventoryIndex {
   if (!index) {
     const path = findSnapshot();
+    const t0 = performance.now();
     const snapshot = JSON.parse(readFileSync(path, "utf-8")) as InventorySnapshot;
     index = indexSnapshot(snapshot);
+    const ms = Math.round(performance.now() - t0);
+    const e = index.enrichStats;
     console.log(
-      `[agent] inventory snapshot loaded: ${index.units.length} units from ${index.snapshot.stats.dealers} dealers (built ${index.snapshot.builtAt})`,
+      `[agent] inventory snapshot loaded: ${index.units.length} units from ${index.snapshot.stats.dealers} dealers (built ${index.snapshot.builtAt}) in ${ms}ms` +
+        (e
+          ? `; geo+${e.geocoded}/stateFallback+${e.stateFallback}; sleeps known=${e.sleepsAlreadyKnown} vin=${e.sleepsFromVin} inferred=${e.sleepsInferred}`
+          : ""),
     );
   }
   return index;
+}
+
+/** Warm the in-memory index at process start so the first MCP call is not a 49MB cold parse. */
+export function warmInventory(): void {
+  getInventory();
 }

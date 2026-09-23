@@ -1,6 +1,17 @@
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
-import { Building2, Bot, Search, Scale, ArrowRight, Mail, CheckCircle2 } from "lucide-react";
+import {
+  Building2,
+  Bot,
+  Search,
+  Scale,
+  ArrowRight,
+  Mail,
+  CheckCircle2,
+  MessageSquare,
+  Quote,
+  XCircle,
+} from "lucide-react";
 
 const REPORT_MAILTO =
   "mailto:jonathan@matchrv.com?subject=AI%20Visibility%20Report%20Request&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20for%20our%20dealership.%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
@@ -76,14 +87,140 @@ export function ForDealers() {
           </div>
         </section>
 
+        {/* Citation evidence: what AI already answers (anonymized, observed behavior) */}
+        <section className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="text-2xl font-display font-bold">What AI already answers</h2>
+          </div>
+          <p className="text-muted-foreground leading-relaxed mb-5 max-w-2xl">
+            Shoppers near Fife, WA and across the Puget Sound are already asking ChatGPT
+            and Claude for dealers, ratings, and specific units — before they ever visit a
+            lot. AI is the front door.
+          </p>
+
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4">
+            <div className="flex justify-end">
+              <div className="max-w-[85%] sm:max-w-[75%] bg-primary/10 rounded-2xl rounded-br-md px-4 py-3">
+                <p className="text-sm font-medium leading-relaxed">
+                  New travel trailers near Fife, WA under $75k that sleep 8?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 w-8 h-8 rounded-lg bg-muted flex items-center justify-center mt-0.5">
+                <Quote className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 bg-muted/50 border border-border rounded-2xl rounded-tl-md px-4 py-3 space-y-3">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Here are dealers and units that often surface for shoppers in that area:
+                </p>
+                <ul className="text-sm space-y-2">
+                  <li className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-4">
+                    <span className="font-semibold">Dealer A</span>
+                    <span className="text-muted-foreground">
+                      4.6★ · 180+ reviews · BBB A+
+                    </span>
+                  </li>
+                  <li className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-4">
+                    <span className="font-semibold">Dealer B</span>
+                    <span className="text-muted-foreground">
+                      4.4★ · 90+ reviews · listed with price
+                    </span>
+                  </li>
+                  <li className="pt-1 border-t border-border/60">
+                    <span className="text-muted-foreground">Sample units cited: </span>
+                    <span className="font-medium">travel trailer · $17,999</span>
+                    <span className="text-muted-foreground"> · </span>
+                    <span className="font-medium">fifth wheel · $64,999</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground italic pt-1">
+              Illustrative of real shopper queries observed in 2026 — not MatchRV answers.
+              Dealer names anonymized.
+            </p>
+          </div>
+        </section>
+
+        {/* Who shows up / who doesn't — pattern language only */}
+        <section className="mb-10">
+          <h2 className="text-2xl font-display font-bold mb-2">
+            Who shows up / who doesn&apos;t
+          </h2>
+          <p className="text-muted-foreground leading-relaxed mb-5 max-w-2xl">
+            When AI answers those queries, citations skew to signals machines can read.
+            Incomplete inventory pages get skipped — or caveated with &ldquo;call first /
+            price not shown.&rdquo;
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-card border border-border rounded-2xl p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+                <h3 className="font-display font-bold">Shows up</h3>
+              </div>
+              <ul className="space-y-2.5 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  Review volume (stars + count on review / list pages)
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  BBB / accreditation signals
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  OEM and dealer list pages machines can cite
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  Inventory pages with price + specs
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <XCircle className="w-5 h-5 text-muted-foreground" />
+                <h3 className="font-display font-bold">Gets skipped</h3>
+              </div>
+              <ul className="space-y-2.5 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="font-bold shrink-0">·</span>
+                  Empty shells / thin dealer sites
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-bold shrink-0">·</span>
+                  Missing price or key specs
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-bold shrink-0">·</span>
+                  Laggy or stale listings
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-bold shrink-0">·</span>
+                  Mixed signals that force &ldquo;call before you drive&rdquo;
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         <section className="bg-primary text-primary-foreground rounded-2xl p-6 sm:p-8 mb-8">
           <h2 className="text-2xl font-display font-bold mb-3">
-            Request your AI Visibility Report
+            See if your rooftop appears
           </h2>
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
-            See how ChatGPT and Gemini see your dealership online today — and what it
-            takes to make your inventory readable by AI agents. Free, no backend form
-            required: just email us.
+            Request a free AI Visibility Report. We show what ChatGPT and Claude surface
+            for shoppers in your market today — including empty-shell and missing-spec
+            findings — and what it takes to make your inventory readable by AI agents.
+            No backend form required: just email us.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

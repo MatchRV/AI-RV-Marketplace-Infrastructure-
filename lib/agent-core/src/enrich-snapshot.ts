@@ -5,11 +5,11 @@
  * than recommitting a 49MB JSON blob on every fix, we geocode dealers from
  * city/state and infer sleeping capacity (with explicit low/medium confidence)
  * once when the snapshot is indexed.
+ *
+ * IMPORTANT: this module must stay browser-safe (no node:fs / path / url).
+ * Agent-core is bundled into the Vite marketplace client.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { CanonicalUnit, Fact, RvType } from "./types.js";
 import { resolvePlace, scanForCity, CITY_COORDS, type LatLng } from "./geo.js";
 import {
@@ -17,6 +17,7 @@ import {
   floorplanSuggestsBunks,
   fact,
 } from "./enrich.js";
+import { VIN_SLEEPS } from "./vin-sleeps.js";
 
 /** Extra US dealer cities present in the MarketCheck snapshot (outside PNW table). */
 const EXTRA_CITY_COORDS: Record<string, LatLng> = {
@@ -49,7 +50,6 @@ const EXTRA_CITY_COORDS: Record<string, LatLng> = {
   beaverton: { lat: 45.4871, lng: -122.8037 },
   tucson: { lat: 32.2226, lng: -110.9747 },
   "fort pierce": { lat: 27.4467, lng: -80.3256 },
-  // TX Longview (WA Longview already in CITY_COORDS — state disambiguates via caller)
   longview_tx: { lat: 32.5007, lng: -94.7405 },
   phoenix: { lat: 33.4484, lng: -112.074 },
   mesa: { lat: 33.4152, lng: -111.8315 },
@@ -104,7 +104,6 @@ function resolveDealerCoords(city: string, state: string): LatLng | null {
   }
   const aliased = CITY_ALIASES_EXTRA[raw] ?? raw;
 
-  // Disambiguate Longview TX vs WA
   if (aliased === "longview" && st === "TX") {
     return EXTRA_CITY_COORDS.longview_tx;
   }
@@ -193,29 +192,6 @@ export function inferSleeps(unit: {
   );
 }
 
-let vinSleepsCache: Map<string, number> | null | undefined;
-
-function loadVinSleeps(): Map<string, number> | null {
-  if (vinSleepsCache !== undefined) return vinSleepsCache;
-  const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    resolve(here, "../data/vin-sleeps.json"),
-    resolve(here, "../../data/vin-sleeps.json"),
-  ];
-  const path = candidates.find((p) => existsSync(p));
-  if (!path) {
-    vinSleepsCache = null;
-    return null;
-  }
-  try {
-    const raw = JSON.parse(readFileSync(path, "utf-8")) as Record<string, number>;
-    vinSleepsCache = new Map(Object.entries(raw));
-  } catch {
-    vinSleepsCache = null;
-  }
-  return vinSleepsCache;
-}
-
 export interface EnrichStats {
   geocoded: number;
   stateFallback: number;
@@ -227,7 +203,6 @@ export interface EnrichStats {
 
 /** Mutates units in place (snapshot is loaded once per process). */
 export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
-  const vinSleeps = loadVinSleeps();
   const stats: EnrichStats = {
     geocoded: 0,
     stateFallback: 0,
@@ -257,7 +232,7 @@ export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
     }
 
     const vin = u.vin?.toUpperCase();
-    const fromVin = vin && vinSleeps ? vinSleeps.get(vin) : undefined;
+    const fromVin = vin ? VIN_SLEEPS[vin] : undefined;
     if (fromVin != null) {
       u.sleeps = fact(
         fromVin,

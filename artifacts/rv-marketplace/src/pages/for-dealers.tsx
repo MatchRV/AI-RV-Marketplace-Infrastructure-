@@ -96,9 +96,8 @@ export function ForDealers() {
             <h2 className="text-2xl font-display font-bold">What AI already answers</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed mb-5 max-w-2xl">
-            Shoppers near Fife, WA and across the Puget Sound are already asking ChatGPT
-            and Claude for dealers, ratings, and specific units — before they ever visit a
-            lot. AI is the front door.
+            Shoppers near Fife, WA already ask ChatGPT and Claude for dealers and units
+            before they visit a lot. AI is the new front door.
           </p>
 
           <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-4">
@@ -116,7 +115,7 @@ export function ForDealers() {
               </div>
               <div className="flex-1 bg-muted/50 border border-border rounded-2xl rounded-tl-md px-4 py-3 space-y-3">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Here are dealers and units that often surface for shoppers in that area:
+                  Here’s the kind of answer those shoppers get today:
                 </p>
                 <ul className="text-sm space-y-2">
                   <li className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-4">
@@ -142,8 +141,9 @@ export function ForDealers() {
             </div>
 
             <p className="text-xs text-muted-foreground italic pt-1">
-              Illustrative of real shopper queries observed in 2026 — not MatchRV answers.
-              Dealer names anonymized.
+              Illustrative of real shopper queries we recorded in 2026 — not MatchRV
+              answers, and not a claim that MatchRV caused these results. Dealer names
+              anonymized.
             </p>
           </div>
         </section>
@@ -154,9 +154,9 @@ export function ForDealers() {
             Who shows up / who doesn&apos;t
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-5 max-w-2xl">
-            When AI answers those queries, citations skew to signals machines can read.
-            Incomplete inventory pages get skipped — or caveated with &ldquo;call first /
-            price not shown.&rdquo;
+            AI cites what it can read. Review sites and BBB often win. Incomplete
+            inventory pages get skipped — or caveated with &ldquo;call first / price not
+            shown.&rdquo;
           </p>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -180,7 +180,7 @@ export function ForDealers() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold shrink-0">·</span>
-                  Inventory pages with price + specs
+                  Inventory pages with clear price, type, and weight specs
                 </li>
               </ul>
             </div>
@@ -193,19 +193,19 @@ export function ForDealers() {
               <ul className="space-y-2.5 text-sm text-muted-foreground">
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">·</span>
-                  Empty shells / thin dealer sites
+                  JS-only pages that look empty to crawlers
                 </li>
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">·</span>
-                  Missing price or key specs
+                  Missing price, RV type, length, or sleeping capacity
                 </li>
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">·</span>
-                  Laggy or stale listings
+                  Stale or conflicting listings
                 </li>
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">·</span>
-                  Mixed signals that force &ldquo;call before you drive&rdquo;
+                  &ldquo;Call for price&rdquo; with no machine-readable offer
                 </li>
               </ul>
             </div>
@@ -217,10 +217,10 @@ export function ForDealers() {
             See if your rooftop appears
           </h2>
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
-            Request a free AI Visibility Report. We show what ChatGPT and Claude surface
-            for shoppers in your market today — including empty-shell and missing-spec
-            findings — and what it takes to make your inventory readable by AI agents.
-            No backend form required: just email us.
+            Get a free AI Visibility Report for your rooftop. We show whether
+            shoppers&apos; AI answers mention you, where inventory looks empty to
+            crawlers, and the top fixes so agents can recommend your units. Email us
+            — no form required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

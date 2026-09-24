@@ -121,6 +121,14 @@ export interface LeadPreviewDto {
   customer: { name: string; email: string; phone: string | null };
   message: string;
   consent: string;
+  consentRecord?: {
+    granted_at: string;
+    allowed_channels: string[];
+    consent_text: string;
+    scope: ["lead_submission"];
+    source: "ai_agent" | "human_ui";
+    agent_surface?: string | null;
+  } | null;
   decidedAt: string | null;
   submittedAt: string | null;
   submittedLeadId: number | string | null;

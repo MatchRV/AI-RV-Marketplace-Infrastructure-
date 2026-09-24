@@ -34,6 +34,16 @@ export type PreviewStatus =
   | "submitted"
   | "expired";
 
+/** Persisted when the human approves a dealer-contact preview (MAT-38). */
+export interface ConsentRecord {
+  granted_at: string; // ISO
+  allowed_channels: string[];
+  consent_text: string;
+  scope: ["lead_submission"];
+  source: "ai_agent" | "human_ui";
+  agent_surface?: string | null;
+}
+
 export interface LeadPreview {
   previewId: string;
   createdAt: string;
@@ -48,6 +58,8 @@ export interface LeadPreview {
   decidedAt: string | null;
   submittedAt: string | null;
   submittedLeadId: number | string | null;
+  /** Set on approve; exact consent text the shopper saw. */
+  consentRecord: ConsentRecord | null;
 }
 
 const PREVIEW_TTL_MS = 30 * 60 * 1000;
@@ -116,6 +128,7 @@ export function createPreview(args: {
     decidedAt: null,
     submittedAt: null,
     submittedLeadId: null,
+    consentRecord: null,
   };
   previews.set(preview.previewId, preview);
   const approvalToken = `apt_${randomBytes(24).toString("base64url")}`;
@@ -141,6 +154,7 @@ export function decidePreview(
   id: string,
   decision: "approved" | "rejected",
   approvalToken: string,
+  opts?: { source?: "ai_agent" | "human_ui"; agentSurface?: string | null },
 ): DecideResult {
   const p = getPreview(id);
   if (!p) return { ok: false, code: "not_found" };
@@ -156,6 +170,17 @@ export function decidePreview(
 
   p.status = decision;
   p.decidedAt = new Date().toISOString();
+  if (decision === "approved") {
+    p.consentRecord = {
+      granted_at: p.decidedAt,
+      allowed_channels: ["dealer_email"],
+      consent_text: p.consent, // exact text shown to the shopper
+      scope: ["lead_submission"],
+      // Previews are staged by the WebMCP agent tool layer; human only approves.
+      source: opts?.source ?? "ai_agent",
+      agent_surface: opts?.agentSurface ?? "webmcp",
+    };
+  }
   return { ok: true, preview: p };
 }
 
@@ -216,7 +241,10 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
           price: p.unitPrice,
           dealer: p.dealer,
         },
-        buyerProfile: { source: "webmcp_agent" },
+        buyerProfile: {
+          source: "webmcp_agent",
+          consent: p.consentRecord,
+        },
         contactName: p.customer.name,
         contactEmail: p.customer.email,
         contactPhone: p.customer.phone,

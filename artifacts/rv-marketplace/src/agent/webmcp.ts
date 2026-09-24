@@ -342,6 +342,78 @@ async function handleLeadSubmit(raw: unknown): Promise<ToolResult> {
   return { receipt: res.data.receipt as unknown as Record<string, unknown> };
 }
 
+
+// ── Telemetry (MAT-38) ─────────────────────────────────────────────────────
+
+const callCounts: Record<string, number> = {};
+const dealerCallCounts: Record<string, number> = {};
+let registeredToolNames: string[] = [];
+let registeredApi: "document" | "navigator" | "none" = "none";
+
+function bumpCount(map: Record<string, number>, key: string): void {
+  if (!key) return;
+  map[key] = (map[key] || 0) + 1;
+}
+
+function extractIds(input: unknown, result: ToolResult): { unitIds: string[]; dealerIds: string[] } {
+  const unitIds = new Set<string>();
+  const dealerIds = new Set<string>();
+  const consider = (v: unknown) => {
+    if (!v || typeof v !== "object") return;
+    const o = v as Record<string, unknown>;
+    for (const k of ["unit_id", "unitId", "id"]) {
+      if (typeof o[k] === "string" && (o[k] as string).length < 200) unitIds.add(o[k] as string);
+    }
+    if (Array.isArray(o.unit_ids)) {
+      for (const id of o.unit_ids) if (typeof id === "string") unitIds.add(id);
+    }
+    for (const k of ["dealer_id", "dealerId"]) {
+      if (typeof o[k] === "string") dealerIds.add(o[k] as string);
+    }
+    if (o.dealer && typeof o.dealer === "object") {
+      const d = o.dealer as Record<string, unknown>;
+      if (typeof d.id === "string") dealerIds.add(d.id);
+      if (typeof d.name === "string" && d.name.length < 120) dealerIds.add(d.name);
+    }
+  };
+  consider(input);
+  consider(result);
+  // Session shortlist/focused may carry dealer names on unit-shaped results
+  if (typeof result.dealer === "string") dealerIds.add(result.dealer);
+  return { unitIds: [...unitIds].slice(0, 12), dealerIds: [...dealerIds].slice(0, 12) };
+}
+
+function emitWebmcpEvent(payload: Record<string, unknown>): void {
+  try {
+    const body = JSON.stringify(payload);
+    const url = "/api/webmcp/event";
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      if (navigator.sendBeacon(url, blob)) return;
+    }
+    void fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    /* never block the tool */
+  }
+}
+
+function installMatchrvDebug(): void {
+  const api = {
+    debug: () => ({
+      api: registeredApi,
+      tools: [...registeredToolNames],
+      calls: { ...callCounts },
+      dealerCalls: { ...dealerCallCounts },
+    }),
+  };
+  (window as unknown as { MatchRV: typeof api }).MatchRV = api;
+}
+
 const HANDLERS: Record<string, Handler> = {
   search_inventory: handleSearch,
   get_unit_details: handleUnitDetails,
@@ -380,11 +452,38 @@ export async function executeToolByName(name: string, input: unknown): Promise<T
   }
   markAgentActive();
   const t0 = performance.now();
-  const result = await handler(input);
+  let result: ToolResult;
+  try {
+    result = await handler(input);
+  } catch (err) {
+    const ms = Math.round(performance.now() - t0);
+    bumpCount(callCounts, name);
+    emitWebmcpEvent({
+      tool: name,
+      durationMs: ms,
+      ok: false,
+      path: typeof location !== "undefined" ? location.pathname : undefined,
+      ts: new Date().toISOString(),
+    });
+    throw err;
+  }
   const ms = Math.round(performance.now() - t0);
-  if ("error" in result) {
+  bumpCount(callCounts, name);
+  const { unitIds, dealerIds } = extractIds(input, result);
+  for (const d of dealerIds) bumpCount(dealerCallCounts, d);
+  const ok = !("error" in result);
+  if (!ok) {
     logLedger("system", `${name} → ${String(result.error)} (${ms}ms)`);
   }
+  emitWebmcpEvent({
+    tool: name,
+    unitIds,
+    dealerIds,
+    durationMs: ms,
+    ok,
+    path: typeof location !== "undefined" ? location.pathname : undefined,
+    ts: new Date().toISOString(),
+  });
   return result;
 }
 
@@ -393,6 +492,15 @@ export function registerMatchrvTools(): "native" | "none" {
   registered = true;
 
   const mc = findModelContext();
+  if (mc && typeof document !== "undefined" && (document as unknown as { modelContext?: unknown }).modelContext === mc) {
+    registeredApi = "document";
+  } else if (mc) {
+    registeredApi = "navigator";
+  } else {
+    registeredApi = "none";
+  }
+  registeredToolNames = TOOL_CONTRACTS.map((c) => c.name);
+
   for (const contract of TOOL_CONTRACTS) {
     if (mc) {
       try {
@@ -412,6 +520,7 @@ export function registerMatchrvTools(): "native" | "none" {
 
   const runtime = mc ? "native" : "none";
   setRuntime(runtime, TOOL_CONTRACTS.length);
+  installMatchrvDebug();
   logLedger(
     "system",
     mc

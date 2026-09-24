@@ -49,6 +49,15 @@ describe("approval boundary", () => {
 
     const first = decidePreview(preview.previewId, "approved", approvalToken);
     expect(first.ok).toBe(true);
+    if (first.ok) {
+      expect(first.preview.consentRecord).toMatchObject({
+        scope: ["lead_submission"],
+        source: "ai_agent",
+        agent_surface: "webmcp",
+        consent_text: first.preview.consent,
+      });
+      expect(first.preview.consentRecord?.granted_at).toBeTruthy();
+    }
 
     // Replay with the same (now consumed) token cannot re-decide.
     const replay = decidePreview(preview.previewId, "rejected", approvalToken);

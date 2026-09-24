@@ -7,6 +7,13 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxy
 import router from "./routes";
 import { matchRvMcpNodeHandler } from "./mcp";
 import { DB_MODE } from "@workspace/db";
+import { getInventory } from "./services/agent-inventory";
+import { injectListingIntoShell } from "./lib/listing-seo";
+import {
+  renderSitemapIndex,
+  renderCoreSitemap,
+  renderUnitSitemapPage,
+} from "./lib/sitemap";
 
 const app: Express = express();
 
@@ -15,6 +22,21 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 app.all("/mcp", matchRvMcpNodeHandler);
+// sendBeacon may post text/plain — accept it for the WebMCP event endpoint only.
+app.use(
+  "/api/webmcp/event",
+  express.text({ type: ["text/plain", "application/json", "*/*"], limit: "16kb" }),
+  (req: Request, _res: Response, next: NextFunction) => {
+    if (typeof req.body === "string") {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch {
+        /* leave as string; route will 400 */
+      }
+    }
+    next();
+  },
+);
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
@@ -76,7 +98,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 // selection. The classic marketplace endpoints cannot. Answer those with an
 // explicit 503 rather than letting a database error surface as a 500.
 if (DB_MODE === "none") {
-  const DB_FREE = /^\/(agent|healthz|outfitter)(\/|$)/;
+  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (DB_FREE.test(req.path)) return next();
     res.status(503).json({
@@ -91,32 +113,86 @@ if (DB_MODE === "none") {
 
 app.use("/api", router);
 
+// ── Dynamic sitemaps (must be registered BEFORE express.static so a leftover
+//    public/sitemap.xml cannot shadow them) ─────────────────────────────────
+app.get("/sitemap.xml", (_req: Request, res: Response) => {
+  try {
+    res.type("application/xml").send(renderSitemapIndex());
+  } catch (err) {
+    console.error("[sitemap] index failed:", err);
+    res.status(503).type("text/plain").send("sitemap unavailable");
+  }
+});
+app.get("/sitemaps/core.xml", (_req: Request, res: Response) => {
+  res.type("application/xml").send(renderCoreSitemap());
+});
+app.get("/sitemaps/units-:page.xml", (req: Request, res: Response) => {
+  const page = Number(req.params.page);
+  try {
+    const xml = renderUnitSitemapPage(page);
+    if (!xml) {
+      res.status(404).type("text/plain").send("sitemap page not found");
+      return;
+    }
+    res.type("application/xml").send(xml);
+  } catch (err) {
+    console.error("[sitemap] units page failed:", err);
+    res.status(503).type("text/plain").send("sitemap unavailable");
+  }
+});
+
 // Single-process deploys: when the web app has been built
 // (pnpm build:web), serve it from here with an SPA fallback so one Node
 // process is a complete live deployment.
 const webDist = resolvePath(import.meta.dirname, "../../rv-marketplace/dist/public");
 if (existsSync(resolvePath(webDist, "index.html"))) {
   const indexPath = resolvePath(webDist, "index.html");
+  // Cache the shell template in memory (O(1) per request after first read).
+  const shellTemplate = readFileSync(indexPath, "utf-8");
   // On a database-free deployment the classic marketplace pages cannot
   // render, so the root becomes the agent-native /shop experience and the
   // SPA is told it is in demo mode (the layout trims links that would lead
   // to disabled pages). Everything else is byte-identical.
   const demo = DB_MODE === "none";
   const indexHtml = demo
-    ? readFileSync(indexPath, "utf-8").replace(
+    ? shellTemplate.replace(
         "</head>",
         '  <meta name="matchrv-mode" content="demo">\n  </head>',
       )
-    : null;
+    : shellTemplate;
   if (demo) {
     app.get("/", (_req: Request, res: Response) => res.redirect(302, "/shop"));
   }
   app.use(express.static(webDist, { maxAge: "1h", index: false }));
-  app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
-    if (indexHtml) {
+
+  app.get(/^\/(?!api\/).*/, (req: Request, res: Response) => {
+    // MAT-32: inject unit-specific title/meta/JSON-LD/summary for /listing/:id
+    // Same HTML for humans and bots — no UA sniffing.
+    const listingMatch = req.path.match(/^\/listing\/(.+)$/);
+    if (listingMatch) {
+      let unitId = listingMatch[1];
+      try {
+        unitId = decodeURIComponent(unitId);
+      } catch {
+        /* keep raw */
+      }
+      let unit = null;
+      try {
+        unit = getInventory().byId.get(unitId) ?? null;
+      } catch (err) {
+        console.warn("[listing-seo] inventory unavailable:", err);
+      }
+      const html = injectListingIntoShell(indexHtml, unit, unitId);
+      // Unknown id: still return the SPA shell (client route works) with noindex;
+      // use 404 status so crawlers don't index ghosts.
+      res.status(unit ? 200 : 404).type("html").send(html);
+      return;
+    }
+
+    if (demo) {
       res.type("html").send(indexHtml);
     } else {
-      res.sendFile(indexPath);
+      res.type("html").send(shellTemplate);
     }
   });
   console.log(`[startup] serving built web app from ${webDist}${demo ? " (demo mode: / -> /shop)" : ""}`);

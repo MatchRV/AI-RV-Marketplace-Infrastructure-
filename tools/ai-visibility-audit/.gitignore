@@ -4,3 +4,6 @@ output/
 report_*.json
 .venv/
 __pycache__/
+
+citation-runs/
+reports/

@@ -137,7 +137,7 @@ export function AnswerEngine() {
 
   return (
     <Layout>
-      <SEO title="Ask MatchRV — Real RV Answers From Real Inventory" description="Ask an RV shopping question in plain language and get inventory-backed answers with tow-fit receipts and unknowns clearly labeled." canonical="https://matchrv.com/answers" />
+      <SEO title="Ask MatchRV — Real RV Answers From Real Inventory" description="Ask an RV shopping question in plain language and get inventory-backed answers with tow-fit receipts and unknowns clearly labeled." canonical="/answers" />
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <section className="rounded-3xl bg-[#0B1117] p-6 text-white sm:p-10">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#65E7DF]">MatchRV Answer Engine</p>

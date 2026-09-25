@@ -70,7 +70,7 @@ export function DealerVisibilityDashboard() {
 
   return (
     <Layout>
-      <SEO title="AI Visibility Dashboard — MatchRV Dealers" description="Track observed AI visibility, dealer mentions, inventory citations, top-3 placement, evidence, and remediation work over time." canonical="https://matchrv.com/dealer-visibility" />
+      <SEO title="AI Visibility Dashboard — MatchRV Dealers" description="Track observed AI visibility, dealer mentions, inventory citations, top-3 placement, evidence, and remediation work over time." canonical="/dealer-visibility" />
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <section className="flex flex-col gap-5 rounded-3xl bg-[#0B1117] p-7 text-white sm:flex-row sm:items-end sm:justify-between sm:p-9">
           <div>

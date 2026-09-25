@@ -63,7 +63,7 @@ export function DealerAeoToolkit() {
 
   return (
     <Layout>
-      <SEO title="Dealer AI Visibility Tools — MatchRV" description="Generate machine-readable RV inventory markup, local-intent FAQs, and find inventory-page issues that keep AI assistants from citing your dealership." canonical="https://matchrv.com/dealer-tools" />
+      <SEO title="Dealer AI Visibility Tools — MatchRV" description="Generate machine-readable RV inventory markup, local-intent FAQs, and find inventory-page issues that keep AI assistants from citing your dealership." canonical="/dealer-tools" />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <section className="rounded-3xl bg-[#0B1117] p-7 text-white sm:p-10">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#65E7DF]">Dealer AEO / GEO Toolkit</p>

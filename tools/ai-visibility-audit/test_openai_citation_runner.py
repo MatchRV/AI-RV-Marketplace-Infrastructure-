@@ -72,6 +72,8 @@ def main():
     payload = R.request_payload(cases[0], "gpt-5.6")
     tool = payload["tools"][0]
     check("responses-api-tool", tool["type"] == "web_search")
+    check("live-web-access", tool["external_web_access"] is True, tool)
+    check("web-search-required", payload["tool_choice"] == "required", payload["tool_choice"])
     check("approx-location", tool["user_location"] == {
         "type": "approximate", "country": "US", "city": "Tacoma", "region": "WA"
     }, tool["user_location"])

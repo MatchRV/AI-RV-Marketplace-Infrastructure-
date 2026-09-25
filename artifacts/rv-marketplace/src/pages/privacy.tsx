@@ -11,7 +11,7 @@ export function Privacy() {
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-4xl font-display font-bold mb-2">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mb-10">Last updated: September 25, 2026</p>
+        <p className="text-sm text-muted-foreground mb-4">Last updated: September 25, 2026</p>\n        <p className="text-muted-foreground mb-10">This Privacy Policy describes how MatchRV Inc. (&quot;MatchRV&quot;) handles information in our website, AI shopping tools, and supported plugin integrations.</p>
 
         <div className="space-y-8 text-muted-foreground leading-relaxed">
           <section>
@@ -92,7 +92,7 @@ export function Privacy() {
             <p>
               Questions about this Privacy Policy? Contact us at{" "}
               <a href="mailto:jonathan@matchrv.com" className="text-primary underline">
-                privacy@rvmarketplace.com
+                jonathan@matchrv.com
               </a>
               .
             </p>

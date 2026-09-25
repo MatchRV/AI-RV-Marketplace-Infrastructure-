@@ -22,6 +22,18 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 app.all("/mcp", matchRvMcpNodeHandler);
+
+// OpenAI plugin-directory domain verification. The submission portal supplies
+// a token; set OPENAI_APPS_CHALLENGE on the production MCP service to that
+// exact value. Return only the token, never JSON or multiple values.
+app.get("/.well-known/openai-apps-challenge", (_req: Request, res: Response) => {
+  const token = process.env.OPENAI_APPS_CHALLENGE?.trim();
+  if (!token) {
+    res.status(404).type("text/plain").send("not configured");
+    return;
+  }
+  res.type("text/plain").send(token);
+});
 // sendBeacon may post text/plain — accept it for the WebMCP event endpoint only.
 app.use(
   "/api/webmcp/event",

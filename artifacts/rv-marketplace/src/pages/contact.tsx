@@ -51,7 +51,7 @@ export function Contact() {
       <SEO
         title="Contact Us — Get Help with Your RV Search"
         description="Have a question about MatchRV or an RV listing? Reach out to our team. We're here to help you find, buy, or sell the perfect RV."
-        canonical="https://matchrv.com/contact"
+        canonical="/contact"
       />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-10">

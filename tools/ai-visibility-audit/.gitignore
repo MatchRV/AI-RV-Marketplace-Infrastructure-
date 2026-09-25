@@ -6,3 +6,4 @@ report_*.json
 __pycache__/
 
 citation-runs/
+reports/

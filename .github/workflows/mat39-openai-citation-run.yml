@@ -32,7 +32,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     env:
-      MAT39_DEALER: ${{ github.event_name == 'workflow_dispatch' && inputs.dealer || "Porter's RV" }}
+      MAT39_DEALER: ${{ github.event_name == 'workflow_dispatch' && inputs.dealer || 'Porter''s RV' }}
       MAT39_CITY: ${{ github.event_name == 'workflow_dispatch' && inputs.city || 'Coos Bay' }}
       MAT39_STATE: ${{ github.event_name == 'workflow_dispatch' && inputs.state || 'OR' }}
       MAT39_DOMAIN: ${{ github.event_name == 'workflow_dispatch' && inputs.domain || 'portersrv.com' }}

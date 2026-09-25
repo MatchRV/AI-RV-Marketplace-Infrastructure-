@@ -23,6 +23,10 @@ on:
         description: OpenAI model
         required: true
         default: "gpt-5.6"
+  push:
+    branches: [main]
+    paths:
+      - ".github/mat39-run-request.txt"
 
 jobs:
   run:
@@ -56,11 +60,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python openai_citation_runner.py \
-            --dealer "${{ inputs.dealer }}" \
-            --city "${{ inputs.city }}" \
-            --state "${{ inputs.state }}" \
-            --domain "${{ inputs.domain }}" \
-            --model "${{ inputs.model }}" \
+            --dealer "${{ inputs.dealer || 'Porter\'s RV' }}" \
+            --city "${{ inputs.city || 'Coos Bay' }}" \
+            --state "${{ inputs.state || 'OR' }}" \
+            --domain "${{ inputs.domain || 'portersrv.com' }}" \
+            --model "${{ inputs.model || 'gpt-5.6' }}" \
             --outdir citation-runs
 
       - name: Upload immutable citation evidence

@@ -58,8 +58,7 @@ python openai_citation_runner.py `
   --domain "portersrv.com"
 ```
 
-For each prompt the request uses the OpenAI Responses API with `web_search`
-and approximate US city/state location. The system instruction is neutral:
+For each prompt the request uses the OpenAI Responses API with `web_search`, explicit live internet access (`external_web_access: true`), `tool_choice: "required"`, and approximate US city/state location. The system instruction is neutral:
 the model is not told to find or favor the target dealer.
 
 The request also asks the API to include
@@ -109,47 +108,3 @@ python test_openai_citation_runner.py
 ```
 
 The test uses a fixed Responses API fixture; it never calls OpenAI.
-
-
-## MAT-39 OpenAI citation runner
-
-The first automated citation runner is intentionally **OpenAI only**. It runs
-the same ten dealer/local prompts used by the audit through the Responses API
-with the hosted `web_search` tool.
-
-Requirements:
-
-- `OPENAI_API_KEY`
-- optional `OPENAI_CITATION_MODEL` (defaults to `gpt-5.5`)
-
-Example:
-
-```powershell
-$env:OPENAI_API_KEY="..."
-node openai_runner.mjs --dealer "Porter's RV" --domain "portersrv.com" --city "Coos Bay" --state "OR"
-```
-
-The runner:
-
-1. Sends the existing prompt exactly as a shopper query. It does **not** add
-   the target dealer or target domain to non-branded prompts.
-2. Uses a neutral instruction: current web information, no dealer favoritism.
-3. Enables Responses API `web_search` with `external_web_access: true`,
-   `tool_choice: "required"`, and approximate US city/state location.
-4. Requests `web_search_call.action.sources`.
-5. Reads the provider response body as text and writes that exact JSON body to
-   `raw/openai/Pxx.json` **before JSON parsing or application normalization**.
-6. Writes a normalized `observations.openai.jsonl` and CSV containing prompt
-   metadata, branded flag, status, model, response id/text, citation URLs/titles,
-   consulted source URLs, search queries and the raw-response path.
-
-The existing dealer-review prompt is retained because it is part of the ten
-current prompts, but it is explicitly marked `isBranded: true`. Later MAT-39
-aggregation must exclude branded observations from headline visibility rates.
-
-Status values emitted by this slice are `success`, `no_search`,
-`empty_response`, `api_error`, `rate_limit`, and `parse_error`.
-
-This runner does **not** score dealers, compute visibility metrics, write the
-dashboard, schedule monthly runs, or call Gemini/Claude. Those remain separate
-MAT-39 follow-on work.

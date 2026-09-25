@@ -1,0 +1,72 @@
+name: MAT-39 OpenAI citation pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      dealer:
+        description: Dealer display name
+        required: true
+        default: "Porter's RV"
+      city:
+        description: Dealer/search city
+        required: true
+        default: "Coos Bay"
+      state:
+        description: US state
+        required: true
+        default: "OR"
+      domain:
+        description: Dealer domain
+        required: true
+        default: "portersrv.com"
+      model:
+        description: OpenAI model
+        required: true
+        default: "gpt-5.6"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Offline runner tests
+        working-directory: tools/ai-visibility-audit
+        run: python test_openai_citation_runner.py
+
+      - name: Verify API key secret exists
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Repository secret OPENAI_API_KEY is not configured."
+            exit 1
+          fi
+
+      - name: Run 10 OpenAI observations
+        working-directory: tools/ai-visibility-audit
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python openai_citation_runner.py \
+            --dealer "${{ inputs.dealer }}" \
+            --city "${{ inputs.city }}" \
+            --state "${{ inputs.state }}" \
+            --domain "${{ inputs.domain }}" \
+            --model "${{ inputs.model }}" \
+            --outdir citation-runs
+
+      - name: Upload immutable citation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mat39-openai-${{ github.run_id }}
+          path: tools/ai-visibility-audit/citation-runs/
+          if-no-files-found: error
+          retention-days: 90

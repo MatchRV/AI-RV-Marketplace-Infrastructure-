@@ -119,6 +119,7 @@ def request_payload(case: PromptCase, model: str) -> dict[str, Any]:
         "tools": [
             {
                 "type": "web_search",
+                "external_web_access": True,
                 "user_location": {
                     "type": "approximate",
                     "country": "US",
@@ -127,7 +128,7 @@ def request_payload(case: PromptCase, model: str) -> dict[str, Any]:
                 },
             }
         ],
-        "tool_choice": "auto",
+        "tool_choice": "required",
         "include": ["web_search_call.action.sources"],
     }
 

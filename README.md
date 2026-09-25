@@ -303,3 +303,138 @@ Full list: [ROADMAP.md](./ROADMAP.md)
 
 *MatchRV comes from eight years inside RV dealerships: the inventory was
 always online — now agents can actually understand it.*
+
+
+## MatchRV answer + dealer visibility suite
+
+This repository also contains three additive product surfaces. They do not replace
+the existing AI Outfitter, WebMCP shopping surface, or AI Visibility Audit.
+
+### Routes
+
+| Route | Component | Data status |
+| --- | --- | --- |
+| `/answers` | Consumer RV Answer Engine | **Live from the MatchRV agent inventory layer** used by the MCP/WebMCP tools |
+| `/dealer-tools` | Dealer AEO/GEO Toolkit | **Live against the URL/CSV supplied by the dealer** |
+| `/dealer-visibility` | Monitoring subscriber dashboard | **Seeded sample metric history/evidence** until a rooftop audit pipeline is connected |
+
+### Consumer Answer Engine
+
+The browser UI calls the same deterministic server operations used by the
+agent tool layer:
+
+- `POST /api/agent/search` → the `search_inventory` engine contract
+- `POST /api/agent/tow-fit` → the `evaluate_tow_fit` engine contract
+- `POST /api/agent/compare` → the `compare_units` engine contract
+- `GET /api/agent/units/:id` → the `get_unit_details` engine contract
+
+The public agent endpoint remains:
+
+```
+https://matchrv-mcp.onrender.com/mcp
+```
+
+ChatGPT/Claude/Gemini/Grok should use the MCP read tools directly. The web UI
+uses the in-repo `/api/agent/*` facade over the same canonical MatchRV
+semantics so the consumer page does not add an MCP network hop.
+
+**Towing rules:** search/tow-fit prefer GVWR when published, never silently
+substitute dry weight without labeling it, and show an additional payload
+warning because a model name alone cannot establish the truck's door-sticker
+payload. Exact payload, loaded tongue/pin weight, passengers, cargo, and hitch
+equipment still have to be verified by the shopper.
+
+**Listing links:** the current canonical unit model contains dealer identity
+and dealer website, but not a guaranteed original source-listing URL for every
+record. The Answer Engine therefore links the canonical MatchRV unit page and
+the dealer website and explicitly labels the source listing URL as unpublished.
+Do not fabricate dealer unit URLs. Add a sourced `listingUrl` field to the
+canonical feed before changing that behavior.
+
+**Deal analysis:** "good deal" compares current asking prices within the live
+returned MatchRV result set. Published MSRP discounts are shown when both MSRP
+and asking price are present. Historical price-drop tracking and a third-party
+appraisal feed are not wired yet and are labeled as such in the UI.
+
+### Dealer AEO/GEO Toolkit
+
+Server routes live under `/api/dealer-tools/*`:
+
+- `POST /api/dealer-tools/json-ld` with `{ url }` or `{ csv }`
+  - emits copy-paste-ready `schema.org/Vehicle` JSON-LD
+  - includes numeric `Offer` pricing only when observed
+  - includes `mileageFromOdometer`, VIN, body type, and model year only when observed
+  - returns a validation result before the markup is shown
+- `POST /api/dealer-tools/faqs` with `{ url, location, inventoryFocus? }`
+  - generates local-intent FAQ copy grounded in the scanned page
+  - includes RV-specific towing and Pacific Northwest inspection guidance
+- `POST /api/dealer-tools/content-check` with `{ url, maxPages? }`
+  - crawls up to eight same-origin inventory/listing pages
+  - flags JS-heavy/low-text rendering, missing numeric price, RV type,
+    length, sleeps, "call for price" without a numeric offer, and missing
+    Vehicle JSON-LD
+  - every finding includes impact, effort, count, and evidence
+  - the score is only a summary; counts/findings are the source of truth
+
+The URL crawler rejects localhost, literal IP targets, and hosts resolving to
+private/link-local addresses to avoid turning the checker into an internal
+network fetch primitive.
+
+The JSON-LD shape follows the current Schema.org automotive vocabulary:
+`Vehicle`, `vehicleIdentificationNumber`, `mileageFromOdometer`,
+`bodyType`, and `offers: Offer`.
+
+### Dealer Visibility Dashboard
+
+`/dealer-visibility` renders:
+
+- Observed AI Visibility (headline)
+- dealer mentions
+- inventory citations
+- top-3 placement
+- month-over-month deltas
+- prompt/model/date evidence for every metric card
+- fix checklist states: `open`, `fixed`, `re-testing`
+- a billing portal hook via `VITE_BILLING_PORTAL_URL`
+
+The included history and evidence rows are intentionally marked **SAMPLE**.
+Wire them to the existing visibility-audit pipeline before representing them
+as a specific dealer's measured results.
+
+### Configuration
+
+No new package is required.
+
+Optional frontend environment variable:
+
+```
+VITE_BILLING_PORTAL_URL=https://<your-billing-provider-portal-url>
+```
+
+The AEO crawler uses Node's built-in `fetch`, DNS resolver, and IP checks.
+It requires Node 22+, which this workspace already pins.
+
+### Verification before merge
+
+Run the existing production gates:
+
+```
+pnpm install
+pnpm -r --if-present run typecheck
+pnpm test
+pnpm build:web
+pnpm build:api
+pnpm e2e
+```
+
+Then smoke-test:
+
+1. `/answers`: ask "find me a bunkhouse under $40k near Tacoma that my F-150 can tow".
+   Verify every shown spec is either sourced or says **Unverified**, and inspect
+   the tow-fit receipt.
+2. `/dealer-tools`: paste a public dealer inventory URL, run all three tools,
+   and confirm JSON-LD returns `valid: true`.
+3. `/dealer-visibility`: confirm all four metric cards render and each opens
+   evidence by changing the active metric.
+4. `/mcp` and `/api/healthz`: confirm both still respond; this feature branch
+   intentionally does not modify the existing MCP handler.

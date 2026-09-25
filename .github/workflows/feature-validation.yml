@@ -1,0 +1,37 @@
+name: MatchRV feature validation
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck agent core
+        run: pnpm typecheck:agent
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build web
+        run: pnpm build:web
+
+      - name: Build API
+        run: pnpm build:api

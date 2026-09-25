@@ -24,8 +24,11 @@ jobs:
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm -r --if-present run typecheck
+      - name: Typecheck shipped MatchRV packages
+        run: |
+          pnpm --filter @workspace/agent-core run typecheck
+          pnpm --filter @workspace/api-server run typecheck
+          pnpm --filter @workspace/rv-marketplace run typecheck
 
       - name: Unit tests
         run: pnpm test

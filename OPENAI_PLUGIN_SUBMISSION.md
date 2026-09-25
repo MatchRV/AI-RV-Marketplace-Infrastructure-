@@ -21,9 +21,9 @@ MatchRV helps shoppers turn real-world RV requirements into structured inventory
 
 **Privacy policy:** https://matchrv.com/privacy
 
-**Support URL:** TODO — add public MatchRV support page before submission.
+**Support URL:** https://matchrv.com/contact
 
-**Terms URL:** TODO — add public MatchRV terms page before submission.
+**Terms URL:** https://matchrv.com/terms-and-conditions
 
 **Logo:** Use current production MatchRV logo.
 
@@ -35,7 +35,7 @@ MatchRV helps shoppers turn real-world RV requirements into structured inventory
 
 **Authentication:** None for current public shopping/reviewer workflow.
 
-**Domain verification:** Complete the OpenAI-generated challenge after the draft is created. The challenge endpoint must return only the exact token supplied by the OpenAI submission portal.
+**Domain verification:** The production MCP server exposes `/.well-known/openai-apps-challenge`. After the portal creates the draft and displays its token, set the Render environment variable `OPENAI_APPS_CHALLENGE` on the `matchrv-mcp` service to that exact value. Verify `https://matchrv-mcp.onrender.com/.well-known/openai-apps-challenge` returns only the token, then complete verification in the portal.
 
 ## MCP tools and intended annotations
 
@@ -137,7 +137,7 @@ Initial public submission of MatchRV as a remote MCP-backed RV shopping plugin. 
 
 - Confirm the OpenAI organization has Apps Management Write permission for the submitter.
 - Complete MatchRV Inc. business verification in the same OpenAI organization/project used for submission.
-- Add and verify public Support and Terms URLs that match MatchRV Inc.
+- Verify the public Support and Terms URLs render correctly and match MatchRV Inc.
 - Confirm the public Privacy Policy accurately covers data sent/returned by the MCP.
 - Confirm the production MCP endpoint is publicly reachable and stable.
 - In the OpenAI portal choose **With MCP** and **Universal**.

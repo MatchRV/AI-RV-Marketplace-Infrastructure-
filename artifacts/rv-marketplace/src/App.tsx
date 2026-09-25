@@ -28,6 +28,9 @@ import { Terms } from "@/pages/terms";
 import { Privacy } from "@/pages/privacy";
 import { DealerLogin } from "@/pages/dealer-login";
 import { ForDealers } from "@/pages/for-dealers";
+import { AnswerEngine } from "@/pages/answer-engine";
+import { DealerAeoToolkit } from "@/pages/dealer-aeo-toolkit";
+import { DealerVisibilityDashboard } from "@/pages/dealer-visibility-dashboard";
 import { Dealers } from "@/pages/dealers";
 import { Discover } from "@/pages/discover";
 import { Contact } from "@/pages/contact";
@@ -175,6 +178,7 @@ function AppRouter() {
       <Switch>
       <Route path="/" component={Home} />
       <Route path="/shop" component={Shop} />
+      <Route path="/answers" component={AnswerEngine} />
       <Route path="/browse" component={Browse} />
       <Route path="/listing/:id" component={ListingDetail} />
       <Route path="/outfitter" component={Outfitter} />
@@ -194,6 +198,8 @@ function AppRouter() {
       <Route path="/terms">{() => <Redirect to="/terms-and-conditions" replace />}</Route>
       <Route path="/privacy" component={Privacy} />
       <Route path="/for-dealers" component={ForDealers} />
+      <Route path="/dealer-tools" component={DealerAeoToolkit} />
+      <Route path="/dealer-visibility" component={DealerVisibilityDashboard} />
       <Route path="/dealers/ai">{() => <Redirect to="/for-dealers" replace />}</Route>
       <Route path="/dealers/login" component={DealerLogin} />
       <Route path="/dealer-login">{() => <Redirect to="/dealers/login" replace />}</Route>

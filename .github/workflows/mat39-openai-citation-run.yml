@@ -1,6 +1,10 @@
 name: MAT-39 OpenAI citation pilot
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mat39-openai-citation-run.yml"
   workflow_dispatch:
     inputs:
       dealer:
@@ -27,6 +31,12 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      MAT39_DEALER: ${{ github.event_name == 'workflow_dispatch' && inputs.dealer || 'Porter''s RV' }}
+      MAT39_CITY: ${{ github.event_name == 'workflow_dispatch' && inputs.city || 'Coos Bay' }}
+      MAT39_STATE: ${{ github.event_name == 'workflow_dispatch' && inputs.state || 'OR' }}
+      MAT39_DOMAIN: ${{ github.event_name == 'workflow_dispatch' && inputs.domain || 'portersrv.com' }}
+      MAT39_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model || 'gpt-5.6' }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -56,11 +66,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python openai_citation_runner.py \
-            --dealer "${{ inputs.dealer }}" \
-            --city "${{ inputs.city }}" \
-            --state "${{ inputs.state }}" \
-            --domain "${{ inputs.domain }}" \
-            --model "${{ inputs.model }}" \
+            --dealer "$MAT39_DEALER" \
+            --city "$MAT39_CITY" \
+            --state "$MAT39_STATE" \
+            --domain "$MAT39_DOMAIN" \
+            --model "$MAT39_MODEL" \
             --outdir citation-runs
 
       - name: Upload immutable citation evidence

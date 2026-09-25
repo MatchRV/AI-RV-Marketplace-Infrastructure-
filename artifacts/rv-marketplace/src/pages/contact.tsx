@@ -62,6 +62,13 @@ export function Contact() {
           <p className="text-lg text-muted-foreground">
             Have a question? We'd love to hear from you.
           </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            For MatchRV or plugin support, email{" "}
+            <a href="mailto:jonathan@matchrv.com" className="font-semibold text-primary underline">
+              jonathan@matchrv.com
+            </a>
+            .
+          </p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-5">

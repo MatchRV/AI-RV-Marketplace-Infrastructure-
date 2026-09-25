@@ -11,7 +11,7 @@ export function Terms() {
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-4xl font-display font-bold mb-2">Terms and Conditions</h1>
-        <p className="text-sm text-muted-foreground mb-10">Last updated: September 25, 2026</p>
+        <p className="text-sm text-muted-foreground mb-4">Last updated: September 25, 2026</p>\n        <p className="text-muted-foreground mb-10">These Terms govern services provided by MatchRV Inc. (&quot;MatchRV&quot;), including the MatchRV website and supported AI/plugin experiences.</p>
 
         <div className="space-y-8 text-muted-foreground leading-relaxed">
           <section>
@@ -99,7 +99,7 @@ export function Terms() {
             <p>
               Questions about these Terms? Contact us at{" "}
               <a href="mailto:jonathan@matchrv.com" className="text-primary underline">
-                legal@rvmarketplace.com
+                jonathan@matchrv.com
               </a>
               .
             </p>

@@ -24,6 +24,7 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     (u.sleeps.source === "dealer_listing" || u.sleeps.confidence === "high");
   return {
     id: u.id,
+    unit_id: u.id,
     title: u.title,
     price: usd(u.priceUsd.value),
     lengthFt: u.lengthFt.value,

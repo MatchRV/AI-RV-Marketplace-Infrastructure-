@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node dev.mjs",
-    "test": "node --test tools/ai-visibility-audit/openai_runner.test.mjs && pnpm --filter @workspace/agent-core run test && pnpm --filter @workspace/api-server run test && pnpm --filter @workspace/rv-marketplace run test",
+    "test": "pnpm --filter @workspace/agent-core run test && pnpm --filter @workspace/api-server run test && pnpm --filter @workspace/rv-marketplace run test",
     "e2e": "pnpm --filter @workspace/scripts run e2e-shop",
     "build-snapshot": "pnpm --filter @workspace/agent-core run build-snapshot",
     "typecheck:agent": "pnpm --filter @workspace/agent-core run typecheck",

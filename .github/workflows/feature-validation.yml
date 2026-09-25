@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: "22.22.0"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Enable pinned pnpm
         run: |
           corepack enable
@@ -23,6 +27,10 @@ jobs:
 
       - name: Install workspace
         run: pnpm install --frozen-lockfile
+
+      - name: Test MAT-39 OpenAI citation runner
+        working-directory: tools/ai-visibility-audit
+        run: python test_openai_citation_runner.py
 
       - name: Typecheck agent core
         run: pnpm typecheck:agent

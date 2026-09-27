@@ -1,11 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, listingsTable } from "@workspace/db";
+import { db, listingsTable, DB_MODE } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { snapshotSearchFilters } from "../services/snapshot-listings";
 
 const router: IRouter = Router();
 
 router.get("/search/filters", async (_req, res) => {
   try {
+    if (DB_MODE === "none") {
+      return void res.json(snapshotSearchFilters());
+    }
+
     const [types, makes, states, priceRange, yearRange] = await Promise.all([
       db.selectDistinct({ type: listingsTable.type }).from(listingsTable).orderBy(listingsTable.type),
       db.selectDistinct({ make: listingsTable.make }).from(listingsTable).orderBy(listingsTable.make),

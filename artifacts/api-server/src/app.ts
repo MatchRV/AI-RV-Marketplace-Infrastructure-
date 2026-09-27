@@ -104,13 +104,14 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// Without a database (DISABLE_DB=1), the endpoints that read the inventory
-// snapshot still work — the WebMCP agent tools at /api/agent/*, and the AI
-// Outfitter chat, which falls back to the same snapshot for candidate
-// selection. The classic marketplace endpoints cannot. Answer those with an
-// explicit 503 rather than letting a database error surface as a 500.
+// Without a database (DISABLE_DB=1), snapshot-backed agent/outfitter/webmcp
+// routes work, and classic /api/listings + /api/search/filters are also served
+// from the same inventory snapshot. Other marketplace endpoints that need a
+// real DB still answer 503 rather than a generic 500.
 if (DB_MODE === "none") {
-  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp)(\/|$)/;
+  // listings + search/filters: served from inventory snapshot when DB is off
+  // (see routes/listings.ts + services/snapshot-listings.ts).
+  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (DB_FREE.test(req.path)) return next();
     res.status(503).json({

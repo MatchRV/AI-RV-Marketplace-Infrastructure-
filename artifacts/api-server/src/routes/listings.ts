@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, listingsTable, dealersTable } from "@workspace/db";
+import { db, listingsTable, dealersTable, DB_MODE } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, sql, inArray } from "drizzle-orm";
+import { getSnapshotListingById, querySnapshotListings } from "../services/snapshot-listings";
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
@@ -74,6 +75,16 @@ type Cond = ReturnType<typeof eq>;
 router.get("/listings", async (req, res) => {
   try {
     const q = req.query as Record<string, string>;
+
+    if (DB_MODE === "none") {
+      const { rows, total, offset, limit } = querySnapshotListings(q);
+      return void res.json({
+        listings: rows.map(formatListing),
+        total,
+        offset,
+        limit,
+      });
+    }
 
     const {
       type, minPrice, maxPrice, state, make, minYear, maxYear, search,
@@ -238,6 +249,39 @@ router.get("/listings", async (req, res) => {
 
 router.get("/listings/:id", async (req, res) => {
   try {
+    if (DB_MODE === "none") {
+      const row = getSnapshotListingById(String(req.params.id));
+      if (!row) return void res.status(404).json({ message: "Listing not found" });
+      const base = formatListing(row);
+      const detail = {
+        ...base,
+        description: row.description,
+        features: (row.features as string[]) ?? [],
+        dryWeight: row.dry_weight,
+        gvwr: row.gvwr,
+        hitchWeight: row.hitch_weight,
+        freshWater: row.fresh_water,
+        greyWater: row.grey_water,
+        blackWater: row.black_water,
+        generator: row.generator,
+        solar: row.solar,
+        awning: row.awning,
+        outdoor_kitchen: row.outdoor_kitchen,
+        washerDryer: row.washer_dryer,
+        priceHistory: [],
+        solarReady: row.solar_ready,
+        solarInstalled: row.solar_installed,
+        dealer: {
+          id: row.dealer_id,
+          name: row.dealer_name,
+          city: typeof row.location === "string" ? String(row.location).split(",")[0] : undefined,
+          state: row.state,
+        },
+        similar: [],
+      };
+      return void res.json(detail);
+    }
+
     const id = Number(req.params.id);
     if (isNaN(id)) return void res.status(400).json({ message: "Invalid listing ID" });
 

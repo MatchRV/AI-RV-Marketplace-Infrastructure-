@@ -87,6 +87,69 @@ export function ForDealers() {
           </div>
         </section>
 
+
+
+        {/* Why this matters — CSO verbatim core, locked claims only */}
+        <section className="mb-10">
+          <h2 className="text-2xl font-display font-bold mb-4">Why this matters</h2>
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-4">
+            <p className="text-base sm:text-lg text-foreground leading-relaxed">
+              Today&apos;s buyers research long before they contact a dealership. Industry
+              data shows <span className="font-semibold">92% of vehicle buyers research
+              online before purchasing</span>, and nearly half of consumers
+              (<span className="font-semibold">44%</span>) have already used AI-powered
+              tools while shopping for a vehicle{" "}
+              <span className="text-sm text-muted-foreground">(Cars.com AI in Car Shopping Consumer Survey, 2025)</span>.
+              Among shoppers already using AI, <span className="font-semibold">97%</span> say
+              it influences their purchase decision{" "}
+              <span className="text-sm text-muted-foreground">(Cars.com)</span>.
+            </p>
+            <p className="text-base sm:text-lg text-foreground leading-relaxed">
+              As AI becomes part of product discovery, dealers need inventory that&apos;s
+              complete, accurate, and readable by AI systems.{" "}
+              <span className="font-semibold">
+                If your listings are missing specs, photos, or clear descriptions, AI
+                can&apos;t confidently recommend your units.
+              </span>
+            </p>
+            <details className="pt-2 border-t border-border/60 group">
+              <summary className="cursor-pointer text-sm font-semibold text-primary list-none flex items-center gap-2 select-none">
+                <span className="group-open:hidden">Supporting figures · sources</span>
+                <span className="hidden group-open:inline">Hide supporting figures</span>
+              </summary>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span><span className="font-semibold text-foreground">73%</span> of AI-assisted vehicle shoppers say AI saves time <span className="text-xs">(Cars.com)</span></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span><span className="font-semibold text-foreground">38%</span> of U.S. consumers have used generative AI while shopping online and <span className="font-semibold text-foreground">53%</span> use AI for product research <span className="text-xs">(Adobe Digital Insights)</span></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span><span className="font-semibold text-foreground">43%</span> have discovered a new brand through AI <span className="text-xs">(Semrush)</span></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span><span className="font-semibold text-foreground">16.9M</span> U.S. households interested in buying an RV within five years <span className="text-xs">(RVIA)</span></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary font-bold shrink-0">·</span>
+                  <span>Many first-time RV buyers spend <span className="font-semibold text-foreground">10+ hours</span> researching online before purchase <span className="text-xs">(RVDA-cited research)</span></span>
+                </li>
+              </ul>
+            </details>
+            <p className="pt-1">
+              <a href="/browse" className="text-primary font-semibold hover:underline inline-flex items-center gap-1">
+                See a sample AI Visibility Report
+                <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+            </p>
+          </div>
+        </section>
+
+
         {/* Citation evidence: what AI already answers (anonymized, observed behavior) */}
         <section className="mb-10">
           <div className="flex items-center gap-3 mb-4">
@@ -219,8 +282,8 @@ export function ForDealers() {
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
             Get a free AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
-            crawlers, and the top fixes so agents can recommend your units. Email us
-            — no form required.
+            crawlers, and the top fixes so agents can recommend your units. Starter
+            reports typically run $299–$499. Email us — no form required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
@@ -230,6 +293,12 @@ export function ForDealers() {
               <Mail className="w-5 h-5" />
               Request AI Visibility Report
               <ArrowRight className="w-4 h-4" />
+            </a>
+            <a
+              href="/browse"
+              className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white px-6 py-3.5 rounded-lg font-bold hover:bg-white/10 active:scale-[0.98] transition-all min-h-[48px]"
+            >
+              See sample report
             </a>
             <a
               href={TALK_MAILTO}

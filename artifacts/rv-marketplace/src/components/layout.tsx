@@ -48,13 +48,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ? [{ href: "/shop", label: "Agent Shop", badge: "WebMCP" }]
     : [
         { href: "/shop", label: "Agent Shop", badge: "NEW" },
-        { href: "/browse", label: "Browse RVs" },
+        { href: "/browse", label: "Visibility Report" },
         { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },
       ];
 
   const bottomNavLinks = [
     { href: "/match", label: "Match", icon: Sparkles },
-    { href: "/browse", label: "Browse", icon: Home },
+    { href: "/shop", label: "Shop", icon: Home },
     { href: "/discover", label: "Discover", icon: Compass },
     { href: "/trips", label: "Trips", icon: Map },
     { href: "/saved", label: "Saved", icon: Heart },
@@ -163,7 +163,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           {savedSearches.map((s) => {
                             const params = new URLSearchParams();
                             if (s.filters) Object.entries(s.filters).forEach(([k, v]) => { if (v != null) params.set(k, String(v)); });
-                            const href = `/browse${params.toString() ? `?${params.toString()}` : ""}`;
+                            const href = `/shop`;
                             return (
                               <Link key={s.id} href={href} onClick={() => setIsUserMenuOpen(false)}>
                                 <div className="flex items-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer">
@@ -290,7 +290,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B1117]/95 backdrop-blur-md border-t border-white/10 safe-area-pb">
         <div className="flex items-stretch">
           {bottomNavLinks.map(({ href, label, icon: Icon }) => {
-            const active = location === href || (href === "/browse" && location.startsWith("/listing"));
+            const active = location === href || (href === "/shop" && location.startsWith("/listing"));
             return (
               <Link key={href} href={href} className="flex-1">
                 <div className={cn(
@@ -358,6 +358,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <>
                   <li><Link href="/contact" className="hover:text-[#00CED1] transition">Contact</Link></li>
                   <li><Link href="/for-dealers" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
+                  <li><Link href="/browse" className="hover:text-[#00CED1] transition">Visibility Report Demo</Link></li>
                   <li><Link href="/trips" className="hover:text-[#00CED1] transition">Trip Planner</Link></li>
                   <li><Link href="/campgrounds" className="hover:text-[#00CED1] transition">Campgrounds</Link></li>
                   <li><Link href="/sell" className="hover:text-[#00CED1] transition">Sell Your RV</Link></li>

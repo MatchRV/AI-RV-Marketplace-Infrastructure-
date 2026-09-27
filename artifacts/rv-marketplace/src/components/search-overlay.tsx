@@ -34,7 +34,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
   const handleSubmit = () => {
     if (query.trim()) {
-      navigate(`/browse?q=${encodeURIComponent(query.trim())}`);
+      navigate(`/shop`);
       onClose();
       setQuery("");
     }
@@ -68,7 +68,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 key={term}
                 onClick={() => {
                   setQuery(term);
-                  navigate(`/browse?q=${encodeURIComponent(term)}`);
+                  navigate(`/shop`);
                   onClose();
                   setQuery("");
                 }}

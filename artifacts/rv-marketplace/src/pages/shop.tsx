@@ -35,9 +35,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const SAMPLE_PROMPT =
   "I have an F-150 rated around 8,000 lbs and two kids. Find me a bunkhouse travel trailer under $45k, under 30 feet, within 150 miles of Tacoma — we boondock, so prioritize solar and lithium. Show the best three and explain the compromises.";
 
-function StatusChips() {
+function StatusChips({ unitCount }: { unitCount: number | null }) {
   const s = useAgentSession();
   const tools = getToolContractsForDisplay();
+  // Keep in sync with GET /api/agent/meta → dataset.units (live agent inventory).
+  // Fallback is the last verified live meta count; omit dealer rooftop tally until we can cite it accurately.
+  const inventoryLabel =
+    unitCount != null
+      ? `Real dealer inventory · ${unitCount.toLocaleString()} priced units`
+      : "Real dealer inventory · 20,775 priced units";
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span
@@ -80,7 +86,7 @@ function StatusChips() {
       </Popover>
       <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-white text-[#5c6b6b] border-[#E2E8F0]">
         <BadgeCheck className="w-3.5 h-3.5 text-[#00CED1]" />
-        Real dealer snapshot · 1,056 units · 28 PNW dealerships
+        {inventoryLabel}
       </span>
     </div>
   );
@@ -191,10 +197,14 @@ export function Shop() {
   const s = useAgentSession();
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [datasetNote, setDatasetNote] = useState<string | null>(null);
+  const [unitCount, setUnitCount] = useState<number | null>(null);
 
   useEffect(() => {
     void agentApi.meta().then((r) => {
-      if (r.ok) setDatasetNote(r.data.dataset.note);
+      if (r.ok) {
+        setDatasetNote(r.data.dataset.note);
+        setUnitCount(r.data.dataset.units);
+      }
     });
   }, []);
 
@@ -230,7 +240,7 @@ export function Shop() {
               “{SAMPLE_PROMPT}”
             </blockquote>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <StatusChips />
+              <StatusChips unitCount={unitCount} />
             </div>
             {s.runtime === "none" && (
               <div className="mt-4 flex flex-wrap items-center gap-3">

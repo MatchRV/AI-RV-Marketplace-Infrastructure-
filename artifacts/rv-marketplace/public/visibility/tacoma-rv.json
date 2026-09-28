@@ -1,0 +1,178 @@
+{
+  "dealer": "Tacoma RV",
+  "city": "Tacoma",
+  "state": "WA",
+  "phone": "(253) 896-4401",
+  "unitsSampled": 100,
+  "liveSitemapVdps": 349,
+  "observedLabel": "Live audit · 2026-09-27 22:45 UTC · Playwright sample ~100 of ~349 sitemap VDPs",
+  "inventoryQuality": 76,
+  "aiReadiness": 20,
+  "imageQuality": 94,
+  "searchVisibility": 68,
+  "crawlability": 100,
+  "overall": 66,
+  "scoresRaw": {
+    "inventory_health": 76.5,
+    "ai_readability": 20.0,
+    "crawlability": 100.0,
+    "query_coverage": 67.6,
+    "overall": 65.7
+  },
+  "missing": [
+    {
+      "field": "VIN on unit page",
+      "missing": 100,
+      "of": 100,
+      "pct": 100,
+      "impact": "High"
+    },
+    {
+      "field": "Length (ft)",
+      "missing": 100,
+      "of": 100,
+      "pct": 100,
+      "impact": "Medium"
+    },
+    {
+      "field": "Slides",
+      "missing": 53,
+      "of": 100,
+      "pct": 53,
+      "impact": "Medium"
+    },
+    {
+      "field": "GVWR",
+      "missing": 34,
+      "of": 100,
+      "pct": 34,
+      "impact": "High"
+    },
+    {
+      "field": "Sleeping capacity",
+      "missing": 27,
+      "of": 100,
+      "pct": 27,
+      "impact": "High"
+    },
+    {
+      "field": "Dry weight",
+      "missing": 26,
+      "of": 100,
+      "pct": 26,
+      "impact": "High"
+    },
+    {
+      "field": "Numeric offer price",
+      "missing": 6,
+      "of": 100,
+      "pct": 6,
+      "impact": "High"
+    }
+  ],
+  "images": [
+    {
+      "label": "Units with ≥1 photo (harvest)",
+      "value": "94 / 100",
+      "note": "94% of scraped units"
+    },
+    {
+      "label": "Units deep-scored vs expected",
+      "value": "100 / 349",
+      "note": "Playwright sample ~100 of ~349 sitemap VDPs"
+    },
+    {
+      "label": "Sitemap VDPs discovered",
+      "value": "349",
+      "note": "sitemap-enumerate + Playwright DOM sample"
+    }
+  ],
+  "queryCoverage": [
+    {
+      "query": "Travel trailer under $40,000",
+      "ready": "Strong",
+      "reason": "rv_type missing on 8, price missing on 6"
+    },
+    {
+      "query": "Travel trailer under $60,000",
+      "ready": "Strong",
+      "reason": "rv_type missing on 10, price missing on 6"
+    },
+    {
+      "query": "Fifth wheel under $75,000",
+      "ready": "Strong",
+      "reason": "rv_type missing on 10, price missing on 6"
+    },
+    {
+      "query": "Travel trailer sleeps at least 8",
+      "ready": "Strong",
+      "reason": "sleeping_capacity missing on 20, rv_type missing on 14"
+    },
+    {
+      "query": "Fifth wheel sleeps at least 8",
+      "ready": "Strong",
+      "reason": "sleeping_capacity missing on 18, rv_type missing on 14"
+    },
+    {
+      "query": "Class A sleeps at least 8",
+      "ready": "Partial",
+      "reason": "rv_type missing on 14, sleeping_capacity missing on 11"
+    }
+  ],
+  "actions": [
+    {
+      "priority": 1,
+      "title": "Server-render unit content + JSON-LD",
+      "why": "Static HTML of sampled VDPs carries no specs, price, VIN, H1 or structured data. Crawlers without JavaScript see an empty shell.",
+      "effort": "Medium",
+      "impact": "High",
+      "affected_units": 40
+    },
+    {
+      "priority": 2,
+      "title": "Fix price data",
+      "why": "Budget filters need a valid advertised cash price.",
+      "effort": "Medium",
+      "impact": "High",
+      "affected_units": 6
+    },
+    {
+      "priority": 3,
+      "title": "Fix sleeping capacity data",
+      "why": "Family-oriented searches need explicit sleeping capacity.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 27
+    },
+    {
+      "priority": 4,
+      "title": "Fix length data",
+      "why": "Length-constrained buyer searches need a published measurement and unit.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 100
+    },
+    {
+      "priority": 5,
+      "title": "Fix dry weight data",
+      "why": "Weight filters need a published unloaded weight; this alone does not establish towing suitability.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 26
+    }
+  ],
+  "disclaimer": "Customer-grade live audit via tools/ai-visibility-audit/audit.py. Scores inventory completeness / AI readability / crawlability / query coverage. Does NOT claim ChatGPT ranking or citations.",
+  "inventory_url": "https://www.tacomarv.com/inventory",
+  "coverage": {
+    "sitemap_inventory_urls": 349,
+    "vdp_sampled": 40,
+    "detail_units_analyzed": 100,
+    "http_ok": 42,
+    "http_failed": 0,
+    "redirected": 6,
+    "expected_units": 349,
+    "reconciled": false
+  },
+  "slug": "tacoma-rv",
+  "isDemo": false
+}

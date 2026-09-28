@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, analyticsEventsTable } from "@workspace/db";
+import { db, DB_MODE, analyticsEventsTable } from "@workspace/db";
 import { sql, eq, gte, and, desc } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
 
@@ -15,9 +15,13 @@ const VALID_EVENT_TYPES = [
 
 router.post("/analytics/event", async (req, res) => {
   try {
-    const { eventType, sessionId, listingId, dealerId, metadata } = req.body;
+    const { eventType, sessionId, listingId, dealerId, metadata } = req.body ?? {};
     if (!eventType || !VALID_EVENT_TYPES.includes(eventType)) {
       return void res.status(400).json({ message: "Invalid eventType" });
+    }
+
+    if (DB_MODE === "none") {
+      return void res.json({ ok: true, stored: false, reason: "internal_analytics_disabled" });
     }
 
     await db.insert(analyticsEventsTable).values({
@@ -28,7 +32,7 @@ router.post("/analytics/event", async (req, res) => {
       metadata: metadata ?? {},
     });
 
-    res.json({ ok: true });
+    res.json({ ok: true, stored: true });
   } catch (err) {
     console.error("Analytics event error:", err);
     res.status(500).json({ message: "Internal server error" });

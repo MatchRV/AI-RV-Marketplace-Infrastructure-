@@ -1,4 +1,4 @@
-import { Layout } from "@/components/layout";
+import { BrandLayout as Layout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
 import {
   Building2,
@@ -283,7 +283,7 @@ export function ForDealers() {
             Get a free AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
             crawlers, and the top fixes so agents can recommend your units. Starter
-            reports typically run $299–$499. Email us — no form required.
+            audits cost $99 one-time. Optional monitoring is $199/month. Email us to confirm scope.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

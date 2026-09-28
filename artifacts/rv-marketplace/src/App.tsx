@@ -256,7 +256,7 @@ function AppRouter() {
 
       {/* Legacy marketing URLs that were 404ing (old links / backlinks / social) */}
       <Route path="/about-us">{() => <Redirect to="/about" replace />}</Route>
-      <Route path="/fleet">{() => <Redirect to="/browse" replace />}</Route>
+      <Route path="/fleet">{() => <Redirect to="/shop" replace />}</Route>
 
       <Route component={NotFound} />
     </Switch>

@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import { Layout } from "@/components/layout";
+import { BrandLayout as Layout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
 import {
   ArrowRight,
@@ -203,7 +203,7 @@ export function Browse() {
                     Demo sample
                   </span>
                   <span className="text-xs sm:text-sm text-muted-foreground">
-                    Illustrative rooftop data — not a live audit of any real dealership. No ChatGPT citation claims.
+                    Fictional dealership and illustrative data — not a live audit of any real dealership. No ChatGPT citation claims.
                   </span>
                 </>
               ) : (
@@ -237,7 +237,7 @@ export function Browse() {
                       ? "This is the paid audit preview: inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes."
                       : "Live audit of inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes for this rooftop."}{" "}
                     Starter reports typically run{" "}
-                    <span className="text-white font-semibold">$299–$499</span> one-time.
+                    <span className="text-white font-semibold">$99</span> one-time. Optional monitoring: $199/month.
                   </p>
                   {typeof report.overall === "number" && !isDemo && (
                     <p className="mt-4 text-sm text-white/55">
@@ -539,8 +539,7 @@ export function Browse() {
                 <h2 className="text-2xl font-display font-bold">Get this report for your rooftop</h2>
               </div>
               <p className="opacity-90 leading-relaxed mb-2 max-w-2xl">
-                Starter AI Visibility Reports typically run <strong>$299–$499</strong> one-time (rooftop size and unit
-                count). Free preview of a few verified gaps available on request.
+                AI Visibility Reports cost <strong>$99 one-time</strong>. Optional monitoring is <strong>$199/month</strong>. We confirm scope before starting; requesting a report does not start a subscription.
               </p>
               <p className="text-sm opacity-75 mb-6 max-w-2xl">
                 Email us your dealership name and inventory URL — no form required.

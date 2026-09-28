@@ -76,7 +76,8 @@ export function trackEvent(
 
   // Fire to internal analytics API
   const shouldSendInternalAnalytics =
-    !import.meta.env.DEV || import.meta.env.VITE_ENABLE_ANALYTICS_API === "true";
+    ( !import.meta.env.DEV || import.meta.env.VITE_ENABLE_ANALYTICS_API === "true") &&
+    !document.querySelector('meta[name="matchrv-mode"][content="demo"]');
 
   if (shouldSendInternalAnalytics) {
     try {
@@ -108,12 +109,6 @@ export function trackEvent(
 
 // Dedicated page_view tracker for the SPA router
 export function trackPageView(path: string, title: string) {
-  fireGtag("page_view", {
-    page_path: path,
-    page_title: title,
-    page_location: window.location.href,
-  });
-
   // Also record in internal analytics
-  trackEvent("page_view", { metadata: { path, title } });
+  trackEvent("page_view", { metadata: { page_path: path, page_title: title, page_location: window.location.href } });
 }

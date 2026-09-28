@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Search, Building2, ListChecks, FileSearch, BarChart3, ClipboardCheck, Check, Globe, ChevronRight } from "lucide-react";
 import { BrandLayout } from "@/components/brand-layout";
@@ -14,6 +14,10 @@ const coverage = [
 ] as const;
 
 export function ReportRequest({ compact = false }: { compact?: boolean }) {
+  const formId = useId();
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<string | null>(null);
@@ -22,31 +26,38 @@ export function ReportRequest({ compact = false }: { compact?: boolean }) {
     try {
       const url = new URL(/^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`);
       if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".") || url.username || url.password) throw new Error();
-      const body = `Hi Jonathan,\n\nI'd like an AI Visibility Report for our dealership.\n\nWebsite: ${url.href}\nDealership name:\nCity, State:\n\nPlease send the report scope, pricing, and next steps.\n\nThanks!`;
+      const body = `Hi Jonathan,\n\nI'd like an AI Visibility Report for our dealership.\n\nWebsite: ${url.href}\nContact email: ${email.trim()}\nName: ${name.trim() || "Not provided"}\nPhone: ${phone.trim() || "Not provided"}\n\nI am requesting the $99 one-time audit. Please send the scope and next steps. Optional monitoring is $199/month; I am not enrolling through this request.\n\nThanks!`;
       setDraft(`mailto:jonathan@matchrv.com?subject=${encodeURIComponent("AI Visibility Report Request")}&body=${encodeURIComponent(body)}`);
     } catch { setError("Enter a valid dealership website, such as yourdealership.com."); }
   }
   return <form className={`report-request ${compact ? "compact" : ""}`} onSubmit={submit}>
-    <label htmlFor={compact ? "footer-website" : "dealer-website"}>Dealership website</label>
-    <div className="report-request-row"><div className="brand-input-wrap"><Globe size={18}/><input id={compact ? "footer-website" : "dealer-website"} value={website} onChange={e => {setWebsite(e.target.value); setDraft(null);}} placeholder="www.yourdealership.com" inputMode="url" autoComplete="url" required maxLength={500}/></div><button className="brand-button" type="submit">Get My AI Visibility Report <ArrowRight size={17}/></button></div>
-    <p className="brand-fine">Request a dealership review. We’ll confirm scope and pricing before starting.</p>
+    <label htmlFor={`${formId}-website`}>Dealership website</label>
+    <div className="report-request-row"><div className="brand-input-wrap"><Globe size={18}/><input id={`${formId}-website`} value={website} onChange={e => {setWebsite(e.target.value); setDraft(null);}} placeholder="www.yourdealership.com" inputMode="url" autoComplete="url" required maxLength={500}/></div></div>
+    <div className="report-contact-fields">
+      <label htmlFor={`${formId}-email`}>Email (required)<input id={`${formId}-email`} type="email" autoComplete="email" required maxLength={254} value={email} onChange={e=>{setEmail(e.target.value);setDraft(null);}} /></label>
+      <label htmlFor={`${formId}-name`}>Name (optional)<input id={`${formId}-name`} autoComplete="name" maxLength={120} value={name} onChange={e=>{setName(e.target.value);setDraft(null);}} /></label>
+      <label htmlFor={`${formId}-phone`}>Phone (optional)<input id={`${formId}-phone`} type="tel" autoComplete="tel" maxLength={40} value={phone} onChange={e=>{setPhone(e.target.value);setDraft(null);}} /></label>
+    </div>
+    <button className="brand-button" type="submit">Prepare my report request <ArrowRight size={17}/></button>
+    <p className="brand-fine">$99 one-time audit. Optional monitoring: $199/month. This prepares an email to jonathan@matchrv.com. You must send it from your email app; no payment or subscription starts here.</p>
     {error && <p role="alert" className="brand-error">{error}</p>}
-    {draft && <div className="request-ready" role="status"><strong>Your request is ready to review.</strong><p>Open your email app, add your dealership details, and send it to jonathan@matchrv.com. Nothing has been sent yet.</p><a href={draft} className="brand-button">Review request in email <ArrowRight size={16}/></a></div>}
+    {draft && <div className="request-ready" role="status"><strong>Your request is ready to review.</strong><p>Your website and contact details are included. Open your email app and send the request to jonathan@matchrv.com. Nothing has been sent yet.</p><a href={draft} className="brand-button">Review request in email <ArrowRight size={16}/></a></div>}
   </form>;
 }
 
 export function SampleReportPreview() {
   return <div className="sample-report-panel">
     <div className="sample-report-top"><span className="brand-eyebrow">Sample dealership</span><span className="sample-label">Sample report · Illustrative data</span></div>
-    <div className="sample-report-body"><div><div className="sample-score">68<span>/100</span></div><h3>Illustrative readiness score</h3><p className="brand-muted">An example of how findings can be organized. This is not a measured result.</p>
-      {[['Business information',88],['Inventory accessibility',54],['Specification completeness',42]].map(([label,score])=><div className="sample-bar" key={label}><div><span>{label}</span><strong>{score}%</strong></div><div className="bar-track"><span style={{width:`${score}%`}}/></div></div>)}
+    <div className="sample-report-body"><div><h3>The counts are the findings</h3><p className="brand-muted">Fictional example: 48 inventory pages reviewed. These are illustrative counts, not measurements of any dealership.</p>
+      {[["Pages with a numeric price",36],["Pages with sleeping capacity",24],["Pages with length and weight",18]].map(([label,count])=><div className="sample-bar" key={label}><div><span>{label}</span><strong>{count} / 48</strong></div></div>)}
+      <p className="brand-muted">Scores summarize these counts: price coverage 75%, sleeping capacity 50%, length and weight 38% (rounded). No overall AI visibility score is claimed.</p>
     </div><div className="sample-evidence"><div className="evidence-heading">From question to evidence</div><p className="sample-question">“Find a bunkhouse travel trailer near Tacoma for a family of four.”</p><div className="sample-finding"><span className="sample-label">Example finding</span><h3>Missing details leave unanswered questions.</h3><p>The sample listing includes a price and photos, but does not state sleeping capacity or loaded weight.</p></div><div className="sample-next"><Check size={18}/><div><strong>Suggested improvement</strong><p>Publish clearly labeled specifications on each RV’s listing page.</p></div></div><Link href="/visibility-report" className="brand-text-link">Explore the sample report <ArrowRight size={16}/></Link></div></div>
   </div>;
 }
 
 export function DealerHome() {
   return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Understand how AI shopping assistants see your RV dealership, identify inventory information gaps, and request an evidence-backed visibility report." canonical="/"/>
-    <section className="brand-container dealer-hero" id="request-report"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Can AI shoppers<br/>find your dealership?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#sample-report" className="brand-text-link">See what’s in the report <ChevronRight size={16}/></a></div>
+    <section className="brand-container dealer-hero" id="request-report"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#sample-report" className="brand-text-link">See what’s in the report <ChevronRight size={16}/></a></div>
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>
@@ -54,6 +65,7 @@ export function DealerHome() {
     <section className="brand-soft-section" id="sample-report"><div className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">See the details</p><h2>Useful findings. A clear next step.</h2></div><p>A look inside a report, using illustrative data.</p></div><SampleReportPreview/></div></section>
     <section className="brand-container brand-section"><div className="center-heading"><p className="brand-eyebrow">From visibility to action</p><h2>Three steps to a clearer picture</h2></div><div className="steps-grid">{[['Share your website','Start with your dealership website and the inventory you want reviewed.'],['Review your findings','See observed answers, information gaps, and the evidence behind them.'],['Put your plan to work','Give your team a focused list of improvements and track what changes.']].map(([title,copy],i)=><article key={title}><span className="step-number">0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <section className="brand-soft-section"><div className="brand-container brand-section brand-faq"><p className="brand-eyebrow">Before you begin</p><h2>Frequently asked questions</h2>{[
+      ['What does it cost?','$99 for a one-time audit. Optional monitoring is $199/month. We confirm scope before starting; sending a request does not enroll you in monitoring.'],
       ['What does the report evaluate?','The report reviews dealership information, inventory accessibility, and specification gaps. The agreed scope determines which shopper questions and AI assistants are tested.'],
       ['Is this an instant AI ranking score?','No. Submitting your website prepares a report request. We confirm scope and pricing before a review begins. Sample scores on this page are illustrative, not measurements of your dealership.'],
       ['How are findings supported?','A completed report should identify the pages reviewed, questions tested, dates, and observed answers. Missing or untested information is labeled, rather than treated as a positive result.'],

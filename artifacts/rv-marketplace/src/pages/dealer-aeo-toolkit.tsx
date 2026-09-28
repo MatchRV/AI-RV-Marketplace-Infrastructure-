@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layout } from "@/components/layout";
+import { BrandLayout as Layout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
 
 const BASE = import.meta.env.BASE_URL || "/";

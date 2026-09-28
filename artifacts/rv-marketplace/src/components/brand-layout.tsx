@@ -18,7 +18,7 @@ export function BrandLayout({ children }: { children: ReactNode }) {
     </div></header>
     <main id="main-content">{children}</main>
     <footer className="brand-footer"><div className="brand-container">
-      <div className="brand-footer-top"><Link href="/" className="brand-footer-logo" aria-label="MatchRV home"><img src="/images/matchrv-logo.jpg" alt="MatchRV" /></Link><p>Clearer inventory. More informed decisions.</p><Link href="/shop">Find your next RV <ArrowUpRight size={16}/></Link></div>
+      <div className="brand-footer-top"><Link href="/" className="brand-footer-logo" aria-label="MatchRV home"><img src="/images/matchrv-logo.jpg" alt="MatchRV" /></Link><p>Dealer AI visibility. Evidence-backed inventory improvements.</p><Link href="/#request-report">Request a dealership report <ArrowUpRight size={16}/></Link></div>
       <div className="brand-footer-bottom"><span>© {new Date().getFullYear()} MatchRV</span><nav aria-label="Footer"><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/privacy">Privacy</Link><Link href="/terms-and-conditions">Terms</Link></nav></div>
     </div></footer>
   </div>;

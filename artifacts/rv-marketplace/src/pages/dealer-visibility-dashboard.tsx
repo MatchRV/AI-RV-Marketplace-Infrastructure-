@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Layout } from "@/components/layout";
+import { BrandLayout as Layout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 

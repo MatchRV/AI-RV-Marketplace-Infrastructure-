@@ -1,0 +1,178 @@
+{
+  "dealer": "Baydos RV Center",
+  "city": "Fife",
+  "state": "WA",
+  "phone": "(253) 896-4500",
+  "unitsSampled": 66,
+  "liveSitemapVdps": 66,
+  "observedLabel": "Live audit · 2026-09-27 22:33 UTC · full sitemap harvest 66/66 VDPs",
+  "inventoryQuality": 86,
+  "aiReadiness": 40,
+  "imageQuality": 100,
+  "searchVisibility": 74,
+  "crawlability": 100,
+  "overall": 76,
+  "scoresRaw": {
+    "inventory_health": 86.2,
+    "ai_readability": 40.0,
+    "crawlability": 100.0,
+    "query_coverage": 74.2,
+    "overall": 75.6
+  },
+  "missing": [
+    {
+      "field": "Numeric offer price",
+      "missing": 37,
+      "of": 66,
+      "pct": 56,
+      "impact": "High"
+    },
+    {
+      "field": "GVWR",
+      "missing": 36,
+      "of": 66,
+      "pct": 55,
+      "impact": "High"
+    },
+    {
+      "field": "Slides",
+      "missing": 17,
+      "of": 66,
+      "pct": 26,
+      "impact": "Medium"
+    },
+    {
+      "field": "VIN on unit page",
+      "missing": 12,
+      "of": 66,
+      "pct": 18,
+      "impact": "High"
+    },
+    {
+      "field": "Dry weight",
+      "missing": 11,
+      "of": 66,
+      "pct": 17,
+      "impact": "High"
+    },
+    {
+      "field": "Length (ft)",
+      "missing": 10,
+      "of": 66,
+      "pct": 15,
+      "impact": "Medium"
+    },
+    {
+      "field": "Sleeping capacity",
+      "missing": 6,
+      "of": 66,
+      "pct": 9,
+      "impact": "High"
+    }
+  ],
+  "images": [
+    {
+      "label": "Units with ≥1 photo (harvest)",
+      "value": "66 / 66",
+      "note": "100.0% of scraped units"
+    },
+    {
+      "label": "Units deep-scored vs expected",
+      "value": "66 / 66",
+      "note": "full sitemap harvest 66/66 VDPs"
+    },
+    {
+      "label": "Sitemap VDPs discovered",
+      "value": "66",
+      "note": "sitemap+static-HTML polite 1.2s"
+    }
+  ],
+  "queryCoverage": [
+    {
+      "query": "Travel trailer under $40,000",
+      "ready": "Strong",
+      "reason": "price missing on 29"
+    },
+    {
+      "query": "Travel trailer under $60,000",
+      "ready": "Strong",
+      "reason": "price missing on 29"
+    },
+    {
+      "query": "Fifth wheel under $75,000",
+      "ready": "Strong",
+      "reason": "price missing on 1"
+    },
+    {
+      "query": "Travel trailer sleeps at least 8",
+      "ready": "Strong",
+      "reason": "sleeping_capacity missing on 2"
+    },
+    {
+      "query": "Fifth wheel sleeps at least 8",
+      "ready": "Partial",
+      "reason": "confirmed=0 potential=0"
+    },
+    {
+      "query": "Class A sleeps at least 8",
+      "ready": "Partial",
+      "reason": "confirmed=0 potential=0"
+    }
+  ],
+  "actions": [
+    {
+      "priority": 1,
+      "title": "Fix price data",
+      "why": "Budget filters need a valid advertised cash price.",
+      "effort": "Medium",
+      "impact": "High",
+      "affected_units": 37
+    },
+    {
+      "priority": 2,
+      "title": "Fix sleeping capacity data",
+      "why": "Family-oriented searches need explicit sleeping capacity.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 6
+    },
+    {
+      "priority": 3,
+      "title": "Fix length data",
+      "why": "Length-constrained buyer searches need a published measurement and unit.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 10
+    },
+    {
+      "priority": 4,
+      "title": "Fix dry weight data",
+      "why": "Weight filters need a published unloaded weight; this alone does not establish towing suitability.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 11
+    },
+    {
+      "priority": 5,
+      "title": "Fix gvwr data",
+      "why": "Towing-related questions need GVWR alongside towing and payload limits.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 36
+    }
+  ],
+  "disclaimer": "Customer-grade live audit via tools/ai-visibility-audit/audit.py. Scores inventory completeness / AI readability / crawlability / query coverage. Does NOT claim ChatGPT ranking or citations.",
+  "inventory_url": "https://www.baydos.com/rv-search",
+  "coverage": {
+    "sitemap_inventory_urls": 66,
+    "vdp_sampled": 41,
+    "detail_units_analyzed": 66,
+    "http_ok": 42,
+    "http_failed": 0,
+    "redirected": 0,
+    "expected_units": 66,
+    "reconciled": true
+  },
+  "slug": "baydos",
+  "isDemo": false
+}

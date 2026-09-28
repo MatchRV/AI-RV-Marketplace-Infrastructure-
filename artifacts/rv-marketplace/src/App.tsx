@@ -180,7 +180,7 @@ function AppRouter() {
       <Route path="/visibility-report" component={VisibilityReport} />
       <Route path="/shop" component={Shop} />
       <Route path="/answers" component={AnswerEngine} />
-      <Route path="/browse" component={Browse} />
+      <Route path="/browse/:slug?" component={Browse} />
       <Route path="/listing/:id" component={ListingDetail} />
       <Route path="/outfitter" component={Outfitter} />
       <Route path="/match" component={Match} />

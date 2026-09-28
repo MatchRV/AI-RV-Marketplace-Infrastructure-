@@ -157,7 +157,7 @@ export function Pricing() {
             <div className="text-sm text-[#6b7a7a] mb-5">Always free</div>
             <ul className="space-y-2 mb-6 flex-1">
               {[
-                `Browse all ${listingCount ? listingCount.toLocaleString() : "7,500+"} WA dealer listings`,
+                `Browse all ${listingCount ? listingCount.toLocaleString() + " " : ""}WA dealer listings`,
                 "Advanced filters (type, price, size)",
                 "Tow capacity checker",
                 "Save favorites to your account",

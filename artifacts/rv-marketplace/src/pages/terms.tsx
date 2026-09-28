@@ -6,7 +6,7 @@ export function Terms() {
     <Layout>
       <SEO
         title="Terms and Conditions"
-        description="Read MatchRV's Terms and Conditions to understand your rights and responsibilities when using the RV marketplace platform."
+        description="Read MatchRV's Terms and Conditions to understand your rights and responsibilities when using the MatchRV platform."
         canonical="/terms-and-conditions"
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -55,15 +55,30 @@ export function SampleReportPreview() {
   </div>;
 }
 
+function ShoppingStatistic({ research = false }: { research?: boolean }) {
+  return <aside className="brand-container shopping-stat-wrap" aria-label="AI shopping research statistic">
+    <div className="shopping-stat-box">
+      <strong className="shopping-stat-number">{research ? "72%" : "46%"}</strong>
+      <div className="shopping-stat-copy">
+        <p>{research ? "of shoppers already using AI use it as their primary research tool for products and brands." : "of AI users now begin purchase research on an AI platform instead of a traditional search engine."}</p>
+        <a href={research ? "https://capitaloneshopping.com/research/ai-shopping-statistics/" : "https://martech.org/the-ai-shopping-stats-2026-what-you-need-to-know/"} target="_blank" rel="noopener noreferrer">{research ? "Source: Capital One Shopping · September 2026" : "Source: MarTech, citing L.E.K. Consulting · July 2026"} <ArrowRight size={15}/></a>
+        <span className="shopping-stat-context">Consumer shopping research; not an RV-specific measurement.</span>
+      </div>
+    </div>
+  </aside>;
+}
+
 export function DealerHome() {
   return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Understand how AI shopping assistants see your RV dealership, identify inventory information gaps, and request an evidence-backed visibility report." canonical="/"/>
     <section className="brand-container dealer-hero" id="request-report"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#sample-report" className="brand-text-link">See what’s in the report <ChevronRight size={16}/></a></div>
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>
+    <ShoppingStatistic/>
     <section className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">A clearer view of your digital showroom</p><h2>What the Visibility Report covers</h2></div><p>Understand what’s visible, what’s missing, and where your team can make a difference.</p></div><div className="coverage-grid">{coverage.map(([Icon,title,copy],i)=><article className="coverage-card" key={title}><div className="coverage-icon"><Icon size={22}/><span>0{i+1}</span></div><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <section className="brand-soft-section" id="sample-report"><div className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">See the details</p><h2>Useful findings. A clear next step.</h2></div><p>A look inside a report, using illustrative data.</p></div><SampleReportPreview/></div></section>
     <section className="brand-container brand-section"><div className="center-heading"><p className="brand-eyebrow">From visibility to action</p><h2>Three steps to a clearer picture</h2></div><div className="steps-grid">{[['Share your website','Start with your dealership website and the inventory you want reviewed.'],['Review your findings','See observed answers, information gaps, and the evidence behind them.'],['Put your plan to work','Give your team a focused list of improvements and track what changes.']].map(([title,copy],i)=><article key={title}><span className="step-number">0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
+    <ShoppingStatistic research/>
     <section className="brand-soft-section"><div className="brand-container brand-section brand-faq"><p className="brand-eyebrow">Before you begin</p><h2>Frequently asked questions</h2>{[
       ['What does it cost?','$99 for a one-time audit. Optional monitoring is $199/month. We confirm scope before starting; sending a request does not enroll you in monitoring.'],
       ['What does the report evaluate?','The report reviews dealership information, inventory accessibility, and specification gaps. The agreed scope determines which shopper questions and AI assistants are tested.'],

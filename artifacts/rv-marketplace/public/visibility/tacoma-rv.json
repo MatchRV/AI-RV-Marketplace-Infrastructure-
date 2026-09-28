@@ -5,7 +5,7 @@
   "phone": "(253) 896-4401",
   "unitsSampled": 100,
   "liveSitemapVdps": 349,
-  "observedLabel": "Live audit · 2026-09-27 22:45 UTC · Playwright sample ~100 of ~349 sitemap VDPs",
+  "observedLabel": "Live audit \u00b7 2026-09-27 22:45 UTC \u00b7 Playwright sample ~100 of ~349 sitemap VDPs",
   "inventoryQuality": 76,
   "aiReadiness": 20,
   "imageQuality": 94,
@@ -21,49 +21,49 @@
   },
   "missing": [
     {
-      "field": "VIN on unit page",
+      "field": "vin",
       "missing": 100,
       "of": 100,
       "pct": 100,
       "impact": "High"
     },
     {
-      "field": "Length (ft)",
+      "field": "length",
       "missing": 100,
       "of": 100,
       "pct": 100,
       "impact": "Medium"
     },
     {
-      "field": "Slides",
+      "field": "slides",
       "missing": 53,
       "of": 100,
       "pct": 53,
       "impact": "Medium"
     },
     {
-      "field": "GVWR",
+      "field": "gvwr",
       "missing": 34,
       "of": 100,
       "pct": 34,
       "impact": "High"
     },
     {
-      "field": "Sleeping capacity",
+      "field": "sleeping_capacity",
       "missing": 27,
       "of": 100,
       "pct": 27,
       "impact": "High"
     },
     {
-      "field": "Dry weight",
+      "field": "dry_weight",
       "missing": 26,
       "of": 100,
       "pct": 26,
       "impact": "High"
     },
     {
-      "field": "Numeric offer price",
+      "field": "price",
       "missing": 6,
       "of": 100,
       "pct": 6,
@@ -72,7 +72,7 @@
   ],
   "images": [
     {
-      "label": "Units with ≥1 photo (harvest)",
+      "label": "Units with \u22651 photo (harvest)",
       "value": "94 / 100",
       "note": "94% of scraped units"
     },
@@ -173,6 +173,23 @@
     "expected_units": 349,
     "reconciled": false
   },
+  "mode": "teaser",
+  "website": "https://www.tacomarv.com",
+  "teaserSummary": "Out of ~349 vehicles listed on your site, we deep-scored 100 listing pages \u2014 and many are missing details AI assistants rely on to recommend a match.",
+  "teaserPains": [
+    {
+      "label": "AI READABILITY",
+      "body": "AI readiness scored 20/100 \u2014 sampled unit pages have little or no JSON-LD / Product structured data, so assistants struggle to trust specs."
+    },
+    {
+      "label": "VIN",
+      "body": "100% of sampled listings are missing vin \u2014 a field AI assistants use to filter and recommend matches."
+    },
+    {
+      "label": "SEARCH MATCH",
+      "body": "Query coverage scored 68/100 overall, but some shopper searches still fail \u2014 e.g. \"Class A sleeps at least 8\" \u2014 when required fields are blank."
+    }
+  ],
   "slug": "tacoma-rv",
   "isDemo": false
 }

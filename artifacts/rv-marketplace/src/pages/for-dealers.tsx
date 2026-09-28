@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 const REPORT_MAILTO =
-  "mailto:jonathan@matchrv.com?subject=AI%20Visibility%20Report%20Request&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20for%20our%20dealership.%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
+  "mailto:jonathan@matchrv.com?subject=Founding%205%20AI%20Visibility%20Report%20Request%20(%2499)&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20under%20the%20Founding%205%20offer%20(%2499%3B%20then%20%24299%E2%80%93%24499).%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
 
 const TALK_MAILTO =
   "mailto:jonathan@matchrv.com?subject=Talk%20to%20MatchRV%20%E2%80%94%20Dealer%20AI%20Inventory";
@@ -282,8 +282,7 @@ export function ForDealers() {
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
             Get an AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
-            crawlers, and the top fixes so agents can recommend your units. Starter
-            reports typically run $299–$499. Email jonathan@matchrv.com — no form required.
+            crawlers, and the top fixes so agents can recommend your units. Founding 5: $99 · then $299–$499 (first five rooftops only). Email jonathan@matchrv.com — no form required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

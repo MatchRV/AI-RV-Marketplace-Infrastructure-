@@ -1,0 +1,195 @@
+{
+  "dealer": "Sumner RV",
+  "city": "Sumner",
+  "state": "WA",
+  "phone": "(253) 863-5644",
+  "unitsSampled": 68,
+  "liveSitemapVdps": 68,
+  "observedLabel": "Live audit \u00b7 2026-09-28 21:01 UTC \u00b7 full sitemap harvest 68/68 VDPs",
+  "inventoryQuality": 86,
+  "aiReadiness": 40,
+  "imageQuality": 87,
+  "searchVisibility": 83,
+  "crawlability": 100,
+  "overall": 77,
+  "scoresRaw": {
+    "inventory_health": 85.6,
+    "ai_readability": 40.0,
+    "crawlability": 100.0,
+    "query_coverage": 82.6,
+    "overall": 76.6
+  },
+  "missing": [
+    {
+      "field": "gvwr",
+      "missing": 37,
+      "of": 68,
+      "pct": 54,
+      "impact": "High"
+    },
+    {
+      "field": "vin",
+      "missing": 32,
+      "of": 68,
+      "pct": 47,
+      "impact": "High"
+    },
+    {
+      "field": "slides",
+      "missing": 30,
+      "of": 68,
+      "pct": 44,
+      "impact": "Medium"
+    },
+    {
+      "field": "dry_weight",
+      "missing": 27,
+      "of": 68,
+      "pct": 40,
+      "impact": "High"
+    },
+    {
+      "field": "sleeping_capacity",
+      "missing": 20,
+      "of": 68,
+      "pct": 29,
+      "impact": "High"
+    },
+    {
+      "field": "length",
+      "missing": 14,
+      "of": 68,
+      "pct": 21,
+      "impact": "Medium"
+    },
+    {
+      "field": "price",
+      "missing": 1,
+      "of": 68,
+      "pct": 1,
+      "impact": "High"
+    }
+  ],
+  "images": [
+    {
+      "label": "Units with \u22651 photo (harvest)",
+      "value": "59 / 68",
+      "note": "86.8% of scraped units"
+    },
+    {
+      "label": "Units deep-scored vs expected",
+      "value": "68 / 68",
+      "note": "full sitemap harvest 68/68 VDPs"
+    },
+    {
+      "label": "Sitemap VDPs discovered",
+      "value": "68",
+      "note": "sitemap+static-HTML polite 1.2s"
+    }
+  ],
+  "queryCoverage": [
+    {
+      "query": "Travel trailer under $40,000",
+      "ready": "Strong",
+      "reason": "confirmed=13 potential=0"
+    },
+    {
+      "query": "Travel trailer under $60,000",
+      "ready": "Strong",
+      "reason": "confirmed=30 potential=0"
+    },
+    {
+      "query": "Fifth wheel under $75,000",
+      "ready": "Strong",
+      "reason": "confirmed=5 potential=0"
+    },
+    {
+      "query": "Travel trailer sleeps at least 8",
+      "ready": "Partial",
+      "reason": "sleeping_capacity missing on 15"
+    },
+    {
+      "query": "Fifth wheel sleeps at least 8",
+      "ready": "Partial",
+      "reason": "sleeping_capacity missing on 1"
+    },
+    {
+      "query": "Class A sleeps at least 8",
+      "ready": "Partial",
+      "reason": "confirmed=0 potential=0"
+    }
+  ],
+  "actions": [
+    {
+      "priority": 1,
+      "title": "Fix price data",
+      "why": "Budget filters need a valid advertised cash price.",
+      "effort": "Medium",
+      "impact": "High",
+      "affected_units": 1
+    },
+    {
+      "priority": 2,
+      "title": "Fix sleeping capacity data",
+      "why": "Family-oriented searches need explicit sleeping capacity.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 20
+    },
+    {
+      "priority": 3,
+      "title": "Fix length data",
+      "why": "Length-constrained buyer searches need a published measurement and unit.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 14
+    },
+    {
+      "priority": 4,
+      "title": "Fix dry weight data",
+      "why": "Weight filters need a published unloaded weight; this alone does not establish towing suitability.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 27
+    },
+    {
+      "priority": 5,
+      "title": "Fix gvwr data",
+      "why": "Towing-related questions need GVWR alongside towing and payload limits.",
+      "effort": "Medium",
+      "impact": "Medium",
+      "affected_units": 37
+    }
+  ],
+  "disclaimer": "Customer-grade live audit via tools/ai-visibility-audit/audit.py. Scores inventory completeness / AI readability / crawlability / query coverage. Does NOT claim ChatGPT ranking or citations.",
+  "inventory_url": "https://www.sumnerrv.com/rv-search",
+  "coverage": {
+    "sitemap_inventory_urls": 68,
+    "vdp_sampled": 40,
+    "detail_units_analyzed": 68,
+    "http_ok": 41,
+    "http_failed": 1,
+    "redirected": 0,
+    "expected_units": 68,
+    "reconciled": true
+  },
+  "mode": "teaser",
+  "website": "https://www.sumnerrv.com",
+  "teaserSummary": "Out of 68 vehicles on your lot pages, we verified all 68 \u2014 but key agent-readable fields (structured data, weights, VIN) are still thin.",
+  "teaserPains": [
+    {
+      "label": "AI READABILITY",
+      "body": "AI readiness scored 40/100 \u2014 sampled unit pages have little or no JSON-LD / Product structured data, so assistants struggle to trust specs."
+    },
+    {
+      "label": "GVWR",
+      "body": "54% of sampled listings are missing gvwr \u2014 a field AI assistants use to filter and recommend matches."
+    },
+    {
+      "label": "SEARCH MATCH",
+      "body": "Query coverage scored 83/100 overall, but some shopper searches still fail \u2014 e.g. \"Travel trailer sleeps at least 8\" \u2014 when required fields are blank."
+    }
+  ],
+  "slug": "sumner-rv",
+  "isDemo": false
+}

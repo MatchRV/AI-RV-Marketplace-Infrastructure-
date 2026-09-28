@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 
-const SITE_NAME = "MatchRV — RV Marketplace";
+const SITE_NAME = "MatchRV";
 const DEFAULT_OG_IMAGE = "/opengraph.jpg";
 const BASE_URL = "https://matchrv.com";
 

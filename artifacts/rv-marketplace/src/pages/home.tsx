@@ -37,7 +37,7 @@ const faqs = [
   },
   {
     question: "How is MatchRV different from RVTrader or Craigslist?",
-    answer: "Those are listing dumps — thousands of RVs and you do all the filtering yourself. MatchRV has that too, but we also go further: tell us about you, and we narrow it down to three picks worth your attention. It's a marketplace plus a smart shopping assistant.",
+    answer: "Those are listing dumps — thousands of RVs and you do all the filtering yourself. MatchRV connects dealer inventory to buyers shopping through AI, and can also narrow it down to three picks worth your attention with a free Match Report.",
   },
   {
     question: "Are the picks just the cheapest RVs?",
@@ -227,7 +227,7 @@ export function Home() {
     "name": "MatchRV",
     "url": "https://matchrv.com",
     "logo": { "@type": "ImageObject", "url": "https://matchrv.com/matchrv-logo.png", "width": 200, "height": 60 },
-    "description": "MatchRV is an AI-powered RV marketplace based in the Pacific Northwest.",
+    "description": "MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents.",
     "foundingLocation": { "@type": "Place", "name": "Pacific Northwest, Washington State, USA" },
     "sameAs": ["https://matchrv.com/about"],
   };
@@ -238,16 +238,15 @@ export function Home() {
     "url": "https://matchrv.com",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": { "@type": "EntryPoint", "urlTemplate": "https://matchrv.com/browse?search={search_term_string}" },
-      "query-input": "required name=search_term_string",
+      "target": { "@type": "EntryPoint", "urlTemplate": "https://matchrv.com/shop" },
     },
   };
 
   return (
     <Layout>
       <SEO
-        title="Browse RVs for Sale — Live Inventory + AI Matching"
-        description="Browse live RV inventory from Washington dealers. Get a free personalized Match Report that narrows thousands of listings to the three RVs that actually fit you."
+        title="AI-Ready RV Inventory for Agents & Dealers"
+        description="MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents."
         canonical="https://matchrv.com/"
         jsonLd={[organizationSchema, websiteSchema]}
       />

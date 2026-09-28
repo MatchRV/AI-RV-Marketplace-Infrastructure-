@@ -78,7 +78,7 @@ export function DealerVisibilityDashboard() {
             <h1 className="mt-3 font-display text-4xl font-black">Is your inventory becoming more visible to AI?</h1>
             <p className="mt-3 max-w-2xl text-sm text-white/70">Sample dashboard data is shown below until a rooftop is connected to the audit pipeline. Every displayed metric remains traceable to prompt-level evidence.</p>
           </div>
-          {billingUrl ? <a href={billingUrl} className="rounded-xl bg-white px-5 py-3 text-center text-sm font-black text-[#0B1117]">Manage $199/mo billing</a> : <span className="rounded-xl border border-white/20 px-5 py-3 text-sm text-white/70">Billing portal hook ready · URL not configured</span>}
+          {billingUrl ? <a href={billingUrl} className="rounded-xl bg-white px-5 py-3 text-center text-sm font-black text-[#0B1117]">Manage billing</a> : <span className="rounded-xl border border-white/20 px-5 py-3 text-sm text-white/70">Billing portal hook ready · URL not configured</span>}
         </section>
 
         <div className="mt-7 grid gap-4 md:grid-cols-4">

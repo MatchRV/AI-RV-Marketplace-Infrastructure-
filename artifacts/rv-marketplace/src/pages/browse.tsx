@@ -236,8 +236,9 @@ export function Browse() {
                     {isDemo
                       ? "This is the paid audit preview: inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes."
                       : "Live audit of inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes for this rooftop."}{" "}
-                    Starter reports typically run{" "}
-                    <span className="text-white font-semibold">$99</span> one-time. Optional monitoring: $199/month.
+                    Starter Visibility Audits typically run{" "}
+                    <span className="text-white font-semibold">$299–$499</span> one-time
+                    (rooftop size and unit count).
                   </p>
                   {typeof report.overall === "number" && !isDemo && (
                     <p className="mt-4 text-sm text-white/55">
@@ -539,10 +540,12 @@ export function Browse() {
                 <h2 className="text-2xl font-display font-bold">Get this report for your rooftop</h2>
               </div>
               <p className="opacity-90 leading-relaxed mb-2 max-w-2xl">
-                AI Visibility Reports cost <strong>$99 one-time</strong>. Optional monitoring is <strong>$199/month</strong>. We confirm scope before starting; requesting a report does not start a subscription.
+                Starter AI Visibility Reports typically run <strong>$299–$499</strong> one-time
+                (rooftop size and unit count). We confirm scope before starting; requesting a report
+                does not start a subscription.
               </p>
               <p className="text-sm opacity-75 mb-6 max-w-2xl">
-                Email us your dealership name and inventory URL — no form required.
+                Email jonathan@matchrv.com your dealership name and inventory URL — no form required.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <a

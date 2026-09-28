@@ -26,7 +26,7 @@ export function ReportRequest({ compact = false }: { compact?: boolean }) {
     try {
       const url = new URL(/^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`);
       if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".") || url.username || url.password) throw new Error();
-      const body = `Hi Jonathan,\n\nI'd like an AI Visibility Report for our dealership.\n\nWebsite: ${url.href}\nContact email: ${email.trim()}\nName: ${name.trim() || "Not provided"}\nPhone: ${phone.trim() || "Not provided"}\n\nI am requesting the $99 one-time audit. Please send the scope and next steps. Optional monitoring is $199/month; I am not enrolling through this request.\n\nThanks!`;
+      const body = `Hi Jonathan,\n\nI'd like a Starter Visibility Audit for our dealership.\n\nWebsite: ${url.href}\nContact email: ${email.trim()}\nName: ${name.trim() || "Not provided"}\nPhone: ${phone.trim() || "Not provided"}\n\nStarter audits typically run $299–$499 one-time. Please send the scope, pricing for our rooftop, and next steps.\n\nThanks!`;
       setDraft(`mailto:jonathan@matchrv.com?subject=${encodeURIComponent("AI Visibility Report Request")}&body=${encodeURIComponent(body)}`);
     } catch { setError("Enter a valid dealership website, such as yourdealership.com."); }
   }
@@ -39,7 +39,7 @@ export function ReportRequest({ compact = false }: { compact?: boolean }) {
       <label htmlFor={`${formId}-phone`}>Phone (optional)<input id={`${formId}-phone`} type="tel" autoComplete="tel" maxLength={40} value={phone} onChange={e=>{setPhone(e.target.value);setDraft(null);}} /></label>
     </div>
     <button className="brand-button" type="submit">Prepare my report request <ArrowRight size={17}/></button>
-    <p className="brand-fine">$99 one-time audit. Optional monitoring: $199/month. This prepares an email to jonathan@matchrv.com. You must send it from your email app; no payment or subscription starts here.</p>
+    <p className="brand-fine">Starter Visibility Audit typically $299–$499. This prepares an email to jonathan@matchrv.com. You must send it from your email app; no payment starts here.</p>
     {error && <p role="alert" className="brand-error">{error}</p>}
     {draft && <div className="request-ready" role="status"><strong>Your request is ready to review.</strong><p>Your website and contact details are included. Open your email app and send the request to jonathan@matchrv.com. Nothing has been sent yet.</p><a href={draft} className="brand-button">Review request in email <ArrowRight size={16}/></a></div>}
   </form>;
@@ -69,7 +69,7 @@ function ShoppingStatistic({ research = false }: { research?: boolean }) {
 }
 
 export function DealerHome() {
-  return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Understand how AI shopping assistants see your RV dealership, identify inventory information gaps, and request an evidence-backed visibility report." canonical="/"/>
+  return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Understand your dealership’s AI visibility. Starter Visibility Audits typically run $299–$499. Email jonathan@matchrv.com." canonical="/"/>
     <section className="brand-container dealer-hero" id="request-report"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#sample-report" className="brand-text-link">See what’s in the report <ChevronRight size={16}/></a></div>
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
@@ -80,7 +80,7 @@ export function DealerHome() {
     <section className="brand-container brand-section"><div className="center-heading"><p className="brand-eyebrow">From visibility to action</p><h2>Three steps to a clearer picture</h2></div><div className="steps-grid">{[['Share your website','Start with your dealership website and the inventory you want reviewed.'],['Review your findings','See observed answers, information gaps, and the evidence behind them.'],['Put your plan to work','Give your team a focused list of improvements and track what changes.']].map(([title,copy],i)=><article key={title}><span className="step-number">0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <ShoppingStatistic research/>
     <section className="brand-soft-section"><div className="brand-container brand-section brand-faq"><p className="brand-eyebrow">Before you begin</p><h2>Frequently asked questions</h2>{[
-      ['What does it cost?','$99 for a one-time audit. Optional monitoring is $199/month. We confirm scope before starting; sending a request does not enroll you in monitoring.'],
+      ['What does it cost?','Starter Visibility Audits typically run $299–$499 one-time (rooftop size and unit count). We confirm scope before starting; sending a request does not start a subscription.'],
       ['What does the report evaluate?','The report reviews dealership information, inventory accessibility, and specification gaps. The agreed scope determines which shopper questions and AI assistants are tested.'],
       ['Is this an instant AI ranking score?','No. Submitting your website prepares a report request. We confirm scope and pricing before a review begins. Sample scores on this page are illustrative, not measurements of your dealership.'],
       ['How are findings supported?','A completed report should identify the pages reviewed, questions tested, dates, and observed answers. Missing or untested information is labeled, rather than treated as a positive result.'],

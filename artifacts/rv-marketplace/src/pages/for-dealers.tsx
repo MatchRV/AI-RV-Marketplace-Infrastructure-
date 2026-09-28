@@ -280,10 +280,10 @@ export function ForDealers() {
             See if your rooftop appears
           </h2>
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
-            Get a free AI Visibility Report for your rooftop. We show whether
+            Get an AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
             crawlers, and the top fixes so agents can recommend your units. Starter
-            audits cost $99 one-time. Optional monitoring is $199/month. Email us to confirm scope.
+            reports typically run $299–$499. Email jonathan@matchrv.com — no form required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

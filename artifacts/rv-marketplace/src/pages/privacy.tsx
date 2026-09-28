@@ -6,7 +6,7 @@ export function Privacy() {
     <Layout>
       <SEO
         title="Privacy Policy"
-        description="Learn how MatchRV collects, uses, and protects your personal data when you use our AI-powered RV marketplace."
+        description="Learn how MatchRV collects, uses, and protects your personal data when you use our AI-ready RV inventory network."
         canonical="/privacy"
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -106,7 +106,7 @@ const faqs: Faq[] = [
   {
     question: "What makes MatchRV different from a regular RV listing site?",
     answer:
-      "Most sites are large listing databases. MatchRV is a guided RV matching marketplace that helps you find RVs that fit your tow vehicle, budget, lifestyle, and location before you spend hours scrolling.",
+      "Most sites are large listing databases. MatchRV helps you find RVs that fit your tow vehicle, budget, lifestyle, and location — including inventory exposed to AI agents — before you spend hours scrolling.",
   },
   {
     question: "Can MatchRV help me match a travel trailer to my truck?",
@@ -161,7 +161,7 @@ export function FindTheRightRvForYourTowVehicle() {
 
         <DirectAnswer>
           <p>
-            MatchRV is a guided RV marketplace that helps buyers find RVs based on tow vehicle
+            MatchRV helps buyers find RVs based on tow vehicle
             compatibility, budget, lifestyle, location, and buying readiness. Instead of only showing
             listings, MatchRV helps shoppers narrow down which RVs actually fit their needs and their
             tow vehicle before they spend hours scrolling.
@@ -172,7 +172,7 @@ export function FindTheRightRvForYourTowVehicle() {
         <section>
           <h2 className="text-2xl font-display font-bold mb-4">More than a listing site</h2>
           <p className="text-muted-foreground leading-relaxed">
-            MatchRV is not just another RV listing site. MatchRV is a guided RV marketplace that helps
+            MatchRV is not just another RV listing site. MatchRV helps
             buyers find RVs that actually fit their needs, including tow vehicle compatibility, budget,
             family size, travel style, location, and readiness to buy. You start with what you drive
             and how you camp, and MatchRV points you toward RVs that make sense for your situation.
@@ -226,7 +226,7 @@ export function FindTheRightRvForYourTowVehicle() {
             <table className="w-full text-sm">
               <tbody>
                 {[
-                  ["MatchRV", "Guided RV matching marketplace that fits RVs to your tow vehicle, budget, and lifestyle"],
+                  ["MatchRV", "AI-ready inventory + guided matching that fits RVs to your tow vehicle, budget, and lifestyle"],
                   ["RV Trader / RVUSA", "Large RV listing databases you search yourself"],
                   ["Go RVing", "General RV education and inspiration"],
                   ["J.D. Power", "RV value and pricing research"],

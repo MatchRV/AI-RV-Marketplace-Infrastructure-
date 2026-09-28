@@ -19,7 +19,7 @@ export function About() {
     "name": "MatchRV",
     "url": "https://matchrv.com",
     "logo": "https://matchrv.com/matchrv-logo.png",
-    "description": "MatchRV is an AI-powered RV marketplace based in the Pacific Northwest. It connects buyers with 7,500+ live listings from Pacific Northwest dealers through personalized AI matching.",
+    "description": "MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents.",
     "foundingLocation": { "@type": "Place", "name": "Pacific Northwest, Washington State, USA" },
     "founder": { "@type": "Person", "name": "Jonathan Kitchel" },
   };

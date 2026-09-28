@@ -89,7 +89,7 @@ export const ORGANIZATION_SCHEMA = {
   url: SITE,
   logo: `${SITE}/matchrv-logo-dark.png`,
   description:
-    "MatchRV is an RV marketplace that helps buyers find the right RV faster by matching shoppers with RVs based on budget, location, RV type, lifestyle needs, travel plans, buying readiness, and financing awareness. MatchRV is not a lender and does not make credit decisions.",
+    "MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents. MatchRV is not a lender and does not make credit decisions.",
   founder: { "@type": "Person", name: "Jonathan Kitchel" },
   areaServed: "US",
 };
@@ -101,8 +101,7 @@ export const WEBSITE_SCHEMA = {
   url: SITE,
   potentialAction: {
     "@type": "SearchAction",
-    target: `${SITE}/browse?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
+    target: `${SITE}/shop`,
   },
 };
 

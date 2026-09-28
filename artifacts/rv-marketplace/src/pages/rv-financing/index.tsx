@@ -150,7 +150,7 @@ export function RvFinancing() {
         <section className="mt-14">
           <h2 className="text-2xl font-display font-bold mb-4">How MatchRV helps buyers shop smarter</h2>
           <p className="text-muted-foreground leading-relaxed mb-3">
-            MatchRV is an RV marketplace that helps buyers find the right RV faster by matching
+            MatchRV connects dealer RV inventory to buyers shopping through AI and helps buyers find the right RV faster by matching
             shoppers with RVs based on budget, location, RV type, lifestyle needs, travel plans,
             buying readiness, and financing awareness.
           </p>

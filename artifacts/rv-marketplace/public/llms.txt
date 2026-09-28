@@ -1,21 +1,23 @@
 # MatchRV
 
-> MatchRV is an AI-powered RV marketplace based in the Pacific Northwest. It helps buyers find the right RV through a personalized AI Match Report, and connects them with live inventory from Washington State dealers.
+> MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents. Built in the Pacific Northwest.
 
 ## About MatchRV
 
-MatchRV was founded by Jonathan Kitchel, who spent 8 years on the floor at Poulsbo RV — one of the largest RV dealerships in the United States. He built MatchRV to solve the problems he saw firsthand: buyers overwhelmed by choices, dealers with disconnected inventory tools, and no neutral platform that genuinely put the buyer first.
+MatchRV was founded by Jonathan Kitchel, who spent 8 years on the floor at Poulsbo RV — one of the largest RV dealerships in the United States. He built MatchRV to solve the problems he saw firsthand: buyers overwhelmed by choices, dealers with inventory that AI agents cannot see, and no neutral layer that connects live dealer stock to how people actually shop now.
 
-MatchRV currently indexes 7,500+ live RV listings from Pacific Northwest dealers (WA, OR, ID), updated daily. Every listing is scored against market value to surface genuine deals.
+MatchRV normalizes multi-dealer RV inventory into structured, agent-readable data (WebMCP / site tools) so ChatGPT, Gemini, and other agents can search, explain, and compare real units — without a ChatGPT partnership claim; agents use the published tools on matchrv.com.
 
 ## Key Features
 
-- **AI Match Report**: Free personalized report that narrows thousands of listings to three specific RVs — a Best Overall, Best Value, and Upgrade — based on the buyer's lifestyle, budget, and tow vehicle.
-- **Live Inventory**: 7,500+ RV listings from Pacific Northwest dealers (WA, OR, ID), updated daily via automated scraping.
-- **Deal Scoring**: Every listing is compared against estimated market value. Listings are rated Great Deal, Good Deal, Fair Price, or Overpriced.
+- **AI-ready inventory**: Structured dealer inventory exposed to AI agents via WebMCP site tools on /shop.
+- **Agent Shop**: Human + agent shopping experience with explainable matches, honest unknowns, and dealer handoff.
+- **AI Match Report**: Free personalized report that narrows dealer inventory to three specific RVs — a Best Overall, Best Value, and Upgrade — based on lifestyle, budget, and tow vehicle.
+- **Deal Scoring**: Listings compared against estimated market value (Great Deal, Good Deal, Fair Price, or Overpriced).
 - **Tow Guide**: Free tool to check whether a specific RV can be safely towed by the user's vehicle.
 - **Trip Planner**: AI-powered tool to plan RV trips with routes, campgrounds, and driving legs.
 - **Outfitter Chat**: AI assistant that answers RV questions and helps narrow down choices.
+- **Visibility Report Demo**: Dealer-facing demo at /browse showing how inventory appears (or does not) to AI agents.
 
 ## RV Types Covered
 
@@ -24,7 +26,8 @@ Travel Trailers, Fifth Wheels, Class A Motorhomes, Class B Motorhomes (Camper Va
 ## Important Pages
 
 - [Home](https://matchrv.com/)
-- [Browse All RVs](https://matchrv.com/browse)
+- [Agent Shop](https://matchrv.com/shop)
+- [Visibility Report Demo](https://matchrv.com/browse)
 - [About MatchRV](https://matchrv.com/about)
 - [How the Match Report Works](https://matchrv.com/match)
 - [Pricing](https://matchrv.com/pricing)
@@ -66,7 +69,7 @@ MatchRV is not a lender and does not make credit decisions. MatchRV helps RV sho
 
 ## Data Sources & Freshness
 
-Inventory is scraped daily from Washington State RV dealership websites. Deal scores are calculated using proprietary market value estimates based on comparable listings. Data is updated daily as of June 2026.
+Inventory is normalized from multi-dealer sources for agent search. Deal scores use proprietary market value estimates based on comparable listings.
 
 ## Company
 

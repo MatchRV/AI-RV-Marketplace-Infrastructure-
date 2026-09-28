@@ -317,7 +317,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-10 max-w-7xl mx-auto">
           <div className="col-span-2 space-y-5">
             <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-14 w-auto object-contain" />
-            <p className="text-white/60 text-sm leading-relaxed">AI-powered RV marketplace. Smarter shopping, selling, matching, and dealer tools — all in one place.</p>
+            <p className="text-white/60 text-sm leading-relaxed">AI-ready inventory network for ChatGPT, Gemini, and other agents. Dealer tools included.</p>
           </div>
           {!DEMO_MODE && (
             <>
@@ -394,7 +394,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile footer (compact) */}
       <footer className="md:hidden bg-[#0B1117] w-full py-8 px-4 mb-16">
         <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-10 w-auto object-contain mb-3" />
-        <p className="text-white/50 text-xs mb-4">AI-powered RV marketplace. Smarter shopping and selling.</p>
+        <p className="text-white/50 text-xs mb-4">AI-ready inventory network for ChatGPT, Gemini, and other agents.</p>
         <div className="flex gap-4 text-xs text-white/50">
           <Link href="/terms-and-conditions" className="hover:text-[#00CED1]">Terms</Link>
           <Link href="/privacy" className="hover:text-[#00CED1]">Privacy</Link>

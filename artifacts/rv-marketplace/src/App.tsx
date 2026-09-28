@@ -5,7 +5,7 @@ import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
-import { Home } from "@/pages/home";
+import { DealerHome, VisibilityReport } from "@/pages/dealer-home";
 import { Browse } from "@/pages/browse";
 import { Shop } from "@/pages/shop";
 import { registerMatchrvTools } from "@/agent/webmcp";
@@ -176,7 +176,8 @@ function AppRouter() {
       <ReturnVisitDetector />
       <AgentBridge />
       <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DealerHome} />
+      <Route path="/visibility-report" component={VisibilityReport} />
       <Route path="/shop" component={Shop} />
       <Route path="/answers" component={AnswerEngine} />
       <Route path="/browse" component={Browse} />

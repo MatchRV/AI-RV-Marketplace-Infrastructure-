@@ -27,6 +27,7 @@ import {
   type Constraints,
 } from "@workspace/agent-core";
 import { getInventory } from "../services/agent-inventory";
+import { readyUnits, searchReadyInventory } from "../services/search-ready";
 import { agentMetricsSnapshot, timedAgentOp } from "../services/agent-metrics";
 import {
   createPreview,
@@ -67,6 +68,7 @@ router.get("/agent/meta", (_req: Request, res: Response) => {
   res.json({
     dataset: {
       units: inv.units.length,
+      searchableUnits: readyUnits().length,
       dealers: inv.snapshot.stats.dealers,
       builtAt: inv.snapshot.builtAt,
       note: inv.snapshot.datasetNote,
@@ -89,7 +91,7 @@ router.post("/agent/search", async (req: Request, res: Response) => {
   try {
     const outcome = await timedAgentOp(
       "search",
-      () => runSearch(getInventory().units, cleanConstraints(parsed.data.constraints)),
+      () => searchReadyInventory(cleanConstraints(parsed.data.constraints), Math.max(parsed.data.limit ?? 5, 12)),
       (o) => o.results.length === 0,
     );
     const limit = parsed.data.limit ?? 5;
@@ -100,6 +102,7 @@ router.post("/agent/search", async (req: Request, res: Response) => {
       appliedConstraints: outcome.appliedConstraints,
       results: outcome.results.slice(0, Math.max(limit, 12)).map(serializeMatch),
       shownToAgent: limit,
+      readiness: outcome.readiness,
     });
   } catch (err) {
     handleEngineError(res, err);

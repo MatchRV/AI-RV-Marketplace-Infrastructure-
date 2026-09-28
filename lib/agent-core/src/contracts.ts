@@ -71,7 +71,7 @@ export const searchInventoryInput = z.object({
   tow_vehicle: z.string().max(120).optional()
     .describe("Shopper's tow vehicle as stated, e.g. '2024 Ford F-150' or 'F-150 rated 8,000 lbs'. Pass raw — MatchRV resolves ratings"),
   sleeps_min: z.number().int().min(1).max(14).optional(),
-  must_have: z.array(featureEnum).max(8).optional().describe("Hard requirements — excludes units that verifiably lack them; units where a dealer doesn't publish the fact are flagged 'unverified', not excluded"),
+  must_have: z.array(featureEnum).max(8).optional().describe("Hard requirements. Search recommendations require these facts to be confirmed; units with missing required data are excluded by the search-readiness gate."),
   prefer: z.array(featureEnum).max(8).optional().describe("Soft preferences — affect ranking only"),
   fresh_water_min_gal: z.number().min(5).max(300).optional(),
   boondocking: z.boolean().optional().describe("Weight off-grid readiness (tanks, solar, generator, insulation) heavily in ranking"),

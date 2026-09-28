@@ -15,6 +15,7 @@ import generateDescriptionRouter from "./generate-description";
 import agentRouter from "./agent";
 import webmcpEventsRouter from "./webmcp-events";
 import dealerToolsRouter from "./dealer-tools";
+import shopOutfitterRouter from "./shop-outfitter";
 
 const router: IRouter = Router();
 
@@ -32,6 +33,7 @@ router.use(leadsRouter);
 router.use(importRouter);
 router.use(generateDescriptionRouter);
 router.use(agentRouter);
+router.use(shopOutfitterRouter);
 router.use(webmcpEventsRouter);
 router.use(dealerToolsRouter);
 

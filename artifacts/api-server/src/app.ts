@@ -173,9 +173,7 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
         '  <meta name="matchrv-mode" content="demo">\n  </head>',
       )
     : shellTemplate;
-  if (demo) {
-    app.get("/", (_req: Request, res: Response) => res.redirect(302, "/shop"));
-  }
+  // The dealer visibility homepage works with both database and snapshot deployments.
   app.use(express.static(webDist, { maxAge: "1h", index: false }));
 
   app.get(/^\/(?!api\/).*/, (req: Request, res: Response) => {
@@ -208,7 +206,7 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       res.type("html").send(shellTemplate);
     }
   });
-  console.log(`[startup] serving built web app from ${webDist}${demo ? " (demo mode: / -> /shop)" : ""}`);
+  console.log(`[startup] serving built web app from ${webDist}${demo ? " (snapshot mode)" : ""}`);
 }
 
 export default app;

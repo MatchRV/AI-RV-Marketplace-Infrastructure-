@@ -1,373 +1,109 @@
-/**
- * /shop — the agent-native shopping experience.
- *
- * A human browses real inventory; their AI agent (via WebMCP site tools)
- * works the same shared session: structured search, explainable matches,
- * honest unknowns, and a human-approved dealer handoff. The page must make
- * sense even with no agent connected.
- */
-
-import { useEffect, useMemo, useState } from "react";
-import { Layout } from "@/components/layout";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowRight, Check, Heart, MapPin, Scale, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import type { Constraints, UnitMatch } from "@workspace/agent-core";
+import { BrandLayout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
-import {
-  BadgeCheck,
-  Bot,
-  Heart,
-  MapPin,
-  PlugZap,
-  ScanSearch,
-  Scale,
-  Sparkles,
-  Wand2,
-} from "lucide-react";
-import type { UnitMatch } from "@workspace/agent-core";
-import { useAgentSession, toggleShortlist, setLeadModalHidden } from "@/agent/session";
-import { getToolContractsForDisplay } from "@/agent/webmcp";
-import { runGuidedDemo } from "@/agent/simulated";
-import { humanCompare, humanFocusUnit } from "@/agent/human-actions";
-import { agentApi } from "@/agent/api";
-import { ScoreRing, UnitPhoto, VerifiedPill } from "@/components/agent/bits";
-import { SessionRail } from "@/components/agent/session-rail";
+import { UnitPhoto, VerifiedPill } from "@/components/agent/bits";
 import { CompareSheet, LeadApprovalModal, UnitDrawer } from "@/components/agent/overlays";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { agentApi } from "@/agent/api";
+import { applySearchOutcome, getSession, setLeadModalHidden, setSearching, toggleShortlist, useAgentSession } from "@/agent/session";
+import { humanCompare, humanFocusUnit } from "@/agent/human-actions";
+import "@/styles/shop.css";
+import { AiShoppingFuture } from "@/components/ai-shopping-future";
 
-const SAMPLE_PROMPT =
-  "I have an F-150 rated around 8,000 lbs and two kids. Find me a bunkhouse travel trailer under $45k, under 30 feet, within 150 miles of Tacoma — we boondock, so prioritize solar and lithium. Show the best three and explain the compromises.";
+const SAMPLE_PROMPT = "I have an F-150 rated around 8,000 lbs and two kids. Find me a bunkhouse travel trailer under $45k, under 30 feet, within 150 miles of Tacoma. We boondock, so prioritize solar and lithium. Show me the best three and explain the compromises.";
+type Message = {role:"user"|"assistant";content:string};
 
-function StatusChips({ unitCount }: { unitCount: number | null }) {
-  const s = useAgentSession();
-  const tools = getToolContractsForDisplay();
-  // Keep in sync with GET /api/agent/meta → dataset.units (live agent inventory).
-  // Fallback is the last verified live meta count; omit dealer rooftop tally until we can cite it accurately.
-  const inventoryLabel =
-    unitCount != null
-      ? `Real dealer inventory · ${unitCount.toLocaleString()} priced units`
-      : "Real dealer inventory · 20,775 priced units";
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border ${
-          s.runtime === "native"
-            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-            : "bg-amber-50 text-[#b45309] border-amber-200"
-        }`}
-      >
-        <PlugZap className="w-3.5 h-3.5" />
-        {s.runtime === "native" ? "Agent runtime connected" : "No agent runtime detected"}
-      </span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-white text-[#161d1d] border-[#E2E8F0] hover:border-[#00CED1] transition-colors">
-            <Bot className="w-3.5 h-3.5 text-[#00CED1]" />
-            {s.toolCount} site tools exposed
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-96 max-h-80 overflow-y-auto rounded-xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#8a9a9a] mb-2">
-            WebMCP capabilities on this page
-          </p>
-          <ul className="space-y-2">
-            {tools.map((t) => (
-              <li key={t.name}>
-                <p className="text-sm font-semibold text-[#161d1d] flex items-center gap-2">
-                  <code className="text-xs bg-[#f4fbfa] border border-[#E2E8F0] rounded px-1.5 py-0.5">{t.name}</code>
-                  {t.readOnly ? (
-                    <span className="text-[10px] text-[#0e7490]">read</span>
-                  ) : (
-                    <span className="text-[10px] text-[#b45309]">action</span>
-                  )}
-                </p>
-                <p className="text-xs text-[#5c6b6b] mt-0.5 leading-snug">{t.description.slice(0, 140)}…</p>
-              </li>
-            ))}
-          </ul>
-        </PopoverContent>
-      </Popover>
-      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border bg-white text-[#5c6b6b] border-[#E2E8F0]">
-        <BadgeCheck className="w-3.5 h-3.5 text-[#00CED1]" />
-        {inventoryLabel}
-      </span>
-    </div>
-  );
-}
-
-function ResultCard({
-  match,
-  selected,
-  onToggleCompare,
-}: {
-  match: UnitMatch;
-  selected: boolean;
-  onToggleCompare: (id: string) => void;
-}) {
+function ResultCard({match,selected,onCompare}:{match:UnitMatch;selected:boolean;onCompare:(id:string)=>void}) {
   const s = useAgentSession();
   const u = match.unit;
-  const inShortlist = s.shortlist.some((x) => x.id === u.id);
-  return (
-    <article className="group bg-white rounded-[1.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col border border-[#E2E8F0]">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#eef5f4]">
-        <UnitPhoto
-          images={u.images}
-          alt={u.title}
-          year={u.year}
-          make={u.make}
-          rvType={u.rvType}
-          imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-        />
-        <div className="absolute top-3 left-3">
-          <VerifiedPill status={match.hardStatus} />
-        </div>
-        <button
-          onClick={() =>
-            toggleShortlist(
-              { id: u.id, title: u.title, price: u.priceUsd.value, image: u.images[0] ?? null, dealer: u.dealer.name },
-              "human",
-            )
-          }
-          aria-label={inShortlist ? "Remove from shortlist" : "Add to shortlist"}
-          aria-pressed={inShortlist}
-          className="absolute top-3 right-3 rounded-full bg-white/90 p-2 shadow hover:scale-110 transition-transform"
-        >
-          <Heart className={`w-4 h-4 ${inShortlist ? "fill-[#e11d48] text-[#e11d48]" : "text-[#5c6b6b]"}`} />
-        </button>
-        {match.identicalUnitIds?.length ? (
-          <span className="absolute bottom-3 left-3 rounded-full bg-[#0B1117]/80 text-white text-[10px] font-semibold px-2 py-1">
-            {match.identicalUnitIds.length + 1} in stock
-          </span>
-        ) : null}
-      </div>
-
-      <div className="p-5 flex flex-col gap-3 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="font-display font-semibold tracking-tight text-[#161d1d] leading-snug line-clamp-2">{u.title}</h3>
-            <p className="text-xs text-[#5c6b6b] mt-1 flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {u.dealer.name} · {u.dealer.city}
-              {match.distanceMiles != null && <span className="text-[#0e7490] font-semibold">· {match.distanceMiles} mi</span>}
-            </p>
-          </div>
-          <ScoreRing score={match.score} />
-        </div>
-
-        <p className="text-xl font-bold text-[#161d1d]">
-          {u.priceUsd.value != null ? `$${u.priceUsd.value.toLocaleString()}` : "Price unknown"}
-        </p>
-
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#5c6b6b]">
-          {u.lengthFt.value != null && <span>{u.lengthFt.value} ft</span>}
-          {u.dryWeightLbs.value != null && <span>{u.dryWeightLbs.value.toLocaleString()} lbs dry</span>}
-          {u.sleeps.value != null && <span>Sleeps {u.sleeps.value}</span>}
-          {u.bunkhouse.value === true && <span className="text-[#0e7490] font-semibold">Bunkhouse</span>}
-          {u.solar.value === "installed" && <span className="text-[#0e7490] font-semibold">Solar</span>}
-        </div>
-
-        {match.unknownFields.length > 0 && (
-          <p className="text-[11px] text-[#b45309]">
-            Unknown: {match.unknownFields.slice(0, 3).join(", ")}
-            {match.unknownFields.length > 3 ? ` +${match.unknownFields.length - 3}` : ""}
-          </p>
-        )}
-
-        <div className="mt-auto flex items-center gap-2 pt-2">
-          <button
-            onClick={() => void humanFocusUnit(u.id)}
-            className="flex-1 rounded-xl bg-[#0B1117] text-white text-sm font-semibold py-2.5 hover:bg-[#1a2530] transition-colors"
-          >
-            Why this match?
-          </button>
-          <label className={`flex items-center gap-1.5 text-xs font-semibold rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${selected ? "border-[#00CED1] bg-[#00CED1]/10 text-[#0e7490]" : "border-[#E2E8F0] text-[#5c6b6b] hover:border-[#00CED1]"}`}>
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={() => onToggleCompare(u.id)}
-              className="sr-only"
-            />
-            <Scale className="w-3.5 h-3.5" />
-            Compare
-          </label>
-        </div>
-      </div>
-    </article>
-  );
+  const saved = s.shortlist.some(x=>x.id===u.id);
+  const strengths = [...match.hardChecks.filter(c=>c.status==='pass').map(c=>`${c.constraint}: ${c.actual}`), ...match.softChecks.filter(c=>c.satisfied===true).map(c=>c.detail)].slice(0,3);
+  const compromises = match.softChecks.filter(c=>c.satisfied!==true).map(c=>`${c.preference}: ${c.satisfied===null?'not provided':c.detail}`);
+  return <article className="outfitter-result">
+    <div className="outfitter-photo"><UnitPhoto images={u.images} alt={u.title} year={u.year} make={u.make} rvType={u.rvType} imgClassName="w-full h-full object-cover"/><button type="button" aria-label={saved?'Remove from shortlist':'Save RV'} aria-pressed={saved} onClick={()=>toggleShortlist({id:u.id,title:u.title,price:u.priceUsd.value,image:u.images[0]??null,dealer:u.dealer.name},'human')}><Heart size={18} fill={saved?'#0d9488':'none'}/></button></div>
+    <div className="outfitter-result-body"><VerifiedPill status={match.hardStatus}/><h3>{u.title}</h3><p className="result-price">{u.priceUsd.value!=null?`$${u.priceUsd.value.toLocaleString()}`:'Price not provided'}</p><p className="result-location"><MapPin size={15}/>{u.dealer.name} · {u.dealer.city}{match.distanceMiles!=null?` · ${Math.round(match.distanceMiles)} mi`:''}</p>
+      <dl className="result-specs"><div><dt>Length</dt><dd>{u.lengthFt.value!=null?`${u.lengthFt.value} ft`:'Not provided'}</dd></div><div><dt>Sleeps</dt><dd>{u.sleeps.value??'Not provided'}</dd></div><div><dt>GVWR</dt><dd>{u.gvwrLbs.value!=null?`${u.gvwrLbs.value.toLocaleString()} lb`:'Not provided'}</dd></div></dl>
+      <div className="result-fit"><strong><Check size={15}/> Why it fits</strong>{strengths.length?<ul>{strengths.map(text=><li key={text}>{text}</li>)}</ul>:<p>Ranked against your current search. Open the details to review published specifications.</p>}</div>
+      <div className="result-tradeoffs"><strong>Trade-offs &amp; unknowns</strong><p>{compromises.length?compromises.slice(0,2).join(' · '):'No preference shortfall identified from the available data.'}</p>{match.unknownFields.length>0&&<p>Needs confirmation: {match.unknownFields.join(', ').replaceAll('_',' ')}.</p>}</div>
+      <div className="result-buttons"><button className="brand-button" onClick={()=>void humanFocusUnit(u.id)}>View RV <ArrowRight size={15}/></button><label><input type="checkbox" checked={selected} onChange={()=>onCompare(u.id)}/> Compare</label></div>
+    </div>
+  </article>;
 }
 
 export function Shop() {
-  const s = useAgentSession();
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [datasetNote, setDatasetNote] = useState<string | null>(null);
-  const [unitCount, setUnitCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    void agentApi.meta().then((r) => {
-      if (r.ok) {
-        setDatasetNote(r.data.dataset.note);
-        setUnitCount(r.data.dataset.units);
+  const s=useAgentSession();
+  const [draft,setDraft]=useState('');
+  const [messages,setMessages]=useState<Message[]>([]);
+  const [busy,setBusy]=useState(false);
+  const busyRef=useRef(false);
+  const [error,setError]=useState('');
+  const [count,setCount]=useState<number|null>(null);
+  const [compareIds,setCompareIds]=useState<string[]>([]);
+  const [budget,setBudget]=useState('');
+  const [place,setPlace]=useState('');
+  const [length,setLength]=useState('');
+  const [bunkhouse,setBunkhouse]=useState(false);
+  const inputRef=useRef<HTMLTextAreaElement>(null);
+  const alive=useRef(true);
+  useEffect(()=>{setBudget(s.constraints.priceMaxUsd?.toString()??'');setLength(s.constraints.lengthMaxFt?.toString()??'');setPlace(s.constraints.location?.place??'');setBunkhouse(s.constraints.mustHave?.includes('bunkhouse')??false)},[s.constraints]);
+  useEffect(()=>{alive.current=true; void agentApi.meta().then(r=>{if(alive.current&&r.ok){setCount(r.data.dataset.units)}}); return()=>{alive.current=false}},[]);
+  const results=s.results.filter(m=>m.hardStatus!=='fail').slice(0,3);
+  async function search(next:Constraints) {
+    if(busyRef.current||s.searching)return;
+    setError(''); setSearching(true);
+    const r=await agentApi.search(next,3);
+    if(r.ok)applySearchOutcome({actor:'human',constraints:r.data.appliedConstraints,...r.data});
+    else {setSearching(false);setError(r.error.hint??'Could not search inventory. Please try again.');}
+  }
+  async function send(e:FormEvent) {
+    e.preventDefault(); if(!draft.trim()||busyRef.current||s.searching)return;
+    busyRef.current=true;setBusy(true);setError('');
+    const message=draft.trim();
+    const next:Message[]=[...messages,{role:'user',content:message}];
+    const startingConstraints=getSession().constraints;
+    setMessages(next);setDraft('');
+    try {
+      const r=await agentApi.outfitter(next.slice(-15),startingConstraints);
+      if(!alive.current)return;
+      if(!r.ok){setMessages(messages);setDraft(message);setError(r.error.message??'RV Outfitter could not respond. Please try again.');return;}
+      setMessages([...next,{role:'assistant',content:r.data.message}]);
+      if(r.data.search){
+        if(getSession().constraints!==startingConstraints){setError('Your search changed while RV Outfitter was working. Send your request again to use the latest filters.');return;}
+        const result=r.data.search;
+        applySearchOutcome({actor:'agent',constraints:result.appliedConstraints,...result,intentSummary:r.data.summary});setCompareIds([]);
       }
-    });
-  }, []);
-
-  const toggleCompare = (id: string) =>
-    setCompareIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-4)));
-
-  const results = s.results;
-  const verified = useMemo(() => results.filter((m) => m.hardStatus === "pass"), [results]);
-  const unverified = useMemo(() => results.filter((m) => m.hardStatus === "unverified"), [results]);
-
-  return (
-    <Layout>
-      <SEO
-        title="Shop with your AI agent"
-        description="MatchRV exposes real RV inventory as structured WebMCP capabilities: agents search, explain, and compare — you stay in control."
-      />
-      <div className="bg-[#f4fbfa] min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-16">
-          {/* Hero */}
-          <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#0e7490]">
-              <Sparkles className="w-3.5 h-3.5" /> Agent-native shopping · WebMCP
-            </p>
-            <h1 className="font-display font-semibold tracking-tight text-3xl sm:text-4xl text-[#161d1d] mt-2">
-              Your AI agent can use this page.
-            </h1>
-            <p className="text-[#5c6b6b] mt-3 leading-relaxed">
-              MatchRV turns fragmented dealer inventory into structured capabilities an agent can call —
-              search with real constraints, explainable matches, honest unknowns, and dealer contact that
-              always waits for your approval. Say something like:
-            </p>
-            <blockquote className="mt-3 rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm text-[#3b4a4a] italic">
-              “{SAMPLE_PROMPT}”
-            </blockquote>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <StatusChips unitCount={unitCount} />
-            </div>
-            {s.runtime === "none" && (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => void runGuidedDemo()}
-                  disabled={s.guidedDemoRunning}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#0B1117] font-bold px-5 py-3 hover:brightness-105 transition disabled:opacity-60"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  {s.guidedDemoRunning ? "Guided demo running…" : "Watch the guided demo"}
-                </button>
-                <p className="text-xs text-[#5c6b6b] max-w-sm">
-                  For the real thing: open this page in <strong>ChatGPT's in-app browser</strong>, or Chrome 149+ with{" "}
-                  <code className="bg-white border border-[#E2E8F0] rounded px-1">chrome://flags/#enable-webmcp-testing</code>.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Pending approval ribbon */}
-          {s.leadPreview?.status === "awaiting_human_approval" && s.leadModalHidden && (
-            <button
-              onClick={() => setLeadModalHidden(false)}
-              className="mt-6 w-full rounded-xl border border-amber-300 bg-amber-50 text-[#92400e] text-sm font-semibold px-4 py-3 text-left hover:bg-amber-100 transition-colors"
-            >
-              ⏳ Your agent prepared a dealer contact request — review &amp; approve it
-            </button>
-          )}
-
-          {/* Body */}
-          <div className="mt-8 grid lg:grid-cols-[340px_1fr] gap-6 items-start">
-            <SessionRail />
-
-            <main>
-              {s.searching && (
-                <div className="flex items-center gap-2 text-sm text-[#0e7490] font-semibold mb-4">
-                  <ScanSearch className="w-4 h-4 animate-pulse" /> Searching the normalized inventory…
-                </div>
-              )}
-
-              {!s.funnel && !s.searching && (
-                <div className="rounded-[1.5rem] border border-dashed border-[#c9d8d8] bg-white/60 p-10 text-center">
-                  <Bot className="w-10 h-10 text-[#00CED1] mx-auto" />
-                  <h2 className="font-display font-semibold text-xl text-[#161d1d] mt-3">The inventory is listening.</h2>
-                  <p className="text-sm text-[#5c6b6b] mt-2 max-w-md mx-auto">
-                    Ask your agent for what you actually want — six messy requirements in one sentence is
-                    exactly the point. Results land here, and you can adjust anything by hand.
-                  </p>
-                </div>
-              )}
-
-              {verified.length > 0 && (
-                <>
-                  <h2 className="font-display font-semibold text-lg text-[#161d1d] mb-3">
-                    Verified matches <span className="text-[#8a9a9a] font-normal">— every hard requirement confirmed</span>
-                  </h2>
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {verified.slice(0, 12).map((m) => (
-                      <ResultCard key={m.unit.id} match={m} selected={compareIds.includes(m.unit.id)} onToggleCompare={toggleCompare} />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {s.funnel && !s.searching && verified.length === 0 && unverified.length > 0 && (
-                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-6 py-4">
-                  <h2 className="font-display font-semibold text-lg text-[#161d1d]">
-                    No unit satisfies every hard requirement.
-                  </h2>
-                  <p className="text-sm text-[#5c6b6b] mt-1">
-                    MatchRV won't pretend otherwise. The closest candidates are below — each fails nothing, but a
-                    fact you require is unpublished. Have your agent ask the dealer to confirm it, or relax a
-                    constraint (the funnel shows what each one costs).
-                  </p>
-                </div>
-              )}
-
-              {unverified.length > 0 && (
-                <>
-                  <h2 className="font-display font-semibold text-lg text-[#161d1d] mt-8 mb-1">
-                    Close, but unverified
-                  </h2>
-                  <p className="text-xs text-[#5c6b6b] mb-3 max-w-2xl">
-                    These fail nothing — but the dealer doesn't publish a fact your requirements need, and MatchRV
-                    won't guess. Your agent can ask the dealership to confirm.
-                  </p>
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {unverified.slice(0, 6).map((m) => (
-                      <ResultCard key={m.unit.id} match={m} selected={compareIds.includes(m.unit.id)} onToggleCompare={toggleCompare} />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {s.funnel && verified.length === 0 && unverified.length === 0 && !s.searching && (
-                <div className="rounded-[1.5rem] border border-[#E2E8F0] bg-white p-8">
-                  <h2 className="font-display font-semibold text-lg text-[#161d1d]">No unit satisfies every hard requirement.</h2>
-                  <p className="text-sm text-[#5c6b6b] mt-2">
-                    The funnel shows exactly which constraint eliminated what — relax one, or make it a preference.
-                  </p>
-                </div>
-              )}
-
-              {datasetNote && (
-                <p className="text-[11px] text-[#8a9a9a] mt-8 max-w-2xl">{datasetNote}</p>
-              )}
-            </main>
-          </div>
-        </div>
-
-        {/* Compare bar */}
-        {compareIds.length >= 2 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-            <button
-              onClick={() => void humanCompare(compareIds)}
-              className="rounded-full bg-[#0B1117] text-white font-semibold pl-5 pr-6 py-3 shadow-xl flex items-center gap-2 hover:bg-[#1a2530] transition-colors"
-            >
-              <Scale className="w-4 h-4 text-[#00CED1]" />
-              Compare {compareIds.length} units
-            </button>
-          </div>
-        )}
-
-        <UnitDrawer />
-        <CompareSheet />
-        <LeadApprovalModal />
+    } finally {busyRef.current=false;if(alive.current)setBusy(false);}
+  }
+  const chips=Object.entries(s.constraints).filter(([,v])=>v!=null&&(!Array.isArray(v)||v.length));
+  function chipText(key:string,value:unknown){
+    if(key==='location'){const v=value as {place:string;radiusMiles:number};return `${v.place} · ${v.radiusMiles} mi`;}
+    if(key==='priceMaxUsd')return `Under $${Number(value).toLocaleString()}`;
+    if(key==='lengthMaxFt')return `Up to ${value} ft`;
+    if(key==='sleepsMin')return `Sleeps ${value}+`;
+    if(key==='boondocking')return 'Off-grid priority';
+    return `${key==='prefer'?'Prefer: ':key==='mustHave'?'Required: ':''}${Array.isArray(value)?value.join(', ').replaceAll('_',' '):String(value)}`;
+  }
+  return <BrandLayout><SEO title="AI RV Shop — RV Outfitter" description="Tell RV Outfitter what you need. Search real MatchRV inventory and compare three options with clear trade-offs and honest unknowns." canonical="/shop"/>
+    <div className="brand-container shop-content"><AiShoppingFuture/>
+      <div className="outfitter-composer"><div className="composer-identity"><img src="/images/outfitter-avatar.png" alt=""/><div><strong>RV Outfitter</strong><span>A little guidance for your next big adventure.</span></div><span className="inventory-count">{count!=null?`${count.toLocaleString()} RVs in inventory`:'Search MatchRV inventory'}</span></div>
+        {messages.length>0&&<div className="outfitter-conversation" aria-label="Conversation with RV Outfitter" aria-live="polite">{messages.map((m,i)=><div key={i} className={`chat-message ${m.role}`}><strong>{m.role==='user'?'You':'RV Outfitter'}</strong><p>{m.content}</p></div>)}</div>}
+        <form onSubmit={send}><label htmlFor="rv-request">{messages.length?'What would you like to change or ask?':'What are you looking for?'}</label><textarea ref={inputRef} id="rv-request" value={draft} onChange={e=>setDraft(e.target.value)} placeholder={messages.length?'Find something shorter, prioritize lithium, or ask a question…':SAMPLE_PROMPT} rows={messages.length?3:4} maxLength={4000} required disabled={busy}/><div className="composer-bottom"><span>Real inventory. Clear trade-offs. Your choice.</span><button className="brand-button" disabled={busy||s.searching||!draft.trim()}>{busy?'RV Outfitter is thinking…':'Ask RV Outfitter'} <ArrowRight size={18}/></button></div></form>
       </div>
-    </Layout>
-  );
+      {!messages.length&&<div className="shop-starters"><span>Start with an idea:</span>{['A bunkhouse travel trailer under $45,000','A small camper for weekend trips','An RV for full-time living'].map(text=><button key={text} onClick={()=>{setDraft(text);inputRef.current?.focus()}}>{text}</button>)}</div>}
+      {error&&<p className="brand-error" role="alert">{error}</p>}
+      <details className="shop-filters"><summary><SlidersHorizontal size={17}/> Or search with filters</summary><form onSubmit={e=>{e.preventDefault();void search({...s.constraints,priceMaxUsd:budget?Number(budget):null,lengthMaxFt:length?Number(length):null,location:place.trim()?{place:place.trim(),radiusMiles:150}:null,mustHave:bunkhouse?Array.from(new Set([...(s.constraints.mustHave??[]),'bunkhouse'])):s.constraints.mustHave?.filter(f=>f!=='bunkhouse')})}}><label>Maximum price<input type="number" min="0" max="2000000" value={budget} onChange={e=>setBudget(e.target.value)} placeholder="45000"/></label><label>Maximum length (ft)<input type="number" min="8" max="60" value={length} onChange={e=>setLength(e.target.value)} placeholder="30"/></label><label>Near (within 150 miles)<input value={place} onChange={e=>setPlace(e.target.value)} placeholder="Tacoma" maxLength={80}/></label><label className="bunkhouse-check"><input type="checkbox" checked={bunkhouse} onChange={e=>setBunkhouse(e.target.checked)}/> Bunkhouse</label><button className="brand-button" disabled={busy||s.searching}><Search size={16}/> Search inventory</button></form></details>
+      {chips.length>0&&<div className="shop-constraints" aria-label="Your search requirements">{chips.map(([key,value])=><button key={key} disabled={busy||s.searching} onClick={()=>{const next={...s.constraints};delete next[key as keyof Constraints];void search(next)}} aria-label={`Remove ${chipText(key,value)}`}>{chipText(key,value)} <X size={14}/></button>)}</div>}
+      {(busy||s.searching)&&<p role="status" className="shop-searching"><Search size={18}/> {busy?'Understanding your request…':'Searching your inventory matches…'}</p>}
+      {s.leadPreview?.status==='awaiting_human_approval'&&s.leadModalHidden&&<button className="brand-button secondary" onClick={()=>setLeadModalHidden(false)}>Review your dealer contact request</button>}
+      {s.funnel&&!s.searching&&<section className="shop-results" aria-label="RV recommendations"><div className="section-heading"><div><p className="brand-eyebrow">Matched to your plans</p><h2>{results.length?`Your ${results.length===1?'best available option':`${results.length} best available options`}`:'No photo-verified options returned'}</h2></div>{results.length>=2&&<button className="brand-button secondary" onClick={()=>void humanCompare(results.map(m=>m.unit.id))}><Scale size={17}/> Compare these RVs</button>}</div>
+        {s.intentSummary&&<p className="brand-muted">{s.intentSummary}</p>}{results.length<3&&<p className="brand-muted">{results.length?`Only ${results.length} options meet the available checks. `:''}Other listings may have incomplete details or unreachable photos. Try again or adjust a requirement. We haven’t relaxed your filters.</p>}
+        {results.some(m=>m.hardStatus==='unverified')&&<p className="shop-notice">Some listings have unpublished specifications. These are marked unverified, not confirmed matches.</p>}
+        <div className="shop-result-grid">{results.map(m=><ResultCard key={m.unit.id} match={m} selected={compareIds.includes(m.unit.id)} onCompare={id=>setCompareIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id].slice(-3))}/>)}</div>
+        {!results.length&&<div className="shop-empty"><Search size={28}/><h3>Let’s adjust the search together.</h3><p>Tell RV Outfitter which requirement is flexible, or remove a filter above.</p>{s.funnel.excluded.slice(0,3).map(e=><p key={e.reason}>{e.count.toLocaleString()} excluded: {e.reason}</p>)}</div>}
+        {compareIds.length>=2&&<button className="brand-button compare-selected" onClick={()=>void humanCompare(compareIds)}><Scale size={17}/> Compare {compareIds.length} selected RVs</button>}
+      </section>}
+      <div className="shop-footnotes"><p><strong>Know before you tow.</strong> Tow ratings alone don’t confirm compatibility. Check your vehicle configuration, loaded trailer weight, payload, and hitch limits.</p><p>Listings reflect available dealer information. Confirm price, equipment, and availability with the dealership before visiting.</p></div>
+    </div><UnitDrawer/><CompareSheet/><LeadApprovalModal/>
+  </BrandLayout>;
 }

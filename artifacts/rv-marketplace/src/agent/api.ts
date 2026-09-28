@@ -17,6 +17,7 @@ import type {
 const BASE = import.meta.env.BASE_URL ?? "/";
 
 export interface AgentApiError {
+  message?: string;
   error: string;
   issues?: string[];
   hint?: string;
@@ -56,6 +57,8 @@ export interface SearchResponse {
 }
 
 export const agentApi = {
+  outfitter: (messages: {role:"user"|"assistant";content:string}[], constraints: Constraints) =>
+    call<{message:string;summary:string|null;search:Omit<SearchResponse,"shownToAgent">|null}>("/outfitter", {method:"POST",body:JSON.stringify({messages,constraints})}),
   search: (constraints: Constraints, limit?: number) =>
     call<SearchResponse>("/search", { method: "POST", body: JSON.stringify({ constraints, limit }) }),
 
@@ -107,7 +110,7 @@ export const agentApi = {
       body: JSON.stringify({ preview_id: previewId }),
     }),
 
-  meta: () => call<{ dataset: { units: number; dealers: number; builtAt: string; note: string } }>("/meta"),
+  meta: () => call<{ dataset: { units: number; searchableUnits: number; dealers: number; builtAt: string; note: string } }>("/meta"),
 };
 
 export interface LeadPreviewDto {

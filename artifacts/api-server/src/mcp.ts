@@ -16,6 +16,7 @@ import {
   type CanonicalUnit,
 } from "@workspace/agent-core";
 import { getInventory } from "./services/agent-inventory";
+import { searchReadyInventory } from "./services/search-ready";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
 const searchInput = z.object({
@@ -255,13 +256,14 @@ function buildMatchRvServer(): McpServer {
 
         const place = constraints.location?.place;
         const corpus = candidateUnits(place);
-        const outcome = runSearch(corpus, constraints);
+        const outcome = await searchReadyInventory(constraints, input.limit ?? 10, corpus);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
         const ms = Math.round(performance.now() - t0);
         return textResult({
           ...compact,
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
+          readiness: outcome.readiness,
         });
       } catch (error) {
         return textResult(

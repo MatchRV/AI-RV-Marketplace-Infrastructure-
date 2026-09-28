@@ -18,7 +18,7 @@
         "shortDescription": "Find RVs that fit your plans and see what still needs verification.",
         "longDescription": "Search MatchRV dealer inventory by your needs, inspect and compare listings, and evaluate tow fit using available facts. Missing details remain unknown. Dealer contact requires a preview and your explicit approval before submission.",
         "developerName": "MatchRV Inc.",
-        "category": "Shopping",
+        "category": "Travel",
         "capabilities": ["Read", "Write"],
         "websiteURL": "https://matchrv.com",
         "privacyPolicyURL": "https://matchrv.com/privacy",

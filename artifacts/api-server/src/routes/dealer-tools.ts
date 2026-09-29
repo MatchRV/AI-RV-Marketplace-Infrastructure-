@@ -82,12 +82,20 @@ async function assertPublicUrl(input: string): Promise<URL> {
 }
 
 async function fetchPage(input: string): Promise<PageSnapshot> {
-  const url = await assertPublicUrl(input);
-  const response = await fetch(url, {
-    headers: { "user-agent": "MatchRV-AEO-Checker/1.0 (+https://matchrv.com/for-dealers)" },
-    signal: AbortSignal.timeout(12_000),
-    redirect: "follow",
-  });
+  let url = await assertPublicUrl(input);
+  let response: globalThis.Response | undefined;
+  for (let redirect = 0; redirect < 4; redirect++) {
+    response = await fetch(url, {
+      headers: { "user-agent": "MatchRV-AEO-Checker/1.0 (+https://matchrv.com/for-dealers)" },
+      signal: AbortSignal.timeout(12_000),
+      redirect: "manual",
+    });
+    if (![301, 302, 303, 307, 308].includes(response.status)) break;
+    const next = response.headers.get("location");
+    if (!next) throw new Error("Website redirect has no destination.");
+    url = await assertPublicUrl(new URL(next, url).toString());
+  }
+  if (!response) throw new Error("Website did not respond.");
   if (!response.ok) throw new Error(`Fetch failed with HTTP ${response.status}`);
   const html = (await response.text()).slice(0, 2_000_000);
   return {
@@ -98,6 +106,75 @@ async function fetchPage(input: string): Promise<PageSnapshot> {
     links: extractLinks(new URL(response.url), html),
   };
 }
+
+type GeminiSearchResponse = {
+  interaction?: { steps?: GeminiSearchStep[] };
+  steps?: GeminiSearchStep[];
+};
+type GeminiSearchStep = {
+  type: string;
+  content?: Array<{ type: string; text?: string; annotations?: Array<{ type: string; url?: string; title?: string }> }>;
+};
+
+const quickReportSchema = z.object({
+  website: z.string().trim().min(4).max(300),
+  city: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
+  state: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
+});
+
+const quickReportWindows = new Map<string, { start: number; count: number }>();
+let quickReportsActive = 0;
+
+router.post("/dealer-tools/quick-report", async (req: Request, res: Response) => {
+  const parsed = quickReportSchema.safeParse(req.body);
+  if (!parsed.success) return void res.status(400).json({ error: "invalid_request", message: "Enter a dealership website, city, and state." });
+  if (!process.env.GEMINI_API_KEY) return void res.status(503).json({ error: "gemini_unavailable", message: "The AI search check is temporarily unavailable." });
+  const now = Date.now();
+  for (const [key, value] of quickReportWindows) if (now - value.start > 3_600_000) quickReportWindows.delete(key);
+  const key = req.ip || "unknown";
+  const window = quickReportWindows.get(key) || { start: now, count: 0 };
+  if (window.count >= 3 || quickReportsActive >= 3) return void res.status(429).json({ error: "busy", message: "The free check is busy. Please try again later." });
+  window.count++; quickReportWindows.set(key, window); quickReportsActive++;
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const { website, city, state } = parsed.data;
+    const source = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+    const first = await fetchPage(source);
+    const question = `I'm looking for a 30-foot bunkhouse travel trailer for less than $40,000 near ${city}, ${state}. What options can you find?`;
+    const model = process.env.GEMINI_REPORT_MODEL || "gemini-3.1-flash-lite";
+    const [pagesResult, aiResult] = await Promise.allSettled([
+      Promise.all(first.links.slice(0, 2).map(url => fetchPage(url).catch(() => null))),
+      fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
+        body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }] }),
+        signal: AbortSignal.timeout(55_000),
+      }).then(async response => {
+        if (!response.ok) throw new Error(`Gemini search failed (${response.status})`);
+        return response.json() as Promise<GeminiSearchResponse>;
+      }),
+    ]);
+    const pages = [first, ...(pagesResult.status === "fulfilled" ? pagesResult.value.filter((p): p is PageSnapshot => Boolean(p)) : [])];
+    const checks = [
+      { label: "numeric price", test: (p: PageSnapshot) => money(p.text) !== null },
+      { label: "RV type", test: (p: PageSnapshot) => Boolean(rvType(p.text)) },
+      { label: "length", test: (p: PageSnapshot) => /(length|overall length)\s*[:\-]?\s*\d{1,2}(?:\.\d)?\s*(?:ft|feet|')/i.test(p.text) },
+      { label: "sleeping capacity", test: (p: PageSnapshot) => /(sleeps|sleeping capacity)\s*[:\-]?\s*\d{1,2}/i.test(p.text) },
+      { label: "Vehicle structured data", test: (p: PageSnapshot) => /"@type"\s*:\s*"Vehicle"/i.test(p.html) },
+    ];
+    const findings = checks.map(check => ({ field: check.label, missing: pages.filter(p => !check.test(p)).length, checked: pages.length }));
+    const interaction = aiResult.status === "fulfilled" ? (aiResult.value.interaction || aiResult.value) : null;
+    const blocks = interaction?.steps?.filter(step => step.type === "model_output").flatMap(step => step.content || []) || [];
+    const answer = blocks.filter(block => block.type === "text").map(block => block.text || "").join("\n").trim();
+    const citations = blocks.flatMap(block => block.annotations || []).filter(a => a.type === "url_citation" && /^https?:\/\//i.test(a.url || ""));
+    const sources = [...new Map(citations.map(a => [a.url!, { url: a.url!, title: a.title || new URL(a.url!).hostname }])).values()].slice(0, 10);
+    const dealerHost = new URL(first.url).hostname.replace(/^www\./, "");
+    const mentionsDealer = new RegExp(dealerHost.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(answer) || sources.some(s => new URL(s.url).hostname.replace(/^www\./, "") === dealerHost);
+    res.json({ website: first.url, location: `${city}, ${state}`, checkedAt: new Date().toISOString(), pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model, answer: answer || null, sources, mentionsDealer: answer ? mentionsDealer : null, status: answer ? "answered" : "unavailable" }, note: "One dated Gemini search sample. It does not measure rankings or guarantee future AI answers. Missing means absent from the sampled page text, not necessarily absent from every source." });
+  } catch (error) {
+    res.status(422).json({ error: "report_unavailable", message: error instanceof Error ? error.message : "We could not scan that website." });
+  } finally { quickReportsActive--; }
+});
 
 function money(text: string): number | null {
   const raw = text.match(/(?:\$|USD\s*)(\d{1,3}(?:,\d{3})+(?:\.\d{2})?|\d{4,6}(?:\.\d{2})?)/i)?.[1];

@@ -41,6 +41,11 @@ export function AiShoppingFuture() {
       <div className="vision-prompt-grid">{prompts.map((prompt, index) => <blockquote key={prompt}><span>0{index + 1}</span>“{prompt}”</blockquote>)}</div>
     </div>
 
+    <figure className="vision-infrastructure">
+      <img src="/images/ai-ready-data-infrastructure-process.webp" alt="Concept diagram showing fragmented dealer inventory data becoming structured information that AI tools can use" loading="lazy"/>
+      <figcaption>MatchRV’s vision for making RV inventory easier for AI to understand. Diagram is conceptual.</figcaption>
+    </figure>
+
     <div className="vision-coming-soon">
       <div><p className="brand-eyebrow">Coming Soon</p><h2>Meet shoppers where their search begins.</h2><p>MatchRV is working toward ways for AI assistants to connect shopper questions with RV inventory.</p></div>
       <div className="vision-roadmap"><span>MatchRV ChatGPT Plugin</span><span>Google UCP</span></div>

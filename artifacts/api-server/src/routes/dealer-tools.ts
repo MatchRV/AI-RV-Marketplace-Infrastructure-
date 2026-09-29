@@ -119,7 +119,7 @@ type GeminiSearchResponse = {
 };
 type GeminiSearchStep = {
   type: string;
-  content?: Array<{ type: string; text?: string; annotations?: Array<{ type: string; url?: string; title?: string }> }>;
+  content?: Array<{ type: string; text?: string; annotations?: Array<{ type: string; url?: string; uri?: string; title?: string }> }>;
 };
 
 const quickReportSchema = z.object({
@@ -202,17 +202,18 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     ];
     const findings = checks.map(check => ({ field: check.label, missing: pages.filter(p => !check.test(p)).length, checked: pages.length }));
     const gemini = aiResult?.[0];
+    if (gemini?.status === "rejected") console.warn("[quick-report] Gemini search unavailable:", (gemini.reason as Error)?.message || "unknown error");
     const interaction = gemini?.status === "fulfilled" ? (gemini.value.interaction || gemini.value) : null;
     const blocks = interaction?.steps?.filter(step => step.type === "model_output").flatMap(step => step.content || []) || [];
     const rawAnswer = blocks.filter(block => block.type === "text").map(block => block.text || "").join("\n").trim();
-    const citations = blocks.flatMap(block => block.annotations || []).filter(a => a.type === "url_citation" && /^https?:\/\//i.test(a.url || ""));
-    const sources = [...new Map(citations.map(a => [a.url!, { url: a.url!, title: a.title || new URL(a.url!).hostname }])).values()].slice(0, 10);
+    const citations = blocks.flatMap(block => block.annotations || []).filter(a => a.type === "url_citation").map(a => ({ ...a, sourceUrl: a.uri || a.url || "" })).filter(a => /^https?:\/\//i.test(a.sourceUrl));
+    const sources = [...new Map(citations.map(a => [a.sourceUrl, { url: a.sourceUrl, title: a.title || new URL(a.sourceUrl).hostname }])).values()].slice(0, 10);
     const dealerHost = new URL(first.url).hostname.replace(/^www\./, "");
     const siteWasCited = sources.some(s => new URL(s.url).hostname.replace(/^www\./, "") === dealerHost);
     const answer = sources.length ? rawAnswer : "";
     const checkedAt = new Date().toISOString();
     const note = "One dated Gemini search sample. It does not measure rankings or guarantee future AI answers. Missing means absent from the sampled page text, not necessarily absent from every source.";
-    const aiMessage = !question ? "The sampled pages did not expose enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
+    const aiMessage = !question ? "The sampled pages did not expose enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? ((gemini.reason as Error)?.name === "TimeoutError" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : "Gemini could not complete the AI search. The website findings are still available; please try again later.") : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
     const reportId = randomUUID();
     const report = { website: first.url, location: `${city}, ${state}`, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
     for (const [id, value] of deliveredReports) if (now - value.createdAt > 3_600_000) deliveredReports.delete(id);
@@ -459,3 +460,4 @@ router.post("/dealer-tools/content-check", async (req: Request, res: Response) =
 });
 
 export default router;
+

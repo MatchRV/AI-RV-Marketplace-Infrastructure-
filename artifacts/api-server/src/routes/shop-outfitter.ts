@@ -9,7 +9,7 @@ let active = 0;
 router.post("/agent/outfitter", async (req, res) => {
   const input = shopChatSchema.safeParse(req.body);
   if (!input.success) { res.status(400).json({error:"invalid_request",message:"Please shorten your message and try again."}); return; }
-  if (!isAnthropicConfigured()) { res.status(503).json({error:"outfitter_not_connected",message:"RV Outfitter’s AI connection has not been set up for this preview yet. You can search photo-ready RVs using the filters below."}); return; }
+  if (!process.env.GEMINI_API_KEY && !isAnthropicConfigured()) { res.status(503).json({error:"outfitter_not_connected",message:"RV Outfitter’s AI connection has not been set up for this preview yet. You can search photo-ready RVs using the filters below."}); return; }
   const now = Date.now();
   for (const [key,value] of windows) if (now-value.start > 60_000) windows.delete(key);
   const key = req.ip || "unknown";

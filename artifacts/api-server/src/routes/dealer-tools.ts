@@ -183,7 +183,7 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     const pages = [first, ...extraPages.filter((p): p is PageSnapshot => Boolean(p))];
     const selection = chooseDealerQuestion(pages, city, state);
     const question = selection?.question ?? null;
-    const model = process.env.GEMINI_REPORT_MODEL || "gemini-2.5-flash-lite";
+    const model = process.env.GEMINI_REPORT_MODEL || "gemini-3.5-flash-lite";
     const aiResult = question ? await Promise.allSettled([fetch(process.env.GEMINI_INTERACTIONS_URL || "https://generativelanguage.googleapis.com/v1beta/interactions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },

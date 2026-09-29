@@ -10,7 +10,7 @@ export function ReportExamples({ full = false }: { full?: boolean }) {
       <span className="sample-label">Real audit · identity withheld</span>
       <h3>{report.label}</h3><p>{report.scope} · {report.auditedAt}</p>
       <h4>What the audit found</h4>
-      <ul>{(full ? report.missing : report.missing.slice(0,3)).map(row => <li key={row.field}><strong>{row.missing} of {row.of}</strong> records missing {row.field.replaceAll("_", " ").toLowerCase()}.</li>)}</ul>
+      <ul>{(full ? report.missing : report.missing.slice(0,3)).map(row => <li key={row.field}><strong>{row.missing} of {row.of}</strong> records missing {row.field.replaceAll("_", " ").toLowerCase()}.<p>On the page for shoppers is not the same as readable for AI.</p></li>)}</ul>
       <p className="brand-muted">“Missing” means absent or not extracted in the audit data. It does not prove that a specification is absent from every source.</p>
       <details open={full}><summary>Score summary and next steps</summary>
         <dl>{[["Inventory completeness",report.scores.inventory_health],["AI readability",report.scores.ai_readability],["Crawlability",report.scores.crawlability],["Query coverage",report.scores.query_coverage],["Overall",report.scores.overall]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}/100</dd></div>)}</dl>

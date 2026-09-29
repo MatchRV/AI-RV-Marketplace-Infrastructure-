@@ -2,18 +2,20 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 
 type QuickReportResult = {
+  reportId: string;
   website: string;
   location: string;
   checkedAt: string;
   pages: Array<{ url: string; title: string }>;
   findings: Array<{ field: string; missing: number; checked: number }>;
   ai: {
-    question: string;
-    model: string;
+    question: string | null;
+    model: string | null;
     answer: string | null;
     sources: Array<{ url: string; title: string }>;
-    mentionsDealer: boolean | null;
-    status: "answered" | "unavailable";
+    siteWasCited: boolean | null;
+    status: "answered" | "unavailable" | "skipped";
+    message?: string | null;
   };
   note: string;
 };
@@ -26,12 +28,16 @@ export function QuickReport() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<QuickReportResult | null>(null);
   const [ready, setReady] = useState<boolean | null>(null);
+  const [emailReady, setEmailReady] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailStatus, setEmailStatus] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
     fetch("/api/dealer-tools/quick-report/status")
       .then(response => response.ok ? response.json() : { ready: false })
-      .then(payload => { if (active) setReady(Boolean(payload.ready)); })
+      .then(payload => { if (active) { setReady(Boolean(payload.ready)); setEmailReady(Boolean(payload.emailReady)); } })
       .catch(() => { if (active) setReady(false); });
     return () => { active = false; };
   }, []);
@@ -42,6 +48,7 @@ export function QuickReport() {
     setBusy(true);
     setError("");
     setResult(null);
+    setEmailStatus("");
     try {
       const response = await fetch("/api/dealer-tools/quick-report", {
         method: "POST",
@@ -58,12 +65,28 @@ export function QuickReport() {
     }
   }
 
+  async function sendPdf(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!result || emailBusy) return;
+    setEmailBusy(true);
+    setEmailStatus("");
+    try {
+      const response = await fetch("/api/dealer-tools/quick-report/email", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: result.reportId, email }),
+      });
+      const payload = await response.json();
+      setEmailStatus(response.ok ? "Your PDF has been sent. Check your inbox." : payload.message || "We could not send the PDF right now.");
+    } catch { setEmailStatus("We could not send the PDF right now. Please try again later."); }
+    finally { setEmailBusy(false); }
+  }
+
   return <div className="quick-report">
     <p className="brand-eyebrow">Free website sample report</p>
     <h2>Get a sample report of your website now, for free.</h2>
     <p>Enter your dealership website and location. We’ll check a sample of your public pages and ask Gemini one real RV shopper question near your dealership. No account or card required.</p>
     <form onSubmit={run} className="quick-report-form">
-      <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="matchrv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
+      <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
       <label>State<input value={state} onChange={event => setState(event.target.value)} placeholder="Washington" autoComplete="address-level1" maxLength={80} required disabled={busy} /></label>
       <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Get my free sample report" : "Free report temporarily unavailable"}</button>
@@ -77,13 +100,13 @@ export function QuickReport() {
       <p>We checked {result.pages.length} public {result.pages.length === 1 ? "page" : "pages"} on <a href={result.website} target="_blank" rel="noopener noreferrer">{new URL(result.website).hostname}</a>.</p>
       <h3>Inventory information on sampled pages</h3>
       <ul>{result.findings.map(finding => <li key={finding.field}><strong>{finding.missing} of {finding.checked}</strong> pages did not expose {finding.field} in the sampled HTML.</li>)}</ul>
-      <h3>One shopper question asked to Gemini</h3>
-      <blockquote>{result.ai.question}</blockquote>
-      <p className="brand-fine">Model: {result.ai.model} · Asked {new Date(result.checkedAt).toLocaleString()} · Search-enabled sample</p>
-      {result.ai.answer ? <><h3>Gemini’s answer</h3><p className="quick-report-answer">{result.ai.answer}</p><p><strong>Dealership appeared in the observed answer or cited sources:</strong> {result.ai.mentionsDealer ? "Yes" : "Not in this sample"}</p></> : <p>Gemini did not return a usable answer for this check. The website findings above are still available.</p>}
+      {result.ai.question && <><h3>Shopper question based on sampled inventory</h3><blockquote>{result.ai.question}</blockquote><p className="brand-fine">Model: {result.ai.model} · Asked {new Date(result.checkedAt).toLocaleString()} · Search-enabled sample</p></>}
+      {result.ai.answer ? <><h3>Gemini’s cited answer</h3><p className="quick-report-answer">{result.ai.answer}</p></> : <p>{result.ai.message || "Gemini did not return a usable answer. The website findings above are still available."}</p>}
+      <p><strong>Your site was cited:</strong> {result.ai.siteWasCited === true ? "Yes" : result.ai.siteWasCited === false ? "No, not in this sample" : "Could not determine from this sample"}</p>
       {result.ai.sources.length > 0 && <><h3>Sources in the AI answer</h3><ul>{result.ai.sources.map(source => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a></li>)}</ul></>}
       <details><summary>Pages checked</summary><ul>{result.pages.map(page => <li key={page.url}><a href={page.url} target="_blank" rel="noopener noreferrer">{page.title || page.url}</a></li>)}</ul></details>
       <p className="brand-fine">{result.note}</p>
+      <div className="quick-report-email"><h3>Email me the PDF</h3><p>Optional. Your report is already shown above.</p>{emailReady ? <form onSubmit={sendPdf}><label>Email address<input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@dealership.com" required maxLength={254}/></label><button className="brand-button" disabled={emailBusy}>{emailBusy ? "Sending…" : "Email my PDF"}</button></form> : <p className="brand-fine">PDF email delivery is temporarily unavailable. You can still read your results here.</p>}{emailStatus && <p role="status">{emailStatus}</p>}</div>
       <Link href="/book" className="brand-button">Discuss the full audit →</Link>
     </section>}
   </div>;

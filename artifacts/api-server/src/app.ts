@@ -16,6 +16,9 @@ import {
 } from "./lib/sitemap";
 
 const app: Express = express();
+// Render terminates TLS one proxy hop ahead of this service. Use the real
+// visitor IP for the free-report budget limit without trusting arbitrary hops.
+app.set("trust proxy", 1);
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
@@ -113,7 +116,7 @@ if (DB_MODE === "none") {
   // (see routes/listings.ts + services/snapshot-listings.ts).
   const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
-    if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/dealer-tools/quick-report")) || (req.method === "GET" && req.path === "/dealer-tools/quick-report/status")) return next();
+    if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/dealer-tools/quick-report" || req.path === "/dealer-tools/quick-report/email")) || (req.method === "GET" && req.path === "/dealer-tools/quick-report/status")) return next();
     res.status(503).json({
       error: "database_disabled",
       message:
@@ -177,6 +180,20 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
   app.use(express.static(webDist, { maxAge: "1h", index: false }));
 
   app.get(/^\/(?!api\/).*/, (req: Request, res: Response) => {
+    const prerenderedPages: Record<string, string> = {
+      "/": "home",
+      "/for-dealers": "for-dealers",
+      "/visibility-report": "visibility-report",
+      "/about": "about",
+    };
+    const prerenderedName = prerenderedPages[req.path];
+    if (prerenderedName) {
+      const prerenderedPath = resolvePath(webDist, "..", "prerender", `${prerenderedName}.html`);
+      if (existsSync(prerenderedPath)) {
+        res.type("html").send(readFileSync(prerenderedPath, "utf-8"));
+        return;
+      }
+    }
     // MAT-32: inject unit-specific title/meta/JSON-LD/summary for /listing/:id
     // Same HTML for humans and bots — no UA sniffing.
     const listingMatch = req.path.match(/^\/listing\/(.+)$/);

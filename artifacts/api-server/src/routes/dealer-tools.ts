@@ -1,7 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { z } from "zod/v4";
+import { emailSampleReport, sampleReportEmailReady, type PdfReport } from "../lib/quick-report-pdf";
+import { chooseDealerQuestion } from "../services/dealer-question";
 
 const router: IRouter = Router();
 
@@ -54,13 +57,16 @@ function extractLinks(base: URL, html: string): string[] {
   while ((m = re.exec(html))) {
     try {
       const u = new URL(m[1], base);
-      if (u.origin === base.origin && /inventory|rv|listing|vehicle|unit/i.test(u.pathname)) out.add(u.toString());
+      if (u.origin === base.origin && /inventory|rv|listing|vehicle|unit|product/i.test(u.pathname)) out.add(u.toString());
     } catch {
       // ignore malformed links
     }
-    if (out.size >= 24) break;
+    if (out.size >= 250) break;
   }
-  return [...out];
+  return [...out].sort((a, b) => {
+    const score = (url: string) => /\/(product\/|rvs\/20\d{2})/i.test(url) ? 4 : /\/(shop\/rvs\/|new-rvs-for-sale|used-rvs-for-sale)/i.test(url) ? 3 : /\/inventory(?:\?|\/|$)/i.test(url) ? 2 : 0;
+    return score(b) - score(a);
+  });
 }
 
 function isPrivateAddress(ip: string): boolean {
@@ -123,11 +129,27 @@ const quickReportSchema = z.object({
 });
 
 const quickReportWindows = new Map<string, { start: number; count: number }>();
+const deliveredReports = new Map<string, { report: PdfReport; createdAt: number }>();
 let quickReportsActive = 0;
 
 router.get("/dealer-tools/quick-report/status", (_req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ ready: Boolean(process.env.GEMINI_API_KEY) });
+  res.json({ ready: Boolean(process.env.GEMINI_API_KEY), emailReady: sampleReportEmailReady() });
+});
+
+router.post("/dealer-tools/quick-report/email", async (req: Request, res: Response) => {
+  const parsed = z.object({ reportId: z.string().uuid(), email: z.email() }).safeParse(req.body);
+  if (!parsed.success) return void res.status(400).json({ error: "invalid_email", message: "Enter a valid email address." });
+  if (!sampleReportEmailReady()) return void res.status(503).json({ error: "email_unavailable", message: "Email delivery is temporarily unavailable. You can still view your report on this page." });
+  const record = deliveredReports.get(parsed.data.reportId);
+  if (!record || Date.now() - record.createdAt > 3_600_000) return void res.status(404).json({ error: "report_expired", message: "This sample report has expired. Run a new check to email it." });
+  try {
+    await emailSampleReport(parsed.data.email, record.report);
+    res.json({ sent: true, message: "Your PDF has been emailed." });
+  } catch (error) {
+    console.error("[quick-report] PDF email failed", error);
+    res.status(503).json({ error: "email_failed", message: "We could not send the PDF right now. Please try again later." });
+  }
 });
 
 router.post("/dealer-tools/quick-report", async (req: Request, res: Response) => {
@@ -138,28 +160,39 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
   for (const [key, value] of quickReportWindows) if (now - value.start > 3_600_000) quickReportWindows.delete(key);
   const key = req.ip || "unknown";
   const window = quickReportWindows.get(key) || { start: now, count: 0 };
-  if (window.count >= 3 || quickReportsActive >= 3) return void res.status(429).json({ error: "busy", message: "The free check is busy. Please try again later." });
+  if (window.count >= 3) {
+    res.setHeader("Retry-After", String(Math.max(1, Math.ceil((3_600_000 - (now - window.start)) / 1000))));
+    return void res.status(429).json({ error: "rate_limited", message: "You’ve used three free checks this hour. Please try again later." });
+  }
+  if (quickReportsActive >= 3) return void res.status(503).json({ error: "busy", message: "Too many checks are running right now. Please try again in a moment." });
   window.count++; quickReportWindows.set(key, window); quickReportsActive++;
   res.setHeader("Cache-Control", "no-store");
   try {
     const { website, city, state } = parsed.data;
     const source = /^https?:\/\//i.test(website) ? website : `https://${website}`;
-    const first = await fetchPage(source);
-    const question = `I'm looking for a 30-foot bunkhouse travel trailer for less than $40,000 near ${city}, ${state}. What options can you find?`;
-    const model = process.env.GEMINI_REPORT_MODEL || "gemini-3.1-flash-lite";
-    const [pagesResult, aiResult] = await Promise.allSettled([
-      Promise.all(first.links.slice(0, 2).map(url => fetchPage(url).catch(() => null))),
-      fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    let first: PageSnapshot;
+    try { first = await fetchPage(source); }
+    catch (error) {
+      if (error instanceof TypeError && /Invalid URL|Failed to parse URL/i.test(error.message)) return void res.status(400).json({ error: "invalid_url", message: "That website address does not look valid. Try a domain such as tacomarv.com." });
+      return void res.status(422).json({ error: "site_unreachable", message: "We could not reach that website. Check the address and try again." });
+    }
+    if (!/\b(RV|RVs|recreational vehicle|travel trailer|fifth wheel|motorhome)\b/i.test(first.text) || !/(inventory|new-rvs|used-rvs|rv-sales|rvs-for-sale)/i.test([first.text.slice(0, 6000), ...first.links].join(" "))) {
+      return void res.status(422).json({ error: "not_dealer", message: "This does not look like an RV dealership inventory website. Enter your dealership’s public website." });
+    }
+    const extraPages = await Promise.all(first.links.slice(0, 10).map(url => fetchPage(url).catch(() => null)));
+    const pages = [first, ...extraPages.filter((p): p is PageSnapshot => Boolean(p))];
+    const selection = chooseDealerQuestion(pages, city, state);
+    const question = selection?.question ?? null;
+    const model = process.env.GEMINI_REPORT_MODEL || "gemini-3.5-flash-lite";
+    const aiResult = question ? await Promise.allSettled([fetch(process.env.GEMINI_INTERACTIONS_URL || "https://generativelanguage.googleapis.com/v1beta/interactions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
-        body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }] }),
+        body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }], store: false }),
         signal: AbortSignal.timeout(55_000),
       }).then(async response => {
         if (!response.ok) throw new Error(`Gemini search failed (${response.status})`);
         return response.json() as Promise<GeminiSearchResponse>;
-      }),
-    ]);
-    const pages = [first, ...(pagesResult.status === "fulfilled" ? pagesResult.value.filter((p): p is PageSnapshot => Boolean(p)) : [])];
+      })]) : null;
     const checks = [
       { label: "numeric price", test: (p: PageSnapshot) => money(p.text) !== null },
       { label: "RV type", test: (p: PageSnapshot) => Boolean(rvType(p.text)) },
@@ -168,16 +201,26 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
       { label: "Vehicle structured data", test: (p: PageSnapshot) => /"@type"\s*:\s*"Vehicle"/i.test(p.html) },
     ];
     const findings = checks.map(check => ({ field: check.label, missing: pages.filter(p => !check.test(p)).length, checked: pages.length }));
-    const interaction = aiResult.status === "fulfilled" ? (aiResult.value.interaction || aiResult.value) : null;
+    const gemini = aiResult?.[0];
+    const interaction = gemini?.status === "fulfilled" ? (gemini.value.interaction || gemini.value) : null;
     const blocks = interaction?.steps?.filter(step => step.type === "model_output").flatMap(step => step.content || []) || [];
-    const answer = blocks.filter(block => block.type === "text").map(block => block.text || "").join("\n").trim();
+    const rawAnswer = blocks.filter(block => block.type === "text").map(block => block.text || "").join("\n").trim();
     const citations = blocks.flatMap(block => block.annotations || []).filter(a => a.type === "url_citation" && /^https?:\/\//i.test(a.url || ""));
     const sources = [...new Map(citations.map(a => [a.url!, { url: a.url!, title: a.title || new URL(a.url!).hostname }])).values()].slice(0, 10);
     const dealerHost = new URL(first.url).hostname.replace(/^www\./, "");
-    const mentionsDealer = new RegExp(dealerHost.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(answer) || sources.some(s => new URL(s.url).hostname.replace(/^www\./, "") === dealerHost);
-    res.json({ website: first.url, location: `${city}, ${state}`, checkedAt: new Date().toISOString(), pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model, answer: answer || null, sources, mentionsDealer: answer ? mentionsDealer : null, status: answer ? "answered" : "unavailable" }, note: "One dated Gemini search sample. It does not measure rankings or guarantee future AI answers. Missing means absent from the sampled page text, not necessarily absent from every source." });
+    const siteWasCited = sources.some(s => new URL(s.url).hostname.replace(/^www\./, "") === dealerHost);
+    const answer = sources.length ? rawAnswer : "";
+    const checkedAt = new Date().toISOString();
+    const note = "One dated Gemini search sample. It does not measure rankings or guarantee future AI answers. Missing means absent from the sampled page text, not necessarily absent from every source.";
+    const aiMessage = !question ? "The sampled pages did not expose enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
+    const reportId = randomUUID();
+    const report = { website: first.url, location: `${city}, ${state}`, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
+    for (const [id, value] of deliveredReports) if (now - value.createdAt > 3_600_000) deliveredReports.delete(id);
+    deliveredReports.set(reportId, { report, createdAt: now });
+    res.json({ reportId, website: first.url, location: `${city}, ${state}`, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
   } catch (error) {
-    res.status(422).json({ error: "report_unavailable", message: error instanceof Error ? error.message : "We could not scan that website." });
+    console.error("[quick-report] unexpected failure", error);
+    res.status(422).json({ error: "report_unavailable", message: "We could not finish that check. Please try again later." });
   } finally { quickReportsActive--; }
 });
 

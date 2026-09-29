@@ -125,6 +125,11 @@ const quickReportSchema = z.object({
 const quickReportWindows = new Map<string, { start: number; count: number }>();
 let quickReportsActive = 0;
 
+router.get("/dealer-tools/quick-report/status", (_req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ ready: Boolean(process.env.GEMINI_API_KEY) });
+});
+
 router.post("/dealer-tools/quick-report", async (req: Request, res: Response) => {
   const parsed = quickReportSchema.safeParse(req.body);
   if (!parsed.success) return void res.status(400).json({ error: "invalid_request", message: "Enter a dealership website, city, and state." });

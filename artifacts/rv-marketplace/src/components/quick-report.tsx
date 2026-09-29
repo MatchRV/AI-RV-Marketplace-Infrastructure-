@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 
 type QuickReportResult = {
@@ -25,10 +25,20 @@ export function QuickReport() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<QuickReportResult | null>(null);
+  const [ready, setReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/dealer-tools/quick-report/status")
+      .then(response => response.ok ? response.json() : { ready: false })
+      .then(payload => { if (active) setReady(Boolean(payload.ready)); })
+      .catch(() => { if (active) setReady(false); });
+    return () => { active = false; };
+  }, []);
 
   async function run(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !ready) return;
     setBusy(true);
     setError("");
     setResult(null);
@@ -55,8 +65,9 @@ export function QuickReport() {
       <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
       <label>State<input value={state} onChange={event => setState(event.target.value)} placeholder="Washington" autoComplete="address-level1" maxLength={80} required disabled={busy} /></label>
-      <button className="brand-button" type="submit" disabled={busy}>{busy ? "Checking your website…" : "Run my free check"}</button>
+      <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Run my free check" : "Free check temporarily unavailable"}</button>
     </form>
+    {ready === false && <p className="brand-fine" role="status">The live AI check is being connected. You can still <Link href="/book">book a report call</Link>.</p>}
     {busy && <div className="quick-report-wait" role="status"><div><strong>Your check is running.</strong><p>We’re sampling public inventory pages and asking Gemini a shopper question near {city}, {state}. Watch this short video while you wait; the result will appear as soon as it is ready.</p></div><video controls autoPlay muted playsInline preload="metadata" aria-label="The Invisible RV Market video"><source src="/websitevideo.mp4" type="video/mp4" /></video></div>}
     {error && <p className="brand-error" role="alert">{error}</p>}
     {result && <section className="quick-report-result" aria-label="Your free quick report" aria-live="polite">

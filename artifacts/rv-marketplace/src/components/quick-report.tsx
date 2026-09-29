@@ -63,7 +63,7 @@ export function QuickReport() {
     <h2>Get a sample report of your website now, for free.</h2>
     <p>Enter your dealership website and location. We’ll check a sample of your public pages and ask Gemini one real RV shopper question near your dealership. No account or card required.</p>
     <form onSubmit={run} className="quick-report-form">
-      <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
+      <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="matchrv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
       <label>State<input value={state} onChange={event => setState(event.target.value)} placeholder="Washington" autoComplete="address-level1" maxLength={80} required disabled={busy} /></label>
       <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Get my free sample report" : "Free report temporarily unavailable"}</button>

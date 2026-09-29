@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 
 const REPORT_MAILTO =
-  "mailto:jonathan@matchrv.com?subject=Founding%205%20AI%20Visibility%20Report%20Request%20(%2499)&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20under%20the%20Founding%205%20offer%20(%2499%3B%20then%20%24299%E2%80%93%24499).%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
+  "/book";
 
 const TALK_MAILTO =
-  "mailto:jonathan@matchrv.com?subject=Talk%20to%20MatchRV%20%E2%80%94%20Dealer%20AI%20Inventory";
+  "/book";
 
 export function ForDealers() {
   return (
@@ -141,7 +141,7 @@ export function ForDealers() {
               </ul>
             </details>
             <p className="pt-1">
-              <a href="/browse" className="text-primary font-semibold hover:underline inline-flex items-center gap-1">
+              <a href="/visibility-report" className="text-primary font-semibold hover:underline inline-flex items-center gap-1">
                 See a sample AI Visibility Report
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
@@ -282,7 +282,7 @@ export function ForDealers() {
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
             Get an AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
-            crawlers, and the top fixes so agents can recommend your units. Founding 5: $99 · then $299–$499 (first five rooftops only). Email jonathan@matchrv.com — no form required.
+            crawlers, and the top fixes so agents can recommend your units. Founding 5: $99 · then $299–$499 (first five rooftops only). Book a call to confirm scope and next steps.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
@@ -290,14 +290,14 @@ export function ForDealers() {
               className="inline-flex items-center justify-center gap-2 bg-white text-primary px-6 py-3.5 rounded-lg font-bold hover:brightness-95 active:scale-[0.98] transition-all min-h-[48px]"
             >
               <Mail className="w-5 h-5" />
-              Request AI Visibility Report
+              Book a report call
               <ArrowRight className="w-4 h-4" />
             </a>
             <a
-              href="/browse"
+              href="/visibility-report"
               className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white px-6 py-3.5 rounded-lg font-bold hover:bg-white/10 active:scale-[0.98] transition-all min-h-[48px]"
             >
-              See sample report
+              See real report examples
             </a>
             <a
               href={TALK_MAILTO}

@@ -32,10 +32,10 @@ import {
 } from "lucide-react";
 
 const UNLOCK_MAILTO =
-  "mailto:jonathan@matchrv.com?subject=Founding%205%20%E2%80%94%20Unlock%20Full%20AI%20Visibility%20Report%20(%2499)&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20to%20unlock%20the%20full%20AI%20Visibility%20Report%20under%20the%20Founding%205%20offer%20(%2499%3B%20then%20%24299%E2%80%93%24499).%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
+  "/book";
 
 const REPORT_MAILTO =
-  "mailto:jonathan@matchrv.com?subject=Founding%205%20AI%20Visibility%20Report%20Request%20(%2499)&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20under%20the%20Founding%205%20offer%20(%2499%3B%20then%20%24299%E2%80%93%24499).%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
+  "/book";
 
 const KNOWN_SLUGS = new Set(["cascade", "tacoma-rv", "baydos", "sumner-rv"]);
 
@@ -319,15 +319,15 @@ function TeaserView({ report }: { report: VisibilityReportData }) {
                 href={unlockHref}
                 className="inline-flex items-center justify-center gap-2 w-full bg-[#00CED1] text-[#0B1117] px-5 py-3.5 rounded-lg font-bold hover:brightness-95 active:scale-[0.98] transition-all min-h-[48px]"
               >
-                Unlock Full Report — $99
+                Book a call about the full report
                 <ArrowRight className="w-4 h-4" />
               </a>
               <p className="mt-3 text-xs text-slate-500">
                 Founding 5: $99 · then $299–$499 ·{" "}
                 <a href={unlockHref} className="underline font-medium text-slate-700">
-                  request full report
+                  book a report call
                 </a>{" "}
-                → jonathan@matchrv.com
+                · scope confirmed on your call
               </p>
             </div>
           </div>

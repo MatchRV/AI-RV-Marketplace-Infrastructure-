@@ -17,3 +17,5 @@
 @media(max-width:720px){.brand-header nav{flex-wrap:wrap;justify-content:center;gap:0 18px;padding:8px 0}.brand-header nav a{min-height:36px;display:flex;align-items:center}}
 
 .founder-photo{display:block;width:100%;height:auto;border-radius:14px;align-self:start}.founder-questions{padding:20px 24px 20px 42px;background:#e3f3ef;border-radius:12px;color:#087f78}.founder-questions li{margin:10px 0}.founder-mission{max-width:900px;margin:64px auto 0;line-height:1.8}.founder-mission h2:not(:first-child){margin-top:28px}
+
+.dealer-video-section{display:grid;grid-template-columns:1fr 1.1fr;gap:44px;align-items:center}.dealer-video-section p{max-width:560px}.dealer-video{display:block;width:100%;max-height:500px;aspect-ratio:16/9;background:#0b1528;border-radius:12px;box-shadow:0 18px 48px #0b152828}@media(max-width:720px){.dealer-video-section{grid-template-columns:1fr;gap:20px}}

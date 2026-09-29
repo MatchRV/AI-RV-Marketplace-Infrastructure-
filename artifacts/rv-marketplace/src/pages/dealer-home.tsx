@@ -44,6 +44,18 @@ export function DealerHome() {
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>
+    <section className="brand-container brand-section dealer-video-section" aria-labelledby="dealer-video-heading">
+      <div>
+        <p className="brand-eyebrow">Watch the problem in 70 seconds</p>
+        <h2 id="dealer-video-heading">Why great RVs can disappear from an AI search.</h2>
+        <p>See how incomplete or hard-to-read listings affect the answers shoppers receive. Your dealership’s report will show findings from your own inventory.</p>
+        <p className="brand-fine">Video is optional. Reports will appear as soon as they are ready.</p>
+      </div>
+      <video className="dealer-video" controls preload="metadata" playsInline aria-label="The Invisible RV Market: why RV listings can be hard for AI to find">
+        <source src="/websitevideo.mp4" type="video/mp4" />
+        Your browser does not support video playback.
+      </video>
+    </section>
     <ShoppingStatistic/>
     <section className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">A clearer view of your digital showroom</p><h2>What the Visibility Report covers</h2></div><p>Understand what’s visible, what’s missing, and where your team can make a difference.</p></div><div className="coverage-grid">{coverage.map(([Icon,title,copy],i)=><article className="coverage-card" key={title}><div className="coverage-icon"><Icon size={22}/><span>0{i+1}</span></div><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <section className="brand-soft-section" id="sample-report"><div className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">See the details</p><h2>Useful findings. A clear next step.</h2></div><p>Completed audits with dealership identities removed.</p></div><SampleReportPreview/></div></section>

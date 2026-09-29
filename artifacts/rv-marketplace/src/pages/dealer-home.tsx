@@ -18,7 +18,7 @@ export function ReportRequest({ compact = false }: { compact?: boolean }) {
   return <div className={`report-request ${compact ? "compact" : ""}`}>
     <p>Start with a conversation about your inventory, the report, and the next steps.</p>
     <Link href="/book" className="brand-button">Book a report call <ArrowRight size={17}/></Link>
-    <p className="brand-fine">Starter audit: Founding 5 offer of $99 for the first five rooftops, then $299–$499. Scope and offer availability are confirmed before work begins.</p>
+    <p className="brand-fine">Full AI Visibility Report: $99, one time. We confirm the scope before work begins.</p>
   </div>;
 }
 
@@ -41,10 +41,11 @@ function ShoppingStatistic({ research = false }: { research?: boolean }) {
 
 export function DealerHome() {
   return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Run a free quick check of your dealership website and see one Gemini answer to an RV shopper question near your city. Explore evidence-backed full audits." canonical="/"/>
-    <section className="brand-container dealer-hero" id="request-report"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><QuickReport/><Link href="/book" className="brand-text-link">Or book a report call <ChevronRight size={16}/></Link></div>
+    <section className="brand-container dealer-hero"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#request-report" className="brand-text-link">Get a free sample report of your website <ChevronRight size={16}/></a></div>
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>
+    <section className="brand-container brand-section free-sample-section" id="request-report" aria-label="Free sample report of your website"><QuickReport/></section>
     <section className="brand-container brand-section dealer-video-section" aria-labelledby="dealer-video-heading">
       <div>
         <p className="brand-eyebrow">Watch the problem in 70 seconds</p>
@@ -63,7 +64,7 @@ export function DealerHome() {
     <section className="brand-container brand-section"><div className="center-heading"><p className="brand-eyebrow">From visibility to action</p><h2>Three steps to a clearer picture</h2></div><div className="steps-grid">{[['Share your website','Start with your dealership website and the inventory you want reviewed.'],['Review your findings','See observed answers, information gaps, and the evidence behind them.'],['Put your plan to work','Give your team a focused list of improvements and track what changes.']].map(([title,copy],i)=><article key={title}><span className="step-number">0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <ShoppingStatistic research/>
     <section className="brand-soft-section"><div className="brand-container brand-section brand-faq"><p className="brand-eyebrow">Before you begin</p><h2>Frequently asked questions</h2>{[
-      ['What does it cost?','Founding 5: $99 for the first five rooftops, then $299–$499 one-time (rooftop size and unit count). We confirm scope before starting; booking a call does not start a subscription.'],
+      ['What does it cost?','The sample website report is free. The full AI Visibility Report is $99, one time. We confirm scope before starting; booking a call does not start a subscription.'],
       ['What does the report evaluate?','The report reviews dealership information, inventory accessibility, and specification gaps. The agreed scope determines which shopper questions and AI assistants are tested.'],
       ['Is this an instant AI ranking score?','No. The free check samples a few public pages and records one Gemini answer to a shopper question near your city. It is a dated observation, not an AI ranking score. The full audit covers a broader agreed scope.'],
       ['How are findings supported?','A completed report should identify the pages reviewed, questions tested, dates, and observed answers. Missing or untested information is labeled, rather than treated as a positive result.'],

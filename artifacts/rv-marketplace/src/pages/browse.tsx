@@ -9,7 +9,7 @@
  * ranking / citation % claims. MCP, WebMCP, /shop, and agent APIs untouched.
  *
  * Teaser mode (mode:"teaser" in JSON, or ?teaser=1): overall score + 2–3 pain
- * cards visible; fix list / deep detail blurred with Founding 5 unlock CTA $99 (then $299–$499).
+ * cards visible; fix list / deep detail blurred with a $99 full-report CTA.
  * Cascade stays full free public demo — teaser query is ignored for cascade.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -311,9 +311,7 @@ function TeaserView({ report }: { report: VisibilityReportData }) {
               <h2 className="text-xl font-display font-black text-[#0B1117] mb-2">Unlock Your Complete Report</h2>
               <p className="text-sm text-slate-600 leading-relaxed mb-5">
                 Every finding, every listing, a prioritized fix list.{" "}
-                <strong>Founding 5: $99</strong>
-                <span className="text-slate-500"> · then $299–$499</span>{" "}
-                (first five rooftops only).
+                <strong>Full report: $99 one time.</strong>
               </p>
               <a
                 href={unlockHref}
@@ -323,7 +321,7 @@ function TeaserView({ report }: { report: VisibilityReportData }) {
                 <ArrowRight className="w-4 h-4" />
               </a>
               <p className="mt-3 text-xs text-slate-500">
-                Founding 5: $99 · then $299–$499 ·{" "}
+                Full report: $99 ·{" "}
                 <a href={unlockHref} className="underline font-medium text-slate-700">
                   book a report call
                 </a>{" "}
@@ -387,9 +385,7 @@ function FullReportView({ report, isDemo }: { report: VisibilityReportData; isDe
               {isDemo
                 ? "This is the paid audit preview: inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes."
                 : "Live audit of inventory completeness, image readiness, agent-readable specs, and shopper-query coverage — plus the top fixes for this rooftop."}{" "}
-              <span className="text-white font-semibold">Founding 5: $99</span>
-              <span className="text-white/70"> · then $299–$499</span>{" "}
-              (first five rooftops only).
+              <span className="text-white font-semibold">Full report: $99 one time.</span>
             </p>
             {typeof report.overall === "number" && !isDemo && (
               <p className="mt-4 text-sm text-white/55">
@@ -691,7 +687,7 @@ function FullReportView({ report, isDemo }: { report: VisibilityReportData; isDe
           <h2 className="text-2xl font-display font-bold">Get this report for your rooftop</h2>
         </div>
         <p className="opacity-90 leading-relaxed mb-2 max-w-2xl">
-          <strong>Founding 5: $99</strong> · then $299–$499 (first five rooftops only).
+          <strong>Full report: $99 one time.</strong>{" "}
           We confirm scope before starting; requesting a report does not start a subscription.
         </p>
         <p className="text-sm opacity-75 mb-6 max-w-2xl">
@@ -790,7 +786,7 @@ export function Browse() {
     ? isDemo
       ? "Sample dealership AI Visibility Report: Inventory Quality, Missing Data, Image Quality, AI Readiness, Search Visibility, and a prioritized action plan. Demo data only."
       : isTeaser
-        ? `AI Visibility teaser for ${report.dealer} (${report.city}, ${report.state}). Founding 5 unlock $99 · then $299–$499. Readiness scores only — not a ChatGPT ranking claim.`
+        ? `AI Visibility teaser for ${report.dealer} (${report.city}, ${report.state}). Full report: $99 one time. Readiness scores only — not a ChatGPT ranking claim.`
         : `Live AI Visibility Report for ${report.dealer} (${report.city}, ${report.state}): inventory quality, AI readiness, image quality, search visibility, and ranked fixes. No ChatGPT ranking claims.`
     : "Dealership AI Visibility Report from MatchRV.";
 

@@ -282,7 +282,7 @@ export function ForDealers() {
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
             Get an AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
-            crawlers, and the top fixes so agents can recommend your units. Founding 5: $99 · then $299–$499 (first five rooftops only). Book a call to confirm scope and next steps.
+            crawlers, and the top fixes so agents can recommend your units. The full report is $99, one time. Book a call to confirm scope and next steps.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a

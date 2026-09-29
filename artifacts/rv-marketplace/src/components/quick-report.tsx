@@ -59,13 +59,14 @@ export function QuickReport() {
   }
 
   return <div className="quick-report">
-    <h2>See what AI can find about your RV inventory.</h2>
-    <p>Get a free sample check of your website and one real shopper question near your dealership. No account or card required.</p>
+    <p className="brand-eyebrow">Free website sample report</p>
+    <h2>Get a sample report of your website now, for free.</h2>
+    <p>Enter your dealership website and location. We’ll check a sample of your public pages and ask Gemini one real RV shopper question near your dealership. No account or card required.</p>
     <form onSubmit={run} className="quick-report-form">
       <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
       <label>State<input value={state} onChange={event => setState(event.target.value)} placeholder="Washington" autoComplete="address-level1" maxLength={80} required disabled={busy} /></label>
-      <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Run my free check" : "Free check temporarily unavailable"}</button>
+      <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Get my free sample report" : "Free report temporarily unavailable"}</button>
     </form>
     {ready === false && <p className="brand-fine" role="status">The live AI check is being connected. You can still <Link href="/book">book a report call</Link>.</p>}
     {busy && <div className="quick-report-wait" role="status"><div><strong>Your check is running.</strong><p>We’re sampling public inventory pages and asking Gemini a shopper question near {city}, {state}. Watch this short video while you wait; the result will appear as soon as it is ready.</p></div><video controls autoPlay muted playsInline preload="metadata" aria-label="The Invisible RV Market video"><source src="/websitevideo.mp4" type="video/mp4" /></video></div>}

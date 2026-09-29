@@ -10,7 +10,7 @@ export type PdfReport = {
 };
 
 export function sampleReportEmailReady(): boolean {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
+  return Boolean((process.env.SMTP_HOST && process.env.SMTP_FROM) || (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD));
 }
 
 function safeText(value: string): string {
@@ -81,17 +81,19 @@ export function renderSampleReportPdf(report: PdfReport): Buffer {
 
 export async function emailSampleReport(email: string, report: PdfReport): Promise<void> {
   if (!sampleReportEmailReady()) throw new Error("Email delivery is not configured.");
+  const useGmail = !process.env.SMTP_HOST;
   const transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD || "" } : undefined,
+    host: useGmail ? "smtp.gmail.com" : process.env.SMTP_HOST,
+    port: useGmail ? 587 : Number(process.env.SMTP_PORT || 587),
+    secure: useGmail ? false : process.env.SMTP_SECURE === "true",
+    auth: useGmail ? { user: process.env.GMAIL_USER!, pass: process.env.GMAIL_APP_PASSWORD! } : process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD || "" } : undefined,
   });
   await transport.sendMail({
-    from: process.env.SMTP_FROM,
+    from: useGmail ? process.env.GMAIL_USER : process.env.SMTP_FROM,
     to: email,
     subject: "Your MatchRV website sample report",
     text: `Your free MatchRV sample report for ${report.website} is attached.\n\nThis is a dated sample, not a full inventory audit.`,
     attachments: [{ filename: "MatchRV-sample-report.pdf", content: renderSampleReportPdf(report), contentType: "application/pdf" }],
   });
 }
+

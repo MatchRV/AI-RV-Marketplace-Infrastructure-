@@ -1,5 +1,14 @@
 export type InventoryPage = { url: string; title: string; text: string };
 
+function titleCasePlace(value: string): string {
+  return value.trim().toLocaleLowerCase("en-US").replace(/(^|[\s'-])\p{L}/gu, part => part.toLocaleUpperCase("en-US"));
+}
+
+export function formatDealerLocation(city: string, state: string): string {
+  const stateName = state.trim().length === 2 ? state.trim().toLocaleUpperCase("en-US") : titleCasePlace(state);
+  return `${titleCasePlace(city)}, ${stateName}`;
+}
+
 const TYPES = [
   ["Travel Trailer", /travel[- ]?trailers?/i],
   ["Fifth Wheel", /fifth[- ]?wheels?/i],
@@ -59,6 +68,7 @@ export function chooseDealerQuestion(pages: InventoryPage[], city: string, state
   const median = sorted[Math.floor(sorted.length / 2)];
   const priceMax = Math.ceil(median * 1.15 / 5_000) * 5_000;
   const host = new URL(pages[0].url).hostname.replace(/^www\./, "");
-  const question = `I'm looking for a ${type.toLowerCase()} under $${priceMax.toLocaleString("en-US")} near ${city}, ${state}. What available options can you find from ${host}? Answer only from cited dealership inventory pages, include their URLs, and say if the evidence is insufficient.`;
+  const question = `I'm looking for a ${type} under $${priceMax.toLocaleString("en-US")} near ${formatDealerLocation(city, state)}. What available options can you find from ${host}? Answer only from cited dealership inventory pages, include their URLs, and say if the evidence is insufficient.`;
   return { question, type, priceMax, observed: values.length };
 }
+

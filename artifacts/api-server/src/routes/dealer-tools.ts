@@ -4,7 +4,7 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { z } from "zod/v4";
 import { emailSampleReport, sampleReportEmailReady, type PdfReport } from "../lib/quick-report-pdf";
-import { chooseDealerQuestion } from "../services/dealer-question";
+import { chooseDealerQuestion, formatDealerLocation } from "../services/dealer-question";
 
 const router: IRouter = Router();
 
@@ -46,8 +46,19 @@ function stripTags(html: string): string {
     .trim();
 }
 
-function extractTitle(html: string): string {
-  return html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+export function decodeHtmlEntities(value: string): string {
+  const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", ndash: "–", mdash: "—", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", hellip: "…", trade: "™", reg: "®", copy: "©" };
+  return value.replace(/&(#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/gi, (entity, code: string) => {
+    if (code.startsWith("#")) {
+      const point = code[1]?.toLowerCase() === "x" ? Number.parseInt(code.slice(2), 16) : Number.parseInt(code.slice(1), 10);
+      return point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff) ? String.fromCodePoint(point) : entity;
+    }
+    return named[code.toLowerCase()] ?? entity;
+  });
+}
+
+export function extractTitle(html: string): string {
+  return decodeHtmlEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim() ?? "");
 }
 
 function extractLinks(base: URL, html: string): string[] {
@@ -184,15 +195,32 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     const selection = chooseDealerQuestion(pages, city, state);
     const question = selection?.question ?? null;
     const model = process.env.GEMINI_REPORT_MODEL || "gemini-3.5-flash-lite";
-    const aiResult = question ? await Promise.allSettled([fetch(process.env.GEMINI_INTERACTIONS_URL || "https://generativelanguage.googleapis.com/v1beta/interactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
-        body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }], store: false }),
-        signal: AbortSignal.timeout(55_000),
-      }).then(async response => {
-        if (!response.ok) throw new Error(`Gemini search failed (${response.status})`);
-        return response.json() as Promise<GeminiSearchResponse>;
-      })]) : null;
+    const runAt = new Date(now).toISOString();
+    const searchGemini = async (): Promise<GeminiSearchResponse> => {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const started = Date.now();
+        let status: number | null = null;
+        let body = "";
+        try {
+          const response = await fetch(process.env.GEMINI_INTERACTIONS_URL || "https://generativelanguage.googleapis.com/v1beta/interactions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
+            body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }], store: false }),
+            signal: AbortSignal.timeout(25_000),
+          });
+          status = response.status;
+          body = await response.text();
+          if (!response.ok) throw new Error(`Gemini search failed (${status})`);
+          return JSON.parse(body) as GeminiSearchResponse;
+        } catch (error) {
+          console.warn("[quick-report] Gemini attempt failed", { runAt, attempt, status, latencyMs: Date.now() - started, body: body.slice(0, 2000), reason: (error as Error)?.message || "unknown error" });
+          if (attempt === 2) throw error;
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+      throw new Error("Gemini search unavailable");
+    };
+    const aiResult = question ? await Promise.allSettled([searchGemini()]) : null;
     const checks = [
       { label: "numeric price", test: (p: PageSnapshot) => money(p.text) !== null },
       { label: "RV type", test: (p: PageSnapshot) => Boolean(rvType(p.text)) },
@@ -202,23 +230,23 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     ];
     const findings = checks.map(check => ({ field: check.label, missing: pages.filter(p => !check.test(p)).length, checked: pages.length }));
     const gemini = aiResult?.[0];
-    if (gemini?.status === "rejected") console.warn("[quick-report] Gemini search unavailable:", (gemini.reason as Error)?.message || "unknown error");
     const interaction = gemini?.status === "fulfilled" ? (gemini.value.interaction || gemini.value) : null;
     const blocks = interaction?.steps?.filter(step => step.type === "model_output").flatMap(step => step.content || []) || [];
     const rawAnswer = blocks.filter(block => block.type === "text").map(block => block.text || "").join("\n").trim();
     const citations = blocks.flatMap(block => block.annotations || []).filter(a => a.type === "url_citation").map(a => ({ ...a, sourceUrl: a.uri || a.url || "" })).filter(a => /^https?:\/\//i.test(a.sourceUrl));
-    const sources = [...new Map(citations.map(a => [a.sourceUrl, { url: a.sourceUrl, title: a.title || new URL(a.sourceUrl).hostname }])).values()].slice(0, 10);
+    const sources = [...new Map(citations.map(a => [a.sourceUrl, { url: a.sourceUrl, title: decodeHtmlEntities(a.title || new URL(a.sourceUrl).hostname) }])).values()].slice(0, 10);
     const dealerHost = new URL(first.url).hostname.replace(/^www\./, "");
     const siteWasCited = sources.some(s => new URL(s.url).hostname.replace(/^www\./, "") === dealerHost);
     const answer = sources.length ? rawAnswer : "";
-    const checkedAt = new Date().toISOString();
+    const checkedAt = runAt;
     const note = "One dated Gemini search sample. It does not measure rankings or guarantee future AI answers. Missing means absent from the sampled page text, not necessarily absent from every source.";
-    const aiMessage = !question ? "The sampled pages did not expose enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? ((gemini.reason as Error)?.name === "TimeoutError" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : "Gemini could not complete the AI search. The website findings are still available; please try again later.") : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
+    const aiMessage = !question ? "The sampled pages lacked enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? ((gemini.reason as Error)?.name === "TimeoutError" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : "Gemini could not complete the AI search. The website findings are still available; please try again later.") : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
     const reportId = randomUUID();
-    const report = { website: first.url, location: `${city}, ${state}`, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
+    const location = formatDealerLocation(city, state);
+    const report = { website: first.url, location, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
     for (const [id, value] of deliveredReports) if (now - value.createdAt > 3_600_000) deliveredReports.delete(id);
     deliveredReports.set(reportId, { report, createdAt: now });
-    res.json({ reportId, website: first.url, location: `${city}, ${state}`, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
+    res.json({ reportId, website: first.url, location, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
   } catch (error) {
     console.error("[quick-report] unexpected failure", error);
     res.status(422).json({ error: "report_unavailable", message: "We could not finish that check. Please try again later." });

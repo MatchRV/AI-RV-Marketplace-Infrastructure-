@@ -41,7 +41,7 @@ export function renderSampleReportPdf(report: PdfReport): Buffer {
     `Checked: ${report.checkedAt}`,
     "",
     "Sampled page findings",
-    ...report.findings.map(f => `${f.missing} of ${f.checked} pages did not expose ${f.field}.`),
+    ...report.findings.map(f => f.missing === 0 ? `${f.checked} of ${f.checked} exposed ${f.field}.` : `${f.missing} of ${f.checked} missing ${f.field}.`),
     "",
     "Shopper question",
     report.ai.question || "No fair question could be formed from the sampled inventory.",

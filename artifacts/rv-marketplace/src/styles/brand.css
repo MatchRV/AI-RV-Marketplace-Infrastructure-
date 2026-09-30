@@ -26,3 +26,4 @@
 
 .quick-report-result li.quick-report-finding-positive{color:#08776e}
 
+.quick-report-delivery{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0}.quick-report-delivery form{margin:0}

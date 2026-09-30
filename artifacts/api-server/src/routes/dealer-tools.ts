@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { z } from "zod/v4";
-import { emailSampleReport, sampleReportEmailReady, type PdfReport } from "../lib/quick-report-pdf";
+import { emailSampleReport, renderSampleReportPdf, sampleReportEmailReady, type PdfReport } from "../lib/quick-report-pdf";
 import { chooseDealerQuestion, formatDealerLocation } from "../services/dealer-question";
 
 const router: IRouter = Router();
@@ -137,10 +137,12 @@ const quickReportSchema = z.object({
   website: z.string().trim().min(4).max(300),
   city: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
   state: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
+  name: z.string().trim().min(2).max(120).optional(),
+  email: z.email().max(254).optional(),
 });
 
 const quickReportWindows = new Map<string, { start: number; count: number }>();
-const deliveredReports = new Map<string, { report: PdfReport; createdAt: number }>();
+const deliveredReports = new Map<string, { report: PdfReport; email?: string; createdAt: number }>();
 let quickReportsActive = 0;
 
 router.get("/dealer-tools/quick-report/status", (_req: Request, res: Response) => {
@@ -149,18 +151,31 @@ router.get("/dealer-tools/quick-report/status", (_req: Request, res: Response) =
 });
 
 router.post("/dealer-tools/quick-report/email", async (req: Request, res: Response) => {
-  const parsed = z.object({ reportId: z.string().uuid(), email: z.email() }).safeParse(req.body);
+  const parsed = z.object({ reportId: z.string().uuid(), email: z.email().optional() }).safeParse(req.body);
   if (!parsed.success) return void res.status(400).json({ error: "invalid_email", message: "Enter a valid email address." });
   if (!sampleReportEmailReady()) return void res.status(503).json({ error: "email_unavailable", message: "Email delivery is temporarily unavailable. You can still view your report on this page." });
   const record = deliveredReports.get(parsed.data.reportId);
   if (!record || Date.now() - record.createdAt > 3_600_000) return void res.status(404).json({ error: "report_expired", message: "This sample report has expired. Run a new check to email it." });
+  const recipient = parsed.data.email || record.email;
+  if (!recipient) return void res.status(400).json({ error: "invalid_email", message: "Enter a valid email address." });
   try {
-    await emailSampleReport(parsed.data.email, record.report);
+    await emailSampleReport(recipient, record.report);
     res.json({ sent: true, message: "Your PDF has been emailed." });
   } catch (error) {
     console.error("[quick-report] PDF email failed", error);
     res.status(503).json({ error: "email_failed", message: "We could not send the PDF right now. Please try again later." });
   }
+});
+
+router.get("/dealer-tools/quick-report/pdf/:reportId", (req: Request, res: Response) => {
+  const parsed = z.string().uuid().safeParse(req.params.reportId);
+  if (!parsed.success) return void res.status(400).json({ error: "invalid_report", message: "That report link is not valid." });
+  const record = deliveredReports.get(parsed.data);
+  if (!record || Date.now() - record.createdAt > 3_600_000) return void res.status(404).json({ error: "report_expired", message: "This sample report has expired. Run a new check to download it." });
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'attachment; filename="MatchRV-sample-report.pdf"');
+  res.send(renderSampleReportPdf(record.report));
 });
 
 router.post("/dealer-tools/quick-report", async (req: Request, res: Response) => {
@@ -179,7 +194,7 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
   window.count++; quickReportWindows.set(key, window); quickReportsActive++;
   res.setHeader("Cache-Control", "no-store");
   try {
-    const { website, city, state } = parsed.data;
+    const { website, city, state, name, email } = parsed.data;
     const source = /^https?:\/\//i.test(website) ? website : `https://${website}`;
     let first: PageSnapshot;
     try { first = await fetchPage(source); }
@@ -243,9 +258,9 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     const aiMessage = !question ? "The sampled pages lacked enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? ((gemini.reason as Error)?.name === "TimeoutError" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : "Gemini could not complete the AI search. The website findings are still available; please try again later.") : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
     const reportId = randomUUID();
     const location = formatDealerLocation(city, state);
-    const report = { website: first.url, location, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
+    const report = { name, website: first.url, location, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
     for (const [id, value] of deliveredReports) if (now - value.createdAt > 3_600_000) deliveredReports.delete(id);
-    deliveredReports.set(reportId, { report, createdAt: now });
+    deliveredReports.set(reportId, { report, email, createdAt: now });
     res.json({ reportId, website: first.url, location, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
   } catch (error) {
     console.error("[quick-report] unexpected failure", error);
@@ -488,4 +503,3 @@ router.post("/dealer-tools/content-check", async (req: Request, res: Response) =
 });
 
 export default router;
-

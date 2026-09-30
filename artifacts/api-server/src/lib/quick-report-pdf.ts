@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 
 export type PdfReport = {
+  name?: string;
   website: string;
   location: string;
   checkedAt: string;
@@ -36,6 +37,7 @@ function wrap(value: string, width = 92): string[] {
 export function renderSampleReportPdf(report: PdfReport): Buffer {
   const lines = [
     "MatchRV - Free Website Sample Report",
+    ...(report.name ? [`Prepared for: ${report.name}`] : []),
     `Website: ${report.website}`,
     `Location: ${report.location}`,
     `Checked: ${report.checkedAt}`,
@@ -96,4 +98,3 @@ export async function emailSampleReport(email: string, report: PdfReport): Promi
     attachments: [{ filename: "MatchRV-sample-report.pdf", content: renderSampleReportPdf(report), contentType: "application/pdf" }],
   });
 }
-

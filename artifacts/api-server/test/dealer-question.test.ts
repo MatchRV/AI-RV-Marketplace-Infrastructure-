@@ -26,10 +26,10 @@ describe("dealer sample question", () => {
   });
 
   it("creates an attachable PDF containing the report question and sources", () => {
-    const pdf = renderSampleReportPdf({ website: "https://dealer.example", location: "Chehalis, Washington", checkedAt: "2026-09-29T12:00:00Z", findings: [{ field: "length", missing: 1, checked: 2 }], ai: { question: "Which fifth wheel?", answer: "One cited option.", sources: [{ url: "https://dealer.example/product/eagle" }] }, note: "Dated sample." });
+    const pdf = renderSampleReportPdf({ name: "Jonathan Kitchel", website: "https://dealer.example", location: "Chehalis, Washington", checkedAt: "2026-09-29T12:00:00Z", findings: [{ field: "length", missing: 1, checked: 2 }], ai: { question: "Which fifth wheel?", answer: "One cited option.", sources: [{ url: "https://dealer.example/product/eagle" }] }, note: "Dated sample." });
     expect(pdf.subarray(0, 8).toString()).toBe("%PDF-1.4");
     expect(pdf.toString()).toContain("Which fifth wheel?");
+    expect(pdf.toString()).toContain("Prepared for: Jonathan Kitchel");
     expect(pdf.toString()).toContain("https://dealer.example/product/eagle");
   });
 });
-

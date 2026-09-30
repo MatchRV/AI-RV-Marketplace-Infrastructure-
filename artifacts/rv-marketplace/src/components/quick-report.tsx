@@ -24,6 +24,7 @@ export function QuickReport() {
   const [website, setWebsite] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<QuickReportResult | null>(null);
@@ -53,7 +54,7 @@ export function QuickReport() {
       const response = await fetch("/api/dealer-tools/quick-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ website, city, state }),
+        body: JSON.stringify({ website, city, state, name, email }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "The check could not finish. Please try again.");
@@ -73,7 +74,7 @@ export function QuickReport() {
     try {
       const response = await fetch("/api/dealer-tools/quick-report/email", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId: result.reportId, email }),
+        body: JSON.stringify({ reportId: result.reportId }),
       });
       const payload = await response.json();
       setEmailStatus(response.ok ? "Your PDF has been sent. Check your inbox." : payload.message || "We could not send the PDF right now.");
@@ -84,11 +85,13 @@ export function QuickReport() {
   return <div className="quick-report">
     <p className="brand-eyebrow">Free website sample report</p>
     <h2>Get a sample report of your website now, for free.</h2>
-    <p>Enter your dealership website and location. We’ll check a sample of your public pages and ask Gemini one real RV shopper question near your dealership. No account or card required.</p>
+    <p>Enter your dealership website, location, name, and email. We’ll check public pages and ask Gemini one RV shopper question near your dealership. Your report appears here, with a PDF to download. No account or card required.</p>
     <form onSubmit={run} className="quick-report-form">
       <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
       <label>State<input value={state} onChange={event => setState(event.target.value)} placeholder="Washington" autoComplete="address-level1" maxLength={80} required disabled={busy} /></label>
+      <label>Name<input value={name} onChange={event => setName(event.target.value)} placeholder="Your name" autoComplete="name" maxLength={120} minLength={2} required disabled={busy} /></label>
+      <label>Email address<input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@dealership.com" autoComplete="email" maxLength={254} required disabled={busy} /></label>
       <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Get my free sample report" : "Free report is offline"}</button>
     </form>
     {ready === false && <p className="brand-fine" role="status">The live AI check is being connected. You can still <Link href="/book">book a report call</Link>.</p>}
@@ -106,9 +109,9 @@ export function QuickReport() {
       {result.ai.sources.length > 0 && <><h3>Sources in the AI answer</h3><ul>{result.ai.sources.map(source => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a></li>)}</ul></>}
       <details><summary>Pages checked</summary><ul>{result.pages.map(page => <li key={page.url}><a href={page.url} target="_blank" rel="noopener noreferrer">{page.title || page.url}</a></li>)}</ul></details>
       <p className="brand-fine">{result.note}</p>
-      {emailReady && <div className="quick-report-email"><h3>Email me the PDF</h3><p>Optional. Your report is already shown above.</p><form onSubmit={sendPdf}><label>Email address<input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@dealership.com" required maxLength={254}/></label><button className="brand-button" disabled={emailBusy}>{emailBusy ? "Sending…" : "Email my PDF"}</button></form>{emailStatus && <p role="status">{emailStatus}</p>}</div>}
+      <div className="quick-report-delivery"><a className="brand-button secondary" href={`/api/dealer-tools/quick-report/pdf/${result.reportId}`} download="MatchRV-sample-report.pdf">Download PDF</a>{emailReady && <form onSubmit={sendPdf}><button className="brand-button" disabled={emailBusy}>{emailBusy ? "Sending…" : `Email PDF to ${email}`}</button></form>}</div>
+      {emailStatus && <p role="status">{emailStatus}</p>}
       <Link href="/book" className="brand-button">Discuss the full audit →</Link>
     </section>}
   </div>;
 }
-

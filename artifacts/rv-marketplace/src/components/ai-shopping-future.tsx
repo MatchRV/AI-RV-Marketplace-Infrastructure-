@@ -33,6 +33,7 @@ export function AiShoppingFuture() {
       <MessageCircle aria-hidden="true" size={34}/>
       <h2>When shoppers ask AI what RV fits their life, MatchRV helps connect those conversations to inventory.</h2>
       <p>We’re building the data and connections that can help AI understand real RV listings, find relevant options, and explain the trade-offs.</p>
+      <p>That starts with structured, consistent inventory information that stays current as prices, specifications, and availability change.</p>
     </div>
 
     <div className="vision-prompts">
@@ -46,6 +47,29 @@ export function AiShoppingFuture() {
       <figcaption>MatchRV’s vision for making RV inventory easier for AI to understand. Diagram is conceptual.</figcaption>
     </figure>
 
+    <section className="vision-beyond" aria-labelledby="beyond-report-title">
+      <div className="center-heading">
+        <p className="brand-eyebrow">Beyond the Report</p>
+        <h2 id="beyond-report-title">The inventory infrastructure between dealerships and AI</h2>
+        <p>Your dealership already has a website. Preparing its inventory for AI-powered shopping takes more: complete details, consistent fields, standardized descriptions, and ongoing checks as listings change.</p>
+        <p>MatchRV is building a path from identifying those gaps to improving the inventory data behind them.</p>
+      </div>
+      <div className="vision-data-grid">
+        {[
+          ["AI-Ready Inventory", "Prepare inventory records so AI shopping assistants can understand and compare RVs."],
+          ["Structured Inventory", "Organize price, floorplan, sleeping capacity, length, weight, features, and availability into clear fields."],
+          ["Normalized Inventory", "Standardize inconsistent model names, specifications, terminology, and listing fields."],
+          ["Visibility Monitoring", "Check changing inventory for missing or incomplete information that could affect AI discovery."],
+        ].map(([title, copy]) => <article key={title}><h3>{title}</h3><p>{copy}</p></article>)}
+      </div>
+      <div className="center-heading vision-journey-heading"><h2>From dealership inventory to qualified shopper</h2><p>The path MatchRV is building:</p></div>
+      <figure className="vision-journey">
+        <a href="/images/ai-driven-sales-lead-journey.webp" target="_blank" rel="noopener noreferrer" aria-label="View full-size MatchRV inventory journey diagram"><img src="/images/ai-driven-sales-lead-journey.webp" alt="The path MatchRV is building: Dealer Inventory, AI Visibility Report, Inventory Enrichment, AI-Ready Inventory, MatchRV Inventory Network, AI Shopping Experiences, Qualified Shopper, Dealer Lead" loading="lazy" width="1678" height="937"/></a>
+        <figcaption>MatchRV’s planned inventory-to-shopper journey. View the full-size diagram for details.</figcaption>
+      </figure>
+      <div className="vision-report-cta"><h2>Find the gaps. Improve the data. Prepare for AI discovery.</h2><a href="/#request-report" className="brand-button">Start With an AI Visibility Report <ArrowRight size={17}/></a></div>
+    </section>
+
     <div className="vision-coming-soon">
       <div><p className="brand-eyebrow">Coming Soon</p><h2>Meet shoppers where their search begins.</h2><p>MatchRV is working toward ways for AI assistants to connect shopper questions with RV inventory.</p></div>
       <div className="vision-roadmap"><span>MatchRV ChatGPT Plugin</span><span>Google UCP</span></div>
@@ -54,3 +78,4 @@ export function AiShoppingFuture() {
     <div className="vision-dealer-link"><p>Are you an RV dealership?</p><Link href="/" className="brand-text-link">See how visible your inventory is to AI <ArrowRight size={17}/></Link></div>
   </section>;
 }
+

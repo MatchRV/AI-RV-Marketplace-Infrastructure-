@@ -219,9 +219,11 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
         : check(`price ≤ ${fmtUsd(c.priceMaxUsd)}`, price <= c.priceMaxUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
-  if (c.priceMinUsd != null && price !== null) {
+  if (c.priceMinUsd != null) {
     hardChecks.push(
-      check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
+      price === null
+        ? check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, "unknown", "unknown", null)
+        : check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
 
@@ -231,9 +233,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       cmpMax("length", unit.lengthFt.value, unit.lengthFt.source, c.lengthMaxFt, (n) => `${n} ft`, "lengthFt", unknowns),
     );
   }
-  if (c.lengthMinFt != null && unit.lengthFt.value !== null) {
+  if (c.lengthMinFt != null) {
+    if (unit.lengthFt.value === null) unknowns.push("lengthFt");
     hardChecks.push(
-      check(`length ≥ ${c.lengthMinFt} ft`, unit.lengthFt.value >= c.lengthMinFt ? "pass" : "fail", `${unit.lengthFt.value} ft`, unit.lengthFt.source),
+      unit.lengthFt.value === null
+        ? check(`length ≥ ${c.lengthMinFt} ft`, "unknown", "unknown", null)
+        : check(`length ≥ ${c.lengthMinFt} ft`, unit.lengthFt.value >= c.lengthMinFt ? "pass" : "fail", `${unit.lengthFt.value} ft`, unit.lengthFt.source),
     );
   }
 
@@ -280,9 +285,9 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
 
   // — hard: sleeps
   if (c.sleepsMin != null) {
-    if (unit.sleeps.value === null) {
+    if (unit.sleeps.value === null || unit.sleeps.source === "derived_model_code" || unit.sleeps.source === "computed") {
       unknowns.push("sleeps");
-      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", "unknown", null));
+      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", unit.sleeps.value === null ? "unknown" : `${unit.sleeps.value} (inferred; confirm with dealer)`, unit.sleeps.source));
     } else {
       hardChecks.push(
         check(`sleeps ≥ ${c.sleepsMin}`, unit.sleeps.value >= c.sleepsMin ? "pass" : "fail", String(unit.sleeps.value), unit.sleeps.source),
@@ -310,11 +315,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   // — hard: must-have features
   for (const f of c.mustHave ?? []) {
     const v = featureValue(unit, f);
-    if (v === null) {
+    const source = featureSource(unit, f);
+    if (v === null || (v === true && (source === "derived_model_code" || source === "computed"))) {
       unknowns.push(f);
-      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "unknown", "unknown — dealer listing doesn't say", null));
+      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "unknown", v === null ? "unknown — dealer listing doesn't say" : "inferred; confirm with dealer", source));
     } else {
-      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, v ? "pass" : "fail", v ? "yes" : "no", featureSource(unit, f)));
+      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, v ? "pass" : "fail", v ? "yes" : "no", source));
     }
   }
 

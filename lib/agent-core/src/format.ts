@@ -65,7 +65,8 @@ export function compactSearchResult(
     locationResolution: outcome.locationResolution,
     coverage: {
       requested_area: coverage?.requestedArea ?? null,
-      radius_miles: coverage?.radiusMiles ?? null,
+      radius_miles: outcome.locationResolution?.state ? null : coverage?.radiusMiles ?? null,
+      scope: outcome.locationResolution?.state ? "state" : outcome.locationResolution ? "radius" : "nationwide",
       units_in_area: coverage?.unitsInArea ?? null,
       nationwide_total: coverage?.nationwideTotal ?? outcome.funnel.totalUnits,
       no_local_matches: coverage?.noLocalMatches ?? false,

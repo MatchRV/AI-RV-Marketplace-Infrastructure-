@@ -167,24 +167,8 @@ function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | u
   return out as Constraints;
 }
 
-/** Prefer regional inventory when a location is set (latency + relevance). */
-function candidateUnits(locationPlace: string | undefined): CanonicalUnit[] {
-  const inv = getInventory();
-  if (!locationPlace) return inv.units;
-  // PNW-focused demo: when searching near WA/OR/ID cities, prefilter to those
-  // states (+MT) before the O(n) match pass. National queries still scan all.
-  const pnW = /\b(wa|washington|or|oregon|id|idaho|mt|montana|fife|tacoma|seattle|spokane|portland|boise)\b/i;
-  if (!pnW.test(locationPlace) && !/near\s+/i.test(locationPlace)) {
-    // Still allow any resolved place; prefilter by nothing.
-    return inv.units;
-  }
-  const regional: CanonicalUnit[] = [];
-  for (const st of ["WA", "OR", "ID", "MT"]) {
-    const bucket = inv.byState?.get(st);
-    if (bucket) regional.push(...bucket);
-  }
-  return regional.length > 0 ? regional : inv.units;
-}
+/** All searches start with the nationwide corpus; the engine applies location filters. */
+function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { return getInventory().units; }
 
 function textResult(payload: unknown, isError = false) {
   return {
@@ -212,14 +196,14 @@ function buildMatchRvServer(): McpServer {
   const server = new McpServer(
     {
       name: "matchrv",
-      version: "0.2.0",
+      version: "0.2.1",
       websiteUrl: "https://matchrv.com",
     },
     {
       capabilities: { tools: { listChanged: false } },
       instructions:
         OUTFITTER_GUIDANCE + "\n" +
-        "MatchRV searches normalized dealer RV inventory (~20k priced units). ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
+        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and use rv_outfitter for ambiguous preferences. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
     },
   );
 
@@ -245,7 +229,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search MatchRV dealer inventory. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory. Use rv_outfitter for ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -283,6 +267,9 @@ function buildMatchRvServer(): McpServer {
           ...compact,
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
+          source: "MatchRV nationwide inventory snapshot",
+          outfitterGuidance: OUTFITTER_GUIDANCE,
+          nextStep: "Explain real matches and unknowns. Ask one relevant follow-up if needed; gas versus diesel, dedicated versus convertible bunks, or a required towing load may change the recommendation. Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.",
         });
       } catch (error) {
         return textResult(
@@ -291,7 +278,7 @@ function buildMatchRvServer(): McpServer {
             detail: error instanceof Error ? error.message : String(error),
             guidance:
               error instanceof Error && error.message.includes("Unknown place")
-                ? "Use a supported PNW city (Fife, Tacoma, Seattle, Spokane, Portland, …)."
+                ? "Ask for a nearby supported US city and state, or use the state name for state-wide inventory. An unresolved city is not evidence that MatchRV lacks inventory in that state."
                 : undefined,
           },
           true,

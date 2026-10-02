@@ -10,6 +10,7 @@
  * Agent-core is bundled into the Vite marketplace client.
  */
 
+import { EXTRA_CITY_COORDS } from "./national-geo.js";
 import type { CanonicalUnit, Fact, RvType } from "./types.js";
 import { resolvePlace, scanForCity, CITY_COORDS, type LatLng } from "./geo.js";
 import {
@@ -20,55 +21,6 @@ import {
 import { VIN_SLEEPS } from "./vin-sleeps.js";
 
 /** Extra US dealer cities present in the MarketCheck snapshot (outside PNW table). */
-const EXTRA_CITY_COORDS: Record<string, LatLng> = {
-  hewitt: { lat: 31.4624, lng: -97.1953 },
-  lincolnshire: { lat: 42.19, lng: -87.9084 },
-  alvarado: { lat: 32.4065, lng: -97.2117 },
-  "fort myers": { lat: 26.6406, lng: -81.8723 },
-  yuma: { lat: 32.6927, lng: -114.6277 },
-  buda: { lat: 30.0852, lng: -97.8403 },
-  caledonia: { lat: 42.9731, lng: -77.8553 },
-  "junction city": { lat: 44.2193, lng: -123.2057 },
-  rockford: { lat: 42.2711, lng: -89.094 },
-  "panama city": { lat: 30.1588, lng: -85.6602 },
-  tonawanda: { lat: 42.985, lng: -78.8778 },
-  "fort worth": { lat: 32.7555, lng: -97.3308 },
-  fairfield: { lat: 38.2494, lng: -122.04 },
-  seguin: { lat: 29.5688, lng: -97.9647 },
-  bath: { lat: 42.337, lng: -77.3178 },
-  willis: { lat: 30.4249, lng: -95.4797 },
-  "college station": { lat: 30.628, lng: -96.3344 },
-  "grass valley": { lat: 39.2191, lng: -121.0611 },
-  montclair: { lat: 34.0775, lng: -117.6898 },
-  meridian: { lat: 43.6121, lng: -116.3915 },
-  "idaho falls": { lat: 43.4917, lng: -112.044 },
-  boerne: { lat: 29.7947, lng: -98.7317 },
-  chandler: { lat: 33.3062, lng: -111.8413 },
-  jacksonville: { lat: 30.3322, lng: -81.6557 },
-  conroe: { lat: 30.3119, lng: -95.4561 },
-  "jane lew": { lat: 39.109, lng: -80.4076 },
-  beaverton: { lat: 45.4871, lng: -122.8037 },
-  tucson: { lat: 32.2226, lng: -110.9747 },
-  "fort pierce": { lat: 27.4467, lng: -80.3256 },
-  longview_tx: { lat: 32.5007, lng: -94.7405 },
-  phoenix: { lat: 33.4484, lng: -112.074 },
-  mesa: { lat: 33.4152, lng: -111.8315 },
-  dallas: { lat: 32.7767, lng: -96.797 },
-  houston: { lat: 29.7604, lng: -95.3698 },
-  austin: { lat: 30.2672, lng: -97.7431 },
-  "san antonio": { lat: 29.4241, lng: -98.4936 },
-  orlando: { lat: 28.5383, lng: -81.3792 },
-  tampa: { lat: 27.9506, lng: -82.4572 },
-  miami: { lat: 25.7617, lng: -80.1918 },
-  denver: { lat: 39.7392, lng: -104.9903 },
-  "las vegas": { lat: 36.1699, lng: -115.1398 },
-  sacramento: { lat: 38.5816, lng: -121.4944 },
-  "los angeles": { lat: 34.0522, lng: -118.2437 },
-  "san diego": { lat: 32.7157, lng: -117.1611 },
-  chicago: { lat: 41.8781, lng: -87.6298 },
-  atlanta: { lat: 33.749, lng: -84.388 },
-};
-
 /** Coarse state centroids — only used when city is Unknown/unresolvable. */
 const STATE_COORDS: Record<string, LatLng> = {
   WA: { lat: 47.4009, lng: -120.5015 },

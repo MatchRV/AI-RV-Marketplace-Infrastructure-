@@ -229,7 +229,7 @@ export interface SearchOutcome {
   results: UnitMatch[];
   appliedConstraints: Constraints;
   towResolution: TowResolution | null;
-  locationResolution: { place: string; lat: number; lng: number; radiusMiles: number } | null;
+  locationResolution: { place: string; lat: number; lng: number; radiusMiles: number; state?: string } | null;
   coverage: SearchCoverage;
 }
 

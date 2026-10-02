@@ -19,6 +19,9 @@ import { getInventory } from "./services/agent-inventory";
 import { searchReadyInventory } from "./services/search-ready";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
+import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
+import { lookupTowVin, towVinSchema } from "./services/tow-vin";
+
 const searchInput = z.object({
   // ChatGPT often passes free-form top-level fields instead of nested constraints.
   query: z.string().max(240).optional(),
@@ -210,7 +213,7 @@ function buildMatchRvServer(): McpServer {
   const server = new McpServer(
     {
       name: "matchrv",
-      version: "0.1.0",
+      version: "0.2.0",
       websiteUrl: "https://matchrv.com",
     },
     {

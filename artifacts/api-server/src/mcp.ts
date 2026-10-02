@@ -18,6 +18,9 @@ import {
 import { getInventory } from "./services/agent-inventory";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
+import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
+import { lookupTowVin, towVinSchema } from "./services/tow-vin";
+
 const searchInput = z.object({
   // ChatGPT often passes free-form top-level fields instead of nested constraints.
   query: z.string().max(240).optional(),
@@ -209,15 +212,33 @@ function buildMatchRvServer(): McpServer {
   const server = new McpServer(
     {
       name: "matchrv",
-      version: "0.1.0",
+      version: "0.2.0",
       websiteUrl: "https://matchrv.com",
     },
     {
       capabilities: { tools: { listChanged: false } },
       instructions:
+        OUTFITTER_GUIDANCE + "\n" +
         "MatchRV searches normalized dealer RV inventory (~20k priced units). ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
     },
   );
+
+  server.registerTool("rv_outfitter", {
+    title: "RV Outfitter - clarify and confirm shopper needs",
+    description: "Use this guide when a shopper starts an RV conversation or gives an ambiguous preference. Returns one useful follow-up, a confirmation summary and authoritative constraints. Ask about firm limits versus explicitly approved flexibility; never relax a limit automatically. Continue in this chat, then call search_rvs for real options. Does not contact dealers or send messages.",
+    inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
+
+  server.registerTool("lookup_tow_vehicle_vin", {
+    title: "Look up tow vehicle by VIN",
+    description: "When a shopper supplies their tow vehicle VIN, call this tool to look it up using NHTSA vPIC (the official decoder at https://vpic.nhtsa.dot.gov/decoder/). May identify engine, year, make, model and drivetrain. Does NOT verify factory tow package, axle ratio, exact tow capacity, payload or hitch limits. Report returned details and ask for build sheet/door label for unknowns. Sends only the supplied VIN and optional year to NHTSA. Never infer towing safety from this result.",
+    inputSchema: mcpSchema(towVinSchema),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async input => {
+    try { return textResult(await lookupTowVin(input)); }
+    catch { return textResult({ error: "vin_lookup_unavailable", guidance: "Verify the VIN or provide year, make, model and engine manually. No towing specifications were inferred." }, true); }
+  });
 
   server.registerTool(
     "search_rvs",

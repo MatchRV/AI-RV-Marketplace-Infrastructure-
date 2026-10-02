@@ -124,7 +124,7 @@ function featureSource(unit: CanonicalUnit, f: FeatureKey) {
 export interface SearchContext {
   constraints: Constraints;
   tow: TowResolution | null;
-  location: { place: string; lat: number; lng: number; radiusMiles: number } | null;
+  location: { place: string; lat: number; lng: number; radiusMiles: number; state?: string } | null;
 }
 
 export function buildContext(constraints: Constraints): SearchContext {
@@ -135,7 +135,7 @@ export function buildContext(constraints: Constraints): SearchContext {
       const popular = ["Tacoma", "Seattle", "Spokane", "Olympia", "Everett", "Vancouver", "Bellingham", "Yakima", "Portland"];
       const rest = knownPlaces().filter((p) => !popular.includes(p));
       throw new ConstraintError(
-        `Unknown place "${constraints.location.place}" — MatchRV's demo footprint covers the Pacific Northwest.`,
+        `Unknown place "${constraints.location.place}" could not be resolved in the offline city table.`,
         `Try one of: ${[...popular, ...rest.slice(0, 30)].join(", ")} …`,
       );
     }
@@ -144,6 +144,7 @@ export function buildContext(constraints: Constraints): SearchContext {
       lat: resolved.lat,
       lng: resolved.lng,
       radiusMiles: constraints.location.radiusMiles,
+      ...(resolved.state ? { state: resolved.state } : {}),
     };
   }
   const tow = constraints.towVehicle ? resolveTowVehicle(constraints.towVehicle) : null;
@@ -323,7 +324,9 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   // surface FL/AZ inventory as a "local" match for Fife (MAT-34 / MAT-37).
   let distanceMiles: number | null = null;
   if (ctx.location) {
-    if (unit.dealer.lat !== null && unit.dealer.lng !== null) {
+    if (ctx.location.state) {
+      hardChecks.push(check(`dealer in ${ctx.location.place}`, unit.dealer.state?.toUpperCase() === ctx.location.state ? "pass" : "fail", `${unit.dealer.city}, ${unit.dealer.state ?? "unknown"}`, "dealer_listing"));
+    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null) {
       distanceMiles = Math.round(
         haversineMiles(
           { lat: ctx.location.lat, lng: ctx.location.lng },
@@ -512,14 +515,14 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
   };
 
   const inArea = evaluated.filter(
-    (m) => m.distanceMiles !== null && ctx.location !== null && m.distanceMiles <= ctx.location.radiusMiles,
+    (m) => ctx.location?.state ? m.unit.dealer.state?.toUpperCase() === ctx.location.state : m.distanceMiles !== null && ctx.location !== null && m.distanceMiles <= ctx.location.radiusMiles,
   ).length;
 
   // Area guarantee: when location is set, never append out-of-area unverified
   // rows after the local passes. Only return matches that survived hard filters
   // (passed) plus in-area unverified (e.g. unknown sleeps) — not national spill.
   const localUnverified = ctx.location
-    ? unverified.filter((m) => m.distanceMiles !== null && m.distanceMiles <= ctx.location!.radiusMiles)
+    ? unverified.filter((m) => ctx.location!.state ? m.unit.dealer.state?.toUpperCase() === ctx.location!.state : m.distanceMiles !== null && m.distanceMiles <= ctx.location!.radiusMiles)
     : unverified;
 
   const results = [...collapse(passed), ...collapse(localUnverified)];
@@ -542,6 +545,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints): Sea
           lat: ctx.location.lat,
           lng: ctx.location.lng,
           radiusMiles: ctx.location.radiusMiles,
+          ...(ctx.location.state ? { state: ctx.location.state } : {}),
         }
       : null,
     coverage: {

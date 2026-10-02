@@ -1,6 +1,6 @@
+import { EXTRA_CITY_COORDS, US_STATES } from "./national-geo.js";
 /**
- * Deterministic, fully-offline geography for the Pacific Northwest demo
- * footprint. No external geocoding calls: an unknown place returns null and
+ * Deterministic, offline geography for supported US cities and state-wide searches. No external geocoding calls: an unknown place returns null and
  * callers surface a descriptive error listing supported places so an agent
  * can self-correct.
  */
@@ -10,7 +10,7 @@ export interface LatLng {
   lng: number;
 }
 
-/** City name (lowercase) → coordinates. WA + nearby OR/ID/MT dealer cities. */
+/** City name (lowercase) â†’ coordinates. WA + nearby OR/ID/MT dealer cities. */
 export const CITY_COORDS: Record<string, LatLng> = {
   // Washington
   seattle: { lat: 47.6062, lng: -122.3321 },
@@ -111,7 +111,7 @@ export const CITY_COORDS: Record<string, LatLng> = {
   "tri-cities": { lat: 46.2113, lng: -119.1372 }, // Kennewick-centered metro alias
 };
 
-/** Common alternate spellings → canonical CITY_COORDS keys. */
+/** Common alternate spellings â†’ canonical CITY_COORDS keys. */
 const CITY_ALIASES: Record<string, string> = {
   "mt. vernon": "mount vernon",
   "mt vernon": "mount vernon",
@@ -124,25 +124,30 @@ const CITY_ALIASES: Record<string, string> = {
   "king county": "seattle",
 };
 
-const STATE_SUFFIX = /,\s*(wa|washington|or|oregon|id|idaho|mt|montana)\.?$/i;
-
-/** Resolve a free-text place ("Tacoma", "Tacoma, WA", "Mt. Vernon") to coordinates. */
-export function resolvePlace(place: string): (LatLng & { canonical: string }) | null {
-  let cleaned = place.trim().toLowerCase().replace(STATE_SUFFIX, "").trim();
-  if (!cleaned) return null;
+/** Resolve supported US cities or an explicit state-wide search. */
+export function resolvePlace(place: string): (LatLng & { canonical: string; state?: string }) | null {
+  let cleaned = place.trim().toLowerCase().replace(/^near\s+/, "").replace(/\.$/, "");
+  const stateCode = (text: string) => Object.entries(US_STATES).find(([code, name]) => code.toLowerCase() === text || name.toLowerCase() === text)?.[0];
+  const statewide = stateCode(cleaned);
+  if (statewide) return { lat: 0, lng: 0, canonical: US_STATES[statewide], state: statewide };
+  const parts = cleaned.split(/,\s*/);
+  const suffix = parts.length > 1 ? stateCode(parts.at(-1)!) : undefined;
+  if (suffix) cleaned = parts.slice(0, -1).join(", ").trim();
   cleaned = CITY_ALIASES[cleaned] ?? cleaned;
-  const hit = CITY_COORDS[cleaned];
+  if (cleaned === "longview" && suffix === "TX") cleaned = "longview_tx";
+  if (cleaned === "redmond" && suffix === "OR") cleaned = "redmond_or";
+  const hit = CITY_COORDS[cleaned] ?? EXTRA_CITY_COORDS[cleaned];
   if (!hit) return null;
-  return { ...hit, canonical: titleCase(cleaned) };
+  return { ...hit, canonical: titleCase(cleaned.replace(/_(tx|or)$/, "")) };
 }
 
 /**
  * Scan a messy location string ("4309 East Valley Highway | Sumner",
- * "13000 Highway 99 • Everett") for any known city name. Longest match wins
+ * "13000 Highway 99 â€¢ Everett") for any known city name. Longest match wins
  * so "east wenatchee" beats "wenatchee".
  */
 export function scanForCity(text: string): (LatLng & { canonical: string }) | null {
-  const t = ` ${text.toLowerCase().replace(/[|•,.]/g, " ").replace(/\s+/g, " ")} `;
+  const t = ` ${text.toLowerCase().replace(/[|â€¢,.]/g, " ").replace(/\s+/g, " ")} `;
   let best: string | null = null;
   const candidates = [...Object.keys(CITY_COORDS), ...Object.keys(CITY_ALIASES)];
   for (const name of candidates) {
@@ -154,7 +159,7 @@ export function scanForCity(text: string): (LatLng & { canonical: string }) | nu
 }
 
 export function knownPlaces(): string[] {
-  return Object.keys(CITY_COORDS)
+  return Object.keys({ ...CITY_COORDS, ...EXTRA_CITY_COORDS })
     .filter((k) => k !== "redmond_or")
     .map(titleCase)
     .sort();
@@ -176,3 +181,4 @@ export function haversineMiles(a: LatLng, b: LatLng): number {
       Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
+

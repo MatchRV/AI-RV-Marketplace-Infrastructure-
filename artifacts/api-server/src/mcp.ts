@@ -8,18 +8,15 @@ import {
   constraintsSchema,
   evaluateTowFit,
   evaluateUnit,
-  prepareDealerContactInput,
   resolveTowVehicle,
   runSearch,
-  submitDealerContactInput,
   type Constraints,
   type CanonicalUnit,
 } from "@workspace/agent-core";
 import { getInventory } from "./services/agent-inventory";
-import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
-import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
-import { lookupTowVin, towVinSchema } from "./services/tow-vin";
+import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
+import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
 const searchInput = z.object({
   // ChatGPT often passes free-form top-level fields instead of nested constraints.
@@ -47,13 +44,6 @@ const towInput = z.object({
   unit_ids: z.array(z.string().min(3).max(120)).min(1).max(6),
 });
 
-const contactInput = z.discriminatedUnion("action", [
-  prepareDealerContactInput.extend({
-    action: z.literal("prepare"),
-    constraints: constraintsSchema.optional().default({}),
-  }),
-  submitDealerContactInput.extend({ action: z.literal("submit") }),
-]);
 
 function cleanConstraints(value: Record<string, unknown> | undefined | null): Constraints {
   const aliases: Record<string, string> = {
@@ -173,6 +163,7 @@ function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { r
 function textResult(payload: unknown, isError = false) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload) }],
+    ...(!isError && payload && typeof payload === "object" ? { structuredContent: payload as Record<string, unknown> } : {}),
     ...(isError ? { isError: true } : {}),
   };
 }
@@ -200,36 +191,24 @@ function buildMatchRvServer(): McpServer {
       websiteUrl: "https://matchrv.com",
     },
     {
-      capabilities: { tools: { listChanged: false } },
+      capabilities: { tools: { listChanged: false }, resources: {} },
       instructions:
-        OUTFITTER_GUIDANCE + "\n" +
-        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and use rv_outfitter for ambiguous preferences. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
+        OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package").replace("Dealer contact requires a preview and explicit human approval.", "Dealer contact is unavailable in this initial release.") + "\n" +
+        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches ΓÇö never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred ΓÇö disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact and VIN lookup are unavailable in this initial release.",
     },
   );
 
-  server.registerTool("rv_outfitter", {
-    title: "RV Outfitter - clarify and confirm shopper needs",
-    description: "Use this guide when a shopper starts an RV conversation or gives an ambiguous preference. Returns one useful follow-up, a confirmation summary and authoritative constraints. Ask about firm limits versus explicitly approved flexibility; never relax a limit automatically. Continue in this chat, then call search_rvs for real options. Does not contact dealers or send messages.",
-    inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
-
-  server.registerTool("lookup_tow_vehicle_vin", {
-    title: "Look up tow vehicle by VIN",
-    description: "When a shopper supplies their tow vehicle VIN, call this tool to look it up using NHTSA vPIC (the official decoder at https://vpic.nhtsa.dot.gov/decoder/). May identify engine, year, make, model and drivetrain. Does NOT verify factory tow package, axle ratio, exact tow capacity, payload or hitch limits. Report returned details and ask for build sheet/door label for unknowns. Sends only the supplied VIN and optional year to NHTSA. Never infer towing safety from this result.",
-    inputSchema: mcpSchema(towVinSchema),
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-  }, async input => {
-    try { return textResult(await lookupTowVin(input)); }
-    catch { return textResult({ error: "vin_lookup_unavailable", guidance: "Verify the VIN or provide year, make, model and engine manually. No towing specifications were inferred." }, true); }
-  });
+  server.registerResource("matchrv-shopper", SHOPPER_URI, { title: "MatchRV shopper", mimeType: "text/html;profile=mcp-app" }, async () => ({
+    contents: [{ uri: SHOPPER_URI, mimeType: "text/html;profile=mcp-app", text: SHOPPER_HTML, _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } }, "openai/ui": { availableDisplayModes: ["fullscreen"], preferredDisplayMode: "fullscreen" } } }],
+  }));
 
   server.registerTool(
     "search_rvs",
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory. Use rv_outfitter for ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance ΓÇö never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -268,7 +247,7 @@ function buildMatchRvServer(): McpServer {
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
           source: "MatchRV nationwide inventory snapshot",
-          outfitterGuidance: OUTFITTER_GUIDANCE,
+          outfitterGuidance: "Clarify needs one question at a time, preserve hard constraints, and ask for exact vehicle ratings. Dealer contact and VIN lookup are unavailable in this release.",
           nextStep: "Explain real matches and unknowns. Ask one relevant follow-up if needed; gas versus diesel, dedicated versus convertible bunks, or a required towing load may change the recommendation. Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.",
         });
       } catch (error) {
@@ -293,6 +272,7 @@ function buildMatchRvServer(): McpServer {
       title: "Get RV details",
       description:
         "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Never invent missing specifications.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -310,6 +290,7 @@ function buildMatchRvServer(): McpServer {
       title: "Compare RVs",
       description:
         "Compare 2-4 MatchRV units side by side against the buyer's constraints. Keeps unknown values explicit and returns deterministic comparison evidence rather than guessed specifications.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(compareInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -333,6 +314,7 @@ function buildMatchRvServer(): McpServer {
       title: "Evaluate tow fit",
       description:
         "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs. This is screening guidance, not a towing-safety guarantee. Configuration-specific payload, GVWR/GCWR, hitch ratings, passengers and cargo can change the result.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(towInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -346,53 +328,6 @@ function buildMatchRvServer(): McpServer {
         fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
       }
       return textResult({ resolution, fits, safetyNotice: "Verify the exact tow-vehicle configuration, payload sticker, GVWR/GCWR, hitch limits, passengers and cargo before towing." });
-    },
-  );
-
-  server.registerTool(
-    "contact_dealer",
-    {
-      title: "Prepare or submit dealer contact",
-      description:
-        "Two-phase dealer contact. action=prepare stages the exact dealer/unit/shopper/message preview and sends nothing. The human must approve that preview in MatchRV. action=submit accepts only a preview_id that MatchRV already records as human-approved; otherwise it fails without sending. Never treat prepare as consent to submit.",
-      inputSchema: mcpSchema(contactInput),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-    },
-    async (input) => {
-      if (input.action === "prepare") {
-        const inv = getInventory();
-        const unit = inv.byId.get(input.unit_id);
-        if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
-        const constraints = cleanConstraints(input.constraints);
-        let unknowns: string[] = [];
-        try {
-          unknowns = evaluateUnit(unit, buildContext(constraints)).unknownFields;
-        } catch {
-          // A preview can still be staged when optional matching context is incomplete.
-        }
-        const message = input.message?.trim() || draftMessage(unit, constraints, unknowns);
-        const created = createPreview({
-          unit,
-          customer: { name: input.name, email: input.email, phone: input.phone },
-          message,
-        });
-        // Deliberately do not return approvalToken. Only the MatchRV human UI receives it.
-        return textResult({ preview: created.preview, next: "Human approval is required in MatchRV before action=submit can succeed." });
-      }
-
-      const result = await submitPreview(input.preview_id);
-      if (!result.ok) {
-        return textResult({ error: result.code, guidance: result.guidance ?? "The preview must be approved by the human in MatchRV before submission." }, true);
-      }
-      return textResult({
-        receipt: {
-          leadId: result.leadId,
-          recordedAt: result.recordedAt,
-          delivery: result.delivery,
-          unit: result.preview.unitTitle,
-          dealer: result.preview.dealer.name,
-        },
-      });
     },
   );
 

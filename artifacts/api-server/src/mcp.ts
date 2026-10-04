@@ -13,7 +13,10 @@ import {
   type Constraints,
   type CanonicalUnit,
 } from "@workspace/agent-core";
-import { getInventory } from "./services/agent-inventory";
+import { getInventory as getOriginalInventory } from "./services/agent-inventory";
+import { screenMcpInventory } from "./services/mcp-inventory-quality";
+let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
+function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
 
 import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
@@ -241,9 +244,11 @@ function buildMatchRvServer(): McpServer {
         const corpus = candidateUnits(place);
         const outcome = runSearch(corpus, constraints);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
+        const inventoryQuality = getInventory().inventoryQuality;
         const ms = Math.round(performance.now() - t0);
         return textResult({
           ...compact,
+          inventoryQuality,
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
           source: "MatchRV nationwide inventory snapshot",
@@ -279,7 +284,7 @@ function buildMatchRvServer(): McpServer {
     async ({ unit_id }) => {
       const inv = getInventory();
       const unit = inv.byId.get(unit_id);
-      if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
+      if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       return textResult({ unit, dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
     },
   );

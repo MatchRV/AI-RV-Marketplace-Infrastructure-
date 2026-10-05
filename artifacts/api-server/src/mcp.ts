@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import {
   buildContext,
   compactSearchResult,
+  unitKnowledgeReceipts,
   compareUnits,
   constraintsSchema,
   evaluateTowFit,
@@ -285,7 +286,7 @@ function buildMatchRvServer(): McpServer {
       const inv = getInventory();
       const unit = inv.byId.get(unit_id);
       if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
-      return textResult({ unit, dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      return textResult({ unit, knowledge: unitKnowledgeReceipts(unit), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
     },
   );
 

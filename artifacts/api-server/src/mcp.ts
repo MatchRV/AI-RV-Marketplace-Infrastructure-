@@ -20,10 +20,9 @@ import { searchReadyInventory } from "./services/search-ready";
 import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
 
 import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
-import { lookupTowVin, towVinSchema } from "./services/tow-vin";
 
 const searchInput = z.object({
-  // ChatGPT often passes free-form top-level fields instead of nested constraints.
+  // MCP hosts often pass free-form top-level fields instead of nested constraints.
   query: z.string().max(240).optional(),
   location: z.string().max(80).optional(),
   place: z.string().max(80).optional(),
@@ -127,7 +126,7 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
   return out as Constraints;
 }
 
-/** Pull structured constraints out of a ChatGPT-style free-text query. */
+/** Pull structured constraints out of a host's free-text query. */
 function constraintsFromQuery(query: string | undefined): Partial<Constraints> {
   if (!query?.trim()) return {};
   const q = query.toLowerCase();
@@ -214,16 +213,6 @@ function buildMatchRvServer(): McpServer {
     inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
-
-  server.registerTool("lookup_tow_vehicle_vin", {
-    title: "Look up tow vehicle by VIN",
-    description: "When a shopper supplies their tow vehicle VIN, call this tool to look it up using NHTSA vPIC (the official decoder at https://vpic.nhtsa.dot.gov/decoder/). May identify engine, year, make, model and drivetrain. Does NOT verify factory tow package, axle ratio, exact tow capacity, payload or hitch limits. Report returned details and ask for build sheet/door label for unknowns. Sends only the supplied VIN and optional year to NHTSA. Never infer towing safety from this result.",
-    inputSchema: mcpSchema(towVinSchema),
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-  }, async input => {
-    try { return textResult(await lookupTowVin(input)); }
-    catch { return textResult({ error: "vin_lookup_unavailable", guidance: "Verify the VIN or provide year, make, model and engine manually. No towing specifications were inferred." }, true); }
-  });
 
   server.registerTool(
     "search_rvs",

@@ -6,7 +6,7 @@
  * validate ranges, tag provenance, and let unknown stay unknown.
  */
 
-import type { CanonicalUnit, Condition, DealerRef, Fact, RvType } from "./types.js";
+import type { CanonicalUnit, Condition, DealerRef, Fact, MotorhomeSpecs, RvType } from "./types.js";
 import {
   buildCorpus,
   computeBoondocking,
@@ -51,6 +51,19 @@ export interface RawScrapeRecord {
   length?: unknown;
   dry_weight?: unknown;
   gvwr?: unknown;
+  uvw?: unknown;
+  occc?: unknown;
+  ccc?: unknown;
+  gcwr?: unknown;
+  front_axle_rating?: unknown;
+  rear_axle_rating?: unknown;
+  receiver_hitch_rating?: unknown;
+  tongue_weight_rating?: unknown;
+  engine?: unknown;
+  horsepower?: unknown;
+  torque?: unknown;
+  transmission?: unknown;
+  chassis?: unknown;
   hitch_weight?: unknown;
   sleeps?: unknown;
   slideouts?: unknown;
@@ -281,6 +294,7 @@ export function normalizeRecord(
   const lastSeen = toStr(rec._last_seen) ?? toStr(rec.last_seen_at) ?? toStr(rec.scraped_at);
   const firstSeen = toStr(rec._first_seen) ?? lastSeen;
   if (!lastSeen || !firstSeen) return { reject: { key, reason: "missing_provenance_timestamps" } };
+  const sourceUrl = /^https:\/\/[^\s]+$/i.test(toStr(rec.url) ?? "") ? toStr(rec.url)! : null;
 
   const unit: CanonicalUnit = {
     id,
@@ -302,6 +316,9 @@ export function normalizeRecord(
     dryWeightLbs: withTextFallback(inRange(toNum(rec.dry_weight), 500, 40_000), textSpecs.dryWeightLbs),
     gvwrLbs: withTextFallback(inRange(toNum(rec.gvwr), 1_000, 60_000), textSpecs.gvwrLbs),
     hitchWeightLbs: withTextFallback(inRange(toNum(rec.hitch_weight), 50, 6_000), textSpecs.hitchWeightLbs),
+    ...(["class_a", "class_b", "class_c"].includes(rvType)
+      ? { motorhome: normalizeMotorhomeSpecs(rec, inRange(toNum(rec.gvwr), 1_000, 60_000)) }
+      : {}),
     sleeps: withTextFallback(inRange(toInt(rec.sleeps), 1, 14), textSpecs.sleeps),
     slideouts: withTextFallback(inRange(toInt(rec.slideouts), 0, 6), textSpecs.slideouts),
     freshWaterGal,
@@ -326,14 +343,61 @@ export function normalizeRecord(
     provenance: {
       sourceKind: "dealer_website_snapshot",
       dealerDomain: dealer.id.split(":")[0],
+      ...(sourceUrl ? { sourceUrl } : {}),
       firstSeenAt: firstSeen,
       lastSeenAt: lastSeen,
     },
   };
+
+  // Preserve a receipt for every known normalized fact. A record-level date is
+  // the scrape observation time, not a promise of current availability.
+  const facts: Fact<unknown>[] = [
+    unit.priceUsd, unit.msrpUsd, unit.lengthFt, unit.dryWeightLbs, unit.gvwrLbs,
+    unit.hitchWeightLbs, unit.sleeps, unit.slideouts, unit.freshWaterGal,
+    unit.greyWaterGal, unit.blackWaterGal, unit.bunkhouse, unit.entryDoors,
+    unit.solar, unit.lithiumBattery, unit.generator, unit.fourSeason,
+    unit.outdoorKitchen, ...(Object.values(unit.motorhome ?? {}) as Fact<unknown>[]),
+  ];
+  for (const item of facts) {
+    if (item.value === null) continue;
+    if (sourceUrl) item.sourceUrl = sourceUrl;
+    item.observedAt = lastSeen;
+  }
 
   return { unit };
 }
 
 function numFact(n: number | null, _unit: string): Fact<number> {
   return n === null ? unknown<number>() : fact(n, "dealer_listing", "high");
+}
+
+function normalizeMotorhomeSpecs(rec: RawScrapeRecord, gvwr: number | null): MotorhomeSpecs {
+  const rating = (v: unknown, min: number, max: number) => numFact(inRange(toNum(v), min, max), "lbs");
+  const label = (v: unknown): Fact<string> => {
+    const s = toStr(v);
+    return s && s.length <= 120 ? fact(s, "dealer_listing", "high") : unknown<string>();
+  };
+  const gcwrLbs = rating(rec.gcwr, 2_000, 100_000);
+  const receiverHitchRatingLbs = rating(rec.receiver_hitch_rating, 100, 30_000);
+  const towCapacityAtGvwrLbs: Fact<number> =
+    gcwrLbs.value !== null && gvwr !== null && receiverHitchRatingLbs.value !== null && gcwrLbs.value >= gvwr
+      ? fact(Math.min(receiverHitchRatingLbs.value, gcwrLbs.value - gvwr), "computed", "medium",
+          "Screening ceiling at GVWR = min(receiver hitch rating, GCWR - GVWR). Confirm exact chassis, actual loaded motorhome weight, axle/tongue ratings and hitch equipment before towing.")
+      : unknown("GCWR, GVWR and receiver hitch rating for this coach are required; conflicting ratings are not computed.");
+  return {
+    uvwLbs: rating(rec.uvw, 1_000, 60_000),
+    occcLbs: rating(rec.occc, 50, 20_000),
+    cccLbs: rating(rec.ccc, 50, 20_000),
+    gcwrLbs,
+    frontAxleRatingLbs: rating(rec.front_axle_rating, 500, 30_000),
+    rearAxleRatingLbs: rating(rec.rear_axle_rating, 500, 40_000),
+    receiverHitchRatingLbs,
+    tongueWeightRatingLbs: rating(rec.tongue_weight_rating, 50, 5_000),
+    engine: label(rec.engine),
+    horsepowerHp: rating(rec.horsepower, 50, 1_000),
+    torqueLbFt: rating(rec.torque, 50, 3_000),
+    transmission: label(rec.transmission),
+    chassis: label(rec.chassis),
+    towCapacityAtGvwrLbs,
+  };
 }

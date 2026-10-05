@@ -10,12 +10,12 @@ Initial availability: United States
 **Plugin name:** MatchRV
 
 **Short description:**
-AI-powered RV shopping from MatchRV. Search and compare RV inventory, evaluate tow-fit considerations, and prepare dealer-contact requests with human approval before submission.
+Guided RV shopping and search.
 
 **Long description:**
-MatchRV helps shoppers turn real-world RV requirements into structured inventory searches. Users can search MatchRV inventory by RV type, price, length, sleeping capacity, location, condition and other available specifications; inspect individual RV records; compare candidate units; and evaluate towing considerations using known vehicle and RV data. MatchRV preserves unknown or unverified specifications instead of inventing values and explains why a result matches or remains unverified. Dealer contact uses a two-phase flow: MatchRV first prepares a preview of the proposed contact request, and nothing is submitted until the user explicitly approves the action.
+MatchRV helps shoppers clarify how they will use an RV, confirm firm limits versus approved flexibility, and turn requirements into structured inventory searches. A monthly payment remains unverified as a total purchase budget until loan assumptions or a total ceiling are supplied. Users can search MatchRV inventory by RV type, price, length, sleeping capacity, location, condition and other available specifications; inspect individual RV records; compare candidate units; and evaluate towing considerations using known vehicle and RV data. MatchRV preserves unknown or unverified specifications instead of inventing values and explains why a result matches or remains unverified. Dealer contact uses a two-phase flow: MatchRV first prepares a preview of the proposed contact request, and nothing is submitted until the user explicitly approves the action.
 
-**Category:** Shopping
+**Category:** Travel
 
 **Website:** https://matchrv.com
 
@@ -43,21 +43,22 @@ These values must be checked against what the live MCP server actually advertise
 
 | Tool | Purpose | readOnlyHint | openWorldHint | destructiveHint |
 |---|---|---:|---:|---:|
+| `rv_outfitter` | Clarify shopper needs and preserve limits | true | false | false |
 | `search_rvs` | Search MatchRV inventory | true | false | false |
 | `get_rv` | Retrieve a specific RV record | true | false | false |
 | `compare_rvs` | Compare selected RV records | true | false | false |
 | `evaluate_tow_fit` | Compute tow-fit considerations from supplied/known data | true | false | false |
 | `contact_dealer` | Preview and, only after explicit approval, submit dealer contact | false | true | true |
 
+The VIN-based tow-vehicle lookup stays on the website and is not exposed as an MCP tool. It cannot verify the tow package, axle ratio, exact towing capacity or payload.
+
 `contact_dealer` must retain the two-phase human-approval flow. The tool must not expose approval tokens or silently submit contact during the preview step.
 
 ## Starter prompts
 
-1. Find me a Class A motorhome between $250,000 and $350,000 that is at least 35 feet long and sleeps at least two people.
-2. Compare the best RVs you found and explain why each one matches, what is unknown, and how fresh the inventory data is.
-3. I have a specific tow vehicle. Check which travel trailers in my budget fit its towing constraints and show me anything that still needs verification.
-4. Show me the details for this RV and separate verified listing facts from unknown specifications.
-5. Prepare a message to the dealer for this RV, but show me exactly what will be sent and ask for my approval before submitting anything.
+1. I'm not sure what RV fits my family. Ask me one useful question at a time, then show matches within my limits.
+2. Find me a Class A motorhome between $250,000 and $350,000, at least 35 feet long, that sleeps two.
+3. Prepare a dealer message, but show me exactly what will be sent and ask for approval.
 
 ## Positive reviewer test cases
 
@@ -70,14 +71,14 @@ These values must be checked against what the live MCP server actually advertise
 
 **Fixture:** Current MatchRV inventory accessible through the production MCP.
 
-### Positive 2 — Retrieve a specific unit
-**User prompt:** Show me the full MatchRV details for one of those RVs.
+### Positive 2 — Outfitter clarification
+**User prompt:** I need a travel trailer for six, and I am nervous towing anything over 30 feet. I can pay $450 a month with $5,000 down.
 
-**Expected behavior:** Call `get_rv` for the selected unit.
+**Expected behavior:** Call `rv_outfitter` and ask one useful question at a time. Keep 30 feet as the maximum unless the shopper explicitly approves a new limit. Ask for a total purchase-price ceiling; do not infer one from the monthly payment alone. Search when the shopper asks for matches, preserving RV type and length.
 
-**Expected result shape:** Canonical unit details with known facts, provenance/freshness where available, and missing fields represented as unknown rather than inferred.
+**Expected result shape:** A requirement summary with the 30-foot cap and an unverified price ceiling until supplied.
 
-**Fixture:** A unit ID returned by Positive 1.
+**Fixture:** No inventory fixture needed for clarification; search uses current MatchRV inventory.
 
 ### Positive 3 — Compare RVs
 **User prompt:** Compare the top two results and explain the important differences.
@@ -131,7 +132,7 @@ These values must be checked against what the live MCP server actually advertise
 
 ## Release notes
 
-Initial public submission of MatchRV as a remote MCP-backed RV shopping plugin. The plugin provides structured MatchRV inventory search, unit retrieval, comparison, tow-fit evaluation, and a human-approved dealer-contact workflow. Reviewers should expect inventory fields to vary by source; missing specifications are intentionally preserved as unknown/unverified rather than inferred. Dealer contact requires a preview followed by explicit approval.
+Initial public submission of MatchRV as a remote MCP-backed RV shopping plugin. The plugin provides Outfitter clarification, structured MatchRV inventory search, unit retrieval, comparison, tow-fit evaluation, and a human-approved dealer-contact workflow. Reviewers should expect inventory fields to vary by source; missing specifications are intentionally preserved as unknown/unverified rather than inferred. Dealer contact requires a preview followed by explicit approval.
 
 ## Pre-submission blockers/checklist
 
@@ -145,7 +146,7 @@ Initial public submission of MatchRV as a remote MCP-backed RV shopping plugin. 
 - Compare scanned tool names, schemas, descriptions and annotations to this document and actual behavior.
 - Fix/rescan any annotation or schema mismatch before submitting.
 - Complete the portal-generated domain verification challenge.
-- Run all five positive and three negative reviewer tests against the production MCP.
+- Run all five positive and three negative reviewer tests against the production MCP after deployment.
 - Confirm tool responses contain no auth secrets, debug payloads, internal approval tokens, unnecessary personal data, or undisclosed user-related fields.
 - Select United States initially unless MatchRV support/legal readiness covers additional countries.
 - Complete policy attestations only after the above checks pass.

@@ -11,6 +11,7 @@
 /** Where a fact came from. */
 export type FactSource =
   | "dealer_listing" // structured field in the dealer's own inventory listing
+  | "manufacturer_spec" // published specification for an exact verified coach configuration
   | "derived_text" // deterministically parsed from dealer description/features text
   | "derived_model_code" // decoded from the manufacturer floorplan code (e.g. "26BH")
   | "reference_table" // MatchRV curated reference data (e.g. tow ratings)
@@ -23,7 +24,30 @@ export interface Fact<T> {
   value: T | null;
   source: FactSource | null; // null when value is null (nothing to attribute)
   confidence: Confidence | null;
+  /** Listing or manufacturer page that supports this particular value, when known. */
+  sourceUrl?: string;
+  /** When that source was observed, rather than a claim of live availability. */
+  observedAt?: string;
   note?: string;
+}
+
+/** Motorhome ratings remain unknown until tied to the exact coach/chassis. */
+export interface MotorhomeSpecs {
+  uvwLbs: Fact<number>;
+  occcLbs: Fact<number>;
+  cccLbs: Fact<number>;
+  gcwrLbs: Fact<number>;
+  frontAxleRatingLbs: Fact<number>;
+  rearAxleRatingLbs: Fact<number>;
+  receiverHitchRatingLbs: Fact<number>;
+  tongueWeightRatingLbs: Fact<number>;
+  engine: Fact<string>;
+  horsepowerHp: Fact<number>;
+  torqueLbFt: Fact<number>;
+  transmission: Fact<string>;
+  chassis: Fact<string>;
+  /** min(hitch rating, GCWR - GVWR), a screening ceiling at GVWR, not loaded tow capacity. */
+  towCapacityAtGvwrLbs: Fact<number>;
 }
 
 export type RvType =
@@ -80,6 +104,8 @@ export interface CanonicalUnit {
   dryWeightLbs: Fact<number>;
   gvwrLbs: Fact<number>;
   hitchWeightLbs: Fact<number>;
+  /** Present for motorhomes normalized with the expanded ratings contract. */
+  motorhome?: MotorhomeSpecs;
   sleeps: Fact<number>;
   slideouts: Fact<number>;
   freshWaterGal: Fact<number>;
@@ -110,6 +136,7 @@ export interface CanonicalUnit {
   provenance: {
     sourceKind: "dealer_website_snapshot";
     dealerDomain: string;
+    sourceUrl?: string; // exact listing page when supplied by the dealer scrape
     firstSeenAt: string; // ISO
     lastSeenAt: string; // ISO — the freshness anchor for check_availability
   };

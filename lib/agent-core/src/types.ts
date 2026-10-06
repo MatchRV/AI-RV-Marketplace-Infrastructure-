@@ -48,6 +48,43 @@ export type Condition = "new" | "used";
 
 export type SolarStatus = "installed" | "prep" | "none";
 
+export type FuelType = "gas" | "diesel";
+
+/**
+ * Motorhome "Powertrain & Towing" section. Each field is its own Fact: power,
+ * carrying capacity and towing limits are separate questions and are never
+ * inferred from each other or from an engine family (a "Cummins L9" is
+ * 330-450 hp depending on configuration; we only store a rating the source
+ * states for this unit). Fact.note carries the applicable configuration.
+ */
+export interface Powertrain {
+  fuelType: Fact<FuelType>;
+  /** Manufacturer, engine model, displacement as published. */
+  engine: Fact<string>;
+  horsepower: Fact<number>;
+  horsepowerRpm: Fact<number>;
+  torqueLbFt: Fact<number>;
+  /** Single RPM or range as published, e.g. "1,200-1,400". */
+  torqueRpm: Fact<string>;
+  /** Manufacturer, model, number of gears. */
+  transmission: Fact<string>;
+  /** Manufacturer, model, chassis model year. */
+  chassis: Fact<string>;
+  /** Engine/exhaust brake type as published. */
+  engineBrake: Fact<string>;
+}
+
+/** Carrying and towing limits for a motorhome, each kept separate. */
+export interface MotorhomeTowing {
+  cargoCapacityLbs: Fact<number>;
+  gcwrLbs: Fact<number>;
+  frontAxleRatingLbs: Fact<number>;
+  rearAxleRatingLbs: Fact<number>;
+  /** Hitch receiver towing rating. Not proof the combination is within GCWR/GVWR/axle limits. */
+  hitchTowRatingLbs: Fact<number>;
+  tongueWeightLimitLbs: Fact<number>;
+}
+
 export interface DealerRef {
   id: string; // stable slug, e.g. "poulsborv.com:sumner"
   name: string;
@@ -93,6 +130,10 @@ export interface CanonicalUnit {
   generator: Fact<boolean>;
   fourSeason: Fact<boolean>;
   outdoorKitchen: Fact<boolean>;
+
+  /** Motorized RVs only. Absent = nothing known (treat every field as unknown). */
+  powertrain?: Powertrain;
+  towing?: MotorhomeTowing;
 
   /** 0-100 deterministic off-grid readiness score + the receipts. */
   boondocking: {
@@ -167,6 +208,21 @@ export interface Constraints {
   freshWaterMinGal?: number | null;
   /** Soft: weight boondocking readiness heavily in ranking. */
   boondocking?: boolean | null;
+  /** Hard: engine fuel (motorhomes). */
+  fuelType?: FuelType | null;
+  /** Hard minimum: a lower stated rating fails, an unknown rating can never pass. */
+  horsepowerMin?: number | null;
+  /** Soft: ranks units at/above this rating; never excludes. */
+  horsepowerPreferred?: number | null;
+  /** Hard minimum torque, lb-ft (exact unit's rating, never an engine-family max). */
+  torqueMinLbFt?: number | null;
+  torquePreferredLbFt?: number | null;
+  /** Loaded trailer the motorhome must tow. Non-motorized units fail. */
+  trailerWeightLbs?: number | null;
+  /** Loaded trailer tongue weight, if the shopper knows it. */
+  trailerTongueLbs?: number | null;
+  /** Shopper's loaded (weighed) coach weight, if known — checked against GVWR first. */
+  coachLoadedWeightLbs?: number | null;
   sort?: SortKey | null;
 }
 

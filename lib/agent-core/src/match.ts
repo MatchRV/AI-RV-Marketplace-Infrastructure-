@@ -23,6 +23,7 @@ import type {
 } from "./types.js";
 import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
+import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
 
 export class ConstraintError extends Error {
   constructor(
@@ -325,6 +326,44 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  // — hard: powertrain (motorhomes). Only a rating stated for THIS unit
+  //   counts; unknown can never pass, a lower stated rating fails.
+  const pt = powertrainOf(unit);
+  const minRating = (label: string, f: { value: number | null; source: ConstraintCheck["source"] }, min: number, unitLabel: string, field: string) => {
+    if (!isMotorized(unit)) {
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "fail", "not a motorhome", "dealer_listing"));
+    } else if (f.value === null) {
+      unknowns.push(field);
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "unknown", "needs verification — not published for this unit", null));
+    } else {
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, f.value >= min ? "pass" : "fail", `${f.value.toLocaleString()} ${unitLabel}`, f.source));
+    }
+  };
+  if (c.fuelType) {
+    if (!isMotorized(unit)) hardChecks.push(check(`fuel = ${c.fuelType}`, "fail", "not a motorhome", "dealer_listing"));
+    else if (pt.fuelType.value === null) {
+      unknowns.push("fuelType");
+      hardChecks.push(check(`fuel = ${c.fuelType}`, "unknown", "needs verification — not published", null));
+    } else hardChecks.push(check(`fuel = ${c.fuelType}`, pt.fuelType.value === c.fuelType ? "pass" : "fail", pt.fuelType.value, pt.fuelType.source));
+  }
+  if (c.horsepowerMin != null) minRating("horsepower", pt.horsepower, c.horsepowerMin, "hp", "horsepower");
+  if (c.torqueMinLbFt != null) minRating("torque", pt.torqueLbFt, c.torqueMinLbFt, "lb-ft", "torqueLbFt");
+
+  // — hard: tow a loaded trailer. Each limit is checked separately; full
+  //   confirmation needs weighed coach/axle loads, so the best case is
+  //   "unknown" (needs verification) with the cleared ratings listed.
+  let mhTow: MotorhomeTowResult | null = null;
+  if (c.trailerWeightLbs != null) {
+    mhTow = evaluateMotorhomeTow(unit, c.trailerWeightLbs, { tongueLbs: c.trailerTongueLbs, coachLoadedLbs: c.coachLoadedWeightLbs });
+    const label = `tows a ${c.trailerWeightLbs.toLocaleString()} lb trailer`;
+    if (mhTow.verdict === "not_a_motorhome") hardChecks.push(check(label, "fail", "not a motorhome", "dealer_listing"));
+    else if (mhTow.verdict !== "not_yet_confirmed") hardChecks.push(check(label, "fail", mhTow.summary, "computed"));
+    else {
+      unknowns.push("towing limits (loaded coach/axle weights)");
+      hardChecks.push(check(label, "unknown", mhTow.summary, "computed"));
+    }
+  }
+
   // — hard: distance (area guarantee)
   // When the shopper names a place, unresolved dealer coords are a FAIL — never
   // surface FL/AZ inventory as a "local" match for Fife (MAT-34 / MAT-37).
@@ -424,6 +463,28 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     const pts = towFit.verdict === "fits_with_margin" ? 6 : 2;
     score += pts;
     breakdown.push({ label: `tow fit: ${towFit.verdict.replace(/_/g, " ")}`, points: pts });
+  }
+
+  // Preferred (not minimum) power ranks; it never excludes or substitutes.
+  const prefRating = (label: string, v: number | null, pref: number, unitLabel: string) => {
+    if (v === null) {
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: null, detail: "needs verification — not published" });
+    } else if (v >= pref) {
+      score += 8;
+      breakdown.push({ label: `${label} ${v.toLocaleString()} ${unitLabel}`, points: 8 });
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: true, detail: `${v.toLocaleString()} ${unitLabel} stated` });
+    } else {
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: false, detail: `${v.toLocaleString()} ${unitLabel} stated (below preference)` });
+    }
+  };
+  if (c.horsepowerPreferred != null && isMotorized(unit)) prefRating("horsepower", pt.horsepower.value, c.horsepowerPreferred, "hp");
+  if (c.torquePreferredLbFt != null && isMotorized(unit)) prefRating("torque", pt.torqueLbFt.value, c.torquePreferredLbFt, "lb-ft");
+  if (mhTow?.verdict === "not_yet_confirmed") {
+    const cleared = mhTow.checks.filter(x => x.status === "pass").length;
+    if (cleared > 0) {
+      score += 3 * cleared;
+      breakdown.push({ label: `${cleared} published towing limit(s) cleared`, points: 3 * cleared });
+    }
   }
 
   const yearPts = Math.max(0, Math.min(5, unit.year - 2020));

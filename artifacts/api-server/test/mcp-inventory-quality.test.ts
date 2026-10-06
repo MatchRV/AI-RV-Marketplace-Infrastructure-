@@ -5,8 +5,13 @@ import { inventoryQualityIssues, screenMcpInventory } from "../src/services/mcp-
 
 const snapshot = JSON.parse(readFileSync(new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url), "utf8"));
 const records = snapshot.units as CanonicalUnit[];
-const ids = ["vin:7055", "vin:5ZT2WDCC0TG206238", "stk:apache-camping-center:01148", "stk:apache-camping-center:01171"];
-const known = ids.map(id => records.find(unit => unit.id === id)!);
+// Two real FSX category conflicts from the snapshot, plus Cirrus / import-floor
+// cases built from them (those source records were removed with the
+// photo-less Washington inventory).
+const fsx = ["vin:4X4TSMC20TY015593", "vin:4X4TSMC23TY016060"].map(id => records.find(unit => unit.id === id)!);
+const cirrus = (id: string): CanonicalUnit => fsx[0] && ({ ...structuredClone(fsx[0]), id, make: "nuCamp", model: "Cirrus 820", title: "2025 nuCamp Cirrus 820", rvType: "travel_trailer" });
+const floor: CanonicalUnit = fsx[1] && { ...structuredClone(fsx[1]), id: "stk:test:floor", rvType: "travel_trailer", condition: "new", year: 2025, priceUsd: { value: 1000, source: "dealer_listing", confidence: "high" } };
+const known = [...fsx, cirrus("stk:test:cirrus"), floor];
 
 describe("MCP inventory quality quarantine", () => {
   it("withholds actual conflicting records without rewriting source facts or provenance", () => {

@@ -5,6 +5,7 @@
 
 import type { CanonicalUnit, Constraints, Fact } from "./types.js";
 import { buildContext, evaluateUnit } from "./match.js";
+import { isMotorized, powertrainOf, towingOf } from "./motorhome.js";
 
 export interface CompareRow {
   spec: string;
@@ -35,13 +36,29 @@ const f = <T,>(fact: Fact<T>): { v: T | null; s: string | null } => ({
   s: fact.source,
 });
 
+type Row = {
+  spec: string;
+  unit: string;
+  get: (u: CanonicalUnit) => { v: string | number | boolean | null; s: string | null };
+  best?: "min" | "max";
+};
+
+// Powertrain & Towing. No "best" on limits: a higher rating isn't a fit by itself.
+const motorhomeRows: Row[] = [
+  { spec: "fuel", unit: "", get: (u) => f(powertrainOf(u).fuelType) },
+  { spec: "engine", unit: "", get: (u) => f(powertrainOf(u).engine) },
+  { spec: "horsepower", unit: "hp", get: (u) => f(powertrainOf(u).horsepower), best: "max" },
+  { spec: "torque", unit: "lb-ft", get: (u) => f(powertrainOf(u).torqueLbFt), best: "max" },
+  { spec: "transmission", unit: "", get: (u) => f(powertrainOf(u).transmission) },
+  { spec: "chassis", unit: "", get: (u) => f(powertrainOf(u).chassis) },
+  { spec: "engine/exhaust brake", unit: "", get: (u) => f(powertrainOf(u).engineBrake) },
+  { spec: "cargo capacity", unit: "lbs", get: (u) => f(towingOf(u).cargoCapacityLbs) },
+  { spec: "GCWR", unit: "lbs", get: (u) => f(towingOf(u).gcwrLbs) },
+  { spec: "hitch tow rating", unit: "lbs", get: (u) => f(towingOf(u).hitchTowRatingLbs) },
+  { spec: "tongue weight limit", unit: "lbs", get: (u) => f(towingOf(u).tongueWeightLimitLbs) },
+];
+
 export function compareUnits(units: CanonicalUnit[], constraints: Constraints): CompareResult {
-  type Row = {
-    spec: string;
-    unit: string;
-    get: (u: CanonicalUnit) => { v: string | number | boolean | null; s: string | null };
-    best?: "min" | "max";
-  };
 
   const rows: Row[] = [
     { spec: "price", unit: "USD", get: (u) => f(u.priceUsd), best: "min" },
@@ -68,6 +85,7 @@ export function compareUnits(units: CanonicalUnit[], constraints: Constraints): 
       get: (u) => ({ v: u.boondocking.score, s: u.boondocking.score === null ? null : "computed" }),
       best: "max",
     },
+    ...(units.some(isMotorized) ? motorhomeRows : []),
     { spec: "condition", unit: "", get: (u) => ({ v: u.condition, s: "dealer_listing" }) },
     { spec: "dealer", unit: "", get: (u) => ({ v: `${u.dealer.name} (${u.dealer.city})`, s: "dealer_listing" }) },
   ];

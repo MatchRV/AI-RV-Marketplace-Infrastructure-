@@ -137,6 +137,14 @@ export const constraintsSchema = z.object({
   freshWaterMinGal: z.number().min(5).max(300).nullish(),
   boondocking: z.boolean().nullish(),
   sort: sortEnum.nullish(),
+  fuelType: z.enum(["gas", "diesel"]).nullish(),
+  horsepowerMin: z.number().min(50).max(1000).nullish(),
+  horsepowerPreferred: z.number().min(50).max(1000).nullish(),
+  torqueMinLbFt: z.number().min(100).max(3000).nullish(),
+  torquePreferredLbFt: z.number().min(100).max(3000).nullish(),
+  trailerWeightLbs: z.number().min(500).max(40_000).nullish(),
+  trailerTongueLbs: z.number().min(50).max(5_000).nullish(),
+  coachLoadedWeightLbs: z.number().min(3_000).max(80_000).nullish(),
 });
 
 // ── Tool descriptors ───────────────────────────────────────────────────────

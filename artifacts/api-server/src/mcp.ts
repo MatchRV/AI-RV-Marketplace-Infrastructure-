@@ -6,8 +6,10 @@ import {
   compactSearchResult,
   compareUnits,
   constraintsSchema,
+  evaluateMotorhomeTow,
   evaluateTowFit,
   evaluateUnit,
+  powertrainReport,
   resolveTowVehicle,
   runSearch,
   type Constraints,
@@ -43,9 +45,12 @@ const compareInput = z.object({
 });
 
 const towInput = z.object({
-  vehicle: z.string().min(2).max(120),
+  vehicle: z.string().min(2).max(120).optional(),
   unit_ids: z.array(z.string().min(3).max(120)).min(1).max(6),
-});
+  trailer_weight_lbs: z.number().min(500).max(40_000).optional(),
+  trailer_tongue_lbs: z.number().min(50).max(5_000).optional(),
+  coach_loaded_weight_lbs: z.number().min(3_000).max(80_000).optional(),
+}).refine((v) => v.vehicle || v.trailer_weight_lbs, { message: "Pass vehicle (truck towing an RV) or trailer_weight_lbs (motorhome towing a trailer)." });
 
 
 function cleanConstraints(value: Record<string, unknown> | undefined | null): Constraints {
@@ -74,6 +79,21 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
     vehicle: "towVehicle",
     max_weight: "maxWeightLbs",
     max_weight_lbs: "maxWeightLbs",
+    fuel: "fuelType",
+    fuel_type: "fuelType",
+    horsepower_min: "horsepowerMin",
+    min_horsepower: "horsepowerMin",
+    hp_min: "horsepowerMin",
+    horsepower_preferred: "horsepowerPreferred",
+    torque_min: "torqueMinLbFt",
+    torque_min_lb_ft: "torqueMinLbFt",
+    min_torque: "torqueMinLbFt",
+    torque_preferred: "torquePreferredLbFt",
+    trailer_weight: "trailerWeightLbs",
+    trailer_weight_lbs: "trailerWeightLbs",
+    tow_trailer_lbs: "trailerWeightLbs",
+    trailer_tongue_lbs: "trailerTongueLbs",
+    coach_loaded_weight_lbs: "coachLoadedWeightLbs",
   };
   const rvSynonyms: Record<string, string> = {
     "travel trailer": "travel_trailer",
@@ -145,6 +165,18 @@ function constraintsFromQuery(query: string | undefined): Partial<Constraints> {
     const n = parseInt(raw.replace(/,/g, ""), 10);
     if (Number.isFinite(n) && n > 1000) out.priceMaxUsd = n;
   }
+  if (/\bdiesel\b/.test(q)) out.fuelType = "diesel";
+  else if (/\bgas(oline)?\b/.test(q)) out.fuelType = "gas";
+  // "450 hp" / "at least 450 horsepower" = minimum; "450 hp preferred"/"ideally" = preference.
+  const hp = /(\d{3})\s*(?:hp|horsepower)\b(\s*(?:preferred|ideally|if possible))?/.exec(q);
+  if (hp) out[hp[2] || /(prefer|ideally)[^.]{0,30}\d{3}\s*(?:hp|horse)/.test(q) ? "horsepowerPreferred" : "horsepowerMin"] = parseInt(hp[1], 10);
+  const tq = /([\d,]{3,5})\s*(?:lb[\s.-]*ft|ft[\s.-]*lbs?|pound[\s-]*feet)/.exec(q);
+  if (tq) out.torqueMinLbFt = parseInt(tq[1].replace(/,/g, ""), 10);
+  const trailer = /([\d,]{4,6})\s*(?:-?\s*(?:lb|lbs|pound))?\s*(?:loaded\s+)?(?:trailer|car|toad)/.exec(q) ?? /tow(?:ing)?\s+(?:a\s+)?([\d,]{4,6})/.exec(q);
+  if (trailer) {
+    const n = parseInt(trailer[1].replace(/,/g, ""), 10);
+    if (n >= 500 && n <= 40_000) out.trailerWeightLbs = n;
+  }
   return out as Partial<Constraints>;
 }
 
@@ -210,7 +242,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance ΓÇö never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance ΓÇö never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -276,7 +308,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Get RV details",
       description:
-        "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Never invent missing specifications.",
+        "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Motorhomes include a powertrainAndTowing section (what powers it / what it can carry / what it can tow), each value with its status. Never invent missing specifications or assign an engine family's top rating to a unit.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -285,7 +317,8 @@ function buildMatchRvServer(): McpServer {
       const inv = getInventory();
       const unit = inv.byId.get(unit_id);
       if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
-      return textResult({ unit, dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      const powertrainAndTowing = powertrainReport(unit);
+      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
     },
   );
 
@@ -318,21 +351,27 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Evaluate tow fit",
       description:
-        "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs. This is screening guidance, not a towing-safety guarantee. Configuration-specific payload, GVWR/GCWR, hitch ratings, passengers and cargo can change the result.",
+        "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs, or (with trailer_weight_lbs) whether 1-6 motorhomes can tow a loaded trailer. Motorhome mode checks each limit separately — loaded coach vs GVWR first, then hitch tow rating, GCWR, tongue limit and axle loads — and never reports 'safe'; the best result is 'not yet confirmed' with the ratings that clear. This is screening guidance, not a towing-safety guarantee.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(towInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ vehicle, unit_ids }) => {
+    async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs }) => {
       const inv = getInventory();
-      const resolution = resolveTowVehicle(vehicle);
+      const resolution = vehicle ? resolveTowVehicle(vehicle) : null;
       const fits = [];
+      const motorhomeTow = [];
       for (const id of unit_ids) {
         const unit = inv.byId.get(id);
         if (!unit) return textResult({ error: "unit_not_found", unit_id: id }, true);
-        fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
+        if (resolution) fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
+        if (trailer_weight_lbs) motorhomeTow.push({ ...evaluateMotorhomeTow(unit, trailer_weight_lbs, { tongueLbs: trailer_tongue_lbs, coachLoadedLbs: coach_loaded_weight_lbs }), title: unit.title });
       }
-      return textResult({ resolution, fits, safetyNotice: "Verify the exact tow-vehicle configuration, payload sticker, GVWR/GCWR, hitch limits, passengers and cargo before towing." });
+      return textResult({
+        ...(resolution ? { resolution, fits } : {}),
+        ...(motorhomeTow.length ? { motorhomeTow } : {}),
+        safetyNotice: "Verify the exact vehicle configuration, weighed coach and axle loads, GVWR/GCWR, hitch and tongue limits, passengers and cargo before towing. Engine horsepower and torque do not override any weight limit.",
+      });
     },
   );
 

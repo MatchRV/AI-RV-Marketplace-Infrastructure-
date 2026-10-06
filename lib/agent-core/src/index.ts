@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./geo.js";
 export * from "./tow.js";
+export * from "./motorhome.js";
 export * from "./enrich.js";
 export * from "./normalize.js";
 export * from "./dealer-registry.js";

@@ -1,9 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { CanonicalUnit, InventoryIndex } from "@workspace/agent-core";
 import { inventoryQualityIssues, screenMcpInventory } from "../src/services/mcp-inventory-quality";
 
-const snapshot = JSON.parse(readFileSync(new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url), "utf8"));
+const snapshotPath = new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url);
+const snapshot = JSON.parse(
+  existsSync(snapshotPath)
+    ? readFileSync(snapshotPath, "utf8")
+    : gunzipSync(readFileSync(new URL(`${snapshotPath.href}.gz`))).toString("utf8"),
+);
 const records = snapshot.units as CanonicalUnit[];
 // Two real FSX category conflicts from the snapshot, plus Cirrus / import-floor
 // cases built from them (those source records were removed with the

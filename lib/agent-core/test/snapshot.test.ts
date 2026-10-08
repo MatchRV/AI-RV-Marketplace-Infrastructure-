@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,13 +18,17 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const snapshot = JSON.parse(
-  readFileSync(resolve(here, "../data/inventory.snapshot.json"), "utf-8"),
+  (() => {
+    const plain = resolve(here, "../data/inventory.snapshot.json");
+    if (existsSync(plain)) return readFileSync(plain, "utf-8");
+    return gunzipSync(readFileSync(`${plain}.gz`)).toString("utf-8");
+  })(),
 ) as InventorySnapshot;
 const idx = indexSnapshot(snapshot);
 afterEach(() => vi.useRealTimers());
 
 describe("committed inventory snapshot", () => {
-  it("holds a real, well-formed corpus", () => {
+  it("holds a real, well-formed corpus", { timeout: 30000 }, () => {
     expect(idx.units.length).toBeGreaterThan(900);
     expect(snapshot.stats.dealers).toBeGreaterThan(20);
     expect(snapshot.stats.units).toBe(idx.units.length);
@@ -69,7 +74,7 @@ describe("committed inventory snapshot", () => {
     expect(fl.every((u) => u.dealer.lat !== null)).toBe(true);
   });
 
-  it("every unit an assistant sees has photos, a model and a price", () => {
+  it("every unit an assistant sees has photos, a model and a price", { timeout: 30000 }, () => {
     for (const u of idx.units) {
       expect(u.images.length).toBeGreaterThan(0);
       expect(u.priceUsd.value).not.toBeNull();

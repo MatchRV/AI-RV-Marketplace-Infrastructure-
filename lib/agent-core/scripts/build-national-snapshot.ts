@@ -9,6 +9,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeRecord, type RawScrapeRecord } from "../src/normalize.js";
@@ -165,7 +166,7 @@ const ptKnown = (k: string) => mh.filter(u => (u.powertrain as any)?.[k]?.value 
 console.log(`motorhomes: ${mh.length}  fuel ${ptKnown("fuelType")}  hp ${ptKnown("horsepower")}  torque ${ptKnown("torqueLbFt")}  engine ${ptKnown("engine")}  chassis ${ptKnown("chassis")}  hitchTow ${ptKnown("hitchTowRatingLbs")}  gcwr ${ptKnown("gcwrLbs")}`);
 console.log(`coverage: length ${known("lengthFt")}  sleeps ${known("sleeps")}  dryWeight ${known("dryWeightLbs")}  gvwr ${known("gvwrLbs")}  hitch ${known("hitchWeightLbs")}  bunkhouse ${known("bunkhouse")}`);
 
-writeFileSync(SNAPSHOT, JSON.stringify({
+const payload = JSON.stringify({
   schemaVersion: 1,
   builtAt: new Date().toISOString(),
   datasetNote: "MatchRV nationwide dealer inventory snapshot: prior MarketCheck/Replit records with photos, model and price, plus fresh dealer-website scrapes (which replace older records for the same dealer). Records without photos, a model or a price were removed.",
@@ -178,5 +179,7 @@ writeFileSync(SNAPSHOT, JSON.stringify({
     withSleeps: known("sleeps"),
   },
   units,
-}));
-console.log(`wrote ${SNAPSHOT}`);
+});
+writeFileSync(SNAPSHOT, payload);
+writeFileSync(`${SNAPSHOT}.gz`, gzipSync(payload, { level: 9 }));
+console.log(`wrote ${SNAPSHOT} (+ .gz)`);

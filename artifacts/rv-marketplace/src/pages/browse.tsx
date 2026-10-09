@@ -81,7 +81,10 @@ export type VisibilityReportData = {
   missing: MissingRow[];
   images: ImageRow[];
   queryCoverage: QueryRow[];
-  actions: ActionRow[];
+  /** Omitted in teaser JSON so the ranked fix list is never public. */
+  actions?: ActionRow[];
+  /** Teaser JSON carries only the count of gated fixes. */
+  actionsCount?: number;
   disclaimer?: string;
   inventory_url?: string;
   teaserSummary?: string;
@@ -285,7 +288,7 @@ function TeaserView({ report }: { report: VisibilityReportData }) {
           <div className="p-5 sm:p-6 select-none pointer-events-none" aria-hidden="true" style={{ filter: "blur(6px)" }}>
             <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Prioritized fix list</p>
             <div className="space-y-3">
-              {(report.actions.length ? report.actions : [{ priority: 1, title: "Fix structured data", why: "…", effort: "Medium", impact: "High" }, { priority: 2, title: "Fix price data", why: "…", effort: "Medium", impact: "High" }, { priority: 3, title: "Fix sleeping capacity", why: "…", effort: "Medium", impact: "Medium" }]).slice(0, 5).map((a) => (
+              {Array.from({ length: Math.min(Math.max(report.actionsCount ?? report.actions?.length ?? 3, 1), 5) }, (_, i) => ({ priority: i + 1, title: "Locked fix — unlock to view", why: "Details included in the full report." })).map((a) => (
                 <div key={a.priority} className="flex gap-3 items-start">
                   <div className="w-8 h-8 rounded-lg bg-[#0B1117] text-[#00CED1] flex items-center justify-center font-black text-sm shrink-0">
                     {a.priority}
@@ -653,7 +656,7 @@ function FullReportView({ report, isDemo }: { report: VisibilityReportData; isDe
           </div>
         </div>
         <div className="space-y-3">
-          {report.actions.map((a) => (
+          {(report.actions ?? []).map((a) => (
             <div key={a.priority} className="bg-card border border-border rounded-2xl p-5 flex gap-4">
               <div className="shrink-0 w-10 h-10 rounded-xl bg-[#0B1117] text-[#00CED1] flex items-center justify-center font-black">
                 {a.priority}

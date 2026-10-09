@@ -28,6 +28,7 @@ import { Terms } from "@/pages/terms";
 import { Privacy } from "@/pages/privacy";
 import { DealerLogin } from "@/pages/dealer-login";
 import { ForDealers } from "@/pages/for-dealers";
+import { ChatGPTAdvertising } from "@/pages/chatgpt-advertising";
 import { AnswerEngine } from "@/pages/answer-engine";
 import { DealerAeoToolkit } from "@/pages/dealer-aeo-toolkit";
 import { DealerVisibilityDashboard } from "@/pages/dealer-visibility-dashboard";
@@ -198,6 +199,7 @@ function AppRouter() {
       <Route path="/terms">{() => <Redirect to="/terms-and-conditions" replace />}</Route>
       <Route path="/privacy" component={Privacy} />
       <Route path="/for-dealers" component={ForDealers} />
+      <Route path="/dealers/chatgpt-advertising" component={ChatGPTAdvertising} />
       <Route path="/dealer-tools" component={DealerAeoToolkit} />
       <Route path="/dealer-visibility" component={DealerVisibilityDashboard} />
       <Route path="/dealers/ai">{() => <Redirect to="/for-dealers" replace />}</Route>

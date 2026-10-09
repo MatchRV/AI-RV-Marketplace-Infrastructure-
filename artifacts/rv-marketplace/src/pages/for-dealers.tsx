@@ -89,6 +89,14 @@ export function ForDealers() {
 
 
 
+        <section className="rounded-2xl border border-[#00CED1]/40 bg-[#0B1117] text-white p-6 sm:p-8 mb-10">
+          <p className="text-[#00CED1] text-xs font-bold tracking-widest uppercase mb-3">New · Early Interest</p>
+          <h2 className="text-2xl sm:text-3xl font-display font-bold mb-3">ChatGPT Advertising for RV Dealers</h2>
+          <p className="text-white/75 leading-relaxed mb-5 max-w-2xl">MatchRV is preparing dealerships for emerging ChatGPT product-feed advertising opportunities. Explore inventory readiness and join the early-interest list while platform eligibility and access are being established.</p>
+          <a href="/dealers/chatgpt-advertising" className="inline-flex items-center gap-2 bg-[#00CED1] text-[#0B1117] rounded-lg px-6 py-3.5 font-bold hover:brightness-110">Explore ChatGPT Advertising <ArrowRight className="w-4 h-4" /></a>
+          <p className="text-white/50 text-xs mt-4">Coming soon. Advertising access and placement are not yet guaranteed.</p>
+        </section>
+
         {/* Why this matters — CSO verbatim core, locked claims only */}
         <section className="mb-10">
           <h2 className="text-2xl font-display font-bold mb-4">Why this matters</h2>

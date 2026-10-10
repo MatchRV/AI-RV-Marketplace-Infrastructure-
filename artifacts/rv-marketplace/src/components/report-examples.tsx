@@ -1,23 +1,25 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import reports from "@/data/report-examples.json";
+
+const examples = [
+  { id: "full", title: "Full AI Visibility Report", file: "matchrv-ai-visibility-report-tacoma-rv", copy: "Scorecard, dealership snapshot, shopper questions, inventory health, listing spot-checks and five ranked fixes." },
+  { id: "free", title: "Free Visibility Snapshot", file: "matchrv-teaser-tacoma-rv", copy: "A one-page overview with the readiness score, three key findings and a short shopper-question table." },
+];
 
 export function ReportExamples({ full = false }: { full?: boolean }) {
+  const [selected, setSelected] = useState("full");
+  const example = examples.find(item => item.id === selected)!;
   return <div className="report-examples">
-    <p className="brand-eyebrow">Completed audits · real findings</p>
-    <h2>See what the report actually finds.</h2>
-    <p className="brand-muted">Examples from completed September 27, 2026 audits. Dealership names and contact details are removed. The counts and scores are unchanged; these are dated findings, not a live feed.</p>
-    <div className="report-example-grid">{reports.map(report => <article className="report-example" key={report.label}>
-      <span className="sample-label">Real audit · identity withheld</span>
-      <h3>{report.label}</h3><p>{report.scope} · {report.auditedAt}</p>
-      <h4>What the audit found</h4>
-      <ul>{(full ? report.missing : report.missing.slice(0,3)).map(row => <li key={row.field}><strong>{row.missing} of {row.of}</strong> records missing {row.field.replaceAll("_", " ").toLowerCase()}.<p>On the page for shoppers is not the same as readable for AI.</p></li>)}</ul>
-      <p className="brand-muted">“Missing” means absent or not extracted in the audit data. It does not prove that a specification is absent from every source.</p>
-      <details open={full}><summary>Score summary and next steps</summary>
-        <dl>{[["Inventory completeness",report.scores.inventory_health],["AI readability",report.scores.ai_readability],["Crawlability",report.scores.crawlability],["Query coverage",report.scores.query_coverage],["Overall",report.scores.overall]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}/100</dd></div>)}</dl>
-        <h4>Prioritized improvements</h4><ol>{(full ? report.actions : report.actions.slice(0,2)).map(action=><li key={action.priority}><strong>{action.title}</strong><p>{action.why}</p>{typeof action.affected_units === "number" && <small>{action.affected_units} affected records</small>}</li>)}</ol>
-      </details>
+    <p className="brand-eyebrow">The MatchRV report standard</p>
+    <h2>See the full report and the free snapshot.</h2>
+    <p className="brand-muted">Tacoma RV Center · Fife, WA · Website observed September 21, 2026. These completed reports show the format used for full audits and free snapshots. Each new report uses that dealership’s own evidence.</p>
+    <div className="report-reference-cards">{examples.map(item => <article key={item.id}>
+      <h3>{item.title}</h3><p>{item.copy}</p>
+      <div className="quick-report-delivery"><a className="brand-button" href={`/reports/${item.file}.pdf`} target="_blank" rel="noopener noreferrer">View PDF</a><a className="brand-button secondary" href={`/reports/${item.file}.pdf`} download>Download PDF</a></div>
     </article>)}</div>
-    <p className="brand-fine">Source: completed MatchRV inventory audits. Scores summarize inventory readiness; they do not measure ChatGPT rankings, citations, leads, or sales. Listing-level source URLs are omitted to protect dealership identity.</p>
-    {!full && <Link href="/visibility-report" className="brand-text-link">View the full report examples →</Link>}
+    {full ? <>
+      <div className="report-preview-tabs" role="tablist" aria-label="Report previews">{examples.map(item => <button key={item.id} role="tab" id={`tab-${item.id}`} aria-selected={selected === item.id} aria-controls="report-preview" onClick={() => setSelected(item.id)}>{item.title}</button>)}</div>
+      <div role="tabpanel" id="report-preview" aria-labelledby={`tab-${selected}`}><iframe key={selected} title={`${example.title} — Tacoma RV Center`} src={`/reports/${example.file}.html`} className="report-reference-preview" /><p className="brand-fine">Prefer a separate page? <a href={`/reports/${example.file}.html`} target="_blank" rel="noopener noreferrer">Open the {example.title.toLowerCase()}</a>.</p></div>
+    </> : <Link href="/visibility-report" className="brand-text-link">Explore both report examples →</Link>}
   </div>;
 }

@@ -60,7 +60,7 @@ export function DealerHome() {
     </section>
     <ShoppingStatistic/>
     <section className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">A clearer view of your digital showroom</p><h2>What the Visibility Report covers</h2></div><p>Understand what’s visible, what’s missing, and where your team can make a difference.<br/><br/>The report is the starting point for preparing your inventory data for AI-powered shopping.</p></div><div className="coverage-grid">{coverage.map(([Icon,title,copy],i)=><article className="coverage-card" key={title}><div className="coverage-icon"><Icon size={22}/><span>0{i+1}</span></div><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
-    <section className="brand-soft-section" id="sample-report"><div className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">See the details</p><h2>Useful findings. A clear next step.</h2></div><p>Completed audits with dealership identities removed.</p></div><SampleReportPreview/></div></section>
+    <section className="brand-soft-section" id="sample-report"><div className="brand-container brand-section"><div className="section-heading"><div><p className="brand-eyebrow">See the details</p><h2>Useful findings. A clear next step.</h2></div><p>See the full report and the one-page free snapshot.</p></div><SampleReportPreview/></div></section>
     <section className="brand-container brand-section"><div className="center-heading"><p className="brand-eyebrow">From visibility to action</p><h2>Three steps to a clearer picture</h2></div><div className="steps-grid">{[['Share your website','Start with your dealership website and the inventory you want reviewed.'],['Review your findings','See observed answers, information gaps, and the evidence behind them.'],['Put your plan to work','Give your team a focused list of improvements and track what changes.']].map(([title,copy],i)=><article key={title}><span className="step-number">0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <ShoppingStatistic research/>
     <section className="brand-soft-section"><div className="brand-container brand-section brand-faq"><p className="brand-eyebrow">Before you begin</p><h2>Frequently asked questions</h2>{[
@@ -75,7 +75,7 @@ export function DealerHome() {
 }
 
 export function VisibilityReport() {
-  return <BrandLayout><SEO title="Real Dealer AI Visibility Report Examples" description="Explore dated findings from completed MatchRV audits, with dealership identities removed: missing specifications, inventory readiness scores, and prioritized improvements." canonical="/visibility-report"/>
+  return <BrandLayout><SEO title="Real Dealer AI Visibility Report Examples" description="View the full Tacoma RV Center AI Visibility Report and the one-page Free Visibility Snapshot, including downloadable PDFs." canonical="/visibility-report"/>
     <div className="brand-container brand-section"><Link href="/" className="brand-text-link">← Dealer AI Visibility</Link><h1>Real reports. Visible evidence.</h1><ReportExamples full/><div className="report-bottom"><h2>Discuss a report for your dealership.</h2><ReportRequest/></div></div>
   </BrandLayout>;
 }

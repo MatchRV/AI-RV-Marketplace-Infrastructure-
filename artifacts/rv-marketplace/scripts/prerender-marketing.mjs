@@ -11,6 +11,7 @@ const dist = resolve(root, "dist/public");
 const prerenderDir = resolve(root, "dist/prerender");
 const shell = await readFile(resolve(dist, "index.html"), "utf8");
 const pages = [
+  ["/advertising", "/src/pages/dealer-advertising.tsx", "DealerAdvertising", "advertising"],
   ["/", "/src/pages/dealer-home.tsx", "DealerHome", "home"],
   ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers"],
   ["/visibility-report", "/src/pages/dealer-home.tsx", "VisibilityReport", "visibility-report"],
@@ -19,6 +20,7 @@ const pages = [
 
 const vite = await createServer({
   configFile: resolve(root, "vite.config.ts"),
+  optimizeDeps: { noDiscovery: true, include: [] },
   server: { middlewareMode: true },
   appType: "custom",
 });

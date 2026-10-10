@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { BookReportCall } from "@/pages/book";
 import { DealerHome, VisibilityReport } from "@/pages/dealer-home";
 import { Browse } from "@/pages/browse";
+import { McpSetup } from "@/pages/mcp-setup";
 import { DealerAdvertising } from "@/pages/dealer-advertising";
 import { Shop } from "@/pages/shop";
 import { registerMatchrvTools } from "@/agent/webmcp";
@@ -183,6 +184,7 @@ function AppRouter() {
       <Route path="/book" component={BookReportCall} />
       <Route path="/shop" component={Shop} />
       <Route path="/advertising" component={DealerAdvertising} />
+      <Route path="/mcp-setup" component={McpSetup} />
       <Route path="/answers" component={AnswerEngine} />
       <Route path="/browse/:slug?" component={Browse} />
       <Route path="/listing/:id" component={ListingDetail} />

@@ -185,6 +185,7 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       "/for-dealers": "for-dealers",
       "/visibility-report": "visibility-report",
       "/advertising": "advertising",
+      "/mcp-setup": "mcp-setup",
       "/about": "about",
     };
     const prerenderedName = prerenderedPages[req.path];

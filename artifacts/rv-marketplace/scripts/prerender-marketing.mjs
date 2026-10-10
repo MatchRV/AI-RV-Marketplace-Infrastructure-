@@ -11,6 +11,7 @@ const dist = resolve(root, "dist/public");
 const prerenderDir = resolve(root, "dist/prerender");
 const shell = await readFile(resolve(dist, "index.html"), "utf8");
 const pages = [
+  ["/mcp-setup", "/src/pages/mcp-setup.tsx", "McpSetup", "mcp-setup"],
   ["/advertising", "/src/pages/dealer-advertising.tsx", "DealerAdvertising", "advertising"],
   ["/", "/src/pages/dealer-home.tsx", "DealerHome", "home"],
   ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers"],

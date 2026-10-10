@@ -38,7 +38,7 @@ export function BrandLayout({ children }: { children: ReactNode }) {
           </button>
           <div id="dealer-services-links" className="brand-services-links" hidden={!servicesOpen}>
             <Link href="/" aria-current={path === "/" ? "page" : undefined} onClick={() => setServicesOpen(false)}><strong>AI Visibility</strong><span>Reports and inventory improvements</span></Link>
-            <Link href="/advertising" aria-current={path === "/advertising" ? "page" : undefined} onClick={() => setServicesOpen(false)}><strong>ChatGPT &amp; Google Ads</strong><span>Advertising for RV dealerships</span></Link>
+            <Link href="/advertising" aria-current={path === "/advertising" ? "page" : undefined} onClick={() => setServicesOpen(false)}><strong>ChatGPT Advertising</strong><span>Reach shoppers in ChatGPT</span></Link>
           </div>
         </div>
         <Link href="/shop" aria-current={shop ? "page" : undefined} className={shop ? "active" : ""}>Shop with Your AI</Link>

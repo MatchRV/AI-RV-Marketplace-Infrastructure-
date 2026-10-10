@@ -113,32 +113,90 @@ function powertrainFacts(c: Rec): Pick<CanonicalUnit, "powertrain" | "towing"> {
 const fresh: CanonicalUnit[] = [];
 const freshRejects = new Map<string, number>();
 const freshPerDealer = new Map<string, number>();
+const typeRejects: { dom: string; r: Rec; info: DealerInfo | undefined }[] = [];
+
+const acceptUnit = (dom: string, u: CanonicalUnit, r: Rec, info: DealerInfo | undefined): boolean => {
+  if (info) {
+    // Chain scrapes (e.g. Camping World) carry a per-unit "City, ST" location —
+    // prefer it over the file-level dealer state so units land in the right state.
+    const locMatch = /^\s*(.+?),\s*([A-Z]{2})\s*$/.exec(r.dealer_location ?? "");
+    const locState = locMatch && US_STATE_CODES.has(locMatch[2]) ? locMatch[2] : null;
+    const city = (locState ? locMatch![1] : (info.city || "Unknown")).split(",")[0].trim();
+    u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
+  }
+  u.provenance.dealerDomain = dom;
+  if (isMotorized(u)) Object.assign(u, powertrainFacts(r.clean ?? {}));
+  if (!usable(u)) return false;
+  fresh.push(u);
+  freshPerDealer.set(dom, (freshPerDealer.get(dom) ?? 0) + 1);
+  return true;
+};
+
 for (const [dom, recs] of freshByDomain) {
   const info = dealerDir.get(dom);
   for (const r of recs) {
     const res = normalizeRecord(`url:${r.source_detail_url ?? r.url ?? Math.random()}`, toRaw(r));
     if ("reject" in res) {
       freshRejects.set(res.reject.reason, (freshRejects.get(res.reject.reason) ?? 0) + 1);
+      if (res.reject.reason === "unresolvable_rv_type") typeRejects.push({ dom, r, info });
       continue;
     }
-    const u = res.unit;
-    if (info) {
-      // Chain scrapes (e.g. Camping World) carry a per-unit "City, ST" location —
-      // prefer it over the file-level dealer state so units land in the right state.
-      const locMatch = /^\s*(.+?),\s*([A-Z]{2})\s*$/.exec(r.dealer_location ?? "");
-      const locState = locMatch && US_STATE_CODES.has(locMatch[2]) ? locMatch[2] : null;
-      const city = (locState ? locMatch![1] : (info.city || "Unknown")).split(",")[0].trim();
-      u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
-    }
-    u.provenance.dealerDomain = dom;
-    if (isMotorized(u)) Object.assign(u, powertrainFacts(r.clean ?? {}));
-    if (!usable(u)) {
+    if (!acceptUnit(dom, res.unit, r, info)) {
       freshRejects.set("unusable_model_photo_price", (freshRejects.get("unusable_model_photo_price") ?? 0) + 1);
-      continue;
     }
-    fresh.push(u);
-    freshPerDealer.set(dom, (freshPerDealer.get(dom) ?? 0) + 1);
   }
+}
+
+// ── Second pass: recover type-rejects whose type is knowable ────────────────
+// (a) Dealer sites often organize by type in the URL (/travel-trailers/...)
+// (b) The same make+model elsewhere in the corpus resolves to one type —
+//     apply it only when unambiguous (≥3 votes, ≥80% share).
+const URL_TYPE: [RegExp, string][] = [
+  [/fifth[-_ ]?wheel|5th[-_ ]?wheel/i, "fifth_wheel"],
+  [/toy[-_ ]?hauler/i, "toy_hauler"],
+  [/travel[-_ ]?trailer/i, "travel_trailer"],
+  [/class[-_ ]?a/i, "class_a"],
+  [/class[-_ ]?b/i, "class_b"],
+  [/class[-_ ]?c/i, "class_c"],
+  [/truck[-_ ]?camper/i, "truck_camper"],
+  [/pop[-_ ]?up|folding|tent[-_ ]?trailer|a[-_ ]?frame/i, "popup_camper"],
+];
+const urlType = (r: Rec): string | null => {
+  const s = `${r.source_inventory_url ?? ""} ${r.source_detail_url ?? ""} ${r.url ?? ""}`;
+  for (const [re, t] of URL_TYPE) if (re.test(s)) return t;
+  return null;
+};
+
+const modelVotes = new Map<string, Map<string, number>>();
+for (const u of fresh) {
+  if (!u.make || !u.model) continue;
+  const key = `${u.make.toLowerCase().trim()}|${u.model.toLowerCase().trim()}`;
+  const votes = modelVotes.get(key) ?? new Map<string, number>();
+  votes.set(u.rvType, (votes.get(u.rvType) ?? 0) + 1);
+  modelVotes.set(key, votes);
+}
+const modelType = (r: Rec): string | null => {
+  const c = r.clean ?? {};
+  const make = String(c.make ?? r.make ?? "").toLowerCase().trim();
+  const model = String(c.model ?? r.model ?? "").toLowerCase().trim();
+  const votes = make && model ? modelVotes.get(`${make}|${model}`) : undefined;
+  if (!votes) return null;
+  const total = [...votes.values()].reduce((a, b) => a + b, 0);
+  const [top, count] = [...votes.entries()].sort((a, b) => b[1] - a[1])[0];
+  return count >= 3 && count / total >= 0.8 ? top : null;
+};
+
+let recoveredUrl = 0, recoveredModel = 0;
+for (const { dom, r, info } of typeRejects) {
+  const t = urlType(r) ?? modelType(r);
+  if (!t) continue;
+  const raw = toRaw(r);
+  raw.rv_type = t;
+  const res = normalizeRecord(`url:${r.source_detail_url ?? r.url ?? Math.random()}`, raw);
+  if ("reject" in res) continue;
+  if (!acceptUnit(dom, res.unit, r, info)) continue;
+  if (urlType(r) === t) recoveredUrl++; else recoveredModel++;
+  freshRejects.set("unresolvable_rv_type", (freshRejects.get("unresolvable_rv_type") ?? 0) - 1);
 }
 
 // ── Existing snapshot, cleaned ──────────────────────────────────────────────
@@ -164,6 +222,7 @@ const known = (k: keyof CanonicalUnit) => units.filter(u => (u[k] as any)?.value
 
 console.log(`old snapshot: ${old.units.length}  dropped unusable: ${oldDrops.unusable}  replaced by fresh: ${oldDrops.replacedByFresh}`);
 console.log(`fresh scraped units kept: ${fresh.length} from ${freshPerDealer.size} dealers  rejects: ${JSON.stringify(Object.fromEntries(freshRejects))}`);
+console.log(`type recovery: ${recoveredUrl} via source URL, ${recoveredModel} via model consensus`);
 console.log(`FINAL units: ${units.length}  dealers: ${dealers.size}  states: ${states.size}`);
 console.log(`by state: ${[...states].sort((a, b) => b[1] - a[1]).map(([s, n]) => `${s}=${n}`).join(" ")}`);
 const mh = units.filter(isMotorized);

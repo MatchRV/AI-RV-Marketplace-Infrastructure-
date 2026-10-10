@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { InventoryCoverage } from "@/components/inventory-coverage";
 import { ArrowRight, Search, Building2, ListChecks, FileSearch, BarChart3, ClipboardCheck, ChevronRight } from "lucide-react";
 import { BrandLayout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
@@ -41,7 +42,7 @@ function ShoppingStatistic({ research = false }: { research?: boolean }) {
 
 export function DealerHome() {
   return <BrandLayout><SEO title="Dealer AI Visibility Reports" description="Run a free quick check of your dealership website and see one Gemini answer to an RV shopper question near your city. Explore evidence-backed full audits." canonical="/"/>
-    <section className="brand-container dealer-hero"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#request-report" className="brand-text-link">Get a free sample report of your website <ChevronRight size={16}/></a></div>
+    <section className="brand-container dealer-hero"><div><p className="brand-eyebrow"><Search size={16}/> AI visibility for RV dealerships</p><h1>Is Your Inventory<br/>Invisible To AI Buyers?</h1><p className="brand-lead">See how your dealership appears in AI answers, where your inventory information falls short, and what to improve first.</p><ReportRequest/><a href="#request-report" className="brand-text-link">Get a free sample report of your website <ChevronRight size={16}/></a><InventoryCoverage compact/></div>
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>

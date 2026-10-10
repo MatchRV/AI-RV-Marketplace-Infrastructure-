@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { InventoryCoverage } from "@/components/inventory-coverage";
 import { ArrowRight, Copy, Plug, Search, MessageSquare } from "lucide-react";
 import { BrandLayout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
@@ -28,6 +29,7 @@ export function McpSetup() {
   return <BrandLayout>
     <SEO title="MCP Setup — Connect MatchRV to Your AI" description="Connect MatchRV’s public RV shopping tools to Claude, ChatGPT, or another compatible AI app. Copy the MCP address and follow the setup steps." canonical="/mcp-setup"/>
     <section className="brand-container mcp-intro"><p className="brand-eyebrow"><Plug size={17}/> MCP Setup</p><h1>Your AI. Real RV inventory.</h1><p className="brand-lead">Connect MatchRV to a compatible AI app so you can search RV inventory, compare options, and explore published specs in your own conversation.</p><p>MCP is the connection that lets your AI use MatchRV’s shopping tools. Add it once, then tell your assistant what you’re looking for.</p>
+      <InventoryCoverage/>
       <div className="mcp-flow" aria-label="How the connection works"><span><MessageSquare size={22}/> Your AI app</span><ArrowRight aria-hidden="true"/><span><Plug size={22}/> MatchRV connection</span><ArrowRight aria-hidden="true"/><span><Search size={22}/> RV inventory</span></div>
     </section>
     <section className="brand-soft-section"><div className="brand-container brand-section"><p className="brand-eyebrow">Step 1 · Copy the connection address</p><h2>Meet your AI’s new RV shopping tool.</h2><div className="mcp-connection"><label htmlFor="mcp-endpoint">Remote MCP server URL</label><input id="mcp-endpoint" value={endpoint} readOnly onFocus={event => event.currentTarget.select()}/><CopyButton text={endpoint} label="Copy connection address"/><p className="brand-fine">Connection name: MatchRV · Transport: Streamable HTTP · Public shopping access: no sign-in or API key</p></div></div></section>

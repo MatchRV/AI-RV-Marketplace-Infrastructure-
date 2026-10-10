@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { InventoryCoverage } from "@/components/inventory-coverage";
 import { ArrowRight, MessageCircle, Sparkles } from "lucide-react";
 
 const assistants = [
@@ -24,6 +25,7 @@ export function AiShoppingFuture() {
       <p>Tell an assistant about the people you travel with, your budget, and the adventures you have in mind. The search should begin with your life, not a maze of filters.</p>
     </div>
 
+    <InventoryCoverage/>
     <div className="ai-brand-row" aria-label="Examples of AI assistants">
       {assistants.map(([name, icon]) => <div className="ai-brand-badge" key={name}><img src={`/images/ai-brands/${icon}.svg`} alt=""/><span>{name}</span></div>)}
     </div>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MatchRV AI Visibility Report — Tacoma RV Center</title>
+<style>
+  :root{
+    --navy:#0a2233; --navy2:#10344d; --teal:#00bfa6; --teal-dark:#087f6d;
+    --ink:#17293a; --muted:#4a5f70; --line:#d9e3e8; --wash:#eef4f5;
+    --good:#0e8a5f; --warn:#b7790f; --bad:#c03a2b; --paper:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{font:16px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#dfe7ea;color:var(--ink);margin:0}
+  .sheet{max-width:960px;margin:28px auto;background:var(--paper);box-shadow:0 2px 18px rgba(10,34,51,.18)}
+  .cover{background:var(--navy);color:#fff;padding:44px 52px 36px;position:relative;overflow:hidden}
+  .cover::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;background:var(--teal)}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{font-weight:900;font-style:italic;font-size:40px;letter-spacing:-.5px;line-height:1;
+    color:#fff;-webkit-text-stroke:1.5px #04121d;text-shadow:2px 2px 0 #04121d}
+  .logo span{color:var(--teal)}
+  .logo-sub{font-size:12px;letter-spacing:2px;color:#9fc3cf;text-transform:uppercase}
+  .cover h1{font-size:34px;line-height:1.15;margin:26px 0 6px;font-weight:800}
+  .cover .for{font-size:19px;color:var(--teal);font-weight:700;margin:0}
+  .cover .meta{color:#c4d6de;font-size:14px;margin:10px 0 0}
+  .cover-grid{display:flex;gap:28px;margin-top:26px;flex-wrap:wrap}
+  .score-badge{background:#fff;color:var(--navy);border-radius:10px;padding:18px 22px;min-width:220px}
+  .score-badge .n{font-size:52px;font-weight:900;line-height:1}
+  .score-badge .l{font-size:13px;color:var(--muted);margin-top:2px}
+  .score-badge .v{font-weight:800;font-size:15px;margin-top:6px}
+  .cover-points{flex:1;min-width:260px;font-size:14.5px}
+  .cover-points div{border-top:1px solid #29465c;padding:9px 0}
+  .cover-points b{color:var(--teal)}
+  .example-stripe{background:#e6f4f1;border-bottom:1px solid #9fd3c7;color:#0d4a3f;
+    padding:10px 52px;font-size:13.5px}
+  .body{padding:36px 52px 48px}
+  h2{font-size:22px;margin:38px 0 8px;color:var(--navy);border-bottom:3px solid var(--teal);
+    padding-bottom:6px}
+  h3{font-size:17px;margin:22px 0 6px;color:var(--navy)}
+  p{margin:8px 0}
+  .lede{font-size:17.5px}
+  .muted{color:var(--muted);font-size:14px}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;margin:12px 0}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--navy);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.4px}
+  tr:nth-child(even) td{background:#f6fafb}
+  .pill{display:inline-block;font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:4px}
+  .yes{background:#dff2e7;color:#0c6b44} .part{background:#fdf0c8;color:#7a5c07} .no{background:#f9dcd7;color:#96241a}
+  .bar{height:10px;background:#e2ebee;border-radius:5px;overflow:hidden;min-width:110px}
+  .bar i{display:block;height:100%;background:var(--teal-dark)}
+  .bar i.low{background:var(--bad)} .bar i.mid{background:var(--warn)} .bar i.high{background:var(--good)}
+  .cols{display:flex;gap:18px;flex-wrap:wrap}
+  .factbox{flex:1;min-width:240px;background:var(--wash);border-top:4px solid var(--navy);
+    padding:14px 16px;font-size:14.5px}
+  .factbox b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
+  .fix{border:1px solid var(--line);border-top:5px solid var(--teal-dark);padding:16px 18px;margin:14px 0}
+  .fix h3{margin:0 0 4px;font-size:17px}
+  .fix .impact{font-size:13px;font-weight:700;color:var(--teal-dark)}
+  .fix ol,.fix ul{margin:8px 0 4px;padding-left:20px}
+  .toc{background:var(--wash);padding:14px 20px;font-size:14.5px;margin:18px 0}
+  .toc b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .foot{background:var(--navy);color:#c4d6de;padding:22px 52px;font-size:13px}
+  .foot b{color:#fff}
+  .btn-row{margin:20px 0}
+  .btnrow button,.btn-row button{background:var(--teal-dark);color:#fff;border:0;padding:11px 20px;font-size:15px;
+    border-radius:6px;cursor:pointer;font-weight:700}
+  @media print{
+    body{background:#fff} .sheet{margin:0;box-shadow:none;max-width:none}
+    .btn-row{display:none} .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    h2{break-after:avoid} table,.fix{break-inside:avoid}
+  }
+  @page{margin:14mm}
+
+@media(max-width:640px){.sheet{margin:0}.cover,.body,.foot,.example-stripe{padding-left:20px;padding-right:20px}.grid,.cover-grid,.cols{flex-direction:column}.score,.score-badge{min-width:0}.cover-points,.factbox{min-width:0}table{font-size:12px}th,td{padding:7px 5px}.bar{min-width:50px}}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="cover">
+    <div class="brand">
+      <div>
+        <div class="logo">Match<span>RV</span></div>
+        <div class="logo-sub">AI Visibility Reports</div>
+      </div>
+    </div>
+    <h1>AI Visibility Report</h1>
+    <p class="for">Prepared for Tacoma RV Center — Fife, WA</p>
+    <p class="meta">6300 Pacific Hwy E, Fife, WA 98424 &nbsp;|&nbsp; tacomarv.com &nbsp;|&nbsp; Observed September 21, 2026 &nbsp;|&nbsp; Report #MRV-2026-0921-TR</p>
+    <div class="cover-grid">
+      <div class="score-badge">
+        <div class="n">57<span style="font-size:22px">/100</span></div>
+        <div class="l">OVERALL AI READINESS — OBSERVED</div>
+        <div class="v">Your data exists, but AI can’t see it</div>
+      </div>
+      <div class="cover-points">
+        <div><b>3 things working:</b> year / make / model / VIN / floorplan on 100% of units analyzed, prices on 12 of 14, site fully crawlable (sitemap + robots clean)</div>
+        <div><b>3 things costing you leads:</b> listing pages render as an empty shell without JavaScript — AI sees nothing; sleeps + length + RV type missing on every unit analyzed; no per-unit location line</div>
+        <div><b>Bottom line:</b> roughly 1 in 4 shopper questions could be answered from your site. Fix #1 is a single web-vendor job that unlocks everything else.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="example-stripe"><b>Observed audit — real figures.</b> Every number below comes from the September 21, 2026 crawl: 342 inventory URLs found, 40 pages sampled, 14 units analyzed. Shopper questions show what your website could prove on that date.</div>
+
+  <div class="body">
+    <div class="btn-row"><button onclick="print()">Print / Save as PDF</button>
+      <span class="muted"> &nbsp;Tip: use “Save as PDF”, margins Default, background graphics ON.</span></div>
+
+    <div class="toc"><b>What’s inside (4 pages)</b>
+      1. 60-second summary &nbsp;·&nbsp; 2. Scorecard &nbsp;·&nbsp; 3. Dealership snapshot &nbsp;·&nbsp;
+      4. What AI shoppers asked &nbsp;·&nbsp; 5. Inventory health &nbsp;·&nbsp; 6. Listing spot-checks &nbsp;·&nbsp;
+      7. Top 5 fixes ranked by impact &nbsp;·&nbsp; 8. Next steps &amp; methodology
+    </div>
+
+    <h2>1. The 60-second summary</h2>
+    <p class="lede">Tacoma RV has a paradox most dealers would envy: <b>your data is good, but it’s invisible.</b> When our crawler read your listing pages the way an AI assistant reads them — plain page content, no JavaScript — all 40 sampled pages came back as an empty shell: no specs, no price, no VIN, no headline. A shopper’s browser runs the scripts and sees a full page; an AI reader often doesn’t. On top of that, four fields AI filters on — RV type, sleeping capacity, length, and per-unit location — were missing on <b>all 14 units analyzed</b>. The result: your site could prove the answer to only about <b>1 in 4</b> of the 26 shopper questions we tested. None of this is an inventory problem — it’s a visibility problem, and Fix #1 resolves most of it at once.</p>
+    <div class="cols">
+      <div class="factbox"><b>What we checked</b>342 inventory URLs in sitemap · 40 pages sampled · 14 units analyzed · 26 shopper questions · static-page read (no JavaScript), the way AI crawlers see you</div>
+      <div class="factbox"><b>What it costs you</b>Every question your site can’t prove sends the shopper to whoever AI <i>can</i> verify — including the dealer a mile down Pacific Hwy with complete, readable listings.</div>
+      <div class="factbox"><b>What good looks like</b>Score 80+: pages readable without scripts, every unit tagged with type + sleeps + length + location, AI cites your pages by URL in most answers.</div>
+    </div>
+
+    <h2>2. Scorecard — where you stand</h2>
+    <p class="muted">Each score is 0–100. Bars show your result; the note says what it means in plain English.</p>
+    <table>
+      <tr><th style="width:26%">Category</th><th style="width:14%">Score</th><th>What it measures — and what your score means</th></tr>
+      <tr><td><b>Overall AI readiness</b></td><td><b>57</b><div class="bar"><i class="mid" style="width:57%"></i></div></td><td>Can an AI assistant confidently send a shopper to you? <b>Needs work</b> — strong data underneath, blocked by readability.</td></tr>
+      <tr><td><b>Inventory health</b></td><td><b>70</b><div class="bar"><i class="mid" style="width:70%"></i></div></td><td>Do your listings carry the fields shoppers filter on? <b>Best of the dealers audited so far</b> — identity + weights strong, four fields at zero.</td></tr>
+      <tr><td><b>AI readability</b></td><td><b>20</b><div class="bar"><i class="low" style="width:20%"></i></div></td><td>Can AI extract facts from your pages without running scripts? <b>Critical.</b> All 40 sampled pages read as an empty shell.</td></tr>
+      <tr><td><b>Shopper-question coverage</b></td><td><b>24</b><div class="bar"><i class="low" style="width:24%"></i></div></td><td>Of 26 real shopper questions, how many could your site prove? <b>About 1 in 4.</b> Missing RV type alone blocks every category filter.</td></tr>
+      <tr><td><b>Crawlability</b></td><td><b>100</b><div class="bar"><i class="high" style="width:100%"></i></div></td><td>Can search engines and AI reach your site (sitemap, robots, broken pages)? <b>Perfect</b> — 42 of 42 pages loaded, sitemap clean, 7 harmless redirects.</td></tr>
+    </table>
+
+    <h2>3. Dealership snapshot — the facts we verified</h2>
+    <div class="cols">
+      <div class="factbox"><b>Dealership</b>Tacoma RV Center<br>6300 Pacific Hwy E, Fife, WA 98424<br>Sales: (253) 236-3914<br>Service: (253) 455-7837 — 8507 Pacific Hwy E, Tacoma</div>
+      <div class="factbox"><b>Online presence</b>Website: tacomarv.com<br>342 inventory URLs in sitemap<br>Active buying guides + travel blog<br>Trade-in evaluations advertised</div>
+      <div class="factbox"><b>Inventory mix (observed)</b>Hundreds of new &amp; pre-owned towables — travel trailers, fifth wheels, toy haulers. Brands seen: Brinkley, Alliance, Heartland, Keystone, Forest River, Lance, KZ. Service center with 21 indoor bays.</div>
+    </div>
+    <p class="muted" style="margin-top:10px">Market context: you anchor the Pacific Hwy / I-5 RV corridor — Baydo’s RV Center (4819 20th St E) is roughly a mile away, with Poulsbo RV and Sumner-area stores minutes off. When AI can’t read your pages, it names whoever it can read. Readability is how the biggest lot wins AI answers, not just foot traffic.</p>
+
+    <h2>4. What AI shoppers asked — and could your site prove the answer?</h2>
+    <p>Representative questions from the 26 tested. “NO” means your site couldn’t confirm a single match — usually for lack of one field, not lack of inventory.</p>
+    <table>
+      <tr><th>Shopper question (plain English)</th><th>Result</th><th>Why</th></tr>
+      <tr><td>“Travel trailer under $40,000 near Tacoma?”</td><td><span class="pill no">NO</span></td><td>No unit carries an explicit RV type — AI can’t tell which of your 14 are travel trailers. 0 confirmed.</td></tr>
+      <tr><td>“Fifth wheel under $75,000?”</td><td><span class="pill no">NO</span></td><td>Same type problem. You stock fifth wheels (Montana, Cyclone seen) but no page says so in data.</td></tr>
+      <tr><td>“Which units sleep 6?”</td><td><span class="pill no">NO</span></td><td>Sleeping capacity missing on 14 of 14 units analyzed.</td></tr>
+      <tr><td>“Towables 30 feet or less?”</td><td><span class="pill no">NO</span></td><td>Length missing on 14 of 14 units analyzed.</td></tr>
+      <tr><td>“Which listings publish dry weight + GVWR?”</td><td><span class="pill part">PARTIAL</span></td><td>Your strength: weights on 13/14 and 11/14. Still blocked as an answer by missing type + location.</td></tr>
+      <tr><td>“What’s in stock at Tacoma RV right now?”</td><td><span class="pill part">PARTIAL</span></td><td>Availability on 12 of 14 — but per-unit location missing on all 14, so AI can’t place them in Fife.</td></tr>
+    </table>
+    <p class="muted">Full paid appendix lists all 26 questions with per-unit match tables and the exact missing field behind each failure.</p>
+
+    <h2>5. Inventory health — which facts are missing</h2>
+    <p>Share of the 14 units analyzed where the field was extractable. Counts are observed, not estimated.</p>
+    <table>
+      <tr><th>Field</th><th style="width:22%">Found on</th><th>Why it matters to a sale</th></tr>
+      <tr><td><b>Year / Make / Model</b></td><td>14/14 · 100%<div class="bar"><i class="high" style="width:100%"></i></div></td><td>Perfect. The minimum for any recommendation — you have it.</td></tr>
+      <tr><td><b>VIN</b></td><td>14/14 · 100%<div class="bar"><i class="high" style="width:100%"></i></div></td><td>Perfect. Rare — a real trust edge over competitors.</td></tr>
+      <tr><td><b>Floorplan</b></td><td>14/14 · 100%<div class="bar"><i class="high" style="width:100%"></i></div></td><td>Perfect. Shoppers searching “bunkhouse” / “rear living” can match you.</td></tr>
+      <tr><td><b>Dry weight</b></td><td>13/14 · 93%<div class="bar"><i class="high" style="width:93%"></i></div></td><td>Only the KZ Durango D232MLD is missing it. One row to fix.</td></tr>
+      <tr><td><b>Price</b></td><td>12/14 · 86%<div class="bar"><i class="high" style="width:86%"></i></div></td><td>2 category pages lack a price. Every budget filter needs this number.</td></tr>
+      <tr><td><b>Availability</b></td><td>12/14 · 86%<div class="bar"><i class="high" style="width:86%"></i></div></td><td>Same 2 gaps. AI won’t recommend a unit it can’t confirm is available.</td></tr>
+      <tr><td><b>GVWR</b></td><td>11/14 · 79%<div class="bar"><i class="high" style="width:79%"></i></div></td><td>3 units missing. Needed alongside dry weight for tow questions.</td></tr>
+      <tr><td><b>Slides</b></td><td>10/14 · 71%<div class="bar"><i class="mid" style="width:71%"></i></div></td><td>4 units missing. Space shoppers filter on this.</td></tr>
+      <tr><td><b>RV type</b></td><td>0/14 · 0%<div class="bar"><i class="low" style="width:2%"></i></div></td><td><b>Blocks every category question.</b> No page states travel trailer / fifth wheel / toy hauler as data.</td></tr>
+      <tr><td><b>Sleeps</b></td><td>0/14 · 0%<div class="bar"><i class="low" style="width:2%"></i></div></td><td><b>Blocks every family question.</b> 14 of 14 blank.</td></tr>
+      <tr><td><b>Length</b></td><td>0/14 · 0%<div class="bar"><i class="low" style="width:2%"></i></div></td><td><b>Blocks every size question</b> (“under 30 feet”). 14 of 14 blank.</td></tr>
+      <tr><td><b>Per-unit location</b></td><td>0/14 · 0%<div class="bar"><i class="low" style="width:2%"></i></div></td><td><b>Blocks “near me” proof.</b> AI won’t assume Fife — each page must say it.</td></tr>
+    </table>
+
+    <h2>6. Listing spot-checks — 3 real examples</h2>
+    <table>
+      <tr><th>Unit (observed)</th><th>What’s good</th><th>What’s missing → consequence</th></tr>
+      <tr><td><b>2026 Alliance Avenue 332RL</b><br><span class="muted">tacomarv.com/inventory/…91371</span></td><td>Full identity, VIN, price, weights, floorplan</td><td>No RV type, sleeps, length, or location → invisible to category, family, size, and “near me” filters.</td></tr>
+      <tr><td><b>2025 Brinkley Model G 4000</b><br><span class="muted">tacomarv.com/inventory/…32966</span></td><td>Full identity, VIN, price, weights, floorplan</td><td>Same four blanks. A flagship toy hauler no AI can categorize.</td></tr>
+      <tr><td><b>2022 Rockwood Mini Lite 2507S</b><br><span class="muted">Used · tacomarv.com/inventory/…23017A</span></td><td>Identity + VIN present in data feed</td><td>Same four blanks — plus the page reads empty without JavaScript, so most AI readers see nothing at all.</td></tr>
+    </table>
+    <p class="muted">Paid appendix lists every affected unit URL per issue (40 pages for the readability fix) so your web vendor can work row by row.</p>
+
+    <h2>7. Top 5 fixes — ranked by lead impact</h2>
+
+    <div class="fix"><h3>Fix 1 — Make listing pages readable without JavaScript + add Vehicle structured data</h3>
+      <div class="impact">IMPACT: HIGHEST · unlocks all 40 sampled pages at once — one web-vendor job</div>
+      <p><b>Problem:</b> Static HTML of every sampled VDP carries no specs, price, VIN, headline, or structured data. Crawlers and AI readers without JavaScript see an empty shell. This single fix raises readability, coverage, and overall together.</p>
+      <ol><li>Ask your vendor for server-side rendering (or pre-rendering) of /inventory/ pages: price, specs, VIN, and H1 in the raw HTML.</li><li>Add Product/Vehicle schema with identity, offer, availability, and labeled specs.</li><li>Use one clear year/make/model H1 per unit with consistent spec labels.</li></ol></div>
+
+    <div class="fix"><h3>Fix 2 — Tag every unit with an explicit RV type</h3>
+      <div class="impact">IMPACT: HIGH · unblocks all category filters (travel trailer / fifth wheel / toy hauler / Class)</div>
+      <p><b>Problem:</b> 0 of 14 units analyzed state their RV type as data. Every “travel trailer under $X” and “fifth wheel under $Y” question fails on this one field.</p>
+      <ol><li>Add a type field to each unit: Travel Trailer, Fifth Wheel, Toy Hauler, Class A/B/C, etc.</li><li>Show it as page text, not just a category breadcrumb.</li></ol></div>
+
+    <div class="fix"><h3>Fix 3 — Add sleeps + length to every unit</h3>
+      <div class="impact">IMPACT: HIGH · unlocks family + size questions</div>
+      <p><b>Problem:</b> Both fields are 0 of 14. Two columns of factory data recover the two most-asked towable filters.</p>
+      <ol><li>Copy factory sleeps + length into spec fields: “Sleeps 6”, “Length 33 ft 11 in”.</li></ol></div>
+
+    <div class="fix"><h3>Fix 4 — Put a per-unit location line on every listing</h3>
+      <div class="impact">IMPACT: MEDIUM-HIGH · unlocks “near me” proof</div>
+      <p><b>Problem:</b> 0 of 14 units state their location. AI never substitutes your city — each page must say “On the lot in Fife, WA” itself.</p></div>
+
+    <div class="fix"><h3>Fix 5 — Close the small gaps: 2 prices, 3 GVWRs, 4 slide counts</h3>
+      <div class="impact">IMPACT: MEDIUM · finishes the fields you’re already strong on</div>
+      <p><b>Problem:</b> Price missing on 2 category pages, GVWR on 3 units, slides on 4. An hour of cleanup takes four fields to near-100%.</p></div>
+
+    <h2>8. What happens next + how we measured</h2>
+    <h3>Recommended next step</h3>
+    <p>Fix 1 goes to your website vendor; Fixes 2–5 are data entry on 14+ units. Because your underlying data is already strong (70/100 inventory health), most dealers in your position gain <b>15–25 points</b> overall from this set. MatchRV re-tests after the work and issues an updated scorecard, so you <i>see</i> the lift before paying for ongoing monitoring.</p>
+    <div class="cols">
+      <div class="factbox"><b>This report</b>One-time AI Visibility Audit — this document + full appendix (all 26 questions, per-unit match tables, all affected URLs).</div>
+      <div class="factbox"><b>Optional: MatchRV monitoring</b>Monthly re-test + alerts when new units go live with missing type/sleeps/length, or pages slip back to script-only. Keeps your score (and AI referrals) from sliding.</div>
+    </div>
+    <h3>Methodology (so you can trust it)</h3>
+    <p class="muted">Observed September 21, 2026, 18:57 UTC · 342 inventory URLs in sitemap · 40 VDPs sampled (42/42 loaded, 7 redirects) · 14 units analyzed field-by-field · 26 shopper questions across price, type, length, weight, sleeps, and availability · static-HTML extraction without JavaScript, the way AI crawlers read you. We never guess specs, never invent inventory, and never substitute the audit city for per-unit location.</p>
+  </div>
+
+  <div class="foot"><b>MatchRV</b> · AI Visibility Reports · Confidential — prepared for Tacoma RV Center · Questions? Reply to your MatchRV contact with report #MRV-2026-0921-TR.</div>
+</div>
+</body>
+</html>

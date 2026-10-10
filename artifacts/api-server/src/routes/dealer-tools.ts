@@ -1,3 +1,4 @@
+import { buildVisibilitySnapshot } from "../lib/visibility-snapshot";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
@@ -135,6 +136,7 @@ type GeminiSearchStep = {
 
 const quickReportSchema = z.object({
   website: z.string().trim().min(4).max(300),
+  dealership: z.string().trim().max(120).optional(),
   city: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
   state: z.string().trim().min(2).max(80).regex(/^[\p{L}][\p{L} .'-]*$/u),
   name: z.string().trim().min(2).max(120).optional(),
@@ -194,7 +196,7 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
   window.count++; quickReportWindows.set(key, window); quickReportsActive++;
   res.setHeader("Cache-Control", "no-store");
   try {
-    const { website, city, state, name, email } = parsed.data;
+    const { website, dealership, city, state, name, email } = parsed.data;
     const source = /^https?:\/\//i.test(website) ? website : `https://${website}`;
     let first: PageSnapshot;
     try { first = await fetchPage(source); }
@@ -243,7 +245,8 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
       { label: "sleeping capacity", test: (p: PageSnapshot) => /(sleeps|sleeping capacity)\s*[:\-]?\s*\d{1,2}/i.test(p.text) },
       { label: "Vehicle structured data", test: (p: PageSnapshot) => /"@type"\s*:\s*"Vehicle"/i.test(p.html) },
     ];
-    const findings = checks.map(check => ({ field: check.label, missing: pages.filter(p => !check.test(p)).length, checked: pages.length }));
+    const detailPages = [...new Map(pages.filter(p => /\/(product\/|rvs\/20\d{2}|inventory\/[^/?]+|rv\/[^/?]+)/i.test(new URL(p.url).pathname)).map(p => [p.url, p])).values()];
+    const findings = checks.map(check => ({ field: check.label, missing: detailPages.filter(p => !check.test(p)).length, checked: detailPages.length }));
     const gemini = aiResult?.[0];
     const interaction = gemini?.status === "fulfilled" ? (gemini.value.interaction || gemini.value) : null;
     const blocks = interaction?.steps?.filter(step => step.type === "model_output").flatMap(step => step.content || []) || [];
@@ -258,10 +261,11 @@ router.post("/dealer-tools/quick-report", async (req: Request, res: Response) =>
     const aiMessage = !question ? "The sampled pages lacked enough priced RV inventory to ask a fair shopper question. No Gemini question was sent." : gemini?.status === "rejected" ? ((gemini.reason as Error)?.name === "TimeoutError" ? "Gemini did not answer in time. The website findings are still available; please try again later for the AI answer." : "Gemini could not complete the AI search. The website findings are still available; please try again later.") : !answer ? "Gemini did not provide a cited answer. The website findings are still available." : null;
     const reportId = randomUUID();
     const location = formatDealerLocation(city, state);
-    const report = { name, website: first.url, location, checkedAt, findings, ai: { question, answer: answer || null, sources }, note };
+    const snapshot = buildVisibilitySnapshot(findings, location);
+    const report = { name, dealership, snapshot, website: first.url, location, checkedAt, findings, ai: { question, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null }, note };
     for (const [id, value] of deliveredReports) if (now - value.createdAt > 3_600_000) deliveredReports.delete(id);
     deliveredReports.set(reportId, { report, email, createdAt: now });
-    res.json({ reportId, website: first.url, location, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
+    res.json({ reportId, snapshot, dealership: dealership || null, website: first.url, location, checkedAt, pages: pages.map(p => ({ url: p.url, title: p.title })), findings, ai: { question, model: question ? model : null, answer: answer || null, sources, siteWasCited: question && answer ? siteWasCited : null, status: !question ? "skipped" : answer ? "answered" : "unavailable", message: aiMessage }, note });
   } catch (error) {
     console.error("[quick-report] unexpected failure", error);
     res.status(422).json({ error: "report_unavailable", message: "We could not finish that check. Please try again later." });

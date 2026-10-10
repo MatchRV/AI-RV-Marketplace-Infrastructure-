@@ -75,7 +75,7 @@ export function DealerHome() {
 }
 
 export function VisibilityReport() {
-  return <BrandLayout><SEO title="Real Dealer AI Visibility Report Examples" description="Explore dated findings from completed MatchRV audits, with dealership identities removed: missing specifications, inventory readiness scores, and prioritized improvements." canonical="/visibility-report"/>
+  return <BrandLayout><SEO title="Real Dealer AI Visibility Report Examples" description="View the full Tacoma RV Center AI Visibility Report and the one-page Free Visibility Snapshot, including downloadable PDFs." canonical="/visibility-report"/>
     <div className="brand-container brand-section"><Link href="/" className="brand-text-link">← Dealer AI Visibility</Link><h1>Real reports. Visible evidence.</h1><ReportExamples full/><div className="report-bottom"><h2>Discuss a report for your dealership.</h2><ReportRequest/></div></div>
   </BrandLayout>;
 }

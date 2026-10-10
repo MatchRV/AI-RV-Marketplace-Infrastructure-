@@ -26,6 +26,7 @@ if (!outDir || !dealersPath) {
 }
 
 const bare = (d: string) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+const US_STATE_CODES = new Set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" "));
 const usable = (u: CanonicalUnit) =>
   u.images.length > 0 && u.priceUsd.value !== null && !!u.model && !/^(unknown|other|n\/a)$/i.test(u.model.trim());
 
@@ -122,8 +123,12 @@ for (const [dom, recs] of freshByDomain) {
     }
     const u = res.unit;
     if (info) {
-      const city = (info.city || "Unknown").split(",")[0].trim();
-      u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: info.state, lat: null, lng: null, website: `https://${dom}` };
+      // Chain scrapes (e.g. Camping World) carry a per-unit "City, ST" location —
+      // prefer it over the file-level dealer state so units land in the right state.
+      const locMatch = /^\s*(.+?),\s*([A-Z]{2})\s*$/.exec(r.dealer_location ?? "");
+      const locState = locMatch && US_STATE_CODES.has(locMatch[2]) ? locMatch[2] : null;
+      const city = (locState ? locMatch![1] : (info.city || "Unknown")).split(",")[0].trim();
+      u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
     }
     u.provenance.dealerDomain = dom;
     if (isMotorized(u)) Object.assign(u, powertrainFacts(r.clean ?? {}));

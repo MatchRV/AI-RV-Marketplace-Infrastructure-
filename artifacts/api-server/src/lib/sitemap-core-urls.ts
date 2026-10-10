@@ -1,5 +1,7 @@
 /** Core marketing/browse URLs formerly in public/sitemap.xml (static). */
 export const CORE_SITEMAP_URLS: string[] = [
+  "https://matchrv.com/advertising",
+  "https://matchrv.com/visibility-report",
   "https://matchrv.com/shop",
   "https://matchrv.com/for-dealers",
   "https://matchrv.com/",

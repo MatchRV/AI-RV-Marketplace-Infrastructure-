@@ -12,7 +12,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeRecord, type RawScrapeRecord } from "../src/normalize.js";
+import { normalizeRecord, normalizeRvType, type RawScrapeRecord } from "../src/normalize.js";
 import type { CanonicalUnit, Fact } from "../src/types.js";
 import { fact } from "../src/enrich.js";
 import { emptyPowertrain, isMotorized } from "../src/motorhome.js";
@@ -34,28 +34,39 @@ const usable = (u: CanonicalUnit) =>
 type DealerInfo = { name: string; city: string; state: string };
 const dealerDir = new Map<string, DealerInfo>();
 for (const d of JSON.parse(readFileSync(dealersPath, "utf-8")).dealers) {
-  for (const u of [d.website, d.final_url, d.url]) if (u) dealerDir.set(bare(u), { name: d.name, city: d.city, state: d.state });
+  for (const u of [d.website, d.final_url, d.url]) {
+    if (!u) continue;
+    dealerDir.set(bare(u), { name: d.name, city: d.city, state: d.state });
+    // Chain store pages (Camping World /dealer/{slug}) get a per-store key
+    // matching the scraper's fileSlug so each store resolves its own metadata.
+    const store = /\/dealer\/([a-z0-9-]+)/.exec(u);
+    if (store) dealerDir.set(`campingworld-${store[1]}`, { name: d.name, city: d.city ?? "", state: d.state ?? "" });
+  }
 }
 
 // ── Fresh scrape records ────────────────────────────────────────────────────
 type Rec = Record<string, any>;
-const freshByDomain = new Map<string, Rec[]>();
+// Keyed by output-file slug, not domain: chain scrapes (Camping World stores)
+// share one domain across many files and must not collapse into each other.
+const freshByDomain = new Map<string, { dom: string; recs: Rec[] }>();
 const completeDomains = new Set<string>();
 const latestFile = new Map<string, string>();
 for (const f of readdirSync(outDir).filter(f => f.endsWith(".json")).sort()) latestFile.set(f.split("_")[0], f);
-for (const f of latestFile.values()) {
+for (const [fileKey, f] of latestFile) {
   const doc = JSON.parse(readFileSync(join(outDir, f), "utf-8"));
   const dom = bare(doc.source_meta?.dealer_domain ?? doc.listings?.[0]?.dealer_domain ?? "");
   completeDomains.add(dom);
-  freshByDomain.set(dom, doc.listings ?? []);
+  freshByDomain.set(fileKey, { dom, recs: doc.listings ?? [] });
 }
 const partialDir = join(outDir, "partial");
 if (existsSync(partialDir)) {
   for (const f of readdirSync(partialDir).filter(f => f.endsWith(".ndjson"))) {
-    const recs = readFileSync(join(partialDir, f), "utf-8").split("\n").filter(Boolean).map(l => JSON.parse(l));
+    const recs = readFileSync(join(partialDir, f), "utf-8").split("\n").filter(Boolean)
+      .map(l => { try { return JSON.parse(l) as Rec; } catch { return null; } }).filter((r): r is Rec => r !== null);
     if (!recs.length) continue;
+    const fileKey = f.replace(/\.ndjson$/, "");
     const dom = bare(recs[0].dealer_domain ?? "");
-    if (!completeDomains.has(dom)) freshByDomain.set(dom, recs);
+    if (!latestFile.has(fileKey)) freshByDomain.set(fileKey, { dom, recs });
   }
 }
 
@@ -117,11 +128,16 @@ const typeRejects: { dom: string; r: Rec; info: DealerInfo | undefined }[] = [];
 
 const acceptUnit = (dom: string, u: CanonicalUnit, r: Rec, info: DealerInfo | undefined): boolean => {
   if (info) {
-    // Chain scrapes (e.g. Camping World) carry a per-unit "City, ST" location —
-    // prefer it over the file-level dealer state so units land in the right state.
-    const locMatch = /^\s*(.+?),\s*([A-Z]{2})\s*$/.exec(r.dealer_location ?? "");
+    // Chain scrapes (e.g. Camping World) carry a per-unit location — "City, ST"
+    // or a full address "123 Main St.City, ST 59101" — prefer it over the
+    // file-level dealer state so units land in the right state.
+    const locMatch = /([A-Za-z][A-Za-z .'-]*),\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/.exec(r.dealer_location ?? "");
     const locState = locMatch && US_STATE_CODES.has(locMatch[2]) ? locMatch[2] : null;
-    const city = (locState ? locMatch![1] : (info.city || "Unknown")).split(",")[0].trim();
+    // Address-style locations ("...Old Hardin Rd.Billings, MT 59101") end in
+    // "St.City" — drop the street part (period without a following space only,
+    // so "St. Albans" keeps its name).
+    const city = (locState ? locMatch![1] : (info.city || "Unknown"))
+      .split(",").at(-1)!.replace(/.*\.(?!\s)/, "").trim();
     u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
   }
   u.provenance.dealerDomain = dom;
@@ -132,8 +148,8 @@ const acceptUnit = (dom: string, u: CanonicalUnit, r: Rec, info: DealerInfo | un
   return true;
 };
 
-for (const [dom, recs] of freshByDomain) {
-  const info = dealerDir.get(dom);
+for (const [fileKey, { dom, recs }] of freshByDomain) {
+  const info = dealerDir.get(fileKey) ?? dealerDir.get(dom);
   for (const r of recs) {
     const res = normalizeRecord(`url:${r.source_detail_url ?? r.url ?? Math.random()}`, toRaw(r));
     if ("reject" in res) {
@@ -167,6 +183,25 @@ const urlType = (r: Rec): string | null => {
   return null;
 };
 
+// Dealer-published class data often survives inside captured API blobs —
+// Camping World detail records embed classCode/classDisplay from the catalog
+// hit even when the record's own rv_type is null.
+const CLASS_CODE: Record<string, string> = {
+  tt: "travel_trailer", fw: "fifth_wheel", a: "class_a", ad: "class_a",
+  c: "class_c", cd: "class_c", b: "class_b", bd: "class_b",
+  fd: "popup_camper", tc: "truck_camper", th: "toy_hauler", pk: "park_model",
+};
+const blobType = (r: Rec): string | null => {
+  for (const b of r.raw_json_blobs ?? []) {
+    const d = (b as any)?.data ?? b;
+    const code = String((d as any)?.classCode ?? "").toLowerCase();
+    if (CLASS_CODE[code]) return CLASS_CODE[code];
+    const t = normalizeRvType((d as any)?.classDisplay, "");
+    if (t) return t;
+  }
+  return null;
+};
+
 const modelVotes = new Map<string, Map<string, number>>();
 for (const u of fresh) {
   if (!u.make || !u.model) continue;
@@ -186,16 +221,16 @@ const modelType = (r: Rec): string | null => {
   return count >= 3 && count / total >= 0.8 ? top : null;
 };
 
-let recoveredUrl = 0, recoveredModel = 0;
+let recoveredUrl = 0, recoveredModel = 0, recoveredBlob = 0;
 for (const { dom, r, info } of typeRejects) {
-  const t = urlType(r) ?? modelType(r);
+  const t = blobType(r) ?? urlType(r) ?? modelType(r);
   if (!t) continue;
   const raw = toRaw(r);
   raw.rv_type = t;
   const res = normalizeRecord(`url:${r.source_detail_url ?? r.url ?? Math.random()}`, raw);
   if ("reject" in res) continue;
   if (!acceptUnit(dom, res.unit, r, info)) continue;
-  if (urlType(r) === t) recoveredUrl++; else recoveredModel++;
+  if (blobType(r) === t) recoveredBlob++; else if (urlType(r) === t) recoveredUrl++; else recoveredModel++;
   freshRejects.set("unresolvable_rv_type", (freshRejects.get("unresolvable_rv_type") ?? 0) - 1);
 }
 
@@ -222,7 +257,7 @@ const known = (k: keyof CanonicalUnit) => units.filter(u => (u[k] as any)?.value
 
 console.log(`old snapshot: ${old.units.length}  dropped unusable: ${oldDrops.unusable}  replaced by fresh: ${oldDrops.replacedByFresh}`);
 console.log(`fresh scraped units kept: ${fresh.length} from ${freshPerDealer.size} dealers  rejects: ${JSON.stringify(Object.fromEntries(freshRejects))}`);
-console.log(`type recovery: ${recoveredUrl} via source URL, ${recoveredModel} via model consensus`);
+console.log(`type recovery: ${recoveredBlob} via dealer class data, ${recoveredUrl} via source URL, ${recoveredModel} via model consensus`);
 console.log(`FINAL units: ${units.length}  dealers: ${dealers.size}  states: ${states.size}`);
 console.log(`by state: ${[...states].sort((a, b) => b[1] - a[1]).map(([s, n]) => `${s}=${n}`).join(" ")}`);
 const mh = units.filter(isMotorized);
@@ -235,7 +270,7 @@ const payload = JSON.stringify({
   builtAt: new Date().toISOString(),
   datasetNote: "MatchRV nationwide dealer inventory snapshot: prior MarketCheck/Replit records with photos, model and price, plus fresh dealer-website scrapes (which replace older records for the same dealer). Records without photos, a model or a price were removed.",
   stats: {
-    rawRecords: old.units.length + [...freshByDomain.values()].reduce((n, r) => n + r.length, 0),
+    rawRecords: old.units.length + [...freshByDomain.values()].reduce((n, e) => n + e.recs.length, 0),
     units: units.length,
     dealers: dealers.size,
     rejections: { ...Object.fromEntries(freshRejects), old_unusable: oldDrops.unusable, old_replaced_by_fresh: oldDrops.replacedByFresh },

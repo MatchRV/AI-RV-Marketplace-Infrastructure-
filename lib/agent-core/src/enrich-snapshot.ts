@@ -16,7 +16,7 @@ import { resolvePlace, scanForCity, CITY_COORDS, type LatLng } from "./geo.js";
 import {
   extractFloorplanCode,
   floorplanSuggestsBunks,
-  fact,
+  fact, buildCorpus, extractSpecsFromText, extractBunkhouse,
 } from "./enrich.js";
 import { VIN_SLEEPS } from "./vin-sleeps.js";
 
@@ -179,6 +179,18 @@ export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
   };
 
   for (const u of units) {
+    // Revalidate legacy text-derived evidence when loading an existing snapshot.
+    const corpus = buildCorpus(u.title, u.description, u.features);
+    if (u.lengthFt.source === "derived_text") {
+      u.lengthFt = fact(extractSpecsFromText(corpus).lengthFt, "derived_text", "medium", "Revalidated explicit overall-length evidence; component measurements excluded.");
+    }
+    // Scraped listing flags were historically promoted from generic feature text.
+    // Preserve explicit negatives, but require unit-specific evidence for positives.
+    u.bunkhouse = extractBunkhouse(u.bunkhouse.value === false ? false : null, corpus, u.floorplanCode);
+    if (u.sleeps.source === "derived_model_code" || u.sleeps.source === "computed") {
+      u.sleeps = fact<number>(null, null, null);
+    }
+
     if (u.dealer.lat === null || u.dealer.lng === null) {
       const city = (u.dealer.city || "").trim();
       const coords = resolveDealerCoords(city, u.dealer.state || "");

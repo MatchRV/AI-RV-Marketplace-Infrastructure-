@@ -113,7 +113,8 @@ export function extractBunkhouse(
   floorplanCode: string | null,
 ): Fact<boolean> {
   if (structured === true) return fact(true, "dealer_listing", "high");
-  if (mentions(corpus, /(bunkhouse|bunk\s*house|bunk\s*bed|bunk\s*room|double-?size\s*bunk|set of bunks)/)) {
+  const unitText = corpus.all.split(/\n|[.!;]/).filter(part => !/(select models|bunkhouse models|optional|available|if equipped|choose that option)/i.test(part)).join("\n");
+  if (mentions({ ...corpus, all: unitText }, /(bunkhouse|bunk\s*house|bunk\s*bed|bunk\s*room|double-?size\s*bunk|set of bunks)/)) {
     return fact(true, "derived_text", "medium", "Dealer text mentions bunks.");
   }
   if (floorplanSuggestsBunks(floorplanCode)) {
@@ -179,11 +180,11 @@ export function extractSpecsFromText(corpus: TextCorpus): TextSpecs {
 
   return {
     sleeps: within(num(m(/sleeps\s*:?\s*(\d{1,2})\b/)), 1, 14),
-    lengthFt: within(
-      num(m(/\b(\d{2}(?:\.\d+)?)\s*(?:ft|feet|')\s*(?:long|length)?\b/) ?? m(/length\s*[:\-]?\s*(\d{2}(?:\.\d+)?)/)),
-      8,
-      60,
-    ),
+    lengthFt: (() => {
+      const match = /(?:^|[\n.!;]\s*|\boverall\s+|\bexterior\s+|\ba\s+)length\s*(?:of|[:\-])?\s*(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot|')\s*(?:(\d{1,2})\s*(?:inches|in\b|"))?/i.exec(t)
+        ?? /\b(\d{2}(?:\.\d+)?)\s*(?:ft|feet|foot)\s+long\b/.exec(t);
+      return match ? within(Number(match[1]) + Number(match[2] ?? 0) / 12, 8, 60) : null;
+    })(),
     slideouts: within(num(m(/\b(\d)\s*slide(?:s|outs?|-outs?)?\b/)), 0, 6),
     dryWeightLbs: within(num(m(/(?:dry\s*weight|uvw|unloaded\s*vehicle\s*weight)\s*[:\-]?\s*([\d,]{3,7})/)), 500, 40_000),
     gvwrLbs: within(num(m(/gvwr\s*[:\-]?\s*([\d,]{3,7})/)), 1_000, 60_000),

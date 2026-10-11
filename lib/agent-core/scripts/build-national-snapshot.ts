@@ -83,7 +83,7 @@ function toRaw(r: Rec): RawScrapeRecord {
     fresh_water_capacity: c.fresh_water_gal ?? r.fresh_water_capacity,
     gray_water_capacity: c.gray_water_gal ?? r.gray_water_capacity,
     black_water_capacity: c.black_water_gal ?? r.black_water_capacity,
-    bunkhouse: c.bunkhouse?.source === "listing_text" || c.bunk_count > 0 ? true : r.bunkhouse,
+    bunkhouse: c.bunk_count > 0 ? true : null,
     inventory_status: r.inventory_status ?? "available",
   };
 }

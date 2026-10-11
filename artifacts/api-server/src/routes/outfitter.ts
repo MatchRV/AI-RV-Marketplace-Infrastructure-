@@ -1,3 +1,4 @@
+import { OUTFITTER_PLAYBOOK } from "../services/outfitter-guidance";
 import { Router, type IRouter } from "express";
 import { anthropic, isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
 import { db, DB_MODE } from "@workspace/db";
@@ -656,7 +657,7 @@ async function rerankWithAI(
         // invalid JSON that extractJsonObject cannot recover — the whole
         // rerank is then discarded.
         max_tokens: 2048,
-        system: RERANK_SYSTEM_PROMPT,
+        system: RERANK_SYSTEM_PROMPT + "\n" + OUTFITTER_PLAYBOOK,
         messages: [
           {
             role: "user",
@@ -973,7 +974,7 @@ router.post("/outfitter/chat", async (req, res) => {
       anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 1100,
-        system: OUTFITTER_SYSTEM_PROMPT,
+        system: OUTFITTER_SYSTEM_PROMPT + "\nThe following shared rules take precedence over conflicting legacy guidance:\n" + OUTFITTER_PLAYBOOK,
         messages: chatMessages,
       }),
       chatTimeout,

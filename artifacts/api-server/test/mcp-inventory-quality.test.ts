@@ -11,16 +11,20 @@ const snapshot = JSON.parse(
     : gunzipSync(readFileSync(new URL(`${snapshotPath.href}.gz`))).toString("utf8"),
 );
 const records = snapshot.units as CanonicalUnit[];
-// Two real FSX category conflicts from the snapshot, plus Cirrus / import-floor
-// cases built from them (those source records were removed with the
-// photo-less Washington inventory).
-const fsx = ["vin:4X4TSMC20TY015593", "vin:4X4TSMC23TY016060"].map(id => records.find(unit => unit.id === id)!);
-const cirrus = (id: string): CanonicalUnit => fsx[0] && ({ ...structuredClone(fsx[0]), id, make: "nuCamp", model: "Cirrus 820", title: "2025 nuCamp Cirrus 820", rvType: "travel_trailer" });
-const floor: CanonicalUnit = fsx[1] && { ...structuredClone(fsx[1]), id: "stk:test:floor", rvType: "travel_trailer", condition: "new", year: 2025, priceUsd: { value: 1000, source: "dealer_listing", confidence: "high" } };
+// Fixed synthetic category/price conflicts: live inventory refreshes must not
+// silently remove regression fixtures or change which behavior is tested.
+const fixture = records[0];
+const fsx = [0, 1].map(n => ({ ...structuredClone(fixture),
+  id: `test:fsx:${n}`, make: "Forest River", model: "Salem FSX", title: "2025 Forest River Salem FSX",
+  rvType: "class_a" as const, condition: "new" as const, year: 2025,
+  priceUsd: { value: 35000, source: "dealer_listing" as const, confidence: "high" as const },
+}));
+const cirrus = (id: string): CanonicalUnit => ({ ...structuredClone(fsx[0]), id, make: "nuCamp", model: "Cirrus 820", title: "2025 nuCamp Cirrus 820", rvType: "travel_trailer" });
+const floor: CanonicalUnit = { ...structuredClone(fsx[1]), id: "stk:test:floor", rvType: "travel_trailer", priceUsd: { value: 1000, source: "dealer_listing", confidence: "high" } };
 const known = [...fsx, cirrus("stk:test:cirrus"), floor];
 
 describe("MCP inventory quality quarantine", () => {
-  it("withholds actual conflicting records without rewriting source facts or provenance", () => {
+  it("withholds conflicting records without rewriting source facts or provenance", () => {
     expect(known.every(Boolean)).toBe(true);
     const original = structuredClone(known);
     const index = { units: known, byId: new Map(known.map(u => [u.id, u])) } as InventoryIndex;

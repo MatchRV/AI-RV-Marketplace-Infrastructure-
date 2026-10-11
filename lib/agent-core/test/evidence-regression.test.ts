@@ -17,3 +17,23 @@ describe('unit-specific evidence', () => {
     expect(extractBunkhouse(null, buildCorpus('', '', []), '261BHXL').source).toBe('derived_model_code');
   });
 });
+
+describe('release evidence boundaries', () => {
+  it('does not promote family-wide bunk weight ratings', () => {
+    const c = buildCorpus('Jay Flight 265MWS', 'Queen bed and rear bathroom.', ['300 lb.-rated single bunk beds', '600 lb. rated double bunk beds']);
+    expect(extractBunkhouse(null, c, '265MWS').value).toBeNull();
+  });
+  it('preserves explicit negatives even with a bunk-like model code', () => {
+    expect(extractBunkhouse(false, buildCorpus('', '', []), '26BH').value).toBe(false);
+  });
+  it('retains affirmative available inventory wording', () => {
+    expect(extractBunkhouse(null, buildCorpus('', 'Available now with double-size bunks in the rear.', []), null).source).toBe('derived_text');
+  });
+  it('does not treat rounded listing badges as exact overall length', () => {
+    expect(extractSpecsFromText(buildCorpus('', '', ['30ft long'])).lengthFt).toBeNull();
+  });
+  it('rejects component length wording and invalid inches', () => {
+    expect(extractSpecsFromText(buildCorpus('', 'The awning has a length of 20 feet.', [])).lengthFt).toBeNull();
+    expect(extractSpecsFromText(buildCorpus('', 'Overall Length: 29 ft 15 in', [])).lengthFt).toBeNull();
+  });
+});

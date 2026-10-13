@@ -25,6 +25,22 @@ describe('MCP release transport', () => {
     expect(data.appliedConstraints).toMatchObject({ lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000, mustHave: ['bunkhouse'] });
     expect(data.funnel.verifiedMatches).toBe(0);
   }, 20000);
+  it('honors top-level condition=new near Tacoma: no used units, no out-of-state dealers, per-store CW names', async () => {
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Tacoma, WA', radius_miles: 50, condition: 'new', discovery_waived: true, limit: 10 } });
+    const body = JSON.parse(result.content[0].text);
+    expect(body.results.length).toBeGreaterThan(0);
+    const year = new Date().getFullYear();
+    for (const r of body.results) {
+      expect(r.dealerState).toBe('WA');
+      expect(r.dealer).not.toMatch(/Woodland, Fife/);
+      expect(Number(r.title.slice(0, 4))).toBeGreaterThanOrEqual(year - 3);
+    }
+  });
+  it('nationwide lowest-price sort never surfaces sub-floor prices', async () => {
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { sort: 'price_asc', condition: 'new', discovery_waived: true, constraints: { rvTypes: ['travel_trailer'] }, limit: 10 } });
+    const body = JSON.parse(result.content[0].text);
+    for (const r of body.results) expect(r.price).toBeGreaterThanOrEqual(8000);
+  });
   it('sherpa gate: asks who sleeps in it before showing any trailer', async () => {
     const gated = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
     const data = JSON.parse(gated.content.find((c: any) => c.type === 'text').text);

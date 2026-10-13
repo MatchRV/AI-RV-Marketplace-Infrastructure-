@@ -22,7 +22,18 @@ services:
       pnpm run build:web && pnpm run build:api
     startCommand: node artifacts/api-server/dist/index.cjs
     healthCheckPath: /api/healthz
+    # Persistent disk so Outfitter learning (learned tow ratings, unit
+    # facts) survives redeploys. Requires a paid instance; single-instance
+    # only, which this service already is. If this service was created in
+    # the dashboard rather than from this blueprint, add the same disk
+    # (mount /var/data, 1 GB) and env var there instead.
+    disk:
+      name: matchrv-learned
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: LEARNED_FACTS_PATH
+        value: /var/data/learned-facts.json
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION

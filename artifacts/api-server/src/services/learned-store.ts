@@ -13,7 +13,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { LearnedStore } from "@workspace/agent-core";
 
-const filePath = resolve(process.env.LEARNED_FACTS_PATH ?? "data/learned-facts.json");
+const primaryPath = resolve(process.env.LEARNED_FACTS_PATH ?? "data/learned-facts.json");
+const fallbackPath = resolve("data/learned-facts.json");
+let filePath = primaryPath;
 
 let store: LearnedStore | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -22,10 +24,12 @@ export function getLearnedStore(): LearnedStore {
   if (store) return store;
   store = new LearnedStore();
   try {
-    if (existsSync(filePath)) {
-      store.restore(JSON.parse(readFileSync(filePath, "utf8")));
+    const loadFrom = existsSync(primaryPath) ? primaryPath : existsSync(fallbackPath) ? fallbackPath : null;
+    if (loadFrom) {
+      filePath = loadFrom;
+      store.restore(JSON.parse(readFileSync(loadFrom, "utf8")));
       const s = store.stats();
-      console.log(`[learning] restored memory from ${filePath}: ${s.vehicles} vehicles, ${s.unitFacts} unit facts`);
+      console.log(`[learning] restored memory from ${loadFrom}: ${s.vehicles} vehicles, ${s.unitFacts} unit facts`);
     }
   } catch (err) {
     console.warn("[learning] could not restore memory file; starting fresh:", err instanceof Error ? err.message : err);
@@ -37,11 +41,21 @@ export function persistLearnedSoon(): void {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
+    const payload = JSON.stringify(getLearnedStore().serialize(), null, 2);
     try {
       mkdirSync(dirname(filePath), { recursive: true });
-      writeFileSync(filePath, JSON.stringify(getLearnedStore().serialize(), null, 2));
+      writeFileSync(filePath, payload);
     } catch (err) {
-      console.warn("[learning] could not persist memory:", err instanceof Error ? err.message : err);
+      // Durable mount unavailable (e.g. disk not provisioned yet): fall back
+      // to the working directory so learning at least survives the process.
+      try {
+        mkdirSync(dirname(fallbackPath), { recursive: true });
+        writeFileSync(fallbackPath, payload);
+        filePath = fallbackPath;
+        console.warn("[learning] primary path unavailable; persisted to fallback:", fallbackPath);
+      } catch (err2) {
+        console.warn("[learning] could not persist memory:", err2 instanceof Error ? err2.message : err2);
+      }
     }
   }, 400);
 }

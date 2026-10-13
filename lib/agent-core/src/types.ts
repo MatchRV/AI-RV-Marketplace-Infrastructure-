@@ -224,6 +224,8 @@ export interface Constraints {
   /** Shopper's loaded (weighed) coach weight, if known — checked against GVWR first. */
   coachLoadedWeightLbs?: number | null;
   sort?: SortKey | null;
+  /** RV Outfitter sherpa profile (see discovery.ts). Lifestyle + payload. */
+  sherpa?: { sleepers?: number | null; floorplanIntent?: "couples" | "family_bunks" | "flexible" | "solo" | null; campingStyle?: "full_hookup" | "boondocking" | "mixed" | null; truckPayloadLbs?: number | null; passengersLbs?: number | null; cargoLbs?: number | null; discoveryWaived?: boolean | null; lengthMaxStatedFt?: number | null; lengthReason?: "storage" | "comfort" | "hard_limit" | null; lengthFlexApproved?: boolean | null } | null;
 }
 
 // ── Match results ───────────────────────────────────────────────────────────

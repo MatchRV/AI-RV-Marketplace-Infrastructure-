@@ -145,6 +145,7 @@ export const constraintsSchema = z.object({
   trailerWeightLbs: z.number().min(500).max(40_000).nullish(),
   trailerTongueLbs: z.number().min(50).max(5_000).nullish(),
   coachLoadedWeightLbs: z.number().min(3_000).max(80_000).nullish(),
+  sherpa: z.object({ sleepers: z.number().int().min(1).max(14).nullish(), floorplanIntent: z.enum(["couples", "family_bunks", "flexible", "solo"]).nullish(), campingStyle: z.enum(["full_hookup", "boondocking", "mixed"]).nullish(), truckPayloadLbs: z.number().min(500).max(10_000).nullish(), passengersLbs: z.number().min(0).max(3_000).nullish(), cargoLbs: z.number().min(0).max(5_000).nullish(), discoveryWaived: z.boolean().nullish(), lengthMaxStatedFt: z.number().min(8).max(60).nullish(), lengthReason: z.enum(["storage", "comfort", "hard_limit"]).nullish(), lengthFlexApproved: z.boolean().nullish() }).nullish(),
 });
 
 // ── Tool descriptors ───────────────────────────────────────────────────────

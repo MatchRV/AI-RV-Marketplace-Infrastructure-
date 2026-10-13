@@ -24,6 +24,7 @@ import type {
 import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
 import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
+import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
 
 export class ConstraintError extends Error {
   constructor(
@@ -285,6 +286,16 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  // — hard: payload (door-sticker) — tongue weight eats payload first.
+  if (c.sherpa?.truckPayloadLbs != null) {
+    const pf = evaluatePayloadFit(unit, c.sherpa);
+    if (pf.tongueHighLbs === null) {
+      unknowns.push("payload (tongue estimate)");
+      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs`, "unknown", "loaded weight unknown", null));
+    } else {
+      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs (tongue ${pf.tongueLowLbs}–${pf.tongueHighLbs} + ${pf.peopleAndCargoLbs} lbs people/cargo)`, pf.verdict === "exceeds" ? "fail" : "pass", pf.detail, "computed"));
+    }
+  }
   // — hard: sleeps
   if (c.sleepsMin != null) {
     if (unit.sleeps.value === null || unit.sleeps.source === "derived_model_code" || unit.sleeps.source === "computed") {
@@ -487,6 +498,14 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  if (c.sherpa && (c.sherpa.floorplanIntent || c.sherpa.sleepers != null)) {
+    const fit = lifestyleFit(unit, c.sherpa);
+    if (fit.points !== 0) {
+      score += fit.points;
+      breakdown.push({ label: `lifestyle (${fit.label}): ${fit.reasons[0] ?? ""}`, points: fit.points });
+    }
+    for (const r of fit.reasons) softChecks.push({ preference: `lifestyle: ${fit.label}`, satisfied: fit.points >= 0, detail: r });
+  }
   const yearPts = Math.max(0, Math.min(5, unit.year - 2020));
   if (yearPts > 0) {
     score += yearPts;

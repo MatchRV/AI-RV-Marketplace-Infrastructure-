@@ -83,6 +83,7 @@ KEY RULES:
 - NEVER show anything over budget
 - If first-time buyer, be educational and reassuring: "That's totally normal — most first-timers feel the same way"
 - TYPE MATCHING — CRITICAL: If rvType is set and is NOT "not_sure", ONLY recommend that exact type
+- LENGTH — ROAD TO THE SALE: When a buyer states a maximum length, ask ONE question before matching: is that for storage (a garage, driveway, or site it physically has to fit), or is it about comfort? If STORAGE or they say hard limit: lengthFlexibility stays false and you must NEVER show longer — not even 1 ft. If COMFORT: ask "Is it okay if we keep it maybe 1 or 2 ft. longer? I'm not going to take you up to 40 by any means, but I just wanted to keep that gate open just in case." Only if they explicitly say yes do you set lengthFlexibility=true (the engine then allows exactly +2 ft, never more). If they say no, the stated limit is exact.
 - LENGTH MATCHING — CRITICAL: If lengthFlexibility is false and min/maxLength are set, ONLY recommend within range
 - NO MATCH: If nothing fits, output <no_match>true</no_match> and explain compassionately
 
@@ -357,7 +358,10 @@ function buildFilterSpec(profile: Record<string, unknown>): FilterSpec {
   const sleepCount = profile.sleepingCapacity ?? profile.travelers;
 
   const flexible = profile.lengthFlexibility === true;
-  const slack = flexible ? 5 : 0;
+  // Road to the Sale: approved comfort flexibility opens the gate +2 ft max.
+  // It is only ever set after the buyer explicitly says yes; a storage or
+  // hard limit (lengthFlexibility !== true) gets zero slack, always.
+  const slack = flexible ? 2 : 0;
 
   // Tow capacity only constrains units that are actually towed.
   const towableTypes = ["travel_trailer","fifth_wheel","toy_hauler","popup_camper","truck_camper"];
@@ -524,6 +528,22 @@ function scoreCandidatesDeterministic(
       }
     } else if (sleeps) {
       reasons.push(`sleeps ${sleeps}`);
+    }
+
+    // Sherpa lifestyle fit: 1-2 sleepers / no kids = couples layout first.
+    // A bunkhouse is wasted space for them; for families it is the point.
+    const party = Number(profile.travelers ?? profile.sleepingCapacity) || 0;
+    const isCouplesParty = party > 0 && party <= 2 && profile.hasKids !== true;
+    const isFamilyParty = party >= 3 || profile.hasKids === true;
+    if (isCouplesParty) {
+      if (c.bunkhouse === true) { score -= 22; reasons.push("bunkhouse layout — more beds than a party of " + party + " needs"); }
+      else if (c.bunkhouse === false) { score += 18; reasons.push("couples layout with a proper main bed"); }
+      const len = Number(c.length) || 0;
+      if (len >= 22 && len <= 34) score += 6;
+      if (Number(c.slides) >= 1) score += 4;
+    } else if (isFamilyParty) {
+      if (c.bunkhouse === true) { score += 18; reasons.push("dedicated bunks for the family"); }
+      else if (c.bunkhouse === false) { score -= 10; reasons.push("no dedicated bunks"); }
     }
 
     const deal = String(c.deal_score ?? "");

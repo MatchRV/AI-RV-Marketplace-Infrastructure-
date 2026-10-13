@@ -10,4 +10,5 @@ export * from "./match.js";
 export * from "./compare.js";
 export * from "./format.js";
 export * from "./contracts.js";
+export * from "./discovery.js";
 export * from "./enrich-snapshot.js";

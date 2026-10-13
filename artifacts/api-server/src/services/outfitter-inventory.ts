@@ -52,6 +52,7 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
     vin: u.vin,
     description: u.description,
     features: u.features,
+    bunkhouse: u.bunkhouse.value,
     dry_weight: u.dryWeightLbs.value,
     gvwr: u.gvwrLbs.value,
     hitch_weight: u.hitchWeightLbs.value,

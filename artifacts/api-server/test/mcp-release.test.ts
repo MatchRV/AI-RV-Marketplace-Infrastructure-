@@ -58,6 +58,14 @@ describe('MCP release transport', () => {
     expect(data.readyToSearch).toBe(false);
     expect(data.nextQuestion.id).toBe('sleepers');
   });
+  it('serves buyer-guide knowledge for education questions', async () => {
+    const list = await rpc('tools/list');
+    expect(list.tools.map((t: any) => t.name)).toContain('outfitter_guide');
+    const guide = await rpc('tools/call', { name: 'outfitter_guide', arguments: { query: 'how does payload and tongue weight work?' } });
+    const data = JSON.parse(guide.content.find((c: any) => c.type === 'text').text);
+    expect(data.topics[0].id).toBe('tow_basics');
+    expect(data.topics[0].points.join(' ')).toContain('Payload is usually the real bottleneck');
+  });
   it('returns an explicit missing-record error', async () => {
     const result = await rpc('tools/call', { name: 'get_rv', arguments: { unit_id: 'test:does-not-exist' } });
     expect(result.isError).toBe(true);

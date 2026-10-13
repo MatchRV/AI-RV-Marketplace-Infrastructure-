@@ -13,6 +13,9 @@ import {
   resolveTowVehicle,
   runSearch,
   assessDiscovery,
+  searchGuides,
+  getGuide,
+  GUIDE_TOPICS,
   profileToConstraints,
   evaluatePayloadFit,
   type BuyerProfile,
@@ -292,6 +295,7 @@ function buildMatchRvServer(): McpServer {
       capabilities: { tools: { listChanged: false }, resources: {} },
       instructions:
         OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package").replace("Dealer contact requires a preview and explicit human approval.", "Dealer contact is unavailable in this initial release.") + "\n" +
+        "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
         "ROAD TO THE SALE - SHERPA RULES (RV Outfitter): The whole journey from first contact to the sale is the Road to the Sale, and you are the guide on it. LENGTH RULE: when a shopper states a max length, never treat it as hard or soft silently - ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. " + "SHERPA RULES (RV Outfitter): You are a sherpa, not a listings feed. (1) DISCOVERY BEFORE INVENTORY: if sleepers/party is unknown, call outfitter_discovery and ask its ONE nextQuestion, then wait — do not call search_rvs yet. Never guess party size from a tow vehicle or weight limit. (2) One question at a time; never re-ask known facts. (3) 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer — after discovery, favour the most liveable trailer safely under the ceiling. (4) 1-2 sleepers / no kids = couples layouts first; bunkhouses only if they ask for bunks/guests. 3+ or kids = sleeping capacity first. (5) Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR, and ask the payload question. (6) Explain every pick in lifestyle terms with its tradeoff; never pad to three. (7) 'Just show me' waives discovery (discovery_waived=true). " +
         "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches ΓÇö never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred ΓÇö disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact and VIN lookup are unavailable in this initial release.",
     },
@@ -324,6 +328,27 @@ function buildMatchRvServer(): McpServer {
         ...discovery,
         profile,
         ...(discovery.readyToSearch ? { searchConstraints: profileToConstraints(profile), guidance: "Discovery is sufficient. Briefly reflect what you heard, then call search_rvs with these constraints (plus location/price/radius). Tow verdicts stay preliminary until payload or an exact rating is supplied." } : { guidance: "Ask nextQuestion.prompt as the only question and wait. Do not describe or rank trailers yet." }),
+      });
+    },
+  );
+
+  server.registerTool(
+    "outfitter_guide",
+    {
+      title: "RV Outfitter buyer guides",
+      description:
+        "MatchRV's buyer-education knowledge, distilled from its published guides (towing/payload basics, motorhome vs trailer, travel trailer vs fifth wheel, families, full-time living, buying used, costs, financing). Use for general 'how does this work / which is better' questions BEFORE any inventory search — teach first, sell never. Pass topic for an exact guide or query to search. Towing points defer to evaluate_tow_fit for the buyer's actual vehicle; never quote a model-level tow table.",
+      inputSchema: mcpSchema(z.object({
+        topic: z.enum(["tow_basics", "motorhome_vs_trailer", "trailer_vs_fifth_wheel", "families", "full_time", "used_buying", "costs", "financing"]).optional(),
+        query: z.string().max(160).optional(),
+      })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const topics = input.topic ? [getGuide(input.topic)].filter((g): g is NonNullable<typeof g> => Boolean(g)) : searchGuides(input.query ?? "");
+      return textResult({
+        topics: topics.slice(0, 3).map((g) => ({ id: g.id, title: g.title, source: g.source, points: g.points })),
+        ...(topics.length === 0 ? { guidance: "No guide matches; answer generally and honestly, or offer to start discovery with outfitter_discovery.", availableTopics: GUIDE_TOPICS.map((g) => g.id) } : {}),
       });
     },
   );

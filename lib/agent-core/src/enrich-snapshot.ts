@@ -12,7 +12,7 @@
 
 import { EXTRA_CITY_COORDS } from "./national-geo.js";
 import type { CanonicalUnit, Fact, RvType } from "./types.js";
-import { resolvePlace, scanForCity, CITY_COORDS, type LatLng } from "./geo.js";
+import { resolvePlace, scanForCity, CITY_COORDS, haversineMiles, type LatLng } from "./geo.js";
 import {
   extractFloorplanCode,
   floorplanSuggestsBunks,
@@ -62,7 +62,37 @@ const CITY_ALIASES_EXTRA: Record<string, string> = {
   "ft pierce": "fort pierce",
 };
 
-function resolveDealerCoords(city: string, state: string): LatLng | null {
+/**
+ * Max plausible miles from a state's centroid to any point in it. City tables
+ * are keyed by bare name ("lakewood" = Lakewood WA), so a hit for a dealer in
+ * another state (Windish RV, Lakewood CO) must be rejected, not trusted.
+ */
+const STATE_RADIUS_MI: Record<string, number> = { AK: 1500, HI: 400, TX: 600, CA: 550, MT: 400, FL: 450, NV: 400, MI: 400, NY: 350, ID: 350, OR: 300, WA: 280 };
+const DEFAULT_STATE_RADIUS_MI = 350;
+
+/** True when coords are plausibly inside `state` (or the state is unknown). */
+export function coordsMatchState(coords: LatLng, state: string | null | undefined): boolean {
+  const st = (state || "").toUpperCase();
+  const centroid = STATE_COORDS[st];
+  if (!centroid) return true;
+  return haversineMiles(coords, centroid) <= (STATE_RADIUS_MI[st] ?? DEFAULT_STATE_RADIUS_MI);
+}
+
+export function resolveDealerCoords(city: string, state: string): LatLng | null {
+  const st0 = (state || "").toUpperCase();
+  const hit = resolveDealerCoordsUnchecked(city, state);
+  if (hit && !coordsMatchState(hit, st0)) return STATE_COORDS[st0] ?? null;
+  return hit;
+}
+
+/** Camping World stores all share one domain; never label one store with another's city. */
+export function chainStoreName(name: string, city: string): string {
+  const m = /^camping world of (.+)$/i.exec(name.trim());
+  if (!m || !city || city.toLowerCase() === "unknown") return name;
+  return m[1].trim().toLowerCase() === city.trim().toLowerCase() ? name : `Camping World of ${city.trim()}`;
+}
+
+function resolveDealerCoordsUnchecked(city: string, state: string): LatLng | null {
   const st = (state || "").toUpperCase();
   const raw = (city || "").trim().toLowerCase();
   if (!raw || raw === "unknown") {
@@ -191,6 +221,11 @@ export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
       u.sleeps = fact<number>(null, null, null);
     }
 
+    u.dealer.name = chainStoreName(u.dealer.name, u.dealer.city);
+    if (u.dealer.lat !== null && u.dealer.lng !== null && !coordsMatchState({ lat: u.dealer.lat, lng: u.dealer.lng }, u.dealer.state)) {
+      u.dealer.lat = null;
+      u.dealer.lng = null;
+    }
     if (u.dealer.lat === null || u.dealer.lng === null) {
       const city = (u.dealer.city || "").trim();
       const coords = resolveDealerCoords(city, u.dealer.state || "");

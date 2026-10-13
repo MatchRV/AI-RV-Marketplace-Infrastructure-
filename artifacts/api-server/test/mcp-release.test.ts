@@ -66,6 +66,21 @@ describe('MCP release transport', () => {
     expect(data.topics[0].id).toBe('tow_basics');
     expect(data.topics[0].points.join(' ')).toContain('Payload is usually the real bottleneck');
   });
+  it('learns a tow rating once and recalls it forever (Hermes-style memory)', async () => {
+    const list = await rpc('tools/list');
+    expect(list.tools.map((t: any) => t.name)).toEqual(expect.arrayContaining(['teach_outfitter', 'outfitter_memory']));
+    const taught = await rpc('tools/call', { name: 'teach_outfitter', arguments: { vehicle: '2099 Test Hauler XLT', tow_rating_lbs: 9100, payload_lbs: 1420 } });
+    const taughtData = JSON.parse(taught.content.find((c: any) => c.type === 'text').text);
+    expect(taughtData.learned.towRatingLbs).toBe(9100);
+    const memory = await rpc('tools/call', { name: 'outfitter_memory', arguments: { vehicle: '2099 Test Hauler XLT' } });
+    const memData = JSON.parse(memory.content.find((c: any) => c.type === 'text').text);
+    expect(memData.recall.towRatingLbs).toBe(9100);
+    expect(memData.recall.confirmations).toBe(1);
+    // A second confirmation raises the count — memory compounds, not replaces.
+    await rpc('tools/call', { name: 'teach_outfitter', arguments: { vehicle: '2099 Test Hauler XLT', tow_rating_lbs: 9100 } });
+    const memory2 = await rpc('tools/call', { name: 'outfitter_memory', arguments: { vehicle: '2099 Test Hauler XLT' } });
+    expect(JSON.parse(memory2.content.find((c: any) => c.type === 'text').text).recall.confirmations).toBe(2);
+  });
   it('returns an explicit missing-record error', async () => {
     const result = await rpc('tools/call', { name: 'get_rv', arguments: { unit_id: 'test:does-not-exist' } });
     expect(result.isError).toBe(true);

@@ -14,7 +14,8 @@ export type FactSource =
   | "derived_text" // deterministically parsed from dealer description/features text
   | "derived_model_code" // decoded from the manufacturer floorplan code (e.g. "26BH")
   | "reference_table" // MatchRV curated reference data (e.g. tow ratings)
-  | "computed"; // deterministic computation over other known facts
+  | "computed" // deterministic computation over other known facts
+  | "learned"; // confirmed by a shopper/dealer in a prior conversation (Outfitter memory)
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -316,6 +317,8 @@ export interface TowResolution {
   comfortCapLbs: number | null;
   safetyMarginPct: number;
   caveats: string[];
+  /** Set when the rating came from Outfitter memory rather than this shopper. */
+  learned?: { confirmations: number; source: string } | null;
 }
 
 export type TowVerdict =

@@ -129,7 +129,7 @@ export interface SearchContext {
   location: { place: string; lat: number; lng: number; radiusMiles: number; state?: string } | null;
 }
 
-export function buildContext(constraints: Constraints): SearchContext {
+export function buildContext(constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchContext {
   let location: SearchContext["location"] = null;
   if (constraints.location?.place) {
     const resolved = resolvePlace(constraints.location.place);
@@ -149,7 +149,7 @@ export function buildContext(constraints: Constraints): SearchContext {
       ...(resolved.state ? { state: resolved.state } : {}),
     };
   }
-  const tow = constraints.towVehicle ? resolveTowVehicle(constraints.towVehicle) : null;
+  const tow = constraints.towVehicle ? resolveTowVehicle(constraints.towVehicle, learnedTow ?? null) : null;
   return { constraints, tow, location };
 }
 
@@ -539,8 +539,8 @@ function firstFailReason(m: UnitMatch): string {
   return fail ? fail.constraint : "other";
 }
 
-export function runSearch(units: CanonicalUnit[], constraints: Constraints): SearchOutcome {
-  const ctx = buildContext(constraints);
+export function runSearch(units: CanonicalUnit[], constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchOutcome {
+  const ctx = buildContext(constraints, learnedTow ?? null);
 
   const evaluated = units.map((u) => evaluateUnit(u, ctx));
 

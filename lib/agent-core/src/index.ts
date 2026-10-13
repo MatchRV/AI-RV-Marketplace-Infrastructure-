@@ -12,4 +12,5 @@ export * from "./format.js";
 export * from "./contracts.js";
 export * from "./discovery.js";
 export * from "./knowledge.js";
+export * from "./learning.js";
 export * from "./enrich-snapshot.js";

@@ -28,6 +28,7 @@ let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
 function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
 
 import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
+import { getLearnedStore, persistLearnedSoon } from "./services/learned-store";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
 const searchInput = z.object({
@@ -295,6 +296,7 @@ function buildMatchRvServer(): McpServer {
       capabilities: { tools: { listChanged: false }, resources: {} },
       instructions:
         OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package").replace("Dealer contact requires a preview and explicit human approval.", "Dealer contact is unavailable in this initial release.") + "\n" +
+        "LEARNING: MatchRV remembers. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, call teach_outfitter so it is known forever (labelled learned, with confirmations). Before asking for a rating, check outfitter_memory / the sherpa.memory recall — never re-ask what the system already learned; ask the shopper to confirm it matches their exact vehicle. " +
         "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
         "ROAD TO THE SALE - SHERPA RULES (RV Outfitter): The whole journey from first contact to the sale is the Road to the Sale, and you are the guide on it. LENGTH RULE: when a shopper states a max length, never treat it as hard or soft silently - ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. " + "SHERPA RULES (RV Outfitter): You are a sherpa, not a listings feed. (1) DISCOVERY BEFORE INVENTORY: if sleepers/party is unknown, call outfitter_discovery and ask its ONE nextQuestion, then wait — do not call search_rvs yet. Never guess party size from a tow vehicle or weight limit. (2) One question at a time; never re-ask known facts. (3) 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer — after discovery, favour the most liveable trailer safely under the ceiling. (4) 1-2 sleepers / no kids = couples layouts first; bunkhouses only if they ask for bunks/guests. 3+ or kids = sleeping capacity first. (5) Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR, and ask the payload question. (6) Explain every pick in lifestyle terms with its tradeoff; never pad to three. (7) 'Just show me' waives discovery (discovery_waived=true). " +
         "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches ΓÇö never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred ΓÇö disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact and VIN lookup are unavailable in this initial release.",
@@ -304,6 +306,58 @@ function buildMatchRvServer(): McpServer {
   server.registerResource("matchrv-shopper", SHOPPER_URI, { title: "MatchRV shopper", mimeType: "text/html;profile=mcp-app" }, async () => ({
     contents: [{ uri: SHOPPER_URI, mimeType: "text/html;profile=mcp-app", text: SHOPPER_HTML, _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } }, "openai/ui": { availableDisplayModes: ["fullscreen"], preferredDisplayMode: "fullscreen" } } }],
   }));
+
+  server.registerTool(
+    "teach_outfitter",
+    {
+      title: "Teach the Outfitter (long-term memory)",
+      description:
+        "Store a confirmed fact in MatchRV's permanent memory so every future shopper benefits: a vehicle's exact tow rating or door-sticker payload (vehicle + tow_rating_lbs/payload_lbs), or a confirmed spec for one unit (unit_id + field + value; fields: sleeps, gvwrLbs, dryWeightLbs, hitchWeightLbs, freshWaterGal, bunkhouse). Only teach facts the shopper or dealer actually confirmed — never guesses. Learned facts are labelled 'learned' with confirmation counts forever after.",
+      inputSchema: mcpSchema(z.object({
+        vehicle: z.string().max(120).optional(),
+        tow_rating_lbs: z.number().min(1000).max(40000).optional(),
+        payload_lbs: z.number().min(500).max(10000).optional(),
+        unit_id: z.string().min(3).max(120).optional(),
+        field: z.enum(["sleeps", "gvwrLbs", "dryWeightLbs", "hitchWeightLbs", "freshWaterGal", "bunkhouse"]).optional(),
+        value: z.union([z.number(), z.boolean()]).optional(),
+        source: z.string().max(80).optional(),
+      })),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async (input) => {
+      const memory = getLearnedStore();
+      if (input.vehicle && (input.tow_rating_lbs != null || input.payload_lbs != null)) {
+        const rec = memory.learnVehicle(input.vehicle, { towRatingLbs: input.tow_rating_lbs ?? null, payloadLbs: input.payload_lbs ?? null }, input.source ?? "customer-stated");
+        persistLearnedSoon();
+        return textResult({ learned: rec, note: "Stored. Future tow evaluations for this vehicle will recall it (labelled learned, with confirmation count)." });
+      }
+      if (input.unit_id && input.field && input.value !== undefined) {
+        const rec = memory.learnUnitFact(input.unit_id, input.field, input.value, input.source ?? "customer-confirmed");
+        persistLearnedSoon();
+        return textResult({ learned: rec, note: "Stored as an overlay with 'learned' provenance; it will appear in get_rv/search for this unit." });
+      }
+      return textResult({ error: "nothing_to_learn", guidance: "Pass vehicle + tow_rating_lbs/payload_lbs, or unit_id + field + value." }, true);
+    },
+  );
+
+  server.registerTool(
+    "outfitter_memory",
+    {
+      title: "What the Outfitter has learned",
+      description:
+        "Read MatchRV's long-term memory: learned vehicle ratings/payloads, learned unit facts, and anonymous discovery-pattern counters, each with confirmation counts and sources. Use to show the shopper what the system remembers and to check for a learned rating before asking again.",
+      inputSchema: mcpSchema(z.object({ vehicle: z.string().max(120).optional() })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const memory = getLearnedStore();
+      return textResult({
+        stats: memory.stats(),
+        ...(input.vehicle ? { recall: memory.recallVehicle(input.vehicle) } : {}),
+        note: "Learned facts persist in server memory (file-backed where LEARNED_FACTS_PATH points at durable storage). They are always labelled learned — never presented as manufacturer data.",
+      });
+    },
+  );
 
   server.registerTool(
     "outfitter_discovery",
@@ -408,9 +462,20 @@ function buildMatchRvServer(): McpServer {
         if (effLen != null) constraints.lengthMaxFt = effLen;
         if (profile.sleepers != null && constraints.sleepsMin == null) constraints.sleepsMin = profile.sleepers;
 
+        // LEARN: a rating/payload stated in this conversation is remembered.
+        const memory = getLearnedStore();
+        if (profile.towVehicle && (profile.truckTowRatingLbs != null || profile.truckPayloadLbs != null)) {
+          memory.learnVehicle(profile.towVehicle, { towRatingLbs: profile.truckTowRatingLbs, payloadLbs: profile.truckPayloadLbs });
+          persistLearnedSoon();
+        }
+        if (profile.sleepers != null) memory.count("discovery", `sleepers=${profile.sleepers}`);
+        const learnedVehicle = profile.towVehicle ? memory.recallVehicle(profile.towVehicle) : null;
+        const learnedTow = learnedVehicle?.towRatingLbs != null && profile.truckTowRatingLbs == null
+          ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source }
+          : null;
         const place = constraints.location?.place;
-        const corpus = candidateUnits(place);
-        const outcome = runSearch(corpus, constraints);
+        const corpus = memory.applyToCorpus(candidateUnits(place));
+        const outcome = runSearch(corpus, constraints, learnedTow);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
         const inventoryQuality = getInventory().inventoryQuality;
         const ms = Math.round(performance.now() - t0);
@@ -424,6 +489,7 @@ function buildMatchRvServer(): McpServer {
             knownSummary: discovery.knownSummary,
             readyToSearch: discovery.readyToSearch,
             towStatus: profile.truckPayloadLbs != null || profile.truckTowRatingLbs != null ? "payload-aware" : profile.towVehicle ? "preliminary - payload/rating not yet confirmed" : "not requested",
+            memory: learnedTow ? `Recalled a LEARNED rating for this vehicle (${learnedTow.towRatingLbs.toLocaleString()} lbs, confirmed ${learnedTow.confirmations}x). Say it is learned, and ask the shopper to confirm it matches their exact truck.` : null,
             nextQuestion: profile.towVehicle && profile.truckPayloadLbs == null && profile.truckTowRatingLbs == null
               ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
               : null,
@@ -502,7 +568,16 @@ function buildMatchRvServer(): McpServer {
     },
     async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs }) => {
       const inv = getInventory();
-      const resolution = vehicle ? resolveTowVehicle(vehicle) : null;
+      const memory = getLearnedStore();
+      const explicitResolution = vehicle ? resolveTowVehicle(vehicle) : null;
+      if (vehicle && explicitResolution?.statedRatingLbs != null) {
+        memory.learnVehicle(vehicle, { towRatingLbs: explicitResolution.statedRatingLbs });
+        persistLearnedSoon();
+      }
+      const learnedVehicle = vehicle ? memory.recallVehicle(vehicle) : null;
+      const resolution = vehicle
+        ? resolveTowVehicle(vehicle, learnedVehicle?.towRatingLbs != null && explicitResolution?.statedRatingLbs == null ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source } : null)
+        : null;
       const fits = [];
       const motorhomeTow = [];
       for (const id of unit_ids) {

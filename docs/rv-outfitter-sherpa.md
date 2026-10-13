@@ -42,6 +42,28 @@ Muse, any MCP host), the WebMCP tools, and the matchrv.com Outfitter.
 | `get_rv` / `compare_rvs` | Full sourced detail / side-by-side, unknowns intact. |
 | `evaluate_tow_fit` | Rating-range fit plus payload math when `truck_payload_lbs` is supplied. Planning guidance, never a safety guarantee. |
 
+## Learning (Hermes-style memory)
+
+The Outfitter remembers. Confirmed facts are stored in a learned-facts
+store (`lib/agent-core/src/learning.ts`, file-backed on the server via
+`LEARNED_FACTS_PATH`) and consulted before answering again:
+
+- **Vehicle memory** — an exact tow rating / door-sticker payload confirmed
+  for a vehicle descriptor is recalled for future shoppers, labelled
+  *learned* with its confirmation count. It narrows the tow cap but is
+  never presented as a manufacturer rating, and the shopper is asked to
+  confirm it matches their exact truck. Conflicting confirmations are
+  counted, not silently overwritten.
+- **Unit memory** — a confirmed spec (sleeps, GVWR, bunkhouse…) overlays
+  the dealer record with `learned` provenance and flows into search.
+- **Pattern counters** — anonymous discovery answers (party sizes,
+  intents) show what buyers actually ask for.
+
+Teach only confirmed facts via `teach_outfitter`; inspect memory with
+`outfitter_memory`. On hosts with ephemeral disks, memory lasts for the
+process lifetime — point `LEARNED_FACTS_PATH` at durable storage to make
+it survive redeploys.
+
 ## Regression contract
 
 `lib/agent-core/test/discovery.test.ts` and the sherpa-gate test in

@@ -1,6 +1,6 @@
 # MatchRV ChatGPT Plugin V1
 
-Status: implementation branch started. Do not submit or deploy without founder review.
+Status: six-tool submission candidate. Deploy and verify the production endpoint before submitting for review.
 
 ## Product goal
 
@@ -12,11 +12,18 @@ User intent -> structured constraints -> authorized inventory -> ranked/explaina
 
 ## V1 tool surface
 
-1. `search_rvs` — read-only search over authorized, sufficiently fresh inventory. Supports structured constraints and natural-language intent without inventing unknown specifications.
-2. `get_rv` — read-only authoritative detail lookup for one inventory unit, including provenance/freshness and explicit unknowns.
-3. `match_rvs_to_buyer` — read-only ranking that separates hard constraints from soft preferences and returns match reasons, conflicts, unknowns, and verification needs.
+Release plan: submit the six-tool surface below through the single production endpoint at `https://matchrv.com/mcp`. VIN lookup remains website-only and is not part of the MCP surface.
+
+As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral — the same tools serve ChatGPT, Claude, Gemini, Grok or any other MCP host):
+
+1. `rv_outfitter` — read-only clarification guide: one follow-up at a time, firm limits vs approved flexibility, payment-to-total budget conversion. Never relaxes a stated limit.
+2. `search_rvs` — read-only search over authorized, sufficiently fresh inventory. Supports structured constraints and natural-language intent without inventing unknown specifications. Absorbs the `match_rvs_to_buyer` ranking/explanation role.
+3. `get_rv` — read-only authoritative detail lookup for one inventory unit, including provenance/freshness and explicit unknowns.
 4. `compare_rvs` — read-only comparison of a small set of inventory units; preserves unknown values and does not claim tow compatibility.
-5. `contact_dealer` — side-effecting lead action. Must require explicit user confirmation immediately before submission and must not claim an appointment or dealer response unless actually confirmed by an integrated system.
+5. `evaluate_tow_fit` — read-only tow screening from shopper-stated vehicle data; guidance, never a safety determination.
+6. `contact_dealer` — side-effecting lead action. Must require explicit user confirmation immediately before submission and must not claim an appointment or dealer response unless actually confirmed by an integrated system.
+
+Not in the MCP surface: the VIN tow-vehicle lookup (website-only via `/api/agent/*`; it cannot verify tow package or capacity and adds third-party data transmission to the privacy surface).
 
 ## Safety and trust rules
 
@@ -45,7 +52,7 @@ The repository already contains a pnpm workspace with `agent-core`, `api-server`
 
 ## Submission gates
 
-- [ ] All five tools have stable schemas and tests.
+- [ ] All six tools have stable schemas and tests.
 - [ ] Read-only vs side-effect annotations are correct for the current OpenAI specification.
 - [ ] Inventory freshness and provenance are visible in tool results.
 - [ ] Dealer/channel authorization is enforced.

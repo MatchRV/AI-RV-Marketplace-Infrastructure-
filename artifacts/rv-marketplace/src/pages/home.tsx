@@ -311,7 +311,7 @@ export function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-16 min-h-[3.5rem] py-2 flex flex-wrap items-center justify-center sm:justify-between gap-x-5 gap-y-1">
             {[
               { icon: Users, label: "651 RV buyers matched" },
-              { icon: BadgeCheck, label: "200+ dealers" },
+              { icon: BadgeCheck, label: "312 dealerships" },
               { icon: Sparkles, label: "Free match report in 2 minutes" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-2 text-white/60 text-xs font-medium whitespace-nowrap">

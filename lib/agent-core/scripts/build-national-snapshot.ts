@@ -265,6 +265,15 @@ const ptKnown = (k: string) => mh.filter(u => (u.powertrain as any)?.[k]?.value 
 console.log(`motorhomes: ${mh.length}  fuel ${ptKnown("fuelType")}  hp ${ptKnown("horsepower")}  torque ${ptKnown("torqueLbFt")}  engine ${ptKnown("engine")}  chassis ${ptKnown("chassis")}  hitchTow ${ptKnown("hitchTowRatingLbs")}  gcwr ${ptKnown("gcwrLbs")}`);
 console.log(`coverage: length ${known("lengthFt")}  sleeps ${known("sleeps")}  dryWeight ${known("dryWeightLbs")}  gvwr ${known("gvwrLbs")}  hitch ${known("hitchWeightLbs")}  bunkhouse ${known("bunkhouse")}`);
 
+// Memory budget: the server parses the whole snapshot into RAM at boot. Cap the
+// bulk fields so ~85k units fit a 2GB instance (images were 30% of the file).
+const MAX_IMAGES = 5, MAX_FEATURES = 15, MAX_DESCRIPTION = 500;
+for (const u of units) {
+  if (u.images.length > MAX_IMAGES) u.images = u.images.slice(0, MAX_IMAGES);
+  if (u.features.length > MAX_FEATURES) u.features = u.features.slice(0, MAX_FEATURES);
+  if (u.description && u.description.length > MAX_DESCRIPTION) u.description = u.description.slice(0, MAX_DESCRIPTION).trimEnd() + "…";
+}
+
 const payload = JSON.stringify({
   schemaVersion: 1,
   builtAt: new Date().toISOString(),

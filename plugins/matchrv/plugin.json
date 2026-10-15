@@ -1,0 +1,42 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "matchrv",
+  "version": "0.1.0",
+  "description": "Guide RV shoppers, search and compare inventory, evaluate tow fit, and prepare dealer contact with human approval.",
+  "author": {
+    "name": "MatchRV Inc.",
+    "url": "https://matchrv.com"
+  },
+  "homepage": "https://matchrv.com",
+  "repository": "https://github.com/MatchRV/AI-RV-Marketplace-Infrastructure-",
+  "license": "MIT",
+  "keywords": [
+    "rv",
+    "shopping",
+    "inventory",
+    "towing"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "MatchRV",
+        "shortDescription": "Guided RV shopping and search.",
+        "longDescription": "Clarify RV needs one question at a time, preserve firm limits, search MatchRV dealer inventory, inspect and compare listings, and evaluate tow fit using available facts. Missing details remain unknown. Dealer contact requires a preview and explicit approval.",
+        "developerName": "MatchRV Inc.",
+        "category": "Travel",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "websiteURL": "https://matchrv.com",
+        "privacyPolicyURL": "https://matchrv.com/privacy",
+        "termsOfServiceURL": "https://matchrv.com/terms-and-conditions",
+        "defaultPrompt": [
+          "Help me choose an RV for my family. Ask one useful question at a time, then search within my firm limits.",
+          "Find travel trailers near Tacoma under $35,000 that sleep eight, and show which requirements are unverified.",
+          "Compare two MatchRV listings and explain the important differences and missing information."
+        ]
+      }
+    }
+  }
+}

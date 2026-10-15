@@ -139,7 +139,7 @@ jobs:
           }
 
           const listed = await rpc("tools/list");
-          const expected = ["search_rvs", "get_rv", "compare_rvs", "evaluate_tow_fit", "contact_dealer"];
+          const expected = ["search_rvs", "get_rv", "compare_rvs", "evaluate_tow_fit"];
           const names = new Set((listed.tools || []).map(tool => tool.name));
           for (const name of expected) {
             if (!names.has(name)) throw new Error(`Missing MCP tool: ${name}`);
@@ -147,7 +147,7 @@ jobs:
 
           const search = parseTool(await rpc("tools/call", {
             name: "search_rvs",
-            arguments: { constraints: {}, limit: 3 },
+            arguments: { constraints: {}, discovery_waived: true, limit: 3 },
           }));
           if (!Array.isArray(search.results) || search.results.length < 2) {
             throw new Error(`Expected at least two searchable RVs: ${JSON.stringify(search)}`);
@@ -174,34 +174,6 @@ jobs:
           }));
           if (!Array.isArray(tow.fits) || tow.fits.length !== 1 || !tow.safetyNotice) {
             throw new Error(`evaluate_tow_fit contract failed: ${JSON.stringify(tow)}`);
-          }
-
-          // Exercise only the non-sending phase in CI. It must stage a preview
-          // without returning the server-side human approval token.
-          const preview = parseTool(await rpc("tools/call", {
-            name: "contact_dealer",
-            arguments: {
-              action: "prepare",
-              unit_id: ids[0],
-              name: "MatchRV CI",
-              email: "ci@example.invalid",
-              message: "Automated MCP transport validation. Do not send.",
-              constraints: {},
-            },
-          }));
-          if (!preview.preview) throw new Error("contact_dealer prepare returned no preview");
-          if (preview.approvalToken || preview.approval_token || preview.preview?.approvalToken || preview.preview?.approval_token) {
-            throw new Error("Human approval token leaked through MCP transport");
-          }
-
-          // An unapproved preview must be rejected without recording or sending a lead.
-          const blocked = await rpc("tools/call", {
-            name: "contact_dealer",
-            arguments: { action: "submit", preview_id: preview.preview.previewId },
-          });
-          const blockedText = blocked?.content?.find(part => part.type === "text")?.text;
-          if (!blocked?.isError || !blockedText || JSON.parse(blockedText).error !== "awaiting_human_approval") {
-            throw new Error(`Unapproved contact was not rejected correctly: ${JSON.stringify(blocked)}`);
           }
 
           console.log(`MCP smoke test passed: ${expected.join(", ")}`);

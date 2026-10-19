@@ -201,8 +201,10 @@ function AppRouter() {
       <Route path="/sell" component={Sell} />
       <Route path="/tow-guide" component={TowGuide} />
       <Route path="/about" component={About} />
-      <Route path="/terms-and-conditions" component={Terms} />
-      <Route path="/terms">{() => <Redirect to="/terms-and-conditions" replace />}</Route>
+      <Route path="/terms" component={Terms} />
+      <Route path="/terms-and-conditions">{() => <Redirect to="/terms" replace />}</Route>
+      <Route path="/tow-match">{() => <Redirect to="/tow-guide" replace />}</Route>
+      <Route path="/buyer-guides">{() => <Redirect to="/guides" replace />}</Route>
       <Route path="/privacy" component={Privacy} />
       <Route path="/for-dealers" component={ForDealers} />
       <Route path="/dealer-tools" component={DealerAeoToolkit} />

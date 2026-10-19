@@ -17,6 +17,10 @@ const pages = [
   ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers"],
   ["/visibility-report", "/src/pages/dealer-home.tsx", "VisibilityReport", "visibility-report"],
   ["/about", "/src/pages/about.tsx", "About", "about"],
+  ["/contact", "/src/pages/contact.tsx", "Contact", "contact"],
+  ["/privacy", "/src/pages/privacy.tsx", "Privacy", "privacy"],
+  ["/terms", "/src/pages/terms.tsx", "Terms", "terms"],
+  ["/book", "/src/pages/book.tsx", "BookReportCall", "book"],
 ];
 
 const vite = await createServer({

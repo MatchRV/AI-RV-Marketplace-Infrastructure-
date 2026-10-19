@@ -26,6 +26,11 @@ app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 app.all("/mcp", matchRvMcpNodeHandler);
 
+// Preserve old links with real HTTP redirects before serving the SPA shell.
+app.get("/terms-and-conditions", (_req: Request, res: Response) => res.redirect(301, "/terms"));
+app.get("/tow-match", (_req: Request, res: Response) => res.redirect(301, "/tow-guide"));
+app.get("/buyer-guides", (_req: Request, res: Response) => res.redirect(301, "/guides"));
+
 // OpenAI plugin-directory domain verification. The submission portal supplies
 // a token; set OPENAI_APPS_CHALLENGE on the production MCP service to that
 // exact value. Return only the token, never JSON or multiple values.
@@ -187,6 +192,10 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       "/advertising": "advertising",
       "/mcp-setup": "mcp-setup",
       "/about": "about",
+      "/contact": "contact",
+      "/privacy": "privacy",
+      "/terms": "terms",
+      "/book": "book",
     };
     const prerenderedName = prerenderedPages[req.path];
     if (prerenderedName) {

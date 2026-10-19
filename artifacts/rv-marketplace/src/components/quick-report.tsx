@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
+import { SnapshotProgress } from "@/components/snapshot-progress";
 
 type QuickReportResult = {
   reportId: string;
@@ -89,7 +90,7 @@ export function QuickReport() {
     <p className="brand-eyebrow">Free Visibility Snapshot</p>
     <h2>Get your free Visibility Snapshot.</h2>
     <p>Enter your dealership website, location, name, and email. We’ll check public pages and ask Gemini one RV shopper question near your dealership. You’ll get a one-page snapshot with a readiness score, three findings and shopper-question results, plus a PDF to download. No account or card required.</p>
-    <form onSubmit={run} className="quick-report-form">
+    <form onSubmit={run} className="quick-report-form" aria-busy={busy}>
       <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>Dealership name<input value={dealership} onChange={event => setDealership(event.target.value)} placeholder="Tacoma RV Center" autoComplete="organization" maxLength={120} disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>
@@ -99,9 +100,10 @@ export function QuickReport() {
       <button className="brand-button" type="submit" disabled={busy || !ready}>{busy ? "Checking your website…" : ready === null ? "Checking availability…" : ready ? "Get my free snapshot" : "Free report is offline"}</button>
     </form>
     {ready === false && <p className="brand-fine" role="status">The live AI check is being connected. You can still <Link href="/book">book a report call</Link>.</p>}
-    {busy && <div className="quick-report-wait" role="status"><div><strong>Your check is running.</strong><p>We’re sampling public inventory pages and asking Gemini a shopper question near {city}, {state}. Watch this short video while you wait; the result will appear as soon as it is ready.</p></div><video controls autoPlay muted playsInline preload="metadata" aria-label="The Invisible RV Market video"><source src="/websitevideo.mp4" type="video/mp4" /></video></div>}
+    {busy && <SnapshotProgress website={website}/>}
     {error && <p className="brand-error" role="alert">{error}</p>}
     {result && <section className="quick-report-result" aria-label="Your free quick report" aria-live="polite">
+      <SnapshotProgress website={result.website} complete/>
       <article className="visibility-snapshot">
         <header className="snapshot-cover"><div className="snapshot-logo">Match<span>RV</span></div><p>AI VISIBILITY REPORTS</p><h2>Free Visibility Snapshot</h2><strong>Prepared for {result.dealership || new URL(result.website).hostname.replace(/^www\./, "")} · {result.location}</strong><p>Observed {new Date(result.checkedAt).toLocaleDateString()} · {result.pages.length} public pages checked</p></header>
         <div className="snapshot-body">

@@ -62,6 +62,20 @@ describe("dealer website conversion and public routes", () => {
     expect(html).not.toContain('href="/tow-match"');
     expect(html).not.toContain('href="/buyer-guides"');
   });
+  it("keeps /contact on the dealer-only shell, never the consumer header or footer", () => {
+    const html = render(<Contact/>, "/contact");
+    expect(html).toContain('data-page="dealer-contact"');
+    expect(html).toContain('class="matchrv-brand"');
+    expect(html).toContain("Dealer Services");
+    expect(html).toContain("Book a Call");
+    expect(html).toContain('href="/contact"');
+    expect(html).toContain('href="/privacy"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain("Send message");
+    for (const oldLabel of ["Agent Shop", "Tow Match", "Saved Items", "Sign In", "Browse by Type", "Buyer Resources", "Campgrounds", "Sell Your RV"]) {
+      expect(html).not.toContain(oldLabel);
+    }
+  });
   it("keeps displayed and JSON MCP configuration on the same branded endpoint", () => {
     expect(JSON.parse(MCP_JSON_CONFIG).mcpServers.MatchRV.url).toBe(MCP_ENDPOINT);
     const html = render(<McpSetup/>, "/mcp-setup");

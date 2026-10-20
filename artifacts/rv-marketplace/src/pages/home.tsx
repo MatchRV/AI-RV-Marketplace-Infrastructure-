@@ -330,6 +330,17 @@ export function Home() {
           </div>
         </div>
       </section>
+      {/* Dealer ChatGPT advertising early-access announcement */}
+      <section className="relative z-10 bg-[#0B1117] text-white border-y border-[#00CED1]/30 px-4 py-10">
+        <div className="max-w-7xl mx-auto sm:px-12 flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
+          <div>
+            <p className="text-[#00CED1] uppercase tracking-widest text-xs font-bold mb-2">For RV Dealerships · Early Access</p>
+            <h2 className="text-2xl sm:text-3xl font-display font-black mb-2">Get ready for advertising opportunities in ChatGPT.</h2>
+            <p className="text-white/70 max-w-2xl">MatchRV is developing inventory-readiness and future ChatGPT advertising services for dealers, subject to OpenAI eligibility and approval.</p>
+          </div>
+          <Link href="/dealers/chatgpt-advertising"><span className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00CED1] text-[#0B1117] px-6 py-4 font-bold whitespace-nowrap hover:brightness-110">Dealer Early Access <ArrowRight className="w-4 h-4" /></span></Link>
+        </div>
+      </section>
       {/* ── How It Works ──────────────────────────────────────────────── */}
       <section className="relative z-10 py-20 sm:py-28 bg-[#f4fbfa]/90 backdrop-blur-md overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-16 text-center mb-16">

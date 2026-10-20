@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,13 +18,17 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const snapshot = JSON.parse(
-  readFileSync(resolve(here, "../data/inventory.snapshot.json"), "utf-8"),
+  (() => {
+    const plain = resolve(here, "../data/inventory.snapshot.json");
+    if (existsSync(plain)) return readFileSync(plain, "utf-8");
+    return gunzipSync(readFileSync(`${plain}.gz`)).toString("utf-8");
+  })(),
 ) as InventorySnapshot;
 const idx = indexSnapshot(snapshot);
 afterEach(() => vi.useRealTimers());
 
 describe("committed inventory snapshot", () => {
-  it("holds a real, well-formed corpus", () => {
+  it("holds a real, well-formed corpus", { timeout: 30000 }, () => {
     expect(idx.units.length).toBeGreaterThan(900);
     expect(snapshot.stats.dealers).toBeGreaterThan(20);
     expect(snapshot.stats.units).toBe(idx.units.length);
@@ -64,29 +69,38 @@ describe("committed inventory snapshot", () => {
     expect(withCoords / idx.units.length).toBeGreaterThan(0.95);
     const withSleeps = idx.units.filter((u) => u.sleeps.value !== null).length;
     expect(withSleeps / idx.units.length).toBeGreaterThan(0.95);
-    const wa = idx.units.filter((u) => u.dealer.state === "WA");
-    expect(wa.length).toBeGreaterThan(100);
-    expect(wa.every((u) => u.dealer.lat !== null)).toBe(true);
+    const fl = idx.units.filter((u) => u.dealer.state === "FL");
+    expect(fl.length).toBeGreaterThan(100);
+    expect(fl.every((u) => u.dealer.lat !== null)).toBe(true);
   });
 
-  it("Fife WA search returns only regional units with sleeps populated", () => {
+  it("every unit an assistant sees has photos, a model and a price", { timeout: 30000 }, () => {
+    for (const u of idx.units) {
+      expect(u.images.length).toBeGreaterThan(0);
+      expect(u.priceUsd.value).not.toBeNull();
+      expect(u.model.trim()).not.toMatch(/^(unknown|other|n\/a|)$/i);
+    }
+  });
+
+  it("Tampa FL search returns only regional units with sleeps populated", () => {
     const t0 = performance.now();
     const out = runSearch(idx.units, {
       rvTypes: ["travel_trailer"],
       sleepsMin: 8,
-      location: { place: "Fife", radiusMiles: 150 },
+      location: { place: "Tampa", radiusMiles: 150 },
     });
     const ms = performance.now() - t0;
     expect(ms).toBeLessThan(5000);
-    expect(out.locationResolution?.place).toBe("Fife");
+    expect(out.locationResolution?.place).toBe("Tampa");
     expect(out.coverage.noLocalMatches).toBe(false);
     expect(out.results.length).toBeGreaterThan(0);
     for (const m of out.results.slice(0, 20)) {
-      expect(["WA", "OR", "ID", "MT"]).toContain(m.unit.dealer.state);
+      expect(m.unit.dealer.state).toBe("FL");
       expect(m.distanceMiles).not.toBeNull();
       expect(m.distanceMiles!).toBeLessThanOrEqual(150);
-      expect(m.unit.sleeps.value).not.toBeNull();
-      expect(m.unit.sleeps.value!).toBeGreaterThanOrEqual(8);
+      const sleeps = m.hardChecks.find((h) => h.constraint.startsWith("sleeps"))!;
+      if (m.hardStatus === "pass") expect(m.unit.sleeps.value!).toBeGreaterThanOrEqual(8);
+      else expect(sleeps.status).toBe("unknown"); // inferred capacity is never presented as verified
     }
   });
 });

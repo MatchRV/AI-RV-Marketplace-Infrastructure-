@@ -5,6 +5,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { resolve } from "node:path";
 import {
   indexSnapshot,
@@ -14,13 +15,16 @@ import {
 
 let index: InventoryIndex | null = null;
 
-/** Probe both the tsx layout (src/services) and the CJS bundle layout (dist). */
+/** Probe both the tsx layout (src/services) and the CJS bundle layout (dist). Plain JSON wins locally; committed form is .gz (GitHub's 100MB limit). */
 function findSnapshot(): string {
   const here = import.meta.dirname;
   const candidates = [
     resolve(here, "../../../../lib/agent-core/data/inventory.snapshot.json"), // src/services
     resolve(here, "../../lib/agent-core/data/inventory.snapshot.json"), // dist bundle
     resolve(here, "../../../lib/agent-core/data/inventory.snapshot.json"),
+    resolve(here, "../../../../lib/agent-core/data/inventory.snapshot.json.gz"),
+    resolve(here, "../../lib/agent-core/data/inventory.snapshot.json.gz"),
+    resolve(here, "../../../lib/agent-core/data/inventory.snapshot.json.gz"),
   ];
   for (const c of candidates) if (existsSync(c)) return c;
   throw new Error(`inventory snapshot not found (searched from ${here})`);
@@ -30,7 +34,10 @@ export function getInventory(): InventoryIndex {
   if (!index) {
     const path = findSnapshot();
     const t0 = performance.now();
-    const snapshot = JSON.parse(readFileSync(path, "utf-8")) as InventorySnapshot;
+    const raw = readFileSync(path);
+    const snapshot = JSON.parse(
+      path.endsWith(".gz") ? gunzipSync(raw).toString("utf-8") : raw.toString("utf-8"),
+    ) as InventorySnapshot;
     index = indexSnapshot(snapshot);
     const ms = Math.round(performance.now() - t0);
     const e = index.enrichStats;

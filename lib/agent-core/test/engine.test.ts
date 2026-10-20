@@ -200,6 +200,41 @@ describe("runSearch", () => {
     expect(out.funnel.excluded.find((e) => e.reason.includes("price"))?.count).toBe(1);
   });
 
+  it("does not verify minimum length, bunks, or sleep capacity from missing or inferred facts", () => {
+    const inferred = unit({
+      rv_type: "Class A",
+      title: "2014 Monaco Monarch SE 32WDB",
+      model: "Monarch SE 32WDB",
+      length: null,
+      sleeps: null,
+      bunkhouse: null,
+      description: null,
+      features: [],
+    });
+    inferred.sleeps = {
+      value: 10,
+      source: "derived_model_code",
+      confidence: "medium",
+    };
+
+    const out = runSearch([inferred], {
+      rvTypes: ["class_a"],
+      lengthMinFt: 35,
+      sleepsMin: 8,
+      mustHave: ["bunkhouse"],
+    });
+    expect(out.funnel.passedHard).toBe(0);
+    expect(out.funnel.unverified).toBe(1);
+    expect(out.results[0].hardStatus).toBe("unverified");
+    expect(out.results[0].hardChecks.filter((h) => h.status === "unknown")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ constraint: "length ≥ 35 ft" }),
+        expect.objectContaining({ constraint: "sleeps ≥ 8", source: "derived_model_code" }),
+        expect.objectContaining({ constraint: "has bunkhouse", source: "derived_model_code" }),
+      ]),
+    );
+  });
+
   it("throws a self-correctable error for unknown places", () => {
     expect(() => runSearch(corpus, { location: { place: "Narnia", radiusMiles: 50 } })).toThrowError(ConstraintError);
     try {

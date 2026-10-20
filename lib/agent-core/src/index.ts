@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./geo.js";
 export * from "./tow.js";
+export * from "./motorhome.js";
 export * from "./enrich.js";
 export * from "./normalize.js";
 export * from "./dealer-registry.js";
@@ -9,4 +10,7 @@ export * from "./match.js";
 export * from "./compare.js";
 export * from "./format.js";
 export * from "./contracts.js";
+export * from "./discovery.js";
+export * from "./knowledge.js";
+export * from "./learning.js";
 export * from "./enrich-snapshot.js";

@@ -1,0 +1,343 @@
+/**
+ * RV Outfitter "sherpa" discovery — the shared buyer-understanding layer.
+ *
+ * One implementation consumed by every surface (MCP for ChatGPT / Muse /
+ * any LLM connector, the WebMCP tools, and the matchrv.com Outfitter), so a
+ * buyer gets the same guide everywhere: understand the party and the trip
+ * BEFORE showing inventory, ask one question at a time, never re-ask what is
+ * already known, and never call a trailer a match until it fits how the
+ * buyer will actually live in it.
+ *
+ * Pure and deterministic — no LLM, no I/O. The host LLM does the talking;
+ * this module decides what is still unknown, what to ask next, and how a
+ * unit fits the stated lifestyle.
+ */
+
+import type { CanonicalUnit, Constraints } from "./types.js";
+
+export type FloorplanIntent = "couples" | "family_bunks" | "flexible" | "solo";
+export type CampingStyle = "full_hookup" | "boondocking" | "mixed";
+
+export interface BuyerProfile {
+  /** Total people sleeping in the RV, buyer included. THE gating fact. */
+  sleepers?: number | null;
+  adults?: number | null;
+  kids?: number | null;
+  hasPets?: boolean | null;
+  floorplanIntent?: FloorplanIntent | null;
+  /** True only when the buyer explicitly wants bunk beds. */
+  wantsBunks?: boolean | null;
+  budgetMaxUsd?: number | null;
+  budgetMinUsd?: number | null;
+  campingStyle?: CampingStyle | null;
+  rvTypes?: Constraints["rvTypes"];
+  lengthMaxFt?: number | null;
+  lengthMinFt?: number | null;
+  /** Why the length cap exists. storage/hard_limit = never exceed, ever. */
+  lengthReason?: "storage" | "comfort" | "hard_limit" | null;
+  /** Buyer explicitly approved keeping the gate open +1-2 ft. Null = not asked. */
+  lengthFlexApproved?: boolean | null;
+  place?: string | null;
+  radiusMiles?: number | null;
+  /** Tow vehicle as stated, e.g. "2021 Ford F-150 3.5L EcoBoost". */
+  towVehicle?: string | null;
+  /** Door-sticker payload (yellow label), lbs — never inferred from model. */
+  truckPayloadLbs?: number | null;
+  /** Buyer-stated exact tow rating, lbs. */
+  truckTowRatingLbs?: number | null;
+  passengersLbs?: number | null;
+  cargoLbs?: number | null;
+  /** Buyer explicitly said "just show me / skip questions". */
+  discoveryWaived?: boolean | null;
+}
+
+export interface DiscoveryQuestion {
+  id: "sleepers" | "floorplan" | "length_reason" | "length_flex" | "budget" | "camping_style" | "tow_payload";
+  prompt: string;
+  options: string[];
+  why: string;
+}
+
+export interface DiscoveryAssessment {
+  readyToSearch: boolean;
+  /** Essentials that block a first recommendation. */
+  missingEssentials: string[];
+  /** Useful refinements that never block a search. */
+  missingRefinements: string[];
+  nextQuestion: DiscoveryQuestion | null;
+  knownSummary: string[];
+}
+
+const QUESTION_ORDER: DiscoveryQuestion[] = [
+  {
+    id: "sleepers",
+    prompt: "Before I pull any trailers, one quick thing so I don't waste your time: how many people will normally sleep in it?",
+    options: ["Just me", "Two adults", "3–4 people", "5 or more"],
+    why: "Sleeping count decides couples vs. bunkhouse floorplans — guessing here is how buyers get shown the wrong trailers.",
+  },
+  {
+    id: "floorplan",
+    prompt: "Got it. For sleeping, which fits you better: one main bed (couples layout), dedicated bunk beds, or are you flexible?",
+    options: ["One main bed / couples layout", "Dedicated bunks", "Flexible — show me both"],
+    why: "A bunkhouse wastes living space for 1–2 sleepers; a couples trailer strands a family. This keeps the shortlist honest.",
+  },
+  {
+    id: "length_reason",
+    prompt: "Is that length limit for storage — a garage, driveway, or spot it has to fit — or is it more about what you're comfortable towing and handling?",
+    options: ["Storage — it physically has to fit", "Comfort — just what I'm comfortable with", "Hard limit, no exceptions"],
+    why: "A storage limit can never be exceeded. A comfort limit might be hiding the perfect RV one or two feet longer, so we ask before we wall off that inventory.",
+  },
+  {
+    id: "length_flex",
+    prompt: "Is it okay if we keep it maybe 1 or 2 feet longer, just in case? I'm not going to take you up to 40 by any means — I just want to keep that gate open in case the right one is sitting right there.",
+    options: ["Yes — keep the gate open (+1–2 ft)", "No — hold my limit exactly"],
+    why: "Only asked when the limit is about comfort, and only with explicit permission. Approved flexibility is +2 ft maximum, never open-ended.",
+  },
+  {
+    id: "tow_payload",
+    prompt: "Last safety check before I rank anything: what does the yellow payload sticker inside your driver's door say? It reads 'The combined weight of occupants and cargo should never exceed ___ lbs.' A photo works too — you can cover the VIN.",
+    options: ["I'll check the sticker", "I know my exact tow rating instead", "Skip for now — show preliminary fits only"],
+    why: "Tongue weight counts against payload. A model name (e.g. 'F-150') spans thousands of pounds of rating, so only the sticker gives a real fit.",
+  },
+  {
+    id: "budget",
+    prompt: "What price range should I stay inside? A ceiling is fine — I will never show you over it.",
+    options: ["Under $25k", "$25k–$45k", "$45k–$70k", "No ceiling yet"],
+    why: "Budget is a hard ceiling, not a target to spend up to.",
+  },
+  {
+    id: "camping_style",
+    prompt: "How do you mostly camp: full hookups, off-grid/boondocking, or a mix?",
+    options: ["Full hookups", "Boondocking / off-grid", "A mix"],
+    why: "Camping style changes what matters (tanks, solar, slideouts) without excluding everything else.",
+  },
+];
+
+/** Infer the floorplan intent the profile implies, when not stated. */
+export function impliedFloorplan(p: BuyerProfile): FloorplanIntent | null {
+  if (p.floorplanIntent) return p.floorplanIntent;
+  if (p.wantsBunks === true) return "family_bunks";
+  const sleepers = p.sleepers ?? null;
+  const kids = p.kids ?? 0;
+  if (sleepers == null) return null;
+  if (kids > 0 || sleepers >= 3) return "family_bunks";
+  if (sleepers === 1) return "solo";
+  if (sleepers === 2) return "couples";
+  return null;
+}
+
+export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
+  const known: string[] = [];
+  if (p.sleepers != null) known.push(`sleeps ${p.sleepers}`);
+  const intent = impliedFloorplan(p);
+  if (intent) known.push(`floorplan: ${intent.replace(/_/g, " ")}`);
+  if (p.budgetMaxUsd != null) known.push(`budget ≤ $${p.budgetMaxUsd.toLocaleString()}`);
+  if (p.campingStyle) known.push(`camping: ${p.campingStyle.replace(/_/g, " ")}`);
+  if (p.towVehicle) known.push(`tow vehicle: ${p.towVehicle}`);
+  if (p.truckPayloadLbs != null) known.push(`payload ${p.truckPayloadLbs.toLocaleString()} lbs (door sticker)`);
+  else if (p.truckTowRatingLbs != null) known.push(`tow rating ${p.truckTowRatingLbs.toLocaleString()} lbs (buyer-stated)`);
+
+  if (p.discoveryWaived) {
+    return { readyToSearch: true, missingEssentials: [], missingRefinements: [], nextQuestion: null, knownSummary: known };
+  }
+
+  // Only sleeping party + floorplan intent gate the FIRST recommendation.
+  // Budget, camping style and payload refine ranking / tow verdicts and are
+  // asked after (payload before any trailer is called a tow "match").
+  const missingEssentials: string[] = [];
+  if (p.sleepers == null) missingEssentials.push("sleepers");
+  else if (!intent) missingEssentials.push("floorplan");
+  // length_reason / length_flex are appended after this (Road to the Sale).
+
+  const missingRefinements: string[] = [];
+  if (p.towVehicle && p.truckPayloadLbs == null && p.truckTowRatingLbs == null) missingRefinements.push("tow_payload");
+  if (p.budgetMaxUsd == null) missingRefinements.push("budget");
+  if (!p.campingStyle) missingRefinements.push("camping_style");
+
+  if (p.lengthMaxFt != null) {
+    known.push(`max length ${p.lengthMaxFt} ft${p.lengthReason ? ` (${p.lengthReason})` : ""}${p.lengthFlexApproved ? " +2 ft gate open" : ""}`);
+  }
+  // Road to the Sale: a stated length cap is clarified, never silently
+  // treated as hard (storage) or soft (comfort). Clarification gates the
+  // search because the answer changes which inventory even exists for them.
+  if (p.lengthMaxFt != null && !p.lengthReason && p.lengthFlexApproved == null) missingEssentials.push("length_reason");
+  else if (p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null) missingEssentials.push("length_flex");
+
+  const nextId = missingEssentials[0] ?? missingRefinements[0] ?? null;
+  let nextQuestion = nextId ? (QUESTION_ORDER.find((q) => q.id === nextId) ?? null) : null;
+  if (nextQuestion?.id === "length_reason" && p.lengthMaxFt != null) {
+    nextQuestion = { ...nextQuestion, prompt: `Is that ${p.lengthMaxFt}-foot limit for storage — a garage, driveway, or spot it has to fit — or is it more about what you're comfortable with?` };
+  }
+  if (nextQuestion?.id === "length_flex" && p.lengthMaxFt != null) {
+    nextQuestion = { ...nextQuestion, prompt: `Is it okay if we keep it maybe 1 or 2 feet longer than ${p.lengthMaxFt} — so up to about ${p.lengthMaxFt + 2} — just in case? I'm not going to take you way up the range by any means; I just want to keep that gate open in case the right one is sitting right there.` };
+  }
+  return {
+    readyToSearch: missingEssentials.length === 0,
+    missingEssentials,
+    missingRefinements,
+    // When essentials are done, the next question is advisory only.
+    nextQuestion: missingEssentials.length > 0 ? nextQuestion : null,
+    knownSummary: known,
+  };
+}
+
+/**
+ * The length cap that actually filters inventory. Storage / hard limits and
+ * declined flexibility hold the stated number exactly; explicitly approved
+ * comfort flexibility opens the gate by exactly 2 ft — never more.
+ */
+export function effectiveLengthMaxFt(p: BuyerProfile): number | null {
+  if (p.lengthMaxFt == null) return null;
+  return p.lengthFlexApproved === true && p.lengthReason === "comfort" ? p.lengthMaxFt + 2 : p.lengthMaxFt;
+}
+
+/** Compile a buyer profile into engine constraints (single mapping). */
+export function profileToConstraints(p: BuyerProfile): Constraints {
+  const intent = impliedFloorplan(p);
+  const c: Constraints = {};
+  if (p.sleepers != null) c.sleepsMin = p.sleepers;
+  if (p.budgetMaxUsd != null) c.priceMaxUsd = p.budgetMaxUsd;
+  if (p.budgetMinUsd != null) c.priceMinUsd = p.budgetMinUsd;
+  if (p.rvTypes?.length) c.rvTypes = p.rvTypes;
+  if (p.lengthMaxFt != null) c.lengthMaxFt = effectiveLengthMaxFt(p);
+  if (p.lengthMinFt != null) c.lengthMinFt = p.lengthMinFt;
+  if (p.place) c.location = { place: p.place, radiusMiles: p.radiusMiles ?? 150 };
+  if (p.towVehicle) {
+    c.towVehicle = p.truckTowRatingLbs != null
+      ? `${p.towVehicle} rated ${p.truckTowRatingLbs.toLocaleString()} lbs`
+      : p.towVehicle;
+  }
+  if (p.campingStyle === "boondocking") c.boondocking = true;
+  c.sherpa = {
+    sleepers: p.sleepers ?? null,
+    floorplanIntent: intent,
+    campingStyle: p.campingStyle ?? null,
+    truckPayloadLbs: p.truckPayloadLbs ?? null,
+    passengersLbs: p.passengersLbs ?? null,
+    cargoLbs: p.cargoLbs ?? null,
+    discoveryWaived: p.discoveryWaived ?? null,
+    lengthMaxStatedFt: p.lengthMaxFt ?? null,
+    lengthReason: p.lengthReason ?? null,
+    lengthFlexApproved: p.lengthFlexApproved ?? null,
+  };
+  // Bunks are a hard requirement ONLY when the buyer explicitly wants them.
+  if (intent === "family_bunks" && p.wantsBunks === true) c.mustHave = ["bunkhouse"];
+  return c;
+}
+
+// ── Floorplan classification + lifestyle fit ───────────────────────────────
+
+export type FloorplanClass = "bunkhouse" | "couples" | "family_flexible" | "unknown";
+
+export function classifyFloorplan(u: CanonicalUnit): FloorplanClass {
+  if (u.bunkhouse.value === true) return "bunkhouse";
+  if (u.bunkhouse.value === false) return "couples";
+  return "unknown";
+}
+
+export interface LifestyleFit {
+  points: number;
+  label: string;
+  reasons: string[];
+}
+
+/**
+ * Score how a unit fits HOW the buyer lives — the correction for ranking a
+ * 17-ft bunkhouse level with a couples trailer for two adults. Deterministic
+ * and explained; bunk evidence that is merely inferred still counts, but is
+ * labelled as such by the caller via bunkhouse provenance.
+ */
+export function lifestyleFit(u: CanonicalUnit, sherpa: NonNullable<Constraints["sherpa"]>): LifestyleFit {
+  const intent = sherpa.floorplanIntent ?? null;
+  const sleepers = sherpa.sleepers ?? null;
+  const cls = classifyFloorplan(u);
+  const sleeps = u.sleeps.value;
+  const reasons: string[] = [];
+  let points = 0;
+  let label = "general fit";
+
+  if (intent === "couples" || intent === "solo") {
+    label = intent === "solo" ? "solo / couples layout" : "couples layout";
+    if (cls === "bunkhouse") {
+      points -= 22;
+      reasons.push("bunkhouse layout — bunks eat living space for 1–2 sleepers");
+    } else if (cls === "couples") {
+      points += 18;
+      reasons.push("couples layout — main bed, no wasted bunk space");
+    }
+    if (sleeps != null && sleeps >= 6) { points -= 6; reasons.push(`sleeps ${sleeps} — more beds than a party of ${sleepers ?? 2} needs`); }
+    const len = u.lengthFt.value;
+    if (len != null && len >= 22 && len <= 34) { points += 6; reasons.push(`${len} ft — usable living space, still easy to tow`); }
+    if ((u.slideouts.value ?? 0) >= 1) { points += 4; reasons.push("slideout opens up the living area"); }
+  } else if (intent === "family_bunks") {
+    label = "family layout";
+    if (cls === "bunkhouse") {
+      points += 18;
+      reasons.push("dedicated bunks for the kids");
+    } else if (cls === "couples") {
+      points -= 10;
+      reasons.push("no dedicated bunks — kids would be on a convertible dinette/sofa");
+    }
+    if (sleepers != null && sleeps != null) {
+      if (sleeps >= sleepers) { points += 8; reasons.push(`sleeps ${sleeps} for your ${sleepers}`); }
+      else { points -= 14; reasons.push(`sleeps ${sleeps} — short of your ${sleepers}`); }
+    }
+  } else if (sleepers != null && sleeps != null && sleeps >= sleepers) {
+    points += 5;
+    reasons.push(`sleeps ${sleeps}`);
+  }
+
+  if (sherpa.campingStyle === "boondocking" && u.boondocking.score != null && u.boondocking.score >= 50) {
+    points += 6;
+    reasons.push("strong off-grid setup for boondocking");
+  }
+  return { points, label, reasons };
+}
+
+// ── Tongue weight + payload (the check a model name cannot do) ───────────
+
+/** Loaded tongue-weight estimate: published hitch weight is the EMPTY number. */
+export function estimateTongueRange(u: CanonicalUnit): { lowLbs: number; highLbs: number; basis: string } | null {
+  const loaded = u.gvwrLbs.value ?? u.dryWeightLbs.value;
+  if (loaded == null) return null;
+  const basis = u.gvwrLbs.value != null ? "GVWR × 10–15%" : "dry weight × 10–15% (GVWR unpublished — loaded tongue will run higher)";
+  return { lowLbs: Math.round(loaded * 0.10), highLbs: Math.round(loaded * 0.15), basis };
+}
+
+export interface PayloadFit {
+  verdict: "fits" | "tight" | "exceeds" | "unknown";
+  tongueLowLbs: number | null;
+  tongueHighLbs: number | null;
+  peopleAndCargoLbs: number;
+  remainingAfterTongueLbs: number | null;
+  detail: string;
+}
+
+export function evaluatePayloadFit(
+  u: CanonicalUnit,
+  sherpa: NonNullable<Constraints["sherpa"]>,
+): PayloadFit {
+  const peopleAndCargo = (sherpa.passengersLbs ?? 0) + (sherpa.cargoLbs ?? 0);
+  const tongue = estimateTongueRange(u);
+  if (sherpa.truckPayloadLbs == null || !tongue) {
+    return {
+      verdict: "unknown",
+      tongueLowLbs: tongue?.lowLbs ?? null,
+      tongueHighLbs: tongue?.highLbs ?? null,
+      peopleAndCargoLbs: peopleAndCargo,
+      remainingAfterTongueLbs: null,
+      detail: sherpa.truckPayloadLbs == null
+        ? "Payload unknown — read the yellow door sticker before calling this a tow match."
+        : "Trailer loaded weight unknown — tongue weight cannot be estimated.",
+    };
+  }
+  const worst = tongue.highLbs + peopleAndCargo;
+  const remaining = sherpa.truckPayloadLbs - worst;
+  if (worst <= sherpa.truckPayloadLbs * 0.9) {
+    return { verdict: "fits", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo leaves ~${remaining} lbs of your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload.` };
+  }
+  if (worst <= sherpa.truckPayloadLbs) {
+    return { verdict: "tight", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo is within your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload, but tight (~${remaining} lbs spare at the high end).` };
+  }
+  return { verdict: "exceeds", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo exceeds your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload by ~${Math.abs(remaining)} lbs at the high end.` };
+}

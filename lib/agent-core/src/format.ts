@@ -9,8 +9,17 @@
 
 import type { CanonicalUnit, SearchOutcome, UnitMatch } from "./types.js";
 import { freshnessHours } from "./dataset.js";
+import { isMotorized, powertrainOf, towingOf } from "./motorhome.js";
+import { classifyFloorplan } from "./discovery.js";
 
 const usd = (n: number | null) => (n === null ? null : Math.round(n));
+
+/** Powertrain & towing headline for motorhome search rows; null = needs verification. */
+function motorhomeSummary(u: CanonicalUnit): Record<string, unknown> {
+  const p = powertrainOf(u);
+  const t = towingOf(u);
+  return { fuel: p.fuelType.value, hp: p.horsepower.value, torqueLbFt: p.torqueLbFt.value, hitchTowRatingLbs: t.hitchTowRatingLbs.value, gcwrLbs: t.gcwrLbs.value };
+}
 
 export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
   const u = m.unit;
@@ -39,7 +48,12 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     match: m.score,
     verified: m.hardStatus === "pass",
     checks: `${meets}/${m.hardChecks.length}`,
+    ...(isMotorized(u) ? motorhomeSummary(u) : {}),
     ...(m.identicalUnitIds?.length ? { inStock: m.identicalUnitIds.length + 1 } : {}),
+    floorplan: classifyFloorplan(u),
+    // Tongue estimate only on a GVWR (loaded) basis; a dry-weight tongue
+    // understates the real number, so it stays in get_rv detail instead.
+    ...(u.gvwrLbs.value != null ? { gvwrLbs: u.gvwrLbs.value, tongueLbs: [Math.round(u.gvwrLbs.value * 0.1), Math.round(u.gvwrLbs.value * 0.15)] } : {}),
     ...(why.length ? { plus: why } : {}),
     ...(m.unknownFields.length ? { unknown: m.unknownFields.slice(0, 3) } : {}),
   };

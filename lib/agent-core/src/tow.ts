@@ -70,7 +70,7 @@ const STANDARD_CAVEATS = [
  * Resolve a free-text tow vehicle ("2024 Ford F-150", "F-150 rated 8,000 lbs")
  * to a spec + planning numbers. An explicit stated rating always wins.
  */
-export function resolveTowVehicle(input: string): TowResolution {
+export function resolveTowVehicle(input: string, learned?: { towRatingLbs: number | null; confirmations: number; source: string } | null): TowResolution {
   const text = input.trim().toLowerCase();
 
   const explicit = text.match(/([\d,]{4,7})\s*(?:lb|lbs|pound|#)/);
@@ -102,6 +102,23 @@ export function resolveTowVehicle(input: string): TowResolution {
       comfortCapLbs: Math.round(explicitLbs * TOW_SAFETY_MARGIN),
       safetyMarginPct: Math.round((1 - TOW_SAFETY_MARGIN) * 100),
       caveats,
+    };
+  }
+
+  if (learned?.towRatingLbs != null && learned.towRatingLbs >= 1500 && learned.towRatingLbs <= 40000) {
+    caveats.unshift(
+      `Using a rating MatchRV LEARNED for this vehicle: ${learned.towRatingLbs.toLocaleString()} lbs, confirmed ${learned.confirmations}x (${learned.source}). Verify it matches your exact configuration before towing.`,
+    );
+    return {
+      input,
+      matched,
+      statedRatingLbs: null,
+      rangeLbs: matched ? { min: matched.towLbsMin, max: matched.towLbsMax } : null,
+      filterCapLbs: learned.towRatingLbs,
+      comfortCapLbs: Math.round(learned.towRatingLbs * TOW_SAFETY_MARGIN),
+      safetyMarginPct: Math.round((1 - TOW_SAFETY_MARGIN) * 100),
+      caveats,
+      learned: { confirmations: learned.confirmations, source: learned.source },
     };
   }
 
@@ -179,6 +196,13 @@ export function evaluateTowFit(unit: CanonicalUnit, tow: TowResolution): TowFitR
     else if (weight <= rating) verdict = "marginal";
     else verdict = "exceeds";
     detail = `${weight.toLocaleString()} lbs ${basis} vs your ${rating.toLocaleString()} lbs rating (comfort cap ${comfort.toLocaleString()}).`;
+  } else if (tow.learned != null && tow.filterCapLbs != null) {
+    const rating = tow.filterCapLbs;
+    const comfort = tow.comfortCapLbs ?? Math.round(rating * TOW_SAFETY_MARGIN);
+    if (weight <= comfort) verdict = "fits_with_margin";
+    else if (weight <= rating) verdict = "marginal";
+    else verdict = "exceeds";
+    detail = `${weight.toLocaleString()} lbs ${basis} vs a LEARNED ${rating.toLocaleString()} lbs rating for this vehicle (confirmed ${tow.learned.confirmations}x; comfort cap ${comfort.toLocaleString()}).`;
   } else if (tow.rangeLbs != null) {
     const { min, max } = tow.rangeLbs;
     if (weight <= Math.round(min * TOW_SAFETY_MARGIN)) verdict = "fits_with_margin";

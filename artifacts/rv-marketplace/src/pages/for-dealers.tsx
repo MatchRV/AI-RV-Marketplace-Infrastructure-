@@ -1,4 +1,4 @@
-import { BrandLayout as Layout } from "@/components/brand-layout";
+import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import {
   Building2,
@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 
 const REPORT_MAILTO =
-  "/book";
+  "mailto:jonathan@matchrv.com?subject=AI%20Visibility%20Report%20Request&body=Hi%20Jonathan%2C%0A%0AI%27d%20like%20an%20AI%20Visibility%20Report%20for%20our%20dealership.%0A%0ADealership%20name%3A%0AWebsite%20%2F%20inventory%20URL%3A%0ACity%2C%20State%3A%0A%0AThanks%21";
 
 const TALK_MAILTO =
-  "/book";
+  "mailto:jonathan@matchrv.com?subject=Talk%20to%20MatchRV%20%E2%80%94%20Dealer%20AI%20Inventory";
 
 export function ForDealers() {
   return (
@@ -89,6 +89,14 @@ export function ForDealers() {
 
 
 
+        <section className="rounded-2xl border border-[#00CED1]/40 bg-[#0B1117] text-white p-6 sm:p-8 mb-10">
+          <p className="text-[#00CED1] text-xs font-bold tracking-widest uppercase mb-3">New · Early Interest</p>
+          <h2 className="text-2xl sm:text-3xl font-display font-bold mb-3">ChatGPT Advertising for RV Dealers</h2>
+          <p className="text-white/75 leading-relaxed mb-5 max-w-2xl">MatchRV is preparing dealerships for emerging ChatGPT product-feed advertising opportunities. Explore inventory readiness and join the early-interest list while platform eligibility and access are being established.</p>
+          <a href="/dealers/chatgpt-advertising" className="inline-flex items-center gap-2 bg-[#00CED1] text-[#0B1117] rounded-lg px-6 py-3.5 font-bold hover:brightness-110">Explore ChatGPT Advertising <ArrowRight className="w-4 h-4" /></a>
+          <p className="text-white/50 text-xs mt-4">Coming soon. Advertising access and placement are not yet guaranteed.</p>
+        </section>
+
         {/* Why this matters — CSO verbatim core, locked claims only */}
         <section className="mb-10">
           <h2 className="text-2xl font-display font-bold mb-4">Why this matters</h2>
@@ -141,7 +149,7 @@ export function ForDealers() {
               </ul>
             </details>
             <p className="pt-1">
-              <a href="/visibility-report" className="text-primary font-semibold hover:underline inline-flex items-center gap-1">
+              <a href="/browse" className="text-primary font-semibold hover:underline inline-flex items-center gap-1">
                 See a sample AI Visibility Report
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
@@ -280,9 +288,10 @@ export function ForDealers() {
             See if your rooftop appears
           </h2>
           <p className="opacity-90 leading-relaxed mb-6 max-w-2xl">
-            Get an AI Visibility Report for your rooftop. We show whether
+            Get a free AI Visibility Report for your rooftop. We show whether
             shoppers&apos; AI answers mention you, where inventory looks empty to
-            crawlers, and the top fixes so agents can recommend your units. The full report is $99, one time. Book a call to confirm scope and next steps.
+            crawlers, and the top fixes so agents can recommend your units. Starter
+            reports typically run $299–$499. Email us — no form required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
@@ -290,14 +299,14 @@ export function ForDealers() {
               className="inline-flex items-center justify-center gap-2 bg-white text-primary px-6 py-3.5 rounded-lg font-bold hover:brightness-95 active:scale-[0.98] transition-all min-h-[48px]"
             >
               <Mail className="w-5 h-5" />
-              Book a report call
+              Request AI Visibility Report
               <ArrowRight className="w-4 h-4" />
             </a>
             <a
-              href="/visibility-report"
+              href="/browse"
               className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white px-6 py-3.5 rounded-lg font-bold hover:bg-white/10 active:scale-[0.98] transition-all min-h-[48px]"
             >
-              See real report examples
+              See sample report
             </a>
             <a
               href={TALK_MAILTO}

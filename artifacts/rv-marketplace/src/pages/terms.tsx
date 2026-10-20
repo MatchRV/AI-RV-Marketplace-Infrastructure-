@@ -1,16 +1,111 @@
-import { Link } from "wouter";
-import { LegalLayout } from "@/components/legal-layout";
+import { Layout } from "@/components/layout";
+import { SEO } from "@/components/seo";
 
 export function Terms() {
-  return <LegalLayout title="Terms of Service" canonical="/terms">
-    <p>These terms apply to MatchRV’s website, dealership auditing, inventory services, and supported AI shopping tools. By using the services, you agree to these terms. A separately accepted service agreement governs the specific scope, fees, and service commitments for a paid dealership engagement and takes priority if it conflicts with these general terms.</p>
-    <section><h2>Dealership services and authorization</h2><p>MatchRV offers public website checks, AI visibility audits, inventory ingestion and enrichment, structured data services, MCP syndication, and advertising management where agreed. You must be authorized to submit dealership information, connect a feed, or instruct work on a dealership’s behalf. You retain rights in the content you supply and grant MatchRV permission to process and distribute the agreed inventory and public business information to deliver the services.</p><p>Do not supply content you lack permission to use, sensitive customer records, false inventory, or credentials through public forms. Access to a supported DMS, website, or third-party integration may require separate permissions and agreements.</p></section>
-    <section><h2>Reports and AI observations</h2><p>Reports describe the pages, sample units, questions, dates, and conditions tested. Public-page checks have a limited scope and may not reproduce every crawler or assistant. AI answers and inventory change. A score, observation, or comparison does not guarantee future rankings, recommendations, traffic, leads, or sales.</p><p>Enrichment relies on available source evidence and exact model matching. Missing or conflicting facts must be confirmed rather than treated as verified. A hosted schema layer does not transfer control of a dealership website or override an assistant’s independent decisions.</p></section>
-    <section><h2>Pricing, audit credit, and monthly services</h2><p>The full audit is offered at $99 one time. That audit fee is credited in full toward a monthly plan when you enroll. Monthly plans are advertised per rooftop; ad spend is additional. Scope, integration compatibility, onboarding, payment timing, audit-credit application, renewal, cancellation, and any refund terms are confirmed in a separate agreement before recurring service or billing begins.</p><p>Submitting a free snapshot form or booking a call does not buy an audit, enroll you in a plan, or authorize a charge. No subscription starts without your explicit agreement.</p></section>
-    <section><h2>Advertising and third-party platforms</h2><p>ChatGPT advertising is offered as a limited pilot, subject to OpenAI’s eligibility, review, access, and delivery rules. Sponsored placements remain separate from organic answers. Advertising spend is paid directly through your advertiser account. Optional Google campaign services require an agreed scope. MatchRV cannot guarantee approval, impressions, position, clicks, or outcomes on third-party platforms.</p></section>
-    <section><h2>Inventory and shopping tools</h2><p>Listings, prices, availability, and specifications can be incomplete or outdated. Verify details with the dealership before visiting or purchasing. MatchRV is not the seller, lender, or a party to a vehicle transaction. Dealer terms, taxes, fees, financing, warranties, and availability must be confirmed directly.</p><p>Weight data is informational. Dry weight is not loaded towing weight. Confirm your exact vehicle configuration, payload, axle and hitch limits, loaded RV weight, and manufacturer guidance before towing. MatchRV does not certify towing safety from a generic tow rating or an incomplete record.</p></section>
-    <section><h2>Contact requests and acceptable use</h2><p>Dealer-contact tools require a preview and explicit approval before submission. By approving, you authorize the reviewed contact information, message, and relevant inventory reference to be sent to the selected dealership. Optional marketing communications require the applicable consent.</p><p>Do not misuse the service, attempt unauthorized access, bypass access controls, send spam, upload malicious content, or interfere with other users. Access may be limited to protect the service or address misuse.</p></section>
-    <section><h2>Content, availability, and responsibility</h2><p>MatchRV retains rights in its software, designs, and original reports, subject to your rights in supplied content and any agreed license. Third-party content remains subject to its owners’ rights. Except for commitments in a separately accepted agreement or rights that cannot be excluded by law, the service is provided as available without guarantees of uninterrupted operation or complete accuracy. To the extent permitted by law, MatchRV is not responsible for indirect or consequential losses arising from use of the service. These terms do not exclude rights or liabilities that applicable law does not permit us to exclude.</p></section>
-    <section><h2>Privacy, updates, and contact</h2><p>Our <Link href="/privacy">Privacy Policy</Link> explains how we handle information. Updated terms will be posted with a revision date; material changes to a paid engagement follow its agreement and applicable law. For support, service terms, or compliance questions, contact <a href="mailto:jonathan@matchrv.com">jonathan@matchrv.com</a>.</p></section>
-  </LegalLayout>;
+  return (
+    <Layout>
+      <SEO
+        title="Terms and Conditions"
+        description="Read MatchRV's Terms and Conditions to understand your rights and responsibilities when using the MatchRV platform."
+        canonical="/terms-and-conditions"
+      />
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 className="text-4xl font-display font-bold mb-2">Terms and Conditions</h1>
+        <p className="text-sm text-muted-foreground mb-4">Last updated: September 25, 2026</p>\n        <p className="text-muted-foreground mb-10">These Terms govern services provided by MatchRV Inc. (&quot;MatchRV&quot;), including the MatchRV website and supported AI/plugin experiences.</p>
+
+        <div className="space-y-8 text-muted-foreground leading-relaxed">
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">1. Acceptance of Terms and Conditions</h2>
+            <p>
+              By accessing or using MatchRV, you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the site.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">2. Use of the Platform</h2>
+            <p>
+              MatchRV provides a platform for buying and selling recreational vehicles. You agree to use the platform only for lawful purposes and in accordance with these terms. You may not post false, misleading, or fraudulent listings.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">3. Listings and Transactions</h2>
+            <p>
+              MatchRV is not a party to any transaction between buyers and sellers. We do not guarantee the accuracy of listings. Transactions may involve independent dealerships, sellers, lenders, transport providers, or other third parties. Buyers should independently verify vehicle condition, title, pricing, availability, specifications, and any other relevant information before purchasing.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">4. AI-Assisted Shopping and Towing</h2>
+            <p>
+              MatchRV may be accessed through supported AI assistants and plugins. Search, comparison, and tow-fit outputs are provided for shopping and planning purposes only. Missing or unverified specifications remain unknown, and MatchRV does not guarantee towing safety or compatibility from a generic vehicle model, advertised maximum tow rating, or incomplete weight data. Always verify the exact vehicle configuration, payload label, hitch limits, loaded RV weight, tongue or pin weight, and manufacturer guidance before towing.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">5. Dealer Contact Authorization</h2>
+            <p>
+              MatchRV may prepare a dealer-contact request on your behalf. No dealer contact is submitted until you explicitly approve the previewed action. By approving submission, you authorize MatchRV to send the reviewed contact information, message, and relevant RV reference to the selected dealership so it can respond.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">6. SMS Communications</h2>
+            <p className="mb-3">
+              By opting in to SMS communications, you consent to receive text messages from MatchRV regarding your account, saved listings, price drop alerts, and match report updates. You may provide this consent in one of two ways:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mb-3">
+              <li>By checking the labeled SMS consent checkbox on the AI Outfitter quiz form at the time you submit your information.</li>
+              <li>By creating a MatchRV account, where your consent to receive SMS communications is acknowledged during registration.</li>
+            </ul>
+            <p className="mb-3">
+              Upon opting in, you will receive a confirmation text message. Message and data rates may apply. Message frequency varies.
+            </p>
+            <p>
+              You may withdraw your consent and opt out of SMS communications at any time by replying <strong>STOP</strong> to any text message sent by MatchRV. You will receive a final confirmation message and no further SMS messages will be sent. Opting out of SMS does not affect your ability to use the platform or receive email communications.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">7. Intellectual Property</h2>
+            <p>
+              All content on MatchRV — including the AI deal scoring, design, and software — is the property of MatchRV and may not be reproduced without written permission.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">8. Disclaimer of Warranties</h2>
+            <p>
+              MatchRV is provided "as is" without warranties of any kind. We do not guarantee the accuracy, completeness, or continued availability of listing information, prices, specifications, market estimates, or third-party content. AI-assisted search and tow-fit outputs are informational and may rely on incomplete or changing source data.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">9. Limitation of Liability</h2>
+            <p>
+              To the fullest extent permitted by law, MatchRV shall not be liable for any indirect, incidental, or consequential damages arising from your use of the platform.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">10. Changes to Terms</h2>
+            <p>
+              We may update these Terms at any time. Continued use of the platform after changes constitutes acceptance of the new terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">11. Contact</h2>
+            <p>
+              Questions about these Terms? Contact us at{" "}
+              <a href="mailto:jonathan@matchrv.com" className="text-primary underline">
+                jonathan@matchrv.com
+              </a>
+              .
+            </p>
+          </section>
+        </div>
+      </div>
+    </Layout>
+  );
 }

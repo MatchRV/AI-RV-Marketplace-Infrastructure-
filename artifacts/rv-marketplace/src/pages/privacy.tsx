@@ -1,16 +1,104 @@
-import { Link } from "wouter";
-import { LegalLayout } from "@/components/legal-layout";
+import { Layout } from "@/components/layout";
+import { SEO } from "@/components/seo";
 
 export function Privacy() {
-  return <LegalLayout title="Privacy Policy" canonical="/privacy">
-    <p>This policy explains how MatchRV handles information for dealership website audits, inventory feeds, AI data syndication, advertising services, and shopper tools.</p>
-    <section><h2>Information we collect</h2><p>Forms may collect your name, work email, dealership name, website, location, phone number, and message. When you request an audit, we review public website pages and inventory information. Dealer-authorized feeds may include VINs, stock numbers, prices, specifications, images, availability, store locations, and public business contact details.</p><p>Website and AI tools may receive search criteria, saved or shortlisted inventory references, tool inputs, approved dealer-contact details, and technical information such as IP address, browser, device information, and usage events. Do not send sensitive personal information through free-text forms or inventory feeds.</p></section>
-    <section><h2>How we use information</h2><p>We use information to run requested website checks, prepare reports, maintain and normalize inventory records, answer shopping queries, operate supported MCP tools, respond to inquiries, deliver requested communications, measure service activity, and protect the service. Where agreed with a dealership, we use its authorized inventory and campaign data to provide syndication, reporting, and advertising management.</p><p>Audit results may include the pages reviewed, sample shopper questions, and observed AI answers. When a check uses an external AI provider, the provider receives the query and relevant public inventory or website information needed for that check.</p></section>
-    <section><h2>Inventory feeds and MCP distribution</h2><p>Public or dealer-authorized inventory data may be made available through MatchRV pages, structured feeds, and MCP responses to compatible AI assistants. These channels can expose the inventory fields and public dealership details needed for discovery and comparison. Private customer records and feed credentials are not intended for public inventory responses.</p><p>Third-party assistants process queries and returned data under their own terms and privacy policies. Their responses, caching, and downstream use are outside MatchRV’s direct control.</p></section>
-    <section><h2>Lead forms and dealer contact</h2><p>When you submit a MatchRV form, we use your contact details to respond to that request. Shopper contact information is shared with a selected dealership when you explicitly approve the dealer-contact action. We may also share information with hosting, database, analytics, email, scheduling, and AI providers as needed to deliver the service, and where legally required or necessary to protect rights and safety.</p><p>We do not sell personal information. A phone number or account registration alone does not authorize marketing texts. Where SMS is offered, separate opt-in is required; message frequency varies, message and data rates may apply, and you may reply STOP to opt out.</p></section>
-    <section><h2>Cookies and analytics</h2><p>Cookies, browser storage, and analytics may support sessions, preferences, saved searches, and usage measurement. Browser controls can limit cookies and storage; some features may then work differently. Contact us with questions about a particular tracking or advertising integration.</p></section>
-    <section><h2>Retention and security</h2><p>We retain information as needed to provide requested services, maintain operational records, resolve disputes, and meet applicable legal obligations. Retention depends on the information and service involved. You can request deletion or correction using the contact below. No transmission or storage method can guarantee absolute security.</p></section>
-    <section><h2>Your choices and requests</h2><p>You may ask to access, correct, or delete personal information, unsubscribe from optional communications, or raise concerns about inventory attributed to your dealership. Rights and exceptions depend on your location and applicable law. We may need to verify a request before acting. Contact <a href="mailto:jonathan@matchrv.com">jonathan@matchrv.com</a> with enough information to identify the relevant record; do not email passwords or sensitive identity documents.</p></section>
-    <section><h2>Changes and contact</h2><p>We will post policy updates here with the revision date. Where applicable, material changes require additional notice or consent. For support, privacy, or compliance questions, email <a href="mailto:jonathan@matchrv.com">jonathan@matchrv.com</a>. See also our <Link href="/terms">Terms of Service</Link>.</p></section>
-  </LegalLayout>;
+  return (
+    <Layout>
+      <SEO
+        title="Privacy Policy"
+        description="Learn how MatchRV collects, uses, and protects your personal data when you use our AI-ready RV inventory network."
+        canonical="/privacy"
+      />
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 className="text-4xl font-display font-bold mb-2">Privacy Policy</h1>
+        <p className="text-sm text-muted-foreground mb-4">Last updated: September 25, 2026</p>\n        <p className="text-muted-foreground mb-10">This Privacy Policy describes how MatchRV Inc. (&quot;MatchRV&quot;) handles information in our website, AI shopping tools, and supported plugin integrations.</p>
+
+        <div className="space-y-8 text-muted-foreground leading-relaxed">
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">1. Information We Collect</h2>
+            <p>
+              We collect information you provide directly, such as your name, email address, phone number, dealer-contact message, saved-search or listing details, and other information you choose to submit. When you use MatchRV through our website or an AI assistant/plugin, we may also receive shopping criteria and tool inputs needed to perform the requested search or action. We also collect limited technical and usage information such as page views, search queries, device type, and IP address.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">2. How We Use Your Information</h2>
+            <p>
+              We use the information we collect to operate and improve MatchRV, perform RV searches and comparisons, evaluate tow-fit considerations from the information you provide, prepare dealer-contact requests, send relevant alerts when you opt in, and communicate with you about your account or submissions.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">3. SMS Notifications</h2>
+            <p className="mb-3">
+              MatchRV may send you SMS text messages related to your account, saved listings, price alerts, and match reports. You may opt in to SMS notifications in one of two ways:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mb-3">
+              <li>By checking the labeled SMS consent checkbox on the AI Outfitter quiz form when submitting your information.</li>
+              <li>By creating a MatchRV account, where SMS consent is indicated during the registration process.</li>
+            </ul>
+            <p className="mb-3">
+              Upon opting in, you will receive a confirmation text message. Message and data rates may apply. Message frequency varies based on your activity and preferences.
+            </p>
+            <p>
+              You may opt out of SMS notifications at any time by replying <strong>STOP</strong> to any message you receive from us. After opting out, you will receive a final confirmation text and no further messages will be sent. To re-enable SMS notifications, contact us or update your account preferences.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">4. Sharing of Information</h2>
+            <p>
+              We do not sell your personal information. When you explicitly approve a dealer-contact request, we may share the contact information and message you reviewed, together with the relevant RV or inventory reference, with the selected dealership so it can respond to your inquiry. We may also share information with service providers that help us operate MatchRV, subject to appropriate confidentiality and data-protection obligations, and we may disclose information when required by law.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">5. AI Assistants and Plugin Requests</h2>
+            <p>
+              MatchRV can be used through supported AI assistants via our remote MCP/plugin tools. Those tools may receive the search criteria, RV identifiers, tow-vehicle information, or dealer-contact details you choose to provide so MatchRV can perform the requested action. Search, retrieval, comparison, and tow-fit tools are designed to return inventory data without requiring an account. Dealer contact is a separate action that requires an explicit preview and human approval before submission.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">6. Cookies and Analytics</h2>
+            <p>
+              MatchRV uses cookies and similar tracking technologies to improve your experience and analyze site usage. You can control cookie settings through your browser preferences.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">7. Data Retention</h2>
+            <p>
+              We retain your information for as long as necessary to provide our services or comply with legal obligations. You may request deletion of your data by contacting us.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">8. Security</h2>
+            <p>
+              We implement reasonable technical and organizational measures to protect your information. However, no transmission over the internet is 100% secure.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">9. Your Rights</h2>
+            <p>
+              Depending on your location, you may have rights to access, correct, or delete your personal data. To exercise these rights, contact us at the address below.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-foreground mb-3">10. Contact</h2>
+            <p>
+              Questions about this Privacy Policy? Contact us at{" "}
+              <a href="mailto:jonathan@matchrv.com" className="text-primary underline">
+                jonathan@matchrv.com
+              </a>
+              .
+            </p>
+          </section>
+        </div>
+      </div>
+    </Layout>
+  );
 }

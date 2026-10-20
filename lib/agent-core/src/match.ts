@@ -22,7 +22,10 @@ import type {
   UnitMatch,
 } from "./types.js";
 import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
+import { coordsMatchState } from "./enrich-snapshot.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
+import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
+import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
 
 export class ConstraintError extends Error {
   constructor(
@@ -127,7 +130,7 @@ export interface SearchContext {
   location: { place: string; lat: number; lng: number; radiusMiles: number; state?: string } | null;
 }
 
-export function buildContext(constraints: Constraints): SearchContext {
+export function buildContext(constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchContext {
   let location: SearchContext["location"] = null;
   if (constraints.location?.place) {
     const resolved = resolvePlace(constraints.location.place);
@@ -147,7 +150,7 @@ export function buildContext(constraints: Constraints): SearchContext {
       ...(resolved.state ? { state: resolved.state } : {}),
     };
   }
-  const tow = constraints.towVehicle ? resolveTowVehicle(constraints.towVehicle) : null;
+  const tow = constraints.towVehicle ? resolveTowVehicle(constraints.towVehicle, learnedTow ?? null) : null;
   return { constraints, tow, location };
 }
 
@@ -220,9 +223,11 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
         : check(`price ≤ ${fmtUsd(c.priceMaxUsd)}`, price <= c.priceMaxUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
-  if (c.priceMinUsd != null && price !== null) {
+  if (c.priceMinUsd != null) {
     hardChecks.push(
-      check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
+      price === null
+        ? check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, "unknown", "unknown", null)
+        : check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
 
@@ -232,9 +237,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       cmpMax("length", unit.lengthFt.value, unit.lengthFt.source, c.lengthMaxFt, (n) => `${n} ft`, "lengthFt", unknowns),
     );
   }
-  if (c.lengthMinFt != null && unit.lengthFt.value !== null) {
+  if (c.lengthMinFt != null) {
+    if (unit.lengthFt.value === null) unknowns.push("lengthFt");
     hardChecks.push(
-      check(`length ≥ ${c.lengthMinFt} ft`, unit.lengthFt.value >= c.lengthMinFt ? "pass" : "fail", `${unit.lengthFt.value} ft`, unit.lengthFt.source),
+      unit.lengthFt.value === null
+        ? check(`length ≥ ${c.lengthMinFt} ft`, "unknown", "unknown", null)
+        : check(`length ≥ ${c.lengthMinFt} ft`, unit.lengthFt.value >= c.lengthMinFt ? "pass" : "fail", `${unit.lengthFt.value} ft`, unit.lengthFt.source),
     );
   }
 
@@ -279,11 +287,21 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  // — hard: payload (door-sticker) — tongue weight eats payload first.
+  if (c.sherpa?.truckPayloadLbs != null) {
+    const pf = evaluatePayloadFit(unit, c.sherpa);
+    if (pf.tongueHighLbs === null) {
+      unknowns.push("payload (tongue estimate)");
+      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs`, "unknown", "loaded weight unknown", null));
+    } else {
+      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs (tongue ${pf.tongueLowLbs}–${pf.tongueHighLbs} + ${pf.peopleAndCargoLbs} lbs people/cargo)`, pf.verdict === "exceeds" ? "fail" : "pass", pf.detail, "computed"));
+    }
+  }
   // — hard: sleeps
   if (c.sleepsMin != null) {
-    if (unit.sleeps.value === null) {
+    if (unit.sleeps.value === null || unit.sleeps.source === "derived_model_code" || unit.sleeps.source === "computed") {
       unknowns.push("sleeps");
-      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", "unknown", null));
+      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", unit.sleeps.value === null ? "unknown" : `${unit.sleeps.value} (inferred; confirm with dealer)`, unit.sleeps.source));
     } else {
       hardChecks.push(
         check(`sleeps ≥ ${c.sleepsMin}`, unit.sleeps.value >= c.sleepsMin ? "pass" : "fail", String(unit.sleeps.value), unit.sleeps.source),
@@ -311,11 +329,50 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   // — hard: must-have features
   for (const f of c.mustHave ?? []) {
     const v = featureValue(unit, f);
-    if (v === null) {
+    const source = featureSource(unit, f);
+    if (v === null || (v === true && (source === "derived_model_code" || source === "computed"))) {
       unknowns.push(f);
-      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "unknown", "unknown — dealer listing doesn't say", null));
+      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "unknown", v === null ? "unknown — dealer listing doesn't say" : "inferred; confirm with dealer", source));
     } else {
-      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, v ? "pass" : "fail", v ? "yes" : "no", featureSource(unit, f)));
+      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, v ? "pass" : "fail", v ? "yes" : "no", source));
+    }
+  }
+
+  // — hard: powertrain (motorhomes). Only a rating stated for THIS unit
+  //   counts; unknown can never pass, a lower stated rating fails.
+  const pt = powertrainOf(unit);
+  const minRating = (label: string, f: { value: number | null; source: ConstraintCheck["source"] }, min: number, unitLabel: string, field: string) => {
+    if (!isMotorized(unit)) {
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "fail", "not a motorhome", "dealer_listing"));
+    } else if (f.value === null) {
+      unknowns.push(field);
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "unknown", "needs verification — not published for this unit", null));
+    } else {
+      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, f.value >= min ? "pass" : "fail", `${f.value.toLocaleString()} ${unitLabel}`, f.source));
+    }
+  };
+  if (c.fuelType) {
+    if (!isMotorized(unit)) hardChecks.push(check(`fuel = ${c.fuelType}`, "fail", "not a motorhome", "dealer_listing"));
+    else if (pt.fuelType.value === null) {
+      unknowns.push("fuelType");
+      hardChecks.push(check(`fuel = ${c.fuelType}`, "unknown", "needs verification — not published", null));
+    } else hardChecks.push(check(`fuel = ${c.fuelType}`, pt.fuelType.value === c.fuelType ? "pass" : "fail", pt.fuelType.value, pt.fuelType.source));
+  }
+  if (c.horsepowerMin != null) minRating("horsepower", pt.horsepower, c.horsepowerMin, "hp", "horsepower");
+  if (c.torqueMinLbFt != null) minRating("torque", pt.torqueLbFt, c.torqueMinLbFt, "lb-ft", "torqueLbFt");
+
+  // — hard: tow a loaded trailer. Each limit is checked separately; full
+  //   confirmation needs weighed coach/axle loads, so the best case is
+  //   "unknown" (needs verification) with the cleared ratings listed.
+  let mhTow: MotorhomeTowResult | null = null;
+  if (c.trailerWeightLbs != null) {
+    mhTow = evaluateMotorhomeTow(unit, c.trailerWeightLbs, { tongueLbs: c.trailerTongueLbs, coachLoadedLbs: c.coachLoadedWeightLbs });
+    const label = `tows a ${c.trailerWeightLbs.toLocaleString()} lb trailer`;
+    if (mhTow.verdict === "not_a_motorhome") hardChecks.push(check(label, "fail", "not a motorhome", "dealer_listing"));
+    else if (mhTow.verdict !== "not_yet_confirmed") hardChecks.push(check(label, "fail", mhTow.summary, "computed"));
+    else {
+      unknowns.push("towing limits (loaded coach/axle weights)");
+      hardChecks.push(check(label, "unknown", mhTow.summary, "computed"));
     }
   }
 
@@ -326,7 +383,8 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   if (ctx.location) {
     if (ctx.location.state) {
       hardChecks.push(check(`dealer in ${ctx.location.place}`, unit.dealer.state?.toUpperCase() === ctx.location.state ? "pass" : "fail", `${unit.dealer.city}, ${unit.dealer.state ?? "unknown"}`, "dealer_listing"));
-    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null) {
+    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null
+      && coordsMatchState({ lat: unit.dealer.lat, lng: unit.dealer.lng }, unit.dealer.state)) {
       distanceMiles = Math.round(
         haversineMiles(
           { lat: ctx.location.lat, lng: ctx.location.lng },
@@ -420,6 +478,36 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     breakdown.push({ label: `tow fit: ${towFit.verdict.replace(/_/g, " ")}`, points: pts });
   }
 
+  // Preferred (not minimum) power ranks; it never excludes or substitutes.
+  const prefRating = (label: string, v: number | null, pref: number, unitLabel: string) => {
+    if (v === null) {
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: null, detail: "needs verification — not published" });
+    } else if (v >= pref) {
+      score += 8;
+      breakdown.push({ label: `${label} ${v.toLocaleString()} ${unitLabel}`, points: 8 });
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: true, detail: `${v.toLocaleString()} ${unitLabel} stated` });
+    } else {
+      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: false, detail: `${v.toLocaleString()} ${unitLabel} stated (below preference)` });
+    }
+  };
+  if (c.horsepowerPreferred != null && isMotorized(unit)) prefRating("horsepower", pt.horsepower.value, c.horsepowerPreferred, "hp");
+  if (c.torquePreferredLbFt != null && isMotorized(unit)) prefRating("torque", pt.torqueLbFt.value, c.torquePreferredLbFt, "lb-ft");
+  if (mhTow?.verdict === "not_yet_confirmed") {
+    const cleared = mhTow.checks.filter(x => x.status === "pass").length;
+    if (cleared > 0) {
+      score += 3 * cleared;
+      breakdown.push({ label: `${cleared} published towing limit(s) cleared`, points: 3 * cleared });
+    }
+  }
+
+  if (c.sherpa && (c.sherpa.floorplanIntent || c.sherpa.sleepers != null)) {
+    const fit = lifestyleFit(unit, c.sherpa);
+    if (fit.points !== 0) {
+      score += fit.points;
+      breakdown.push({ label: `lifestyle (${fit.label}): ${fit.reasons[0] ?? ""}`, points: fit.points });
+    }
+    for (const r of fit.reasons) softChecks.push({ preference: `lifestyle: ${fit.label}`, satisfied: fit.points >= 0, detail: r });
+  }
   const yearPts = Math.max(0, Math.min(5, unit.year - 2020));
   if (yearPts > 0) {
     score += yearPts;
@@ -453,8 +541,8 @@ function firstFailReason(m: UnitMatch): string {
   return fail ? fail.constraint : "other";
 }
 
-export function runSearch(units: CanonicalUnit[], constraints: Constraints): SearchOutcome {
-  const ctx = buildContext(constraints);
+export function runSearch(units: CanonicalUnit[], constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchOutcome {
+  const ctx = buildContext(constraints, learnedTow ?? null);
 
   const evaluated = units.map((u) => evaluateUnit(u, ctx));
 

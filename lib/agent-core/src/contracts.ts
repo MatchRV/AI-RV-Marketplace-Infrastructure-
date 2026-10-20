@@ -71,7 +71,7 @@ export const searchInventoryInput = z.object({
   tow_vehicle: z.string().max(120).optional()
     .describe("Shopper's tow vehicle as stated, e.g. '2024 Ford F-150' or 'F-150 rated 8,000 lbs'. Pass raw — MatchRV resolves ratings"),
   sleeps_min: z.number().int().min(1).max(14).optional(),
-  must_have: z.array(featureEnum).max(8).optional().describe("Hard requirements. Search recommendations require these facts to be confirmed; units with missing required data are excluded by the search-readiness gate."),
+  must_have: z.array(featureEnum).max(8).optional().describe("Hard requirements — excludes units that verifiably lack them; units where a dealer doesn't publish the fact are flagged 'unverified', not excluded"),
   prefer: z.array(featureEnum).max(8).optional().describe("Soft preferences — affect ranking only"),
   fresh_water_min_gal: z.number().min(5).max(300).optional(),
   boondocking: z.boolean().optional().describe("Weight off-grid readiness (tanks, solar, generator, insulation) heavily in ranking"),
@@ -137,6 +137,15 @@ export const constraintsSchema = z.object({
   freshWaterMinGal: z.number().min(5).max(300).nullish(),
   boondocking: z.boolean().nullish(),
   sort: sortEnum.nullish(),
+  fuelType: z.enum(["gas", "diesel"]).nullish(),
+  horsepowerMin: z.number().min(50).max(1000).nullish(),
+  horsepowerPreferred: z.number().min(50).max(1000).nullish(),
+  torqueMinLbFt: z.number().min(100).max(3000).nullish(),
+  torquePreferredLbFt: z.number().min(100).max(3000).nullish(),
+  trailerWeightLbs: z.number().min(500).max(40_000).nullish(),
+  trailerTongueLbs: z.number().min(50).max(5_000).nullish(),
+  coachLoadedWeightLbs: z.number().min(3_000).max(80_000).nullish(),
+  sherpa: z.object({ sleepers: z.number().int().min(1).max(14).nullish(), floorplanIntent: z.enum(["couples", "family_bunks", "flexible", "solo"]).nullish(), campingStyle: z.enum(["full_hookup", "boondocking", "mixed"]).nullish(), truckPayloadLbs: z.number().min(500).max(10_000).nullish(), passengersLbs: z.number().min(0).max(3_000).nullish(), cargoLbs: z.number().min(0).max(5_000).nullish(), discoveryWaived: z.boolean().nullish(), lengthMaxStatedFt: z.number().min(8).max(60).nullish(), lengthReason: z.enum(["storage", "comfort", "hard_limit"]).nullish(), lengthFlexApproved: z.boolean().nullish() }).nullish(),
 });
 
 // ── Tool descriptors ───────────────────────────────────────────────────────

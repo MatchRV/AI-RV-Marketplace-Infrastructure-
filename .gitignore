@@ -69,3 +69,8 @@ output/
 .chrome/
 docs/demo/matchrv-demo-raw.webm
 lib/agent-core/data/inventory.snapshot.json
+
+# Runtime shopper data (never commit)
+data/learned-facts.json
+data/session-memory.json
+data/dealer-inquiries.json

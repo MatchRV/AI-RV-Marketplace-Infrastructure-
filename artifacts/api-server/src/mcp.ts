@@ -27,7 +27,7 @@ import { screenMcpInventory } from "./services/mcp-inventory-quality";
 let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
 function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
 
-import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
+import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
 import { getLearnedStore, persistLearnedSoon } from "./services/learned-store";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
@@ -412,6 +412,13 @@ function buildMatchRvServer(): McpServer {
       });
     },
   );
+
+  server.registerTool("rv_outfitter", {
+    title: "RV Outfitter - clarify and confirm shopper needs",
+    description: "Use this guide when a shopper starts an RV conversation or gives an ambiguous preference. Returns one useful follow-up, a confirmation summary and authoritative constraints. Ask about firm limits versus explicitly approved flexibility; never relax a limit automatically. Continue in this chat, then call search_rvs for real options. Does not contact dealers or send messages.",
+    inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
 
   server.registerTool(
     "search_rvs",

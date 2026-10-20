@@ -16,6 +16,7 @@ import { normalizeRecord, normalizeRvType, type RawScrapeRecord } from "../src/n
 import type { CanonicalUnit, Fact } from "../src/types.js";
 import { fact } from "../src/enrich.js";
 import { emptyPowertrain, isMotorized } from "../src/motorhome.js";
+import { chainStoreName } from "../src/enrich-snapshot.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT = resolve(here, "../data/inventory.snapshot.json");
@@ -138,7 +139,7 @@ const acceptUnit = (dom: string, u: CanonicalUnit, r: Rec, info: DealerInfo | un
     // so "St. Albans" keeps its name).
     const city = (locState ? locMatch![1] : (info.city || "Unknown"))
       .split(",").at(-1)!.replace(/.*\.(?!\s)/, "").trim();
-    u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: info.name, city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
+    u.dealer = { ...u.dealer, id: `${dom}:${city.toLowerCase().replace(/\s+/g, "-")}`, name: chainStoreName(info.name, city), city, state: locState ?? info.state, lat: null, lng: null, website: `https://${dom}` };
   }
   u.provenance.dealerDomain = dom;
   if (isMotorized(u)) Object.assign(u, powertrainFacts(r.clean ?? {}));

@@ -22,6 +22,7 @@ import type {
   UnitMatch,
 } from "./types.js";
 import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
+import { coordsMatchState } from "./enrich-snapshot.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
 import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
 import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
@@ -382,7 +383,8 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   if (ctx.location) {
     if (ctx.location.state) {
       hardChecks.push(check(`dealer in ${ctx.location.place}`, unit.dealer.state?.toUpperCase() === ctx.location.state ? "pass" : "fail", `${unit.dealer.city}, ${unit.dealer.state ?? "unknown"}`, "dealer_listing"));
-    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null) {
+    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null
+      && coordsMatchState({ lat: unit.dealer.lat, lng: unit.dealer.lng }, unit.dealer.state)) {
       distanceMiles = Math.round(
         haversineMiles(
           { lat: ctx.location.lat, lng: ctx.location.lng },

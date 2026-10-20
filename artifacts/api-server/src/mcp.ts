@@ -38,6 +38,12 @@ const searchInput = z.object({
   place: z.string().max(80).optional(),
   radius_miles: z.number().min(1).max(3000).optional(),
   sleeps_min: z.number().int().min(1).max(14).optional(),
+  // Top-level shorthands clients send; previously stripped by zod, so a
+  // "new" search silently returned used units (2016/2022 Camping World).
+  condition: z.enum(["new", "used", "any"]).optional(),
+  price_max_usd: z.number().min(0).max(2_000_000).optional(),
+  price_min_usd: z.number().min(0).max(2_000_000).optional(),
+  sort: z.enum(["best_match", "price_asc", "price_desc", "distance", "newest_model_year"]).optional(),
   constraints: z.preprocess(
     (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
     constraintsSchema,
@@ -435,6 +441,10 @@ function buildMatchRvServer(): McpServer {
           };
         }
         if (input.sleeps_min != null) fromTop.sleepsMin = input.sleeps_min;
+        if (input.condition != null) fromTop.condition = input.condition;
+        if (input.price_max_usd != null) fromTop.priceMaxUsd = input.price_max_usd;
+        if (input.price_min_usd != null) fromTop.priceMinUsd = input.price_min_usd;
+        if (input.sort != null) fromTop.sort = input.sort;
 
         const baseConstraints = mergeConstraints(
           cleanConstraints(input.constraints as Record<string, unknown>),

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { CanonicalUnit, InventoryIndex } from "@workspace/agent-core";
-import { inventoryQualityIssues, screenMcpInventory } from "../src/services/mcp-inventory-quality";
+import { inventoryQualityIssues, PRICE_FLOOR_REASON, priceFloorFor, screenMcpInventory } from "../src/services/mcp-inventory-quality";
 
 const snapshotPath = new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url);
 const snapshot = JSON.parse(
@@ -46,7 +46,18 @@ describe("MCP inventory quality quarantine", () => {
   it("holds recent new import-floor prices while retaining old used low-price records", () => {
     const recent = { ...known[0], rvType: "travel_trailer" as const, priceUsd: { ...known[0].priceUsd, value: 1000 } };
     expect(inventoryQualityIssues(recent)).toHaveLength(1);
-    expect(inventoryQualityIssues({ ...recent, condition: "used", year: 2000 })).toEqual([]);
-    expect(inventoryQualityIssues({ ...recent, priceUsd: { ...recent.priceUsd, value: 1001 } })).toEqual([]);
+    expect(inventoryQualityIssues({ ...recent, condition: "used", year: 2000, priceUsd: { ...recent.priceUsd, value: 3000 } })).toEqual([]);
+    expect(inventoryQualityIssues({ ...recent, priceUsd: { ...recent.priceUsd, value: 9000 } })).toEqual([]);
+  });
+  it("quarantines class price-floor violations with a reason code, incl. near-new units labeled used", () => {
+    const westbrook = { ...known[0], make: "Forest River", model: "Westbrook 27CC", title: "2026 Forest River RV Westbrook 27CC",
+      rvType: "travel_trailer" as const, condition: "used" as const, year: 2026, priceUsd: { ...known[0].priceUsd, value: 1168 } };
+    const issues = inventoryQualityIssues(westbrook);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toContain(`[${PRICE_FLOOR_REASON}]`);
+    expect(inventoryQualityIssues({ ...westbrook, priceUsd: { ...westbrook.priceUsd, value: 7134 } })).toHaveLength(1);
+    expect(inventoryQualityIssues({ ...westbrook, rvType: "class_b", condition: "used", year: 2015, priceUsd: { ...westbrook.priceUsd, value: 1030 } })).toHaveLength(1);
+    expect(inventoryQualityIssues({ ...westbrook, rvType: "class_a", condition: "new", priceUsd: { ...westbrook.priceUsd, value: 25001 } })).toEqual([]);
+    expect(priceFloorFor({ ...westbrook, year: 2018 }).bucket).toBe("used");
   });
 });

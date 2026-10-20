@@ -1,0 +1,4 @@
+{
+  "_doc": "Dealer ids (CanonicalUnit.dealer.id) that have opted in to receive MatchRV shopper inquiries directly by email. Only add a dealership after it agrees in writing. Units from dealers not listed here are queued for the MatchRV team to forward.",
+  "routes": {}
+}

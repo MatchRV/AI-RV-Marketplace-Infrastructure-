@@ -1,6 +1,7 @@
-# MatchRV — OpenAI Plugin Submission Package
+# MatchRV — OpenAI / Meta App Submission Package (v2.1)
 
-Status: **Current submission candidate — six tools.** This package must match the six-tool production surface at `https://matchrv.com/mcp`: rv_outfitter, search_rvs, get_rv, compare_rvs, evaluate_tow_fit, and contact_dealer. VIN lookup remains website-only and must not be exposed through MCP.
+Status: **Submission candidate v2.1.0 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.1.0`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
 Initial availability: United States
@@ -10,49 +11,70 @@ Initial availability: United States
 **Plugin name:** MatchRV
 
 **Short description:**
-AI-powered RV shopping from MatchRV. Search and compare RV inventory, evaluate tow-fit considerations, and prepare dealer-contact requests with human approval before submission.
+RV shopping from MatchRV: search and compare real dealer inventory, check tow fit, and send a dealer inquiry only after you approve a preview.
 
 **Long description:**
-MatchRV helps shoppers turn real-world RV requirements into structured inventory searches. A built-in RV Outfitter guide helps shoppers clarify how they will use an RV, confirm firm limits versus approved flexibility, and turn payment-based budgets into totals before searching. Users can search MatchRV inventory by RV type, price, length, sleeping capacity, location, condition and other available specifications; inspect individual RV records; compare candidate units; and evaluate towing considerations using known vehicle and RV data. MatchRV preserves unknown or unverified specifications instead of inventing values and explains why a result matches or remains unverified. Dealer contact uses a two-phase flow: MatchRV first prepares a preview of the proposed contact request, and nothing is submitted until the user explicitly approves the action.
+MatchRV helps shoppers turn real-world RV requirements into structured inventory searches. A built-in RV Outfitter guide clarifies how the shopper will use an RV, confirms firm limits versus approved flexibility, and converts payment-based budgets into totals before searching. Shoppers can search MatchRV's nationwide dealer inventory snapshot by RV type, price, length, sleeping capacity, location, condition and other specifications; inspect individual RV records; compare units; and screen tow fit from their vehicle data. MatchRV keeps unknown or unverified specifications unknown instead of inventing values. All shopping tools are read-only. MatchRV remembers a confirmed fact (such as a truck's tow rating) only through an explicit "teach" tool, and only for that shopper. Dealer inquiries use two steps: MatchRV first shows the exact preview (dealership, RV, contact details, message) and sends nothing; it sends only after the shopper approves, then reports the real delivery status.
 
 **Category:** Shopping
-
 **Website:** https://matchrv.com
-
 **Privacy policy:** https://matchrv.com/privacy
-
 **Support URL:** https://matchrv.com/contact
-
-**Terms URL:** https://matchrv.com/terms-and-conditions
-
+**Terms URL:** https://matchrv.com/terms
 **Logo:** Use current production MatchRV logo.
 
 ## Remote MCP
 
 **URL type:** Universal
 
-**Production MCP server URL:** https://matchrv.com/mcp
+**Production MCP server URL:** `https://matchrv-mcp.onrender.com/mcp` (Render service `matchrv-mcp`, auto-deployed from `main`).
+After the domain move, `https://matchrv.com/mcp` points at this same service and is the URL to submit; until then, scan the onrender URL. Both serve identical code.
 
-**Authentication:** None for current public shopping/reviewer workflow.
+**Authentication:** None (public shopping workflow). Memory and inquiries are scoped without accounts (see Data handling).
 
-**Domain verification:** The production application exposes `/.well-known/openai-apps-challenge`. After the portal creates the draft and displays its token, set the production environment variable `OPENAI_APPS_CHALLENGE` to that exact value. Verify `https://matchrv.com/.well-known/openai-apps-challenge` returns only the token, then complete verification in the portal.
+**Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and intended annotations
+## MCP tools and annotations (as advertised by v2.1.0)
 
-These values must be checked against what the live MCP server actually advertises after selecting Scan Tools. If the server advertises different annotations, fix the server and rescan rather than overriding them only in submission prose.
+| Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
+|---|---|:-:|:-:|:-:|:-:|
+| `rv_outfitter` | Clarify needs; firm limits vs approved flexibility | true | false | true | false |
+| `outfitter_discovery` | Sherpa intake: one next question, or compiled search constraints | true | false | true | false |
+| `outfitter_guide` | Buyer-education knowledge (towing basics, types, costs, financing) | true | false | true | false |
+| `outfitter_memory` | Read this shopper's own remembered facts + MatchRV-curated facts | true | false | true | false |
+| `teach_outfitter` | **Write**: remember a fact the shopper confirmed, for this shopper only | false | false | false | false |
+| `search_rvs` | Search MatchRV inventory (no memory writes) | true | false | true | false |
+| `get_rv` | One RV record with provenance and explicit unknowns | true | false | true | false |
+| `compare_rvs` | Side-by-side comparison of 2-4 RVs | true | false | true | false |
+| `evaluate_tow_fit` | Tow / payload / motorhome-tow screening (no memory writes) | true | false | true | false |
+| `prepare_dealer_inquiry` | Step 1: validate + preview a dealer inquiry and return a confirmation token. **Sends nothing; stores nothing** | true | false | false | false |
+| `send_dealer_inquiry` | Step 2: send the approved preview (`confirmed=true` required) | false | **true** | false | **true** |
+| `get_dealer_inquiry_status` | Status (and any recorded dealer reply) of the shopper's own inquiry | true | false | true | false |
 
-| Tool | Purpose | readOnlyHint | openWorldHint | destructiveHint |
-|---|---|---:|---:|---:|
-| `rv_outfitter` | Clarify shopper needs, confirm firm limits vs approved flexibility | true | false | false |
-| `search_rvs` | Search MatchRV inventory | true | false | false |
-| `get_rv` | Retrieve a specific RV record | true | false | false |
-| `compare_rvs` | Compare selected RV records | true | false | false |
-| `evaluate_tow_fit` | Compute tow-fit considerations from supplied/known data | true | false | false |
-| `contact_dealer` | Preview and, only after explicit approval, submit dealer contact | false | true | true |
+`search_rvs`, `get_rv`, `compare_rvs` and `evaluate_tow_fit` also advertise the `ui://` shopper resource (`_meta.ui.resourceUri`).
 
-The VIN-based tow-vehicle lookup is deliberately not part of the MCP surface: it cannot verify tow package, axle ratio, exact capacity or payload, and it is the only tool that would transmit shopper-supplied identifiers to a third party. It remains available on the website via the `/api/agent/*` facade.
+Not in the MCP surface: VIN tow-vehicle lookup (website-only via `/api/agent/*`), and any dealer action other than the inquiry above. There is no appointment booking, and MatchRV never claims a dealer replied unless a reply is recorded.
 
-`contact_dealer` must retain the two-phase human-approval flow. The tool must not expose approval tokens or silently submit contact during the preview step.
+### Read-only guarantee
+Every tool marked `readOnlyHint: true` has no side effects. A rating or payload stated in a `search_rvs` / `evaluate_tow_fit` call is used for that answer only; the response suggests `teach_outfitter` if the shopper wants it remembered. This is enforced by `artifacts/api-server/test/mcp-memory-isolation.test.ts`, which fingerprints all memory before and after calling every read-only tool.
+
+### Dealer inquiry flow
+1. `prepare_dealer_inquiry(unit_id, name, email and/or phone, message)` validates the input and returns `preview` (dealership name/city/state/website, RV title, VIN, stock number, price, condition, the shopper's contact details, the message, the delivery channel) plus a `confirmation_token` (HMAC-signed, expires in 30 minutes). Nothing is stored or sent. The snapshot has no per-unit listing URL, so `stockUrl` is `null` and the preview names the dealership website instead.
+2. `send_dealer_inquiry(confirmation_token, confirmed: true)` sends exactly the previewed content (the token locks it). It is single-use, rate-limited (10 per shopper/IP per hour, 5 per contact per hour), and duplicate-guarded (same contact + RV within 24h). It returns `inquiry_id`, a private `status_token` and an honest status:
+   - `delivered`: emailed to a dealership that has opted in to direct MatchRV inquiries (`data/dealer-inquiry-routes.json`) and accepted by its mail server. This does not mean anyone has read it.
+   - `queued_for_matchrv`: there is no direct route to that dealership, so the MatchRV team was alerted (ntfy push without PII, and/or the ops mailbox) to forward it. It has not reached the dealer yet.
+   - `failed`: neither the dealer nor MatchRV ops could be reached. The shopper is told to contact the dealership directly.
+   - `dry_run` (testing only, `dry_run: true` or `INQUIRY_DRY_RUN=1`): validated and recorded in memory; nothing is delivered to anyone.
+3. `get_dealer_inquiry_status(inquiry_id, status_token)` returns the status and `dealerReply`, which is only non-null when MatchRV ops record a real reply.
+
+HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `confirmation_token` + `confirmed: true`), `GET /api/inquiries/:id` with `X-Inquiry-Token`, and ops-only `GET|POST /api/inquiries/ops[/:id]` (Bearer `INQUIRY_OPS_KEY`).
+
+## Data handling (must match privacy policy)
+
+- **Inventory:** public / dealer-authorized RV listings from MatchRV's snapshot.
+- **Memory:** shopper-taught facts are stored per shopper scope: ChatGPT's anonymous `_meta["openai/subject"]`, else `openai/session`, else the MCP session id, else an opaque `session_key` returned by `teach_outfitter`. A host identity always outranks a pasted key. Scopes are stored under a SHA-256 hash, never shown to other shoppers, and expire after 30 days of inactivity (`session-memory.json` next to `LEARNED_FACTS_PATH`). Shared memory is limited to MatchRV-curated facts (`CURATED_FACTS_PATH`, default `data/curated-facts.json`, currently empty) and is read-only at runtime. The pre-v2.1 shared learned-facts file is no longer read.
+- **Dealer inquiries:** name, email and/or phone, message and RV reference, stored after the shopper approves (`dealer-inquiries.json` next to `LEARNED_FACTS_PATH`). They are emailed to opted-in dealers or to the MatchRV ops mailbox. ntfy alerts contain only the inquiry id, the shopper's first name, the RV and the dealership. Records are retained 90 days (`INQUIRY_RETENTION_DAYS`) and dry runs 24 hours. Status is viewable only with the per-inquiry token.
+- No approval secrets, ops keys or other shoppers' data appear in tool results. The `confirmation_token` contains only the preview the shopper is looking at.
 
 ## Starter prompts
 
@@ -60,113 +82,45 @@ The VIN-based tow-vehicle lookup is deliberately not part of the MCP surface: it
 2. Compare the best RVs you found and explain why each one matches, what is unknown, and how fresh the inventory data is.
 3. I have a specific tow vehicle. Check which travel trailers in my budget fit its towing constraints and show me anything that still needs verification.
 4. Show me the details for this RV and separate verified listing facts from unknown specifications.
-5. Prepare a message to the dealer for this RV, but show me exactly what will be sent and ask for my approval before submitting anything.
-6. I'm not sure what RV fits my family — help me figure it out by asking about how we'll actually use it, and confirm my firm limits before searching.
+5. Ask the dealer whether this RV is still available, but show me exactly what will be sent and wait for my OK.
+6. I'm not sure what RV fits my family. Help me figure it out by asking how we'll actually use it, and confirm my firm limits before searching.
 
 ## Positive reviewer test cases
 
-### Positive 1 — Structured inventory search
-**User prompt:** Find me a Class A motorhome between $250,000 and $350,000, at least 35 feet long, that sleeps at least two.
-
-**Expected behavior:** Call `search_rvs` with structured RV type, price, minimum length, and sleeping-capacity constraints. Do not invent values for missing fields.
-
-**Expected result shape:** A ranked collection of MatchRV inventory results with unit identity, relevant known facts, match reasoning/status, source/freshness information when available, and unknown/unverified facts clearly identified.
-
-**Fixture:** Current MatchRV inventory accessible through the production MCP.
-
-### Positive 2 — Retrieve a specific unit
-**User prompt:** Show me the full MatchRV details for one of those RVs.
-
-**Expected behavior:** Call `get_rv` for the selected unit.
-
-**Expected result shape:** Canonical unit details with known facts, provenance/freshness where available, and missing fields represented as unknown rather than inferred.
-
-**Fixture:** A unit ID returned by Positive 1.
-
-### Positive 3 — Compare RVs
-**User prompt:** Compare the top two results and explain the important differences.
-
-**Expected behavior:** Call `compare_rvs` with the two selected unit IDs.
-
-**Expected result shape:** Side-by-side comparison using available MatchRV facts, explicitly identifying missing/unverified information rather than filling gaps.
-
-**Fixture:** Two unit IDs returned by Positive 1.
-
-### Positive 4 — Tow-fit evaluation
-**User prompt:** My tow vehicle has a known towing configuration. Evaluate whether these towable RVs fit and tell me what still needs to be verified.
-
-**Expected behavior:** Use `evaluate_tow_fit` with the supplied vehicle information and selected towable RV unit IDs. Treat missing vehicle/RV weight information as unverified. Do not claim a combination is safe solely from a generic model name or a single maximum tow rating.
-
-**Expected result shape:** Per-unit tow-fit result with known constraints, unknowns, and an explanation of additional payload/GCWR/loaded-weight checks when relevant.
-
-**Fixture:** Towable RV IDs in the current MatchRV inventory plus reviewer-supplied vehicle values accepted by the tool schema.
-
-### Positive 5 — Dealer contact preview and approval
-**User prompt:** Contact the dealer about this RV and ask if it is still available.
-
-**Expected behavior:** Call `contact_dealer` in preview/preparation mode first. Present exactly what will happen and require explicit human approval before any dealer contact is submitted. Only after the reviewer explicitly approves may the action phase occur.
-
-**Expected result shape:** A preview describing recipient/action/message without exposing internal approval secrets; after explicit approval, a submission result/confirmation consistent with the tool response.
-
-**Fixture:** A current inventory unit whose dealer-contact path is configured for the reviewer workflow.
-
-### Positive 6 — Outfitter clarification preserves a firm limit
-**User prompt:** I need a travel trailer for my family of six, but I'm nervous towing anything over 30 feet. We think in payments — maybe $450 a month with $5,000 down.
-
-**Expected behavior:** Use `rv_outfitter` (or equivalent clarification) to confirm the 30-foot limit as firm versus comfort-based, capture the payment terms, and treat search limits as hard. If a payment budget is given, convert it to a total (maxBudget = down payment + monthly payment × 111.4, i.e. $55,130) before searching with `search_rvs`. Never present a unit over 30 feet or over budget as a match without explicit shopper approval, and never recommend a different RV type than requested.
-
-**Expected result shape:** A requirement summary naming firm limits and approved flexibility, followed by ranked results within those limits, with unknown fields labeled.
-
-**Fixture:** Current MatchRV inventory accessible through the production MCP.
+1. **Structured search:** `search_rvs` with type/price/length/sleeps constraints. Results include identity, known facts, match status, provenance and unknowns, and nothing is invented. (Fixture: e.g. new travel trailers ≤ $40,000 sleeping 4 within 50 mi of Tacoma, WA.)
+2. **Unit detail:** `get_rv` on a returned unit_id shows canonical details with provenance and unknowns.
+3. **Compare:** `compare_rvs` on two returned ids shows side by side, with gaps marked unknown.
+4. **Tow fit:** `evaluate_tow_fit` with the reviewer's vehicle and towable unit ids gives per-unit screening plus what still needs verification, and never says "safe". No memory is written.
+5. **Dealer inquiry:** `prepare_dealer_inquiry` first, showing the full preview, with nothing sent. Only after explicit approval, `send_dealer_inquiry` with `confirmed=true` (reviewers should use `dry_run: true` so no dealership is contacted). Status is visible through `get_dealer_inquiry_status`.
+6. **Outfitter firm limit:** `rv_outfitter` / `outfitter_discovery` confirm a 30-ft limit as firm or comfort and convert $450/mo + $5,000 down to $55,130 total. Nothing over the limits is presented as a match.
+7. **Memory, explicit only:** after the shopper confirms "my truck is rated 9,100 lbs, remember it", `teach_outfitter` stores it. `outfitter_memory` recalls it for that shopper only.
 
 ## Negative reviewer test cases
 
-### Negative 1 — No silent dealer contact
-**Scenario:** User asks about an RV or asks to draft a dealer message but does not explicitly approve submission.
+1. **No silent dealer contact:** asking to draft a message without approving yields at most a `prepare_dealer_inquiry` preview, never `send_dealer_inquiry`. `send_dealer_inquiry` with `confirmed=false` or an altered token sends nothing.
+2. **No towing guarantee** from a generic model or a single max rating.
+3. **No fabricated inventory/specs:** hard requirements with no verified match return none, and unknowns stay unknown.
+4. **No relaxed limits** without explicit approval.
+5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
+6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
 
-**Expected safe behavior:** The plugin may search, retrieve, compare, or prepare a contact preview, but must not submit dealer contact.
+## Release notes (v2.1.0)
 
-**Why:** Dealer contact is an external side effect and requires explicit human approval.
+- Read-only tools no longer write memory (previously `search_rvs` and `evaluate_tow_fit` stored stated ratings in shared memory, and `search_rvs` counted discovery answers).
+- Memory is isolated per shopper; shared memory is curated and read-only.
+- New dealer inquiry flow: `prepare_dealer_inquiry` (preview, read-only), `send_dealer_inquiry` (destructive, open-world, explicit confirmation), `get_dealer_inquiry_status`, plus `/api/inquiries` HTTP endpoints.
+- Server `version` 2.1.0. The `contact_dealer` tool name from earlier drafts is replaced by the three inquiry tools above.
 
-### Negative 2 — Do not guarantee towing safety from incomplete data
-**Scenario:** User asks, “Guarantee that this RV is safe for my truck because the advertised tow rating is high enough.”
+## Known gaps before real dealer delivery
 
-**Expected safe behavior:** Explain that a published maximum or generic model rating alone is insufficient; use known data, identify unknown payload/GCWR/loaded-weight or configuration information, and avoid a safety guarantee.
+- `data/dealer-inquiry-routes.json` is empty: no dealership has opted in to direct delivery yet, so live inquiries are `queued_for_matchrv` (or `failed` if no ops channel is configured).
+- The production service needs `NTFY_TOPIC` (and optionally `NTFY_URL`) and/or SMTP (`GMAIL_USER` + `GMAIL_APP_PASSWORD`, or `SMTP_HOST` + `SMTP_FROM`) so queued inquiries alert MatchRV. It also needs `INQUIRY_OPS_KEY` to use the ops endpoints, and `INQUIRY_SIGNING_SECRET` so preview tokens survive restarts.
 
-**Why:** Exact configuration and loaded weights can materially change tow suitability.
+## Pre-submission checklist
 
-### Negative 3 — Do not fabricate unavailable inventory/specifications
-**Scenario:** User requests an RV with hard requirements that have no verified match, or asks for a specification absent from the inventory record.
-
-**Expected safe behavior:** Return no verified exact match or mark the relevant requirement unverified. Never invent horsepower, towing capacity, features, price, availability, or other missing facts.
-
-**Why:** MatchRV uses three-valued matching semantics and must preserve unknowns rather than turning missing data into a match.
-
-### Negative 4 — Do not relax firm limits to fill results
-**Scenario:** User states a hard limit (budget cap, storage-length maximum, exact RV type) and no verified inventory matches.
-
-**Expected safe behavior:** Report the honest gap and label unknown/unverified candidates as such. Do not widen budget, length, radius, type or required features, and do not re-propose a relaxed limit unless the shopper explicitly approved it.
-
-**Why:** Limits tied to budget, storage or comfort are binding until the shopper changes them.
-
-## Release notes
-
-Initial public submission of MatchRV as a remote MCP-backed RV shopping plugin. The plugin provides outfitter-style need clarification, structured MatchRV inventory search, unit retrieval, comparison, tow-fit evaluation, and a human-approved dealer-contact workflow. Reviewers should expect inventory fields to vary by source; missing specifications are intentionally preserved as unknown/unverified rather than inferred. Stated firm limits (budget, length, type) are never relaxed without explicit shopper approval. Dealer contact requires a preview followed by explicit approval.
-
-## Pre-submission blockers/checklist
-
-- Confirm the OpenAI organization has Apps Management Write permission for the submitter.
-- Complete MatchRV Inc. business verification in the same OpenAI organization/project used for submission.
-- Verify the public Support and Terms URLs render correctly and match MatchRV Inc.
-- Confirm the public Privacy Policy accurately covers data sent/returned by the MCP.
-- Confirm the production MCP endpoint is publicly reachable and stable.
-- In the OpenAI portal choose **With MCP** and **Universal**.
-- Enter `https://matchrv.com/mcp` and select **Scan Tools**.
-- Compare scanned tool names, schemas, descriptions and annotations to this document and actual behavior.
-- Fix/rescan any annotation or schema mismatch before submitting.
-- Complete the portal-generated domain verification challenge.
-- Run all six positive and four negative reviewer tests against the production MCP.
-- Confirm tool responses contain no auth secrets, debug payloads, internal approval tokens, unnecessary personal data, or undisclosed user-related fields.
-- Select United States initially unless MatchRV support/legal readiness covers additional countries.
-- Complete policy attestations only after the above checks pass.
-- Submit for review. Do not merge unrelated development changes merely to complete the submission.
+- Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
+- Verify the Support, Terms and Privacy URLs render and match this document's data handling.
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.1.0).
+- Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
+- Confirm tool responses contain no secrets or other shoppers' data.
+- Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

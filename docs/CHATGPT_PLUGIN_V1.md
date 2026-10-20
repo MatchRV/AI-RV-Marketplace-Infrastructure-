@@ -1,6 +1,6 @@
 # MatchRV ChatGPT Plugin V1
 
-Status: six-tool submission candidate. Deploy and verify the production endpoint before submitting for review.
+Status: superseded by v2.1.0. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
 
 ## Product goal
 
@@ -10,20 +10,15 @@ Expose MatchRV's canonical RV inventory and matching intelligence to ChatGPT thr
 
 User intent -> structured constraints -> authorized inventory -> ranked/explainable matches -> RV details/comparison -> explicit user approval -> dealer contact.
 
-## V1 tool surface
+## Tool surface (v2.1.0)
 
-Release plan: submit the six-tool surface below through the single production endpoint at `https://matchrv.com/mcp`. VIN lookup remains website-only and is not part of the MCP surface.
+As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral):
 
-As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral — the same tools serve ChatGPT, Claude, Gemini, Grok or any other MCP host):
+- Read-only: `rv_outfitter`, `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry` (preview only, sends and stores nothing), `get_dealer_inquiry_status`.
+- Write: `teach_outfitter` (shopper-scoped memory only).
+- Consequential (destructive, open-world): `send_dealer_inquiry`, which requires the preview's confirmation token and `confirmed=true`, and returns an honest delivery status (`delivered` / `queued_for_matchrv` / `failed` / `dry_run`).
 
-1. `rv_outfitter` — read-only clarification guide: one follow-up at a time, firm limits vs approved flexibility, payment-to-total budget conversion. Never relaxes a stated limit.
-2. `search_rvs` — read-only search over authorized, sufficiently fresh inventory. Supports structured constraints and natural-language intent without inventing unknown specifications. Absorbs the `match_rvs_to_buyer` ranking/explanation role.
-3. `get_rv` — read-only authoritative detail lookup for one inventory unit, including provenance/freshness and explicit unknowns.
-4. `compare_rvs` — read-only comparison of a small set of inventory units; preserves unknown values and does not claim tow compatibility.
-5. `evaluate_tow_fit` — read-only tow screening from shopper-stated vehicle data; guidance, never a safety determination.
-6. `contact_dealer` — side-effecting lead action. Must require explicit user confirmation immediately before submission and must not claim an appointment or dealer response unless actually confirmed by an integrated system.
-
-Not in the MCP surface: the VIN tow-vehicle lookup (website-only via `/api/agent/*`; it cannot verify tow package or capacity and adds third-party data transmission to the privacy surface).
+Memory is scoped per shopper (`openai/subject` → `openai/session` → MCP session → issued `session_key`). Shared memory is curated and read-only. Not in the MCP surface: VIN tow-vehicle lookup (website-only via `/api/agent/*`).
 
 ## Safety and trust rules
 
@@ -45,18 +40,18 @@ The repository already contains a pnpm workspace with `agent-core`, `api-server`
 2. Define stable plugin-facing schemas and error model.
 3. Add MCP transport/server as a thin adapter over existing services.
 4. Implement the four read-only tools first.
-5. Implement `contact_dealer` with explicit confirmation and abuse controls.
+5. Implement the dealer inquiry tools (`prepare_dealer_inquiry` / `send_dealer_inquiry` / `get_dealer_inquiry_status`) with explicit confirmation and abuse controls.
 6. Add tool-level tests for unknown/stale/sold data, authorization, injection payloads, and lead side effects.
 7. Add optional UI only where it improves inspection/comparison/confirmation.
 8. Validate against current official OpenAI plugin/MCP requirements before submission.
 
 ## Submission gates
 
-- [ ] All six tools have stable schemas and tests.
+- [x] All twelve v2.1 tools have stable schemas and tests.
 - [ ] Read-only vs side-effect annotations are correct for the current OpenAI specification.
 - [ ] Inventory freshness and provenance are visible in tool results.
 - [ ] Dealer/channel authorization is enforced.
-- [ ] `contact_dealer` requires explicit confirmation and is idempotent/retry-safe where practical.
+- [x] `send_dealer_inquiry` requires explicit confirmation, single-use tokens and duplicate protection.
 - [ ] Prompt-injection tests pass.
 - [ ] No service-role/API secrets are exposed to clients.
 - [ ] Privacy policy and terms accurately describe the production data flow.

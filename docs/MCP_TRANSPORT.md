@@ -1,57 +1,39 @@
-# MatchRV MCP transport
-
-Branch: `chatgpt-plugin-v1` only. This work is not merged to `main`.
+# MatchRV MCP transport (v2.1.0)
 
 ## Endpoint
 
-The API server exposes a stateless Streamable HTTP MCP endpoint at:
+Stateless Streamable HTTP MCP endpoint at `POST /mcp` on the `matchrv-mcp` Render service:
+`https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` once the domain points at the same service).
+It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.1.0`.
 
-`POST /mcp`
+## Tools
 
-The implementation uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`.
+See the annotation table in `OPENAI_PLUGIN_SUBMISSION.md`. In summary:
+- Read-only: `rv_outfitter`, `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry`, `get_dealer_inquiry_status`.
+- Write: `teach_outfitter` (shopper-scoped memory).
+- Consequential: `send_dealer_inquiry` (destructive + open-world; requires the preview's `confirmation_token` and `confirmed=true`).
 
-## Public V1 tools
+## Memory scoping
 
-- `search_rvs` — deterministic structured search/matching over canonical MatchRV inventory.
-- `get_rv` — canonical unit detail, dealer data, provenance/freshness and unknowns.
-- `compare_rvs` — deterministic 2-4 unit comparison against buyer constraints.
-- `evaluate_tow_fit` — configuration-aware tow-fit screening. It is not a towing-safety guarantee.
-- `contact_dealer` — two-phase contact tool. `prepare` stages a preview and sends nothing. `submit` succeeds only after the MatchRV UI has recorded explicit human approval for that preview.
+`services/learned-store.ts`: the shared layer holds curated facts only (`CURATED_FACTS_PATH`) and is read-only at runtime. Shopper-taught facts live in a per-scope store chosen by `resolveScope()`: `_meta["openai/subject"]` → `_meta["openai/session"]` → MCP session id → an opaque `session_key` issued by `teach_outfitter`. Read-only tools only call `peekScope`, `recallVehicle` and `applyMemory`; only `teach_outfitter` calls `writableScope`.
 
-## Reuse, not duplication
+## Dealer inquiries
 
-The MCP layer intentionally delegates to existing `@workspace/agent-core`, `agent-inventory`, and `agent-leads` code. The older `/api/tow-match` endpoint is not exposed because it relies on generic hard-coded capacities and can overstate towing safety.
+`services/dealer-inquiries.ts` plus `routes/inquiries.ts` (`POST /api/inquiries`, `GET /api/inquiries/:id`, ops-only `/api/inquiries/ops*`). The preview is stateless: an HMAC-signed token carries the exact preview, so the preview step has no side effects. Delivery goes to an opted-in dealer by email (`data/dealer-inquiry-routes.json`), else to the MatchRV ops queue with an ntfy/email alert, else the status is `failed`. Dry run: `dry_run: true` or `INQUIRY_DRY_RUN=1`.
+
+Environment: `NTFY_TOPIC` / `NTFY_URL`, `GMAIL_USER` + `GMAIL_APP_PASSWORD` or `SMTP_HOST` + `SMTP_FROM` (+ `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE`), `INQUIRY_OPS_EMAIL` (default sales@matchrv.com), `INQUIRY_OPS_KEY`, `INQUIRY_SIGNING_SECRET`, `INQUIRY_DRY_RUN`, `INQUIRY_RETENTION_DAYS`, `INQUIRIES_PATH`, `DEALER_INQUIRY_ROUTES` / `DEALER_INQUIRY_ROUTES_PATH`, `SESSION_MEMORY_PATH`, `SESSION_MEMORY_TTL_DAYS`, `CURATED_FACTS_PATH`.
+
+## Tests
+
+- `test/mcp-memory-isolation.test.ts`: annotations, read-only tools leave memory unchanged, cross-shopper isolation, session_key behaviour.
+- `test/dealer-inquiries.test.ts`: validation, preview sends nothing, confirmation and tamper checks, delivered / queued / failed / dry_run with a mock transport, rate limiting, MCP tools, HTTP endpoints.
+- `test/mcp-release.test.ts`: search/outfitter release behaviour.
 
 ## Security and trust boundaries
 
-1. Tool inputs are Zod validated.
-2. Inventory unknowns remain unknown; tool descriptions explicitly prohibit guessing.
-3. The MCP client never receives the dealer-contact approval token. The token remains a MatchRV page/UI capability.
-4. A prepare call is not consent to send. Submission is rejected until the human approves the exact staged preview.
-5. MCP server instances are created per request. Durable business state remains in MatchRV services, not MCP session memory.
-6. Authentication is not required for the read-only V1 shopping flow. Before exposing account-specific/private dealer tools, add OAuth/bearer verification in front of `/mcp` and pass verified auth context into the MCP handler.
-
-## Install/build check
-
-After pulling this branch, regenerate the workspace lockfile because the API package adds MCP SDK v2 dependencies:
-
-```bash
-pnpm install
-pnpm --filter @workspace/api-server run typecheck
-pnpm --filter @workspace/api-server run test
-pnpm --filter @workspace/api-server run build
-```
-
-Then connect an MCP inspector/client to the deployed `https://<host>/mcp` endpoint and exercise `tools/list` plus all five V1 tools.
-
-## Required acceptance flow
-
-Use a messy shopper request with multiple simultaneous constraints (location, price, RV type, sleep capacity, length/weight or tow vehicle, and features). Confirm:
-
-1. `search_rvs` returns structured exact constraints and explainable results.
-2. `get_rv` preserves provenance, freshness, and unknown fields.
-3. `compare_rvs` does not manufacture missing specs.
-4. `evaluate_tow_fit` surfaces configuration uncertainty and never guarantees safety.
-5. `contact_dealer` with `action=prepare` creates a visible preview but sends nothing.
-6. `contact_dealer` with `action=submit` fails before human approval.
-7. After approval in MatchRV, the same preview can be submitted once and returns a receipt.
+1. Tool inputs are Zod validated; contact details are validated again server-side.
+2. Unknown inventory facts remain unknown.
+3. A preview is not consent. `send_dealer_inquiry` refuses without `confirmed=true` and a valid, unexpired, unused token whose content cannot be altered.
+4. Inquiry status requires a per-inquiry token (stored hashed); unknown id and wrong token look identical.
+5. ntfy alerts never contain shopper contact details or the message.
+6. No authentication is required for the public shopping flow. Add OAuth in front of `/mcp` before exposing account-specific tools.

@@ -63,7 +63,7 @@ Existing `/api/agent/leads/*` flow is already correctly split into consequential
 3. human approves/rejects with a page-held token
 4. submit only after approval
 
-Plugin mapping: `contact_dealer` must preserve this human gate. The model must not receive or fabricate the approval token and must not bypass approval by writing directly to `/api/leads`.
+Plugin mapping (v2.1: the MCP uses `prepare_dealer_inquiry` → `send_dealer_inquiry` with a signed confirmation token instead of `contact_dealer`; see OPENAI_PLUGIN_SUBMISSION.md). The website flow must preserve this human gate. The model must not receive or fabricate the approval token and must not bypass approval by writing directly to `/api/leads`.
 
 ## Existing tool contracts
 
@@ -90,7 +90,7 @@ Keep the first public surface intentionally small while retaining the richer int
 2. `get_rv` — retrieve canonical RV details, provenance, freshness and unknowns.
 3. `compare_rvs` — compare 2–4 returned units using verified/normalized fields.
 4. `evaluate_tow_fit` — configuration-aware tow guidance with explicit uncertainty.
-5. `contact_dealer` — prepare contact; consequential submission remains human-gated.
+5. `prepare_dealer_inquiry` / `send_dealer_inquiry` / `get_dealer_inquiry_status` — preview (sends nothing), explicit-confirmation send, honest status (v2.1).
 
 `explain_match` and `check_availability` can either remain separate MCP tools or be composed into `get_rv`/search output for V1. Do not lose the underlying functionality.
 

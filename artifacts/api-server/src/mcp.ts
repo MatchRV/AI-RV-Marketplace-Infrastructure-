@@ -28,7 +28,8 @@ let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
 function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
 
 import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
-import { getLearnedStore, persistLearnedSoon } from "./services/learned-store";
+import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";
+import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
 const searchInput = z.object({
@@ -63,6 +64,7 @@ const searchInput = z.object({
   length_flex_approved: z.boolean().optional(),
   discovery_waived: z.boolean().optional(),
   force_search: z.boolean().optional(),
+  session_key: z.string().max(80).optional(),
   limit: z.number().int().min(1).max(10).optional().default(10),
 });
 
@@ -105,11 +107,13 @@ function profileFrom(input: Record<string, unknown>, constraints: Constraints): 
   };
 }
 
-const getRvInput = z.object({ unit_id: z.string().min(3).max(120) });
+const sessionKeyField = z.string().max(80).optional().describe("Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).");
+const getRvInput = z.object({ unit_id: z.string().min(3).max(120), session_key: sessionKeyField });
 
 const compareInput = z.object({
   unit_ids: z.array(z.string().min(3).max(120)).min(2).max(4),
   constraints: constraintsSchema.optional().default({}),
+  session_key: sessionKeyField,
 });
 
 const towInput = z.object({
@@ -121,6 +125,7 @@ const towInput = z.object({
   truck_payload_lbs: z.number().min(500).max(10000).optional(),
   passengers_lbs: z.number().min(0).max(3000).optional(),
   cargo_lbs: z.number().min(0).max(5000).optional(),
+  session_key: sessionKeyField,
 }).refine((v) => v.vehicle || v.trailer_weight_lbs, { message: "Pass vehicle (truck towing an RV) or trailer_weight_lbs (motorhome towing a trailer)." });
 
 
@@ -291,21 +296,24 @@ function mcpSchema<T extends z.ZodType>(schema: T) {
   };
 }
 
+export const MCP_VERSION = "2.1.0";
+
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(
     {
       name: "matchrv",
-      version: "0.2.1",
+      version: MCP_VERSION,
       websiteUrl: "https://matchrv.com",
     },
     {
       capabilities: { tools: { listChanged: false }, resources: {} },
       instructions:
-        OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package").replace("Dealer contact requires a preview and explicit human approval.", "Dealer contact is unavailable in this initial release.") + "\n" +
-        "LEARNING: MatchRV remembers. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, call teach_outfitter so it is known forever (labelled learned, with confirmations). Before asking for a rating, check outfitter_memory / the sherpa.memory recall — never re-ask what the system already learned; ask the shopper to confirm it matches their exact vehicle. " +
+        OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package") + "\n" +
+        "MEMORY: search, detail, compare and tow tools never store anything. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, and agrees to MatchRV remembering it, call teach_outfitter. Taught facts are private to this shopper/conversation (never shown to other shoppers) and labelled learned. If teach_outfitter returns a session_key, pass it as session_key on later calls in this conversation. Before asking for a rating, check outfitter_memory / sherpa.memory; ask the shopper to confirm a recalled value matches their exact vehicle. " +
+        "DEALER INQUIRIES: only when the shopper asks to contact a dealership about a specific unit, collect their name, email and/or phone and message, call prepare_dealer_inquiry (sends nothing), show the full preview, and call send_dealer_inquiry with confirmed=true ONLY after the shopper explicitly approves that exact preview. Report the returned status honestly (delivered / queued_for_matchrv / failed); never claim the dealer replied unless get_dealer_inquiry_status shows a recorded dealerReply. " +
         "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
         "ROAD TO THE SALE - SHERPA RULES (RV Outfitter): The whole journey from first contact to the sale is the Road to the Sale, and you are the guide on it. LENGTH RULE: when a shopper states a max length, never treat it as hard or soft silently - ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. " + "SHERPA RULES (RV Outfitter): You are a sherpa, not a listings feed. (1) DISCOVERY BEFORE INVENTORY: if sleepers/party is unknown, call outfitter_discovery and ask its ONE nextQuestion, then wait — do not call search_rvs yet. Never guess party size from a tow vehicle or weight limit. (2) One question at a time; never re-ask known facts. (3) 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer — after discovery, favour the most liveable trailer safely under the ceiling. (4) 1-2 sleepers / no kids = couples layouts first; bunkhouses only if they ask for bunks/guests. 3+ or kids = sleeping capacity first. (5) Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR, and ask the payload question. (6) Explain every pick in lifestyle terms with its tradeoff; never pad to three. (7) 'Just show me' waives discovery (discovery_waived=true). " +
-        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches ΓÇö never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred ΓÇö disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact and VIN lookup are unavailable in this initial release.",
+        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. VIN lookup is not available through this MCP server.",
     },
   );
 
@@ -318,7 +326,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Teach the Outfitter (long-term memory)",
       description:
-        "Store a confirmed fact in MatchRV's permanent memory so every future shopper benefits: a vehicle's exact tow rating or door-sticker payload (vehicle + tow_rating_lbs/payload_lbs), or a confirmed spec for one unit (unit_id + field + value; fields: sleeps, gvwrLbs, dryWeightLbs, hitchWeightLbs, freshWaterGal, bunkhouse). Only teach facts the shopper or dealer actually confirmed — never guesses. Learned facts are labelled 'learned' with confirmation counts forever after.",
+        "Remember a fact the shopper confirmed, for THIS shopper only: their vehicle's exact tow rating or door-sticker payload (vehicle + tow_rating_lbs/payload_lbs), or a confirmed spec for one unit (unit_id + field + value; fields: sleeps, gvwrLbs, dryWeightLbs, hitchWeightLbs, freshWaterGal, bunkhouse). This is the only tool that writes memory. Facts are scoped to the shopper's ChatGPT identity / MCP session (or the returned session_key) and are never shown to other shoppers; they expire after 30 days of inactivity. Only teach facts the shopper actually confirmed — never guesses.",
       inputSchema: mcpSchema(z.object({
         vehicle: z.string().max(120).optional(),
         tow_rating_lbs: z.number().min(1000).max(40000).optional(),
@@ -327,22 +335,25 @@ function buildMatchRvServer(): McpServer {
         field: z.enum(["sleeps", "gvwrLbs", "dryWeightLbs", "hitchWeightLbs", "freshWaterGal", "bunkhouse"]).optional(),
         value: z.union([z.number(), z.boolean()]).optional(),
         source: z.string().max(80).optional(),
+        session_key: sessionKeyField,
       })),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
-    async (input) => {
-      const memory = getLearnedStore();
-      if (input.vehicle && (input.tow_rating_lbs != null || input.payload_lbs != null)) {
-        const rec = memory.learnVehicle(input.vehicle, { towRatingLbs: input.tow_rating_lbs ?? null, payloadLbs: input.payload_lbs ?? null }, input.source ?? "customer-stated");
-        persistLearnedSoon();
-        return textResult({ learned: rec, note: "Stored. Future tow evaluations for this vehicle will recall it (labelled learned, with confirmation count)." });
+    async (input, ctx) => {
+      const wantsVehicle = Boolean(input.vehicle && (input.tow_rating_lbs != null || input.payload_lbs != null));
+      const wantsUnit = Boolean(input.unit_id && input.field && input.value !== undefined);
+      if (!wantsVehicle && !wantsUnit) return textResult({ error: "nothing_to_learn", guidance: "Pass vehicle + tow_rating_lbs/payload_lbs, or unit_id + field + value." }, true);
+      let scope = resolveScope(ctx, input.session_key);
+      let issuedKey: string | null = null;
+      if (scope.source === "none") { issuedKey = newSessionKey(); scope = resolveScope(null, issuedKey); }
+      const memory = writableScope(scope);
+      const scopeInfo = { scope: scope.source, ...(issuedKey ? { session_key: issuedKey, sessionKeyGuidance: "Pass this session_key on later MatchRV calls in this conversation so the fact is recalled. Do not share it." } : {}) };
+      if (wantsVehicle) {
+        const rec = memory.learnVehicle(input.vehicle!, { towRatingLbs: input.tow_rating_lbs ?? null, payloadLbs: input.payload_lbs ?? null }, input.source ?? "customer-stated");
+        return textResult({ learned: rec, ...scopeInfo, note: "Stored for this shopper only. Tow evaluations in this scope will recall it (labelled learned). Other shoppers never see it." });
       }
-      if (input.unit_id && input.field && input.value !== undefined) {
-        const rec = memory.learnUnitFact(input.unit_id, input.field, input.value, input.source ?? "customer-confirmed");
-        persistLearnedSoon();
-        return textResult({ learned: rec, note: "Stored as an overlay with 'learned' provenance; it will appear in get_rv/search for this unit." });
-      }
-      return textResult({ error: "nothing_to_learn", guidance: "Pass vehicle + tow_rating_lbs/payload_lbs, or unit_id + field + value." }, true);
+      const rec = memory.learnUnitFact(input.unit_id!, input.field!, input.value!, input.source ?? "customer-confirmed");
+      return textResult({ learned: rec, ...scopeInfo, note: "Stored for this shopper only as an overlay with 'learned' provenance; it appears in this shopper's get_rv/search results for this unit." });
     },
   );
 
@@ -351,16 +362,20 @@ function buildMatchRvServer(): McpServer {
     {
       title: "What the Outfitter has learned",
       description:
-        "Read MatchRV's long-term memory: learned vehicle ratings/payloads, learned unit facts, and anonymous discovery-pattern counters, each with confirmation counts and sources. Use to show the shopper what the system remembers and to check for a learned rating before asking again.",
-      inputSchema: mcpSchema(z.object({ vehicle: z.string().max(120).optional() })),
+        "Read what MatchRV remembers for THIS shopper (facts they taught via teach_outfitter) plus MatchRV-curated reference facts, each with confirmation counts and sources. Read-only. Use it to check for a remembered rating before asking again.",
+      inputSchema: mcpSchema(z.object({ vehicle: z.string().max(120).optional(), session_key: sessionKeyField })),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (input) => {
-      const memory = getLearnedStore();
+    async (input, ctx) => {
+      const scope = resolveScope(ctx, input.session_key);
+      const own = peekScope(scope);
+      const curatedStats = getCuratedStore().stats();
       return textResult({
-        stats: memory.stats(),
-        ...(input.vehicle ? { recall: memory.recallVehicle(input.vehicle) } : {}),
-        note: "Learned facts persist in server memory (file-backed where LEARNED_FACTS_PATH points at durable storage). They are always labelled learned — never presented as manufacturer data.",
+        scope: scope.source,
+        yourMemory: own ? { vehicles: own.stats().recentVehicles, unitFacts: own.stats().recentUnitFacts } : { vehicles: [], unitFacts: [] },
+        curated: { vehicles: curatedStats.vehicles, unitFacts: curatedStats.unitFacts },
+        ...(input.vehicle ? { recall: recallVehicle(scope, input.vehicle) } : {}),
+        note: "Shopper-taught facts are private to this shopper/conversation and expire after 30 days of inactivity. Curated facts are reviewed by MatchRV. Everything learned is labelled learned — never presented as manufacturer data.",
       });
     },
   );
@@ -425,12 +440,12 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance ΓÇö never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async (input) => {
+    async (input, ctx) => {
       try {
         const t0 = performance.now();
         const fromQuery = constraintsFromQuery(input.query);
@@ -479,19 +494,14 @@ function buildMatchRvServer(): McpServer {
         if (effLen != null) constraints.lengthMaxFt = effLen;
         if (profile.sleepers != null && constraints.sleepsMin == null) constraints.sleepsMin = profile.sleepers;
 
-        // LEARN: a rating/payload stated in this conversation is remembered.
-        const memory = getLearnedStore();
-        if (profile.towVehicle && (profile.truckTowRatingLbs != null || profile.truckPayloadLbs != null)) {
-          memory.learnVehicle(profile.towVehicle, { towRatingLbs: profile.truckTowRatingLbs, payloadLbs: profile.truckPayloadLbs });
-          persistLearnedSoon();
-        }
-        if (profile.sleepers != null) memory.count("discovery", `sleepers=${profile.sleepers}`);
-        const learnedVehicle = profile.towVehicle ? memory.recallVehicle(profile.towVehicle) : null;
+        // READ-ONLY: recall this shopper's own (or curated) memory; never write.
+        const scope = resolveScope(ctx, input.session_key);
+        const learnedVehicle = profile.towVehicle ? recallVehicle(scope, profile.towVehicle) : null;
         const learnedTow = learnedVehicle?.towRatingLbs != null && profile.truckTowRatingLbs == null
           ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source }
           : null;
         const place = constraints.location?.place;
-        const corpus = memory.applyToCorpus(candidateUnits(place));
+        const corpus = applyMemory(scope, candidateUnits(place));
         const outcome = runSearch(corpus, constraints, learnedTow);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
         const inventoryQuality = getInventory().inventoryQuality;
@@ -506,12 +516,13 @@ function buildMatchRvServer(): McpServer {
             knownSummary: discovery.knownSummary,
             readyToSearch: discovery.readyToSearch,
             towStatus: profile.truckPayloadLbs != null || profile.truckTowRatingLbs != null ? "payload-aware" : profile.towVehicle ? "preliminary - payload/rating not yet confirmed" : "not requested",
+            memoryHint: profile.towVehicle && (profile.truckTowRatingLbs != null || profile.truckPayloadLbs != null) ? "This search used the rating/payload stated in this request but did not store it. If the shopper wants MatchRV to remember it, call teach_outfitter." : null,
             memory: learnedTow ? `Recalled a LEARNED rating for this vehicle (${learnedTow.towRatingLbs.toLocaleString()} lbs, confirmed ${learnedTow.confirmations}x). Say it is learned, and ask the shopper to confirm it matches their exact truck.` : null,
             nextQuestion: profile.towVehicle && profile.truckPayloadLbs == null && profile.truckTowRatingLbs == null
               ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
               : null,
           },
-          outfitterGuidance: "Explain each pick in lifestyle terms (why it fits how they camp, plus its tradeoff). Tow verdicts are preliminary until payload/exact rating is known. Dealer contact and VIN lookup are unavailable in this release.",
+          outfitterGuidance: "Explain each pick in lifestyle terms (why it fits how they camp, plus its tradeoff). Tow verdicts are preliminary until payload/exact rating is known. If the shopper wants to contact the dealership about a unit, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. VIN lookup is unavailable through MCP.",
           nextStep: "Explain real matches and unknowns. Ask one relevant follow-up if needed; gas versus diesel, dedicated versus convertible bunks, or a required towing load may change the recommendation. Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.",
         });
       } catch (error) {
@@ -540,9 +551,10 @@ function buildMatchRvServer(): McpServer {
       inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ unit_id }) => {
+    async ({ unit_id, session_key }, ctx) => {
       const inv = getInventory();
-      const unit = inv.byId.get(unit_id);
+      const raw = inv.byId.get(unit_id);
+      const unit = raw ? applyMemoryToUnit(resolveScope(ctx, session_key), raw) : raw;
       if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
       return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
@@ -559,9 +571,10 @@ function buildMatchRvServer(): McpServer {
       inputSchema: mcpSchema(compareInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ unit_ids, constraints }) => {
+    async ({ unit_ids, constraints, session_key }, ctx) => {
       const inv = getInventory();
-      const units = unit_ids.map((id) => inv.byId.get(id));
+      const scope = resolveScope(ctx, session_key);
+      const units = unit_ids.map((id) => { const u = inv.byId.get(id); return u ? applyMemoryToUnit(scope, u) : u; });
       const missing = unit_ids.filter((_id, index) => !units[index]);
       if (missing.length) return textResult({ error: "unit_not_found", unit_ids: missing }, true);
       try {
@@ -583,15 +596,12 @@ function buildMatchRvServer(): McpServer {
       inputSchema: mcpSchema(towInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs }) => {
+    async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs, session_key }, ctx) => {
       const inv = getInventory();
-      const memory = getLearnedStore();
+      // READ-ONLY: a rating stated here is used for this answer only, never stored.
+      const scope = resolveScope(ctx, session_key);
       const explicitResolution = vehicle ? resolveTowVehicle(vehicle) : null;
-      if (vehicle && explicitResolution?.statedRatingLbs != null) {
-        memory.learnVehicle(vehicle, { towRatingLbs: explicitResolution.statedRatingLbs });
-        persistLearnedSoon();
-      }
-      const learnedVehicle = vehicle ? memory.recallVehicle(vehicle) : null;
+      const learnedVehicle = vehicle ? recallVehicle(scope, vehicle) : null;
       const resolution = vehicle
         ? resolveTowVehicle(vehicle, learnedVehicle?.towRatingLbs != null && explicitResolution?.statedRatingLbs == null ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source } : null)
         : null;
@@ -615,6 +625,87 @@ function buildMatchRvServer(): McpServer {
         ...(motorhomeTow.length ? { motorhomeTow } : {}),
         safetyNotice: "Verify the exact vehicle configuration, weighed coach and axle loads, GVWR/GCWR, hitch and tongue limits, passengers and cargo before towing. Engine horsepower and torque do not override any weight limit.",
       });
+    },
+  );
+
+  server.registerTool(
+    "prepare_dealer_inquiry",
+    {
+      title: "Preview a dealer inquiry (sends nothing)",
+      description:
+        "Step 1 of contacting a dealership about one RV. Use only when the shopper asks to contact the dealer. Takes unit_id (from search_rvs/get_rv), the shopper's name, email and/or phone, and their message. Validates them and returns the exact preview — dealership name and location, RV title, VIN, stock number, price, the shopper's contact details, the message, and how MatchRV will deliver it — plus a confirmation_token valid for 30 minutes. NOTHING IS SENT. Show the whole preview to the shopper and ask them to approve it before calling send_dealer_inquiry.",
+      inputSchema: mcpSchema(z.object({
+        unit_id: z.string().min(3).max(120),
+        name: z.string().min(1).max(120).describe("Shopper's name, as they provided it"),
+        email: z.string().max(160).optional().describe("Shopper's email, as they provided it"),
+        phone: z.string().max(40).optional().describe("Shopper's phone, as they provided it"),
+        message: z.string().min(1).max(1500).describe("Message to the dealership, written or approved by the shopper"),
+      })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async (input) => {
+      const unit = getInventory().byId.get(input.unit_id);
+      if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
+      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message });
+      if (!prepared.ok) return textResult({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
+      return textResult({
+        status: "preview_only_nothing_sent",
+        preview: prepared.preview,
+        confirmation_token: prepared.confirmationToken,
+        expiresAt: prepared.expiresAt,
+        next: "Show this full preview to the shopper. Only if they explicitly approve sending it, call send_dealer_inquiry with this confirmation_token and confirmed=true. If they want changes, call prepare_dealer_inquiry again.",
+      });
+    },
+  );
+
+  server.registerTool(
+    "send_dealer_inquiry",
+    {
+      title: "Send the approved dealer inquiry",
+      description:
+        "Step 2: sends the inquiry previewed by prepare_dealer_inquiry. Consequential — it shares the shopper's name, contact details and message outside MatchRV. Call only after the shopper explicitly approved the exact preview, with confirmed=true. The content is locked to the preview (it cannot be changed here). Returns an inquiry_id, a private status_token and an honest status: delivered (emailed to a dealership that accepts MatchRV inquiries), queued_for_matchrv (MatchRV staff were alerted and will forward it; not yet at the dealer), or failed (tell the shopper to contact the dealership directly). Never retry automatically and never claim the dealer has replied.",
+      inputSchema: mcpSchema(z.object({
+        confirmation_token: z.string().min(10).max(4000),
+        confirmed: z.boolean().describe("Must be true, and only after the shopper explicitly approved the preview"),
+        dry_run: z.boolean().optional().describe("Testing only: validate and record without delivering to anyone"),
+      })),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    },
+    async (input, ctx) => {
+      const scope = resolveScope(ctx, null);
+      const result = await sendInquiry({
+        confirmationToken: input.confirmation_token,
+        confirmed: input.confirmed,
+        dryRun: input.dry_run,
+        requesterKey: scope.id ? `scope:${scope.id}` : `ip:${(ctx as { http?: { req?: Request } }).http?.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"}`,
+        scope: scope.id,
+        lookupUnit: (id) => getInventory().byId.get(id),
+      });
+      if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false }, true);
+      return textResult({
+        inquiry_id: result.inquiry.inquiryId,
+        ...(result.duplicate ? { duplicate: true, guidance: "The shopper already sent this RV's dealership an inquiry in the last 24 hours, so it was not sent again." } : { status_token: result.statusToken }),
+        status: result.inquiry.status,
+        statusDetail: result.inquiry.statusDetail,
+        inquiry: result.inquiry,
+        next: "Tell the shopper exactly what the status means. They can ask for an update later; call get_dealer_inquiry_status with inquiry_id and status_token.",
+      });
+    },
+  );
+
+  server.registerTool(
+    "get_dealer_inquiry_status",
+    {
+      title: "Check a dealer inquiry",
+      description:
+        "Read-only status of an inquiry this shopper sent: delivered / queued_for_matchrv / failed / dry_run, plus the dealership's reply only if MatchRV has recorded one. Requires the inquiry_id and private status_token returned by send_dealer_inquiry; other shoppers' inquiries are never visible.",
+      inputSchema: mcpSchema(z.object({ inquiry_id: z.string().min(5).max(60), status_token: z.string().min(10).max(80) })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const inquiry = getInquiryStatus(input.inquiry_id, input.status_token);
+      if (!inquiry) return textResult({ error: "not_found", guidance: "Unknown inquiry_id or wrong status_token." }, true);
+      return textResult({ inquiry });
     },
   );
 

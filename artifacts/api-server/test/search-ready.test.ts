@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isSearchReady, readyUnits, searchReadyInventory, usablePhotoUrl } from "../src/services/search-ready";
+import { getInventory } from "../src/services/agent-inventory";
 
 describe("search readiness gate", () => {
   it("requires actual identity, photos and published key specifications", () => {
@@ -18,7 +19,7 @@ describe("search readiness gate", () => {
     const units=readyUnits().slice(0,20);
     const outcome=await searchReadyInventory({},3,units,async()=>false);
     expect(outcome.results).toEqual([]);
-    expect(outcome.readiness.totalInventory).toBe(20775);
+    expect(outcome.readiness.totalInventory).toBe(getInventory().units.length);
     expect(outcome.readiness.eligibleInventory).toBe(units.length);
   });
   it("shows only confirmed hard matches with photos, retaining full unit data", async () => {

@@ -6,20 +6,30 @@ import {
   compactSearchResult,
   compareUnits,
   constraintsSchema,
+  evaluateMotorhomeTow,
   evaluateTowFit,
   evaluateUnit,
-  prepareDealerContactInput,
+  powertrainReport,
   resolveTowVehicle,
   runSearch,
-  submitDealerContactInput,
+  assessDiscovery,
+  searchGuides,
+  getGuide,
+  GUIDE_TOPICS,
+  profileToConstraints,
+  evaluatePayloadFit,
+  type BuyerProfile,
   type Constraints,
   type CanonicalUnit,
 } from "@workspace/agent-core";
-import { getInventory } from "./services/agent-inventory";
-import { searchReadyInventory } from "./services/search-ready";
-import { createPreview, draftMessage, submitPreview } from "./services/agent-leads";
+import { getInventory as getOriginalInventory } from "./services/agent-inventory";
+import { screenMcpInventory } from "./services/mcp-inventory-quality";
+let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
+function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
 
-import { OUTFITTER_GUIDANCE, outfitterGuidance } from "./services/outfitter-guidance";
+import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
+import { getLearnedStore, persistLearnedSoon } from "./services/learned-store";
+import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
 const searchInput = z.object({
   // ChatGPT often passes free-form top-level fields instead of nested constraints.
@@ -28,12 +38,72 @@ const searchInput = z.object({
   place: z.string().max(80).optional(),
   radius_miles: z.number().min(1).max(3000).optional(),
   sleeps_min: z.number().int().min(1).max(14).optional(),
+  // Top-level shorthands clients send; previously stripped by zod, so a
+  // "new" search silently returned used units (2016/2022 Camping World).
+  condition: z.enum(["new", "used", "any"]).optional(),
+  price_max_usd: z.number().min(0).max(2_000_000).optional(),
+  price_min_usd: z.number().min(0).max(2_000_000).optional(),
+  sort: z.enum(["best_match", "price_asc", "price_desc", "distance", "newest_model_year"]).optional(),
   constraints: z.preprocess(
     (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
     constraintsSchema,
   ).optional().default({}),
+  sleepers: z.number().int().min(1).max(14).optional(),
+  adults: z.number().int().min(0).max(14).optional(),
+  kids: z.number().int().min(0).max(14).optional(),
+  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional(),
+  wants_bunks: z.boolean().optional(),
+  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional(),
+  truck_payload_lbs: z.number().min(500).max(10000).optional(),
+  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional(),
+  passengers_lbs: z.number().min(0).max(3000).optional(),
+  cargo_lbs: z.number().min(0).max(5000).optional(),
+  length_max_ft: z.number().min(8).max(60).optional(),
+  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional(),
+  length_flex_approved: z.boolean().optional(),
+  discovery_waived: z.boolean().optional(),
+  force_search: z.boolean().optional(),
   limit: z.number().int().min(1).max(10).optional().default(10),
 });
+
+const profileInput = z.object({
+  sleepers: z.number().int().min(1).max(14).optional(),
+  adults: z.number().int().min(0).max(14).optional(),
+  kids: z.number().int().min(0).max(14).optional(),
+  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional(),
+  wants_bunks: z.boolean().optional(),
+  budget_max_usd: z.number().min(0).max(2000000).optional(),
+  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional(),
+  tow_vehicle: z.string().max(120).optional(),
+  truck_payload_lbs: z.number().min(500).max(10000).optional(),
+  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional(),
+  length_max_ft: z.number().min(8).max(60).optional(),
+  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional(),
+  length_flex_approved: z.boolean().optional(),
+  discovery_waived: z.boolean().optional(),
+});
+
+function profileFrom(input: Record<string, unknown>, constraints: Constraints): BuyerProfile {
+  const sherpa = constraints.sherpa;
+  return {
+    sleepers: (input.sleepers as number | undefined) ?? (input.sleeps_min as number | undefined) ?? constraints.sleepsMin ?? sherpa?.sleepers ?? null,
+    adults: (input.adults as number | undefined) ?? null,
+    kids: (input.kids as number | undefined) ?? null,
+    floorplanIntent: (input.floorplan_intent as BuyerProfile["floorplanIntent"]) ?? sherpa?.floorplanIntent ?? null,
+    wantsBunks: (input.wants_bunks as boolean | undefined) ?? (constraints.mustHave?.includes("bunkhouse") ? true : null),
+    budgetMaxUsd: constraints.priceMaxUsd ?? null,
+    campingStyle: (input.camping_style as BuyerProfile["campingStyle"]) ?? sherpa?.campingStyle ?? (constraints.boondocking ? "boondocking" : null),
+    towVehicle: constraints.towVehicle ?? null,
+    truckPayloadLbs: (input.truck_payload_lbs as number | undefined) ?? sherpa?.truckPayloadLbs ?? null,
+    truckTowRatingLbs: (input.truck_tow_rating_lbs as number | undefined) ?? null,
+    passengersLbs: (input.passengers_lbs as number | undefined) ?? sherpa?.passengersLbs ?? null,
+    cargoLbs: (input.cargo_lbs as number | undefined) ?? sherpa?.cargoLbs ?? null,
+    discoveryWaived: (input.discovery_waived as boolean | undefined) ?? sherpa?.discoveryWaived ?? null,
+    lengthMaxFt: (input.length_max_ft as number | undefined) ?? constraints.lengthMaxFt ?? sherpa?.lengthMaxStatedFt ?? null,
+    lengthReason: (input.length_reason as BuyerProfile["lengthReason"]) ?? sherpa?.lengthReason ?? null,
+    lengthFlexApproved: (input.length_flex_approved as boolean | undefined) ?? sherpa?.lengthFlexApproved ?? null,
+  };
+}
 
 const getRvInput = z.object({ unit_id: z.string().min(3).max(120) });
 
@@ -43,17 +113,16 @@ const compareInput = z.object({
 });
 
 const towInput = z.object({
-  vehicle: z.string().min(2).max(120),
+  vehicle: z.string().min(2).max(120).optional(),
   unit_ids: z.array(z.string().min(3).max(120)).min(1).max(6),
-});
+  trailer_weight_lbs: z.number().min(500).max(40_000).optional(),
+  trailer_tongue_lbs: z.number().min(50).max(5_000).optional(),
+  coach_loaded_weight_lbs: z.number().min(3_000).max(80_000).optional(),
+  truck_payload_lbs: z.number().min(500).max(10000).optional(),
+  passengers_lbs: z.number().min(0).max(3000).optional(),
+  cargo_lbs: z.number().min(0).max(5000).optional(),
+}).refine((v) => v.vehicle || v.trailer_weight_lbs, { message: "Pass vehicle (truck towing an RV) or trailer_weight_lbs (motorhome towing a trailer)." });
 
-const contactInput = z.discriminatedUnion("action", [
-  prepareDealerContactInput.extend({
-    action: z.literal("prepare"),
-    constraints: constraintsSchema.optional().default({}),
-  }),
-  submitDealerContactInput.extend({ action: z.literal("submit") }),
-]);
 
 function cleanConstraints(value: Record<string, unknown> | undefined | null): Constraints {
   const aliases: Record<string, string> = {
@@ -81,6 +150,21 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
     vehicle: "towVehicle",
     max_weight: "maxWeightLbs",
     max_weight_lbs: "maxWeightLbs",
+    fuel: "fuelType",
+    fuel_type: "fuelType",
+    horsepower_min: "horsepowerMin",
+    min_horsepower: "horsepowerMin",
+    hp_min: "horsepowerMin",
+    horsepower_preferred: "horsepowerPreferred",
+    torque_min: "torqueMinLbFt",
+    torque_min_lb_ft: "torqueMinLbFt",
+    min_torque: "torqueMinLbFt",
+    torque_preferred: "torquePreferredLbFt",
+    trailer_weight: "trailerWeightLbs",
+    trailer_weight_lbs: "trailerWeightLbs",
+    tow_trailer_lbs: "trailerWeightLbs",
+    trailer_tongue_lbs: "trailerTongueLbs",
+    coach_loaded_weight_lbs: "coachLoadedWeightLbs",
   };
   const rvSynonyms: Record<string, string> = {
     "travel trailer": "travel_trailer",
@@ -152,6 +236,20 @@ function constraintsFromQuery(query: string | undefined): Partial<Constraints> {
     const n = parseInt(raw.replace(/,/g, ""), 10);
     if (Number.isFinite(n) && n > 1000) out.priceMaxUsd = n;
   }
+  const lenMax = /(?:nothing longer than|no longer than|not longer than|under|less than|up to|max(?:imum)?(?: of)?|at most)\s*(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\b/.exec(q) ?? /(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\s*(?:or less|max(?:imum)?|and under)\b/.exec(q);
+  if (lenMax) { const n = parseFloat(lenMax[1]); if (n >= 8 && n <= 60) out.lengthMaxFt = n; }
+  if (/\bdiesel\b/.test(q)) out.fuelType = "diesel";
+  else if (/\bgas(oline)?\b/.test(q)) out.fuelType = "gas";
+  // "450 hp" / "at least 450 horsepower" = minimum; "450 hp preferred"/"ideally" = preference.
+  const hp = /(\d{3})\s*(?:hp|horsepower)\b(\s*(?:preferred|ideally|if possible))?/.exec(q);
+  if (hp) out[hp[2] || /(prefer|ideally)[^.]{0,30}\d{3}\s*(?:hp|horse)/.test(q) ? "horsepowerPreferred" : "horsepowerMin"] = parseInt(hp[1], 10);
+  const tq = /([\d,]{3,5})\s*(?:lb[\s.-]*ft|ft[\s.-]*lbs?|pound[\s-]*feet)/.exec(q);
+  if (tq) out.torqueMinLbFt = parseInt(tq[1].replace(/,/g, ""), 10);
+  const trailer = /([\d,]{4,6})\s*(?:-?\s*(?:lb|lbs|pound))?\s*(?:loaded\s+)?(?:trailer|car|toad)/.exec(q) ?? /tow(?:ing)?\s+(?:a\s+)?([\d,]{4,6})/.exec(q);
+  if (trailer) {
+    const n = parseInt(trailer[1].replace(/,/g, ""), 10);
+    if (n >= 500 && n <= 40_000) out.trailerWeightLbs = n;
+  }
   return out as Partial<Constraints>;
 }
 
@@ -173,6 +271,7 @@ function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { r
 function textResult(payload: unknown, isError = false) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload) }],
+    ...(!isError && payload && typeof payload === "object" ? { structuredContent: payload as Record<string, unknown> } : {}),
     ...(isError ? { isError: true } : {}),
   };
 }
@@ -200,26 +299,127 @@ function buildMatchRvServer(): McpServer {
       websiteUrl: "https://matchrv.com",
     },
     {
-      capabilities: { tools: { listChanged: false } },
+      capabilities: { tools: { listChanged: false }, resources: {} },
       instructions:
-        OUTFITTER_GUIDANCE + "\n" +
-        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and use rv_outfitter for ambiguous preferences. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact is two-phase: prepare, human approval, then submit.",
+        OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package").replace("Dealer contact requires a preview and explicit human approval.", "Dealer contact is unavailable in this initial release.") + "\n" +
+        "LEARNING: MatchRV remembers. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, call teach_outfitter so it is known forever (labelled learned, with confirmations). Before asking for a rating, check outfitter_memory / the sherpa.memory recall — never re-ask what the system already learned; ask the shopper to confirm it matches their exact vehicle. " +
+        "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
+        "ROAD TO THE SALE - SHERPA RULES (RV Outfitter): The whole journey from first contact to the sale is the Road to the Sale, and you are the guide on it. LENGTH RULE: when a shopper states a max length, never treat it as hard or soft silently - ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. " + "SHERPA RULES (RV Outfitter): You are a sherpa, not a listings feed. (1) DISCOVERY BEFORE INVENTORY: if sleepers/party is unknown, call outfitter_discovery and ask its ONE nextQuestion, then wait — do not call search_rvs yet. Never guess party size from a tow vehicle or weight limit. (2) One question at a time; never re-ask known facts. (3) 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer — after discovery, favour the most liveable trailer safely under the ceiling. (4) 1-2 sleepers / no kids = couples layouts first; bunkhouses only if they ask for bunks/guests. 3+ or kids = sleeping capacity first. (5) Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR, and ask the payload question. (6) Explain every pick in lifestyle terms with its tradeoff; never pad to three. (7) 'Just show me' waives discovery (discovery_waived=true). " +
+        "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches ΓÇö never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred ΓÇö disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. Dealer contact and VIN lookup are unavailable in this initial release.",
     },
   );
 
-  server.registerTool("rv_outfitter", {
-    title: "RV Outfitter - clarify and confirm shopper needs",
-    description: "Use this guide when a shopper starts an RV conversation or gives an ambiguous preference. Returns one useful follow-up, a confirmation summary and authoritative constraints. Ask about firm limits versus explicitly approved flexibility; never relax a limit automatically. Continue in this chat, then call search_rvs for real options. Does not contact dealers or send messages.",
-    inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
+  server.registerResource("matchrv-shopper", SHOPPER_URI, { title: "MatchRV shopper", mimeType: "text/html;profile=mcp-app" }, async () => ({
+    contents: [{ uri: SHOPPER_URI, mimeType: "text/html;profile=mcp-app", text: SHOPPER_HTML, _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } }, "openai/ui": { availableDisplayModes: ["fullscreen"], preferredDisplayMode: "fullscreen" } } }],
+  }));
+
+  server.registerTool(
+    "teach_outfitter",
+    {
+      title: "Teach the Outfitter (long-term memory)",
+      description:
+        "Store a confirmed fact in MatchRV's permanent memory so every future shopper benefits: a vehicle's exact tow rating or door-sticker payload (vehicle + tow_rating_lbs/payload_lbs), or a confirmed spec for one unit (unit_id + field + value; fields: sleeps, gvwrLbs, dryWeightLbs, hitchWeightLbs, freshWaterGal, bunkhouse). Only teach facts the shopper or dealer actually confirmed — never guesses. Learned facts are labelled 'learned' with confirmation counts forever after.",
+      inputSchema: mcpSchema(z.object({
+        vehicle: z.string().max(120).optional(),
+        tow_rating_lbs: z.number().min(1000).max(40000).optional(),
+        payload_lbs: z.number().min(500).max(10000).optional(),
+        unit_id: z.string().min(3).max(120).optional(),
+        field: z.enum(["sleeps", "gvwrLbs", "dryWeightLbs", "hitchWeightLbs", "freshWaterGal", "bunkhouse"]).optional(),
+        value: z.union([z.number(), z.boolean()]).optional(),
+        source: z.string().max(80).optional(),
+      })),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async (input) => {
+      const memory = getLearnedStore();
+      if (input.vehicle && (input.tow_rating_lbs != null || input.payload_lbs != null)) {
+        const rec = memory.learnVehicle(input.vehicle, { towRatingLbs: input.tow_rating_lbs ?? null, payloadLbs: input.payload_lbs ?? null }, input.source ?? "customer-stated");
+        persistLearnedSoon();
+        return textResult({ learned: rec, note: "Stored. Future tow evaluations for this vehicle will recall it (labelled learned, with confirmation count)." });
+      }
+      if (input.unit_id && input.field && input.value !== undefined) {
+        const rec = memory.learnUnitFact(input.unit_id, input.field, input.value, input.source ?? "customer-confirmed");
+        persistLearnedSoon();
+        return textResult({ learned: rec, note: "Stored as an overlay with 'learned' provenance; it will appear in get_rv/search for this unit." });
+      }
+      return textResult({ error: "nothing_to_learn", guidance: "Pass vehicle + tow_rating_lbs/payload_lbs, or unit_id + field + value." }, true);
+    },
+  );
+
+  server.registerTool(
+    "outfitter_memory",
+    {
+      title: "What the Outfitter has learned",
+      description:
+        "Read MatchRV's long-term memory: learned vehicle ratings/payloads, learned unit facts, and anonymous discovery-pattern counters, each with confirmation counts and sources. Use to show the shopper what the system remembers and to check for a learned rating before asking again.",
+      inputSchema: mcpSchema(z.object({ vehicle: z.string().max(120).optional() })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const memory = getLearnedStore();
+      return textResult({
+        stats: memory.stats(),
+        ...(input.vehicle ? { recall: memory.recallVehicle(input.vehicle) } : {}),
+        note: "Learned facts persist in server memory (file-backed where LEARNED_FACTS_PATH points at durable storage). They are always labelled learned — never presented as manufacturer data.",
+      });
+    },
+  );
+
+  server.registerTool(
+    "outfitter_discovery",
+    {
+      title: "RV Outfitter sherpa discovery",
+      description:
+        "Road to the Sale intake. Start here when the shopper has not yet said who sleeps in the RV, or has stated a length limit whose reason (storage vs comfort) is not yet known. Pass everything already known (sleepers, adults/kids, floorplan_intent, wants_bunks, budget, camping_style, tow_vehicle, door-sticker payload). Returns ONE next question to ask — or readyToSearch with compiled constraints for search_rvs. Stateless: pass the accumulated profile on every call. Never show inventory while readyToSearch is false unless the shopper waived discovery.",
+      inputSchema: mcpSchema(profileInput),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const profile: BuyerProfile = {
+        sleepers: input.sleepers ?? null, adults: input.adults ?? null, kids: input.kids ?? null,
+        floorplanIntent: input.floorplan_intent ?? null, wantsBunks: input.wants_bunks ?? null,
+        budgetMaxUsd: input.budget_max_usd ?? null, campingStyle: input.camping_style ?? null,
+        towVehicle: input.tow_vehicle ?? null, truckPayloadLbs: input.truck_payload_lbs ?? null,
+        truckTowRatingLbs: input.truck_tow_rating_lbs ?? null, discoveryWaived: input.discovery_waived ?? null,
+        lengthMaxFt: input.length_max_ft ?? null, lengthReason: input.length_reason ?? null, lengthFlexApproved: input.length_flex_approved ?? null,
+      };
+      const discovery = assessDiscovery(profile);
+      return textResult({
+        ...discovery,
+        profile,
+        ...(discovery.readyToSearch ? { searchConstraints: profileToConstraints(profile), guidance: "Discovery is sufficient. Briefly reflect what you heard, then call search_rvs with these constraints (plus location/price/radius). Tow verdicts stay preliminary until payload or an exact rating is supplied." } : { guidance: "Ask nextQuestion.prompt as the only question and wait. Do not describe or rank trailers yet." }),
+      });
+    },
+  );
+
+  server.registerTool(
+    "outfitter_guide",
+    {
+      title: "RV Outfitter buyer guides",
+      description:
+        "MatchRV's buyer-education knowledge, distilled from its published guides (towing/payload basics, motorhome vs trailer, travel trailer vs fifth wheel, families, full-time living, buying used, costs, financing). Use for general 'how does this work / which is better' questions BEFORE any inventory search — teach first, sell never. Pass topic for an exact guide or query to search. Towing points defer to evaluate_tow_fit for the buyer's actual vehicle; never quote a model-level tow table.",
+      inputSchema: mcpSchema(z.object({
+        topic: z.enum(["tow_basics", "motorhome_vs_trailer", "trailer_vs_fifth_wheel", "families", "full_time", "used_buying", "costs", "financing"]).optional(),
+        query: z.string().max(160).optional(),
+      })),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async (input) => {
+      const topics = input.topic ? [getGuide(input.topic)].filter((g): g is NonNullable<typeof g> => Boolean(g)) : searchGuides(input.query ?? "");
+      return textResult({
+        topics: topics.slice(0, 3).map((g) => ({ id: g.id, title: g.title, source: g.source, points: g.points })),
+        ...(topics.length === 0 ? { guidance: "No guide matches; answer generally and honestly, or offer to start discovery with outfitter_discovery.", availableTopics: GUIDE_TOPICS.map((g) => g.id) } : {}),
+      });
+    },
+  );
 
   server.registerTool(
     "search_rvs",
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory. Use rv_outfitter for ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance ΓÇö never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -241,26 +441,71 @@ function buildMatchRvServer(): McpServer {
           };
         }
         if (input.sleeps_min != null) fromTop.sleepsMin = input.sleeps_min;
+        if (input.condition != null) fromTop.condition = input.condition;
+        if (input.price_max_usd != null) fromTop.priceMaxUsd = input.price_max_usd;
+        if (input.price_min_usd != null) fromTop.priceMinUsd = input.price_min_usd;
+        if (input.sort != null) fromTop.sort = input.sort;
 
-        const constraints = mergeConstraints(
+        const baseConstraints = mergeConstraints(
           cleanConstraints(input.constraints as Record<string, unknown>),
           fromQuery,
           fromTop,
         );
+        const profile = profileFrom(input as unknown as Record<string, unknown>, baseConstraints);
+        const discovery = assessDiscovery(profile);
+        if (!discovery.readyToSearch && !input.force_search) {
+          return textResult({
+            status: "needs_discovery",
+            results: [],
+            knownProfile: profile,
+            knownSummary: discovery.knownSummary,
+            missingEssentials: discovery.missingEssentials,
+            nextQuestion: discovery.nextQuestion,
+            guidance: "Ask nextQuestion.prompt (offer its options) as the ONLY question, then wait. Do not show, rank, or describe any trailer yet. When the shopper answers, call search_rvs again with sleepers/floorplan_intent filled in (or outfitter_discovery to continue). If they say 'just show me', retry with discovery_waived=true.",
+          });
+        }
+        const constraints = mergeConstraints(profileToConstraints(profile), baseConstraints);
+        constraints.sherpa = profileToConstraints(profile).sherpa;
+        // Road to the Sale: the clarified length cap (storage-exact, or
+        // comfort +2 only with explicit approval) overrides any raw cap.
+        const effLen = profileToConstraints(profile).lengthMaxFt;
+        if (effLen != null) constraints.lengthMaxFt = effLen;
+        if (profile.sleepers != null && constraints.sleepsMin == null) constraints.sleepsMin = profile.sleepers;
 
+        // LEARN: a rating/payload stated in this conversation is remembered.
+        const memory = getLearnedStore();
+        if (profile.towVehicle && (profile.truckTowRatingLbs != null || profile.truckPayloadLbs != null)) {
+          memory.learnVehicle(profile.towVehicle, { towRatingLbs: profile.truckTowRatingLbs, payloadLbs: profile.truckPayloadLbs });
+          persistLearnedSoon();
+        }
+        if (profile.sleepers != null) memory.count("discovery", `sleepers=${profile.sleepers}`);
+        const learnedVehicle = profile.towVehicle ? memory.recallVehicle(profile.towVehicle) : null;
+        const learnedTow = learnedVehicle?.towRatingLbs != null && profile.truckTowRatingLbs == null
+          ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source }
+          : null;
         const place = constraints.location?.place;
-        const corpus = candidateUnits(place);
-        const outcome = await searchReadyInventory(constraints, input.limit ?? 10, corpus);
+        const corpus = memory.applyToCorpus(candidateUnits(place));
+        const outcome = runSearch(corpus, constraints, learnedTow);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
+        const inventoryQuality = getInventory().inventoryQuality;
         const ms = Math.round(performance.now() - t0);
         return textResult({
           ...compact,
+          inventoryQuality,
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
           source: "MatchRV nationwide inventory snapshot",
-          outfitterGuidance: OUTFITTER_GUIDANCE,
+          sherpa: {
+            knownSummary: discovery.knownSummary,
+            readyToSearch: discovery.readyToSearch,
+            towStatus: profile.truckPayloadLbs != null || profile.truckTowRatingLbs != null ? "payload-aware" : profile.towVehicle ? "preliminary - payload/rating not yet confirmed" : "not requested",
+            memory: learnedTow ? `Recalled a LEARNED rating for this vehicle (${learnedTow.towRatingLbs.toLocaleString()} lbs, confirmed ${learnedTow.confirmations}x). Say it is learned, and ask the shopper to confirm it matches their exact truck.` : null,
+            nextQuestion: profile.towVehicle && profile.truckPayloadLbs == null && profile.truckTowRatingLbs == null
+              ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
+              : null,
+          },
+          outfitterGuidance: "Explain each pick in lifestyle terms (why it fits how they camp, plus its tradeoff). Tow verdicts are preliminary until payload/exact rating is known. Dealer contact and VIN lookup are unavailable in this release.",
           nextStep: "Explain real matches and unknowns. Ask one relevant follow-up if needed; gas versus diesel, dedicated versus convertible bunks, or a required towing load may change the recommendation. Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.",
-          readiness: outcome.readiness,
         });
       } catch (error) {
         return textResult(
@@ -283,15 +528,17 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Get RV details",
       description:
-        "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Never invent missing specifications.",
+        "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Motorhomes include a powertrainAndTowing section (what powers it / what it can carry / what it can tow), each value with its status. Never invent missing specifications or assign an engine family's top rating to a unit.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_id }) => {
       const inv = getInventory();
       const unit = inv.byId.get(unit_id);
-      if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
-      return textResult({ unit, dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
+      const powertrainAndTowing = powertrainReport(unit);
+      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
     },
   );
 
@@ -301,6 +548,7 @@ function buildMatchRvServer(): McpServer {
       title: "Compare RVs",
       description:
         "Compare 2-4 MatchRV units side by side against the buyer's constraints. Keeps unknown values explicit and returns deterministic comparison evidence rather than guessed specifications.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(compareInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -323,66 +571,42 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Evaluate tow fit",
       description:
-        "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs. This is screening guidance, not a towing-safety guarantee. Configuration-specific payload, GVWR/GCWR, hitch ratings, passengers and cargo can change the result.",
+        "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs, or (with trailer_weight_lbs) whether 1-6 motorhomes can tow a loaded trailer. Motorhome mode checks each limit separately — loaded coach vs GVWR first, then hitch tow rating, GCWR, tongue limit and axle loads — and never reports 'safe'; the best result is 'not yet confirmed' with the ratings that clear. This is screening guidance, not a towing-safety guarantee.",
+      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(towInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ vehicle, unit_ids }) => {
+    async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs }) => {
       const inv = getInventory();
-      const resolution = resolveTowVehicle(vehicle);
+      const memory = getLearnedStore();
+      const explicitResolution = vehicle ? resolveTowVehicle(vehicle) : null;
+      if (vehicle && explicitResolution?.statedRatingLbs != null) {
+        memory.learnVehicle(vehicle, { towRatingLbs: explicitResolution.statedRatingLbs });
+        persistLearnedSoon();
+      }
+      const learnedVehicle = vehicle ? memory.recallVehicle(vehicle) : null;
+      const resolution = vehicle
+        ? resolveTowVehicle(vehicle, learnedVehicle?.towRatingLbs != null && explicitResolution?.statedRatingLbs == null ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source } : null)
+        : null;
       const fits = [];
+      const motorhomeTow = [];
       for (const id of unit_ids) {
         const unit = inv.byId.get(id);
         if (!unit) return textResult({ error: "unit_not_found", unit_id: id }, true);
-        fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
+        if (resolution) fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
+        if (trailer_weight_lbs) motorhomeTow.push({ ...evaluateMotorhomeTow(unit, trailer_weight_lbs, { tongueLbs: trailer_tongue_lbs, coachLoadedLbs: coach_loaded_weight_lbs }), title: unit.title });
       }
-      return textResult({ resolution, fits, safetyNotice: "Verify the exact tow-vehicle configuration, payload sticker, GVWR/GCWR, hitch limits, passengers and cargo before towing." });
-    },
-  );
-
-  server.registerTool(
-    "contact_dealer",
-    {
-      title: "Prepare or submit dealer contact",
-      description:
-        "Two-phase dealer contact. action=prepare stages the exact dealer/unit/shopper/message preview and sends nothing. The human must approve that preview in MatchRV. action=submit accepts only a preview_id that MatchRV already records as human-approved; otherwise it fails without sending. Never treat prepare as consent to submit.",
-      inputSchema: mcpSchema(contactInput),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-    },
-    async (input) => {
-      if (input.action === "prepare") {
-        const inv = getInventory();
-        const unit = inv.byId.get(input.unit_id);
-        if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
-        const constraints = cleanConstraints(input.constraints);
-        let unknowns: string[] = [];
-        try {
-          unknowns = evaluateUnit(unit, buildContext(constraints)).unknownFields;
-        } catch {
-          // A preview can still be staged when optional matching context is incomplete.
-        }
-        const message = input.message?.trim() || draftMessage(unit, constraints, unknowns);
-        const created = createPreview({
-          unit,
-          customer: { name: input.name, email: input.email, phone: input.phone },
-          message,
-        });
-        // Deliberately do not return approvalToken. Only the MatchRV human UI receives it.
-        return textResult({ preview: created.preview, next: "Human approval is required in MatchRV before action=submit can succeed." });
-      }
-
-      const result = await submitPreview(input.preview_id);
-      if (!result.ok) {
-        return textResult({ error: result.code, guidance: result.guidance ?? "The preview must be approved by the human in MatchRV before submission." }, true);
-      }
+      const payloadFits = truck_payload_lbs != null
+        ? unit_ids.map((id) => {
+            const unit = inv.byId.get(id)!;
+            return { unit_id: id, title: unit.title, ...evaluatePayloadFit(unit, { truckPayloadLbs: truck_payload_lbs, passengersLbs: passengers_lbs ?? null, cargoLbs: cargo_lbs ?? null }) };
+          })
+        : [];
       return textResult({
-        receipt: {
-          leadId: result.leadId,
-          recordedAt: result.recordedAt,
-          delivery: result.delivery,
-          unit: result.preview.unitTitle,
-          dealer: result.preview.dealer.name,
-        },
+        ...(payloadFits.length ? { payloadFits, payloadNote: "Tongue estimated at 10-15% of GVWR (loaded), not the published empty hitch weight. Payload usually runs out before tow rating." } : {}),
+        ...(resolution ? { resolution, fits } : {}),
+        ...(motorhomeTow.length ? { motorhomeTow } : {}),
+        safetyNotice: "Verify the exact vehicle configuration, weighed coach and axle loads, GVWR/GCWR, hitch and tongue limits, passengers and cargo before towing. Engine horsepower and torque do not override any weight limit.",
       });
     },
   );

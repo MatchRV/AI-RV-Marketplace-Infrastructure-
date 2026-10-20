@@ -1048,7 +1048,8 @@ def main(argv=None):
              dealer, "%s, %s | Observed: %s | %s" % (city, state, out["observed_display"], out.get("base_url") or a.url)]
     if a.demo:
         title.append("DEMONSTRATION: synthetic inventory. Not a dealer assessment.")
-    npages = write_pdf(os.path.join(outdir, "report.pdf"), title, build_pdf_sections(out))
+    from report_templates import write_standard_audit
+    npages = write_standard_audit(out, outdir)
     with open(os.path.join(outdir, "citation_prompts.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["prompt"])

@@ -1,112 +1,34 @@
-import { useState } from "react";
-import { Layout } from "@/components/layout";
+import { useState, type FormEvent } from "react";
+import { Link } from "wouter";
+import { BrandLayout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
-import { Button, Input } from "@/components/ui-elements";
-import { Mail, Check } from "lucide-react";
+import { Mail, CheckCircle2 } from "lucide-react";
 
 export function Contact() {
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
-
-  const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
-
-  const handleSubmit = async () => {
-    setError(null);
-    setIsSubmitting(true);
+  const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setError(""); setBusy(true);
     try {
-      const r = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!r.ok) throw new Error("Failed to send message. Please try again.");
+      const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]))) });
+      if (!response.ok) throw new Error("Your message could not be sent. Try again or email Jonathan directly.");
       setSubmitted(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <Layout>
-        <div className="flex-1 flex flex-col items-center justify-center py-20 text-center px-4">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-            <Check className="w-10 h-10 text-green-600" />
-          </div>
-          <h1 className="text-3xl font-display font-bold mb-3">Message Sent!</h1>
-          <p className="text-muted-foreground max-w-md">
-            Thank you for reaching out. We'll get back to you within 1-2 business days.
-          </p>
-        </div>
-      </Layout>
-    );
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Your message could not be sent. Please try again."); }
+    finally { setBusy(false); }
   }
-
-  return (
-    <Layout>
-      <SEO
-        title="Contact Us — Get Help with Your RV Search"
-        description="Have a question about MatchRV or an RV listing? Reach out to our team. We're here to help you find, buy, or sell the perfect RV."
-        canonical="/contact"
-      />
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <Mail className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-4xl font-display font-bold mb-3">Contact Us</h1>
-          <p className="text-lg text-muted-foreground">
-            Have a question? We'd love to hear from you.
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            For MatchRV or plugin support, email{" "}
-            <a href="mailto:jonathan@matchrv.com" className="font-semibold text-primary underline">
-              jonathan@matchrv.com
-            </a>
-            .
-          </p>
-        </div>
-
-        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-5">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Name *</label>
-              <Input placeholder="Your name" value={form.name} onChange={(e) => update("name", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Email *</label>
-              <Input type="email" placeholder="you@example.com" value={form.email} onChange={(e) => update("email", e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">Subject *</label>
-            <Input placeholder="What's this about?" value={form.subject} onChange={(e) => update("subject", e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">Message *</label>
-            <textarea
-              className="w-full min-h-[150px] rounded-lg border-2 border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary resize-y"
-              placeholder="Tell us what's on your mind..."
-              value={form.message}
-              onChange={(e) => update("message", e.target.value)}
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
-          <Button
-            className="w-full"
-            disabled={!form.name || !form.email || !form.subject || !form.message || isSubmitting}
-            onClick={handleSubmit}
-          >
-            {isSubmitting ? "Sending..." : "Send Message"}
-          </Button>
-        </div>
-      </div>
-    </Layout>
-  );
+  return <BrandLayout><SEO title="Contact MatchRV — Dealer Services & Support" description="Talk to Jonathan about dealership AI visibility audits, inventory syndication, managed advertising, MCP support, or compliance." canonical="/contact"/>
+    <section className="brand-container brand-section contact-page" data-page="dealer-contact"><p className="brand-eyebrow"><Mail size={16}/> Dealer services and support</p><h1>Let’s talk about your inventory.</h1><p className="brand-lead">Ask about an audit, monthly inventory services, the ChatGPT ads pilot, or your MatchRV connection.</p><p>Support and compliance: <a className="brand-text-link" href="mailto:jonathan@matchrv.com">jonathan@matchrv.com</a></p>
+      {submitted ? <div className="contact-confirmation" role="status"><CheckCircle2 size={36}/><h2>Your message has been sent.</h2><p>Jonathan will review your request and respond using the contact information you provided.</p><Link href="/book" className="brand-button">Book a conversation</Link></div> : <form className="brand-contact-form" onSubmit={submit} aria-busy={busy}>
+        <div className="contact-input-row"><label htmlFor="contact-name">Name<input id="contact-name" autoComplete="name" value={form.name} onChange={event => update("name", event.target.value)} minLength={2} maxLength={120} required disabled={busy}/></label><label htmlFor="contact-email">Work email<input id="contact-email" type="email" autoComplete="email" value={form.email} onChange={event => update("email", event.target.value)} maxLength={254} required disabled={busy}/></label></div>
+        <label htmlFor="contact-subject">Subject<input id="contact-subject" value={form.subject} onChange={event => update("subject", event.target.value)} maxLength={200} required disabled={busy}/></label>
+        <label htmlFor="contact-message">How can we help?<textarea id="contact-message" value={form.message} onChange={event => update("message", event.target.value)} maxLength={5000} required disabled={busy}/></label>
+        <p className="brand-fine">We use these details to respond to your request. See our <Link href="/privacy">Privacy Policy</Link>. Please leave passwords and private customer information out of your message.</p>
+        {error && <p className="brand-error" role="alert">{error}</p>}<button className="brand-button" type="submit" disabled={busy}>{busy ? "Sending…" : "Send message"}</button>
+      </form>}
+    </section></BrandLayout>;
 }

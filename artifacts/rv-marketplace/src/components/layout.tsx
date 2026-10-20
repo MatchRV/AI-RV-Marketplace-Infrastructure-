@@ -385,7 +385,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto border-t border-white/10 mt-14 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-white/40 gap-4">
           <span>&copy; {new Date().getFullYear()} MatchRV. All rights reserved.</span>
           <div className="flex gap-6">
-            <Link href="/terms-and-conditions" className="hover:text-[#00CED1]">Terms and Conditions</Link>
+            <Link href="/terms" className="hover:text-[#00CED1]">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-[#00CED1]">Privacy</Link>
           </div>
         </div>
@@ -396,7 +396,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-10 w-auto object-contain mb-3" />
         <p className="text-white/50 text-xs mb-4">AI-ready inventory network for ChatGPT, Gemini, and other agents.</p>
         <div className="flex gap-4 text-xs text-white/50">
-          <Link href="/terms-and-conditions" className="hover:text-[#00CED1]">Terms</Link>
+          <Link href="/terms" className="hover:text-[#00CED1]">Terms</Link>
           <Link href="/privacy" className="hover:text-[#00CED1]">Privacy</Link>
           <Link href="/about" className="hover:text-[#00CED1]">About</Link>
           <Link href="/contact" className="hover:text-[#00CED1]">Contact</Link>

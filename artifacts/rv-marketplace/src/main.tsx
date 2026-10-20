@@ -13,6 +13,10 @@ try {
   console.warn("[webmcp] early registration failed:", err);
 }
 
+// The server shell supplies crawler metadata. React owns it after startup;
+// remove the shell copies before React 19 hoists route metadata into <head>.
+document.querySelectorAll('head > title, head > meta[name="description"]').forEach(node => node.remove());
+
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>
     <App />

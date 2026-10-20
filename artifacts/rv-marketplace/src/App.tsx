@@ -5,8 +5,11 @@ import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
-import { Home } from "@/pages/home";
+import { BookReportCall } from "@/pages/book";
+import { DealerHome, VisibilityReport } from "@/pages/dealer-home";
 import { Browse } from "@/pages/browse";
+import { McpSetup } from "@/pages/mcp-setup";
+import { DealerAdvertising } from "@/pages/dealer-advertising";
 import { Shop } from "@/pages/shop";
 import { registerMatchrvTools } from "@/agent/webmcp";
 import { registerNavigate } from "@/agent/session";
@@ -177,10 +180,14 @@ function AppRouter() {
       <ReturnVisitDetector />
       <AgentBridge />
       <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DealerHome} />
+      <Route path="/visibility-report" component={VisibilityReport} />
+      <Route path="/book" component={BookReportCall} />
       <Route path="/shop" component={Shop} />
+      <Route path="/advertising" component={DealerAdvertising} />
+      <Route path="/mcp-setup" component={McpSetup} />
       <Route path="/answers" component={AnswerEngine} />
-      <Route path="/browse" component={Browse} />
+      <Route path="/browse/:slug?" component={Browse} />
       <Route path="/listing/:id" component={ListingDetail} />
       <Route path="/outfitter" component={Outfitter} />
       <Route path="/match" component={Match} />
@@ -195,8 +202,10 @@ function AppRouter() {
       <Route path="/sell" component={Sell} />
       <Route path="/tow-guide" component={TowGuide} />
       <Route path="/about" component={About} />
-      <Route path="/terms-and-conditions" component={Terms} />
-      <Route path="/terms">{() => <Redirect to="/terms-and-conditions" replace />}</Route>
+      <Route path="/terms" component={Terms} />
+      <Route path="/terms-and-conditions">{() => <Redirect to="/terms" replace />}</Route>
+      <Route path="/tow-match">{() => <Redirect to="/tow-guide" replace />}</Route>
+      <Route path="/buyer-guides">{() => <Redirect to="/guides" replace />}</Route>
       <Route path="/privacy" component={Privacy} />
       <Route path="/for-dealers" component={ForDealers} />
       <Route path="/dealers/chatgpt-advertising" component={ChatGPTAdvertising} />
@@ -257,7 +266,7 @@ function AppRouter() {
 
       {/* Legacy marketing URLs that were 404ing (old links / backlinks / social) */}
       <Route path="/about-us">{() => <Redirect to="/about" replace />}</Route>
-      <Route path="/fleet">{() => <Redirect to="/browse" replace />}</Route>
+      <Route path="/fleet">{() => <Redirect to="/shop" replace />}</Route>
 
       <Route component={NotFound} />
     </Switch>

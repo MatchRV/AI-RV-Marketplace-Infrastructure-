@@ -22,19 +22,12 @@ export function unitSitemapPageCount(): number {
 }
 
 export function renderSitemapIndex(): string {
-  const pages = unitSitemapPageCount();
   const lastmod = new Date().toISOString().slice(0, 10);
   const entries: string[] = [];
   entries.push(`  <sitemap>
     <loc>${SITE}/sitemaps/core.xml</loc>
     <lastmod>${lastmod}</lastmod>
   </sitemap>`);
-  for (let i = 1; i <= pages; i++) {
-    entries.push(`  <sitemap>
-    <loc>${SITE}/sitemaps/units-${i}.xml</loc>
-    <lastmod>${lastmod}</lastmod>
-  </sitemap>`);
-  }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries.join("\n")}

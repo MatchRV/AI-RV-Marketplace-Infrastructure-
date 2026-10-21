@@ -19,9 +19,20 @@ import {
   fact, buildCorpus, extractSpecsFromText, extractBunkhouse,
 } from "./enrich.js";
 import { VIN_SLEEPS } from "./vin-sleeps.js";
+import { DEALER_CITY_COORDS } from "./dealer-city-coords.js";
+import { lookupDealer } from "./dealer-registry.js";
+import {
+  cityFromDealerName, cityKey, dealerCityCandidates, listingLocationFromTitle, reconcileYearAndCondition,
+} from "./listing-reconcile.js";
 
 /** Extra US dealer cities present in the MarketCheck snapshot (outside PNW table). */
-/** Coarse state centroids — only used when city is Unknown/unresolvable. */
+/**
+ * Coarse state centroids. ONLY used to sanity-check that a coordinate lies
+ * inside a dealer's state (coordsMatchState). Never assigned to a dealer: a
+ * centroid put every unresolved WA dealer ~92 mi from Tacoma (and ~70k units
+ * nationwide on their state's centre), which radius search reported as a
+ * real distance.
+ */
 const STATE_COORDS: Record<string, LatLng> = {
   AL: { lat: 32.8067, lng: -86.7911 }, AK: { lat: 61.3707, lng: -152.4044 },
   AZ: { lat: 34.0489, lng: -111.0937 }, AR: { lat: 34.9697, lng: -92.3731 },
@@ -78,11 +89,42 @@ export function coordsMatchState(coords: LatLng, state: string | null | undefine
   return haversineMiles(coords, centroid) <= (STATE_RADIUS_MI[st] ?? DEFAULT_STATE_RADIUS_MI);
 }
 
-export function resolveDealerCoords(city: string, state: string): LatLng | null {
-  const st0 = (state || "").toUpperCase();
-  const hit = resolveDealerCoordsUnchecked(city, state);
-  if (hit && !coordsMatchState(hit, st0)) return STATE_COORDS[st0] ?? null;
-  return hit;
+/**
+ * Real coordinates for a dealer city, or null. Null means "location unknown":
+ * the unit gets no distance and radius searches exclude it. Never falls back
+ * to a state centroid.
+ */
+export function resolveDealerCoords(city: string, state: string, dealerName?: string | null, dealerDomain?: string | null): LatLng | null {
+  return resolveDealerLocation(city, state, dealerName, dealerDomain)?.coords ?? null;
+}
+
+/** Like resolveDealerCoords, but also returns the city name that resolved. */
+export function resolveDealerLocation(city: string, state: string, dealerName?: string | null, dealerDomain?: string | null): { coords: LatLng; city: string } | null {
+  const st = (state || "").toUpperCase();
+  const raw = (city || "").trim();
+  const candidates = raw && raw.toLowerCase() !== "unknown" && raw.toUpperCase() !== st ? dealerCityCandidates(raw) : [];
+  const fromName = cityFromDealerName(dealerName);
+  if (fromName) candidates.push(...dealerCityCandidates(fromName).slice(0, 1));
+  // Curated single-store registry city (wa-dealers.json), same state only.
+  // Multi-location dealers are skipped: their default city is not the unit's store.
+  const reg = dealerDomain ? lookupDealer(dealerDomain) : null;
+  if (reg && reg.state.toUpperCase() === st && !/\blocations?\b/i.test(dealerName ?? "")) candidates.push(reg.city);
+  for (const c of candidates) {
+    const hit = resolveCityInState(c, st);
+    if (hit) return { coords: hit, city: c };
+  }
+  return null;
+}
+
+function resolveCityInState(city: string, st: string): LatLng | null {
+  const aliased = CITY_ALIASES_EXTRA[city.toLowerCase()] ?? city;
+  // State-qualified gazetteer first: unambiguous ("Lakewood|CO" ≠ "Lakewood|WA").
+  if (st) {
+    const g = DEALER_CITY_COORDS[cityKey(aliased, st)];
+    if (g) return { lat: g[0], lng: g[1] };
+  }
+  const hit = resolveDealerCoordsUnchecked(aliased, st);
+  return hit && coordsMatchState(hit, st) ? hit : null;
 }
 
 /** Camping World stores all share one domain; never label one store with another's city. */
@@ -95,9 +137,7 @@ export function chainStoreName(name: string, city: string): string {
 function resolveDealerCoordsUnchecked(city: string, state: string): LatLng | null {
   const st = (state || "").toUpperCase();
   const raw = (city || "").trim().toLowerCase();
-  if (!raw || raw === "unknown") {
-    return STATE_COORDS[st] ?? null;
-  }
+  if (!raw || raw === "unknown") return null;
   const aliased = CITY_ALIASES_EXTRA[raw] ?? raw;
 
   if (aliased === "longview" && st === "TX") {
@@ -110,7 +150,7 @@ function resolveDealerCoordsUnchecked(city: string, state: string): LatLng | nul
   if (EXTRA_CITY_COORDS[aliased]) return EXTRA_CITY_COORDS[aliased];
   const scanned = scanForCity(aliased);
   if (scanned) return { lat: scanned.lat, lng: scanned.lng };
-  return STATE_COORDS[st] ?? null;
+  return null;
 }
 
 /** Industry-typical sleeping capacity from floorplan / type when dealer omits it. */
@@ -190,7 +230,16 @@ export function inferSleeps(unit: {
 
 export interface EnrichStats {
   geocoded: number;
+  /** Always 0 now: unresolved dealers get no coordinates (kept for log compatibility). */
   stateFallback: number;
+  /** Units whose dealer city could not be geocoded: no distance, excluded from radius search. */
+  unresolvedLocation: number;
+  /** Units moved to the store named in their own title ("… | Jacksonville, FL"). */
+  relocatedFromTitle: number;
+  /** Units whose model year was corrected from title/VIN evidence. */
+  yearCorrected: number;
+  /** Units labelled new demoted to used (model year < current-1, or title says used). */
+  conditionCorrected: number;
   stillMissingCoords: number;
   sleepsFromVin: number;
   sleepsInferred: number;
@@ -198,10 +247,18 @@ export interface EnrichStats {
 }
 
 /** Mutates units in place (snapshot is loaded once per process). */
-export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
+function isStateCentroid(lat: number, lng: number): boolean {
+  return Object.values(STATE_COORDS).some((c) => c.lat === lat && c.lng === lng);
+}
+
+export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): EnrichStats {
   const stats: EnrichStats = {
     geocoded: 0,
     stateFallback: 0,
+    unresolvedLocation: 0,
+    relocatedFromTitle: 0,
+    yearCorrected: 0,
+    conditionCorrected: 0,
     stillMissingCoords: 0,
     sleepsFromVin: 0,
     sleepsInferred: 0,
@@ -221,20 +278,37 @@ export function enrichSnapshotUnits(units: CanonicalUnit[]): EnrichStats {
       u.sleeps = fact<number>(null, null, null);
     }
 
+    const rec = reconcileYearAndCondition(u, now);
+    if (rec.yearCorrected) stats.yearCorrected++;
+    if (rec.conditionCorrected) stats.conditionCorrected++;
+
+    // The listing's own location beats a chain's HQ city (General RV units were
+    // all filed under Wayland, MI while their titles name the selling store).
+    const loc = listingLocationFromTitle(u.title);
+    if (loc && (loc.state !== (u.dealer.state || "").toUpperCase() || loc.city.toLowerCase() !== (u.dealer.city || "").trim().toLowerCase())) {
+      const domain = u.dealer.id.split(":")[0] || u.provenance.dealerDomain;
+      u.dealer = { ...u.dealer, id: `${domain}:${loc.city.toLowerCase().replace(/\s+/g, "-")}-${loc.state.toLowerCase()}`, city: loc.city, state: loc.state, lat: null, lng: null };
+      stats.relocatedFromTitle++;
+    }
+
     u.dealer.name = chainStoreName(u.dealer.name, u.dealer.city);
-    if (u.dealer.lat !== null && u.dealer.lng !== null && !coordsMatchState({ lat: u.dealer.lat, lng: u.dealer.lng }, u.dealer.state)) {
+    if (u.dealer.lat !== null && u.dealer.lng !== null
+      && (!coordsMatchState({ lat: u.dealer.lat, lng: u.dealer.lng }, u.dealer.state) || isStateCentroid(u.dealer.lat, u.dealer.lng))) {
       u.dealer.lat = null;
       u.dealer.lng = null;
     }
     if (u.dealer.lat === null || u.dealer.lng === null) {
-      const city = (u.dealer.city || "").trim();
-      const coords = resolveDealerCoords(city, u.dealer.state || "");
-      if (coords) {
-        u.dealer.lat = coords.lat;
-        u.dealer.lng = coords.lng;
-        if (!city || city.toLowerCase() === "unknown") stats.stateFallback++;
-        else stats.geocoded++;
+      const resolved = resolveDealerLocation(u.dealer.city || "", u.dealer.state || "", u.dealer.name, u.provenance?.dealerDomain ?? u.dealer.id.split(":")[0]);
+      if (resolved) {
+        u.dealer.lat = resolved.coords.lat;
+        u.dealer.lng = resolved.coords.lng;
+        // Street-glued or state-only city ("Pacific Hwy EFife", "WA"): show the city that resolved.
+        if (resolved.city.toLowerCase() !== (u.dealer.city || "").trim().toLowerCase()) {
+          u.dealer.city = resolved.city.replace(/(^|[\s'-])\w/g, (c) => c.toUpperCase());
+        }
+        stats.geocoded++;
       } else {
+        stats.unresolvedLocation++;
         stats.stillMissingCoords++;
       }
     }

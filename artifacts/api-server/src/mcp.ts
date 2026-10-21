@@ -231,7 +231,7 @@ function discoveryProfile(input: Record<string, any>, fromText: Partial<Constrai
 
 /** How many of the named make/model exist in the area (shown before any listing). */
 function makeModelCount(corpus: CanonicalUnit[], c: Constraints) {
-  const scoped: Constraints = { makes: c.makes, models: c.models, excludeMakes: c.excludeMakes, excludeModels: c.excludeModels, rvTypes: c.rvTypes, ...(c.location ? { location: c.location } : {}) };
+  const scoped: Constraints = { makes: c.makes, models: c.models, excludeMakes: c.excludeMakes, excludeModels: c.excludeModels, rvTypes: c.rvTypes, ...(c.condition ? { condition: c.condition } : {}), ...(c.location ? { location: c.location } : {}) };
   const out = runEngineSearch(corpus, scoped);
   const bySeries: Record<string, number> = {};
   const byDealer: Record<string, number> = {};

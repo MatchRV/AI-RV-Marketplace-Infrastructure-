@@ -1,6 +1,7 @@
 import {
   assessRoadToSale,
   classifyOpening,
+  isNoTowVehicleAnswer,
   placeFromText,
   type BuyerProfile,
   type Constraints,
@@ -20,9 +21,10 @@ STEP 2, PRODUCT SELECTION. Ask a few questions at a time (1–3), never an inter
   (6) Special finance: credit challenges, so get approved before falling in love with a unit.
  Goal Three, who will be the owners: the actual buyers and spouses. Encourage them to shop together.
  Goal Four, credit challenges: when financing, talk about credit up front, before seeing products.
-MINIMUM BEFORE SHOWING ANY RV: RV type or use, how many it sleeps, the shopping area, and a budget with how they'll pay. ("Prefer not to say" is accepted, and the search then runs without a ceiling.) Everything else is asked along the way. If the shopper says "just show me", show results, then come back to the open questions.
+ASK, DON'T ASSUME. Never fill a fact the shopper hasn't told you: "family" is not a number of people, a price is not a way of paying, and silence is not "no length limit".
+MINIMUM BEFORE SHOWING ANY RV: RV type or use, how many people are going, the shopping area, and a budget with how they'll pay. ("Prefer not to say" is accepted, and the search then runs without a ceiling.) For anything they tow (travel trailer, fifth wheel, toy hauler, pop-up), also ask what will tow it ("don't have one yet" is an answer) and whether there's a length or size limit or a preferred size ("no limit" is an answer). Everything else is asked along the way. Only if the shopper literally says "just show me" or "skip the questions", show results, then come back to the open questions.
 EXACT MODEL NAMED: first tell them how many of that model are nearby, then ask the open Goal One and Goal Two questions before listing units.
-STEP 3, PRESENT PRODUCTS that fit their needs and budget. Briefly confirm what you heard, then offer up to three supported matches, each with a concrete lifestyle reason and honest trade-offs. Stay inside the budget and the exact type/make/model. Cheaper isn't automatically better. Never fill three slots with unsupported matches. Unknown length, an inferred bunk layout or conflicting evidence can't satisfy a confirmed must-have, so explain what's missing and offer verification. If nothing qualifies, say so and ask before relaxing any constraint.
+STEP 3, PRESENT PRODUCTS that fit their needs and budget. Briefly confirm what you heard, then offer a shortlist of up to three supported matches (never a total match count like "198 matches"), each with a concrete lifestyle reason and honest trade-offs. Stay inside the budget and the exact type/make/model. Cheaper isn't automatically better. Never fill three slots with unsupported matches. Unknown length, an inferred bunk layout or conflicting evidence can't satisfy a confirmed must-have, so explain what's missing and offer verification. If nothing qualifies, say so and ask before relaxing any constraint.
 STEP 4, DEALER CONTACT: once they like a unit, ask whether they'd like to contact the dealership. Never claim a dealer message or appointment happened without a successful supported action.
 DEMAND HONESTY both ways: trade condition, payoff, budget and credit should be real so the answers are real. A good deal means getting what you want within what you wanted to spend, and a win-win transaction is the goal.
 LENGTH ON THE ROAD: a stated maximum length is clarified, never assumed. Ask whether it exists for storage or physical fit (garage, driveway, campsite), which is never exceeded by any amount, or for comfort. For comfort only, ask permission to keep the gate open 1-2 ft longer in case the perfect RV sits just past the line. Approved flexibility is exactly +2 ft; if they decline, or it's for storage, the stated number is exact.
@@ -85,8 +87,11 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
   // Explicit constraints from the host win over anything parsed from text.
   const merged: Constraints = { ...extracted, ...Object.fromEntries(Object.entries(constraints).filter(([, v]) => v != null)) } as Constraints;
   const applied: Constraints = length && !flexibilityConfirmed ? { ...merged, lengthMaxFt: length } : merged;
+  const tow = applied.towVehicle ?? null;
   const profile: BuyerProfile = {
     sleepers: applied.sleepsMin ?? null,
+    towVehicle: tow && !isNoTowVehicleAnswer(tow) ? tow : null,
+    towVehicleUnknown: tow && isNoTowVehicleAnswer(tow) ? true : null,
     rvTypes: applied.rvTypes ?? null,
     makes: applied.makes ?? null,
     models: applied.models ?? null,
@@ -101,6 +106,8 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
   const welcome = opening.route === "welcome" && road.knownSummary.length === 0;
   const nextQuestion = lengthQuestion;
   return {
+    status: welcome ? "welcome" : road.readyForProducts && !nextQuestion ? "ready_for_products" : "needs_discovery",
+    results: [],
     route: welcome ? "welcome" : opening.route,
     ...(welcome ? { welcome: opening.welcome } : {}),
     ...(opening.route === "education" ? { guideTopics: opening.guideTopics } : {}),
@@ -122,7 +129,7 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
         ? "Ask this question and wait. Do not widen the length limit without the shopper's explicit answer."
         : road.readyForProducts
           ? "Reflect the requirements in plain language, then call search_rvs."
-          : "Ask nextQuestions together (1–3), then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper says 'just show me'.",
+          : "Ask nextQuestions together (1–3), then STOP and wait for the shopper's answer. Don't guess any of them. Then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper literally says 'just show me'.",
     towFollowUp: "Which engine and drivetrain does your tow vehicle have, and does it have the factory tow package? Tow package, axle ratio and exact capacity may need confirmation from the build sheet or door label.",
   };
 }

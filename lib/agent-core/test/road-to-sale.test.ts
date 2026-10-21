@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { ROAD_TO_SALE_STEPS, assessRoadToSale, effectiveBudgetMaxUsd, type BuyerProfile, type RoadStep } from "../src/index.js";
 
 const ids = (qs: { id: string }[]) => qs.map((q) => q.id);
-const minimum: BuyerProfile = { rvTypes: ["travel_trailer"], sleepers: 4, place: "Tacoma", paymentMethod: "cash", outTheDoorBudgetUsd: 45000 };
+const minimum: BuyerProfile = { rvTypes: ["travel_trailer"], sleepers: 4, place: "Tacoma", paymentMethod: "cash", outTheDoorBudgetUsd: 45000, towVehicleUnknown: true, noLengthLimit: true };
 
 describe("Road to the Sale", () => {
   it("opens with Product Selection Goal One — no meet-and-greet questions", () => {
     const a = assessRoadToSale({});
     expect(a.step.id).toBe("product_selection");
     expect(a.goal?.id).toBe("goal_1_want_and_use");
-    expect(ids(a.nextQuestions)).toEqual(["type_or_use", "sleepers"]);
+    expect(ids(a.nextQuestions)).toEqual(["type_or_use", "sleepers", "location"]);
     expect(a.readyForProducts).toBe(false);
   });
 

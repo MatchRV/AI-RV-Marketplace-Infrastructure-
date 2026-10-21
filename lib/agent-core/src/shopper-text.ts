@@ -173,3 +173,19 @@ export function placeFromText(text: string | null | undefined): string | null {
   }
   return null;
 }
+
+/**
+ * Did the shopper literally ask to skip the questions and see RVs now?
+ * Used to verify a host's "just show me" claim against the shopper's own
+ * words, so an assistant can't waive discovery on the shopper's behalf.
+ */
+const RESULTS_NOW = /\bjust\s+(?:show|list|give|send)\b|\bshow\s+me\s+(?:what|the|some|them|any|options|everything|results|listings|rvs?|trailers?|units?|inventory|what(?:'s| is) (?:out there|available))|\bskip\s+(?:the\s+|your\s+|all\s+(?:the\s+)?)?questions\b|\bno\s+(?:more\s+)?questions\b|\bstop\s+asking\b|\blet\s+me\s+(?:see|look)\b|\b(?:i\s+(?:just\s+)?want\s+to|can\s+i|i'd\s+like\s+to)\s+see\s+(?:some|the|what|options|results|listings)/i;
+export function shopperAskedForResultsNow(text: string | null | undefined): boolean {
+  return Boolean(text && RESULTS_NOW.test(text));
+}
+
+/** "Don't have one yet", "not sure", "unknown": an answer about the tow vehicle, not a vehicle. */
+const NO_TOW_VEHICLE = /^\s*(?:unknown|not\s+sure|unsure|don'?t\s+know|no(?:ne)?(?:\s+yet)?|not\s+yet|n\/?a|tbd|i\s+don'?t\s+have\s+(?:one|a\s+\w+)(?:\s+yet)?|don'?t\s+have\s+(?:one|a\s+\w+)(?:\s+yet)?|no\s+tow\s+vehicle(?:\s+yet)?|will\s+buy\s+(?:one|a\s+\w+)(?:\s+later)?|buying\s+(?:one|a\s+\w+)\s+later)\s*\.?\s*$/i;
+export function isNoTowVehicleAnswer(text: string | null | undefined): boolean {
+  return Boolean(text && NO_TOW_VEHICLE.test(text));
+}

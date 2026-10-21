@@ -17,7 +17,10 @@
  *   Step 4  Dealer contact (prepare → explicit approval → send)
  *
  * Approved minimum before any RV is shown: RV type or use, how many it
- * sleeps, the shopping area, and a budget with how they'll pay. Everything
+ * sleeps, the shopping area, and a budget with how they'll pay. For a
+ * towable (travel trailer, fifth wheel, toy hauler, pop-up) the shopper is
+ * also asked what will tow it and whether there is a length or size limit;
+ * "don't have one yet" and "no limit" are answers, guesses are not. Everything
  * else is asked along the way, 1–3 questions at a time — never an
  * interrogation, never pushy. "Just show me" shows results, then the road
  * resumes with the open questions.
@@ -53,6 +56,8 @@ export interface RoadItem {
   requiredForProducts?: boolean;
   /** A follow-up on something just said — ask it on its own. */
   askAlone?: boolean;
+  /** Only ask after this item is answered (e.g. the budget numbers depend on how they'll pay). */
+  dependsOn?: string;
   applies?: (p: BuyerProfile) => boolean;
   known: (p: BuyerProfile) => boolean;
   question: (p: BuyerProfile) => { prompt: string; options?: string[]; why: string };
@@ -82,6 +87,15 @@ const hasUse = (p: BuyerProfile) => Boolean(p.campingStyle || p.climate || p.tri
 const isFinance = (p: BuyerProfile) => p.paymentMethod === "finance" || p.paymentMethod === "special_finance";
 const drivenWord = (p: BuyerProfile) => (rvWord(p) === "trailer" || rvWord(p) === "fifth wheel" || rvWord(p) === "toy hauler" ? "towed" : rvWord(p) === "RV" ? "driven or towed" : "driven");
 const discoveryQ = (id: string) => QUESTION_ORDER.find((q) => q.id === id)!;
+
+/** RV types the shopper tows (and so needs a tow vehicle and a size check). */
+export const TOWED_RV_TYPES = ["travel_trailer", "fifth_wheel", "toy_hauler", "popup_camper"] as const;
+/** True when every type the shopper is considering is towed. A named exact model sets its own size, so it is not asked. */
+export function isTowableSearch(p: Pick<BuyerProfile, "rvTypes" | "models">): boolean {
+  const t = p.rvTypes ?? [];
+  return t.length > 0 && t.every((x) => (TOWED_RV_TYPES as readonly string[]).includes(x)) && !p.models?.length;
+}
+const towWord = (p: BuyerProfile) => (rvWord(p) === "RV" ? "it" : `the ${rvWord(p)}`);
 
 function payNumbersKnown(p: BuyerProfile): boolean {
   if (p.budgetDeclined) return true;
@@ -134,6 +148,18 @@ export const ROAD_TO_SALE_STEPS: RoadStep[] = [
             id: "sleepers", label: "who it's for / how many it sleeps", requiredForProducts: true,
             known: (p) => p.sleepers != null,
             question: (p) => ({ prompt: `Who's this ${rvWord(p)} for, and how many will usually sleep in it?`, options: ["Just me", "Two adults", "3–4 people", "5 or more"], why: "Sleeping count decides couples vs. bunkhouse layouts. Guessing is how buyers get shown the wrong RVs." }),
+          },
+          {
+            id: "tow_vehicle", label: "what will tow it", requiredForProducts: true,
+            applies: (p) => isTowableSearch(p),
+            known: (p) => Boolean(p.towVehicle) || p.towVehicleUnknown === true || p.truckTowRatingLbs != null,
+            question: (p) => ({ prompt: `What will you be towing ${towWord(p)} with? Year, make and model (and the engine, if you know it). If you don't have a tow vehicle yet, that's fine, just say so.`, options: ["I'll tell you my truck/SUV", "I don't have a tow vehicle yet", "Not sure what I have"], why: "The tow vehicle sets the real weight ceiling. MatchRV never guesses it from 'family' or a budget." }),
+          },
+          {
+            id: "size_limit", label: "length or size limit", requiredForProducts: true,
+            applies: (p) => isTowableSearch(p),
+            known: (p) => p.lengthMaxFt != null || p.noLengthLimit === true,
+            question: () => ({ prompt: "Is there a length or size limit I should know about, like a driveway, storage spot, garage or favorite campsite? Or a size you'd prefer? \"No limit\" is a fine answer too.", options: ["It has to fit a spot (I'll give the length)", "I'd prefer around a certain size", "No limit"], why: "A storage or campsite limit is never exceeded, so it has to be known before anything is shown." }),
           },
           {
             id: "length_reason", label: "length limit: storage or comfort", requiredForProducts: true, askAlone: true,
@@ -209,7 +235,7 @@ export const ROAD_TO_SALE_STEPS: RoadStep[] = [
             },
           },
           {
-            id: "pay_numbers", label: "budget for that way of paying", requiredForProducts: true,
+            id: "pay_numbers", label: "budget for that way of paying", requiredForProducts: true, dependsOn: "pay_way",
             known: payNumbersKnown,
             question: payNumbersQuestion,
           },
@@ -322,6 +348,8 @@ export function knownSummary(p: BuyerProfile): string[] {
   if (p.budgetDeclined) k.push("budget: prefers not to say (searching without a ceiling)");
   if (p.lengthMaxFt != null) k.push(`max length ${p.lengthMaxFt} ft${p.lengthReason ? ` (${p.lengthReason})` : ""}${p.lengthFlexApproved ? " +2 ft gate open" : ""}`);
   if (p.towVehicle) k.push(`tow vehicle: ${p.towVehicle}`);
+  else if (p.towVehicleUnknown) k.push("tow vehicle: none yet / not sure (tow fit must be verified)");
+  if (p.noLengthLimit && p.lengthMaxFt == null) k.push("no length limit");
   if (p.truckPayloadLbs != null) k.push(`payload ${p.truckPayloadLbs.toLocaleString()} lbs (door sticker)`);
   else if (p.truckTowRatingLbs != null) k.push(`tow rating ${p.truckTowRatingLbs.toLocaleString()} lbs (buyer-stated)`);
   if (p.owners) k.push(`owners: ${p.owners}`);
@@ -354,14 +382,23 @@ export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; ma
   const batch = (list: FlatItem[], limit: number): FlatItem[] => {
     if (!list.length) return [];
     if (list[0].item.askAlone) return [list[0]];
-    return list.filter((f) => !f.item.askAlone).slice(0, limit);
+    const out: FlatItem[] = [];
+    for (const f of list) {
+      if (out.length >= limit) break;
+      if (f.item.askAlone) continue;
+      // Never ask a follow-up in the same breath as the question it depends on.
+      if (f.item.dependsOn && (out.some((o) => o.item.id === f.item.dependsOn) || open.some((o) => o.item.id === f.item.dependsOn))) continue;
+      out.push(f);
+    }
+    return out;
   };
 
   let next: RoadQuestion[] = [];
   let resume: RoadQuestion[] = [];
   if (!readyForProducts) {
-    // Up to two minimum questions; when only one is left, add one along-the-way question.
-    const first = batch(blocking, 2);
+    // Up to three minimum questions, in Road to the Sale order; when only one
+    // is left, add one along-the-way question.
+    const first = batch(blocking, maxQ);
     next = first.map((f) => toQuestion(f, p, true));
     if (first.length === 1 && !first[0].item.askAlone && maxQ > 1) {
       const extra = nonBlocking.find((f) => !f.item.askAlone && f.stepIndex <= first[0].stepIndex);

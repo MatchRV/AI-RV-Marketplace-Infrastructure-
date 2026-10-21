@@ -49,6 +49,10 @@ export interface BuyerProfile {
   cargoLbs?: number | null;
   /** Buyer explicitly said "just show me / skip questions". */
   discoveryWaived?: boolean | null;
+  /** Shopper said they don't have a tow vehicle yet / don't know it (an answer, not a guess). */
+  towVehicleUnknown?: boolean | null;
+  /** Shopper said there is no length or size limit (an answer, not a guess). */
+  noLengthLimit?: boolean | null;
 
   // ── Road to the Sale (see road-to-sale.ts). All optional; never guessed. ──
   /** Brand(s) the shopper named, e.g. ["Tiffin"]. */

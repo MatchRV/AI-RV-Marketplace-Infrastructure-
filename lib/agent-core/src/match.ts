@@ -23,6 +23,7 @@ import type {
 } from "./types.js";
 import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
 import { coordsMatchState } from "./enrich-snapshot.js";
+import { qualifiesAsNew } from "./listing-reconcile.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
 import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
 import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
@@ -234,9 +235,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
 
   // — hard: condition
   if (c.condition && c.condition !== "any") {
-    hardChecks.push(
-      check(`condition = ${c.condition}`, unit.condition === c.condition ? "pass" : "fail", unit.condition, "dealer_listing"),
-    );
+    // "new" is a hard promise: the dealer's label alone is not enough when the
+    // model year is older than (current year - 1) or the listing says used.
+    const isNew = qualifiesAsNew(unit);
+    const effective = isNew ? "new" : unit.condition === "new" ? `labelled new, ${unit.year} model year` : unit.condition;
+    const ok = c.condition === "new" ? isNew : unit.condition === c.condition || (c.condition === "used" && unit.condition === "new" && !isNew);
+    hardChecks.push(check(`condition = ${c.condition}`, ok ? "pass" : "fail", effective, "dealer_listing"));
   }
 
   // — hard: price

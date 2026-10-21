@@ -54,10 +54,11 @@ describe('validation', () => {
 
 describe('two-step flow (service)', () => {
   it('prepare returns a full preview and sends/stores nothing', () => {
-    const p = prepareInquiry(unit(), shopper);
+    const u = unit();
+    const p = prepareInquiry(u, shopper);
     expect(p.ok).toBe(true);
     if (!p.ok) return;
-    expect(p.preview).toMatchObject({ sendsNothingYet: true, dealer: { name: 'Camping World of Fife', city: 'Fife', state: 'WA' }, shopper: { name: 'Pat Tester', email: 'pat@example.com' } });
+    expect(p.preview).toMatchObject({ sendsNothingYet: true, dealer: { name: u.dealer.name, city: 'Fife', state: 'WA' }, shopper: { name: 'Pat Tester', email: 'pat@example.com' } });
     expect(p.preview.unit).toHaveProperty('vin');
     expect(p.preview.unit).toHaveProperty('stockNumber');
     expect(p.preview.delivery.channel).toBe('matchrv_forward');

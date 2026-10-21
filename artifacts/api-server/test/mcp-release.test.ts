@@ -19,14 +19,17 @@ describe('MCP release transport', () => {
     expect(list.tools.map((t: any) => t.name)).toContain('search_rvs');
   });
   it('runs Texas strict constraints without promoting unsupported candidates', async () => {
-    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Texas', sleepers: 4, length_reason: 'storage', payment_method: 'cash', constraints: { rvTypes: ['travel_trailer'], mustHave: ['bunkhouse'], lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000 } } });
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Texas', sleepers: 4, tow_vehicle: 'none yet', length_reason: 'storage', payment_method: 'cash', constraints: { rvTypes: ['travel_trailer'], mustHave: ['bunkhouse'], lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000 } } });
     expect(result.isError).not.toBe(true);
     const data = JSON.parse(result.content.find((c: any) => c.type === 'text').text);
     expect(data.appliedConstraints).toMatchObject({ lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000, mustHave: ['bunkhouse'] });
-    expect(data.funnel.verifiedMatches).toBe(0);
+    expect(data.status).toBe('shortlist');
+    expect(data.funnel).toBeUndefined();
+    expect(result._meta['matchrv/internal'].funnel.verifiedMatches).toBe(0);
+    for (const r of data.results) expect(r.verified).toBe(false);
   }, 60000);
   it('honors top-level condition=new near Tacoma: no used units, no out-of-state dealers, per-store CW names', async () => {
-    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Tacoma, WA', radius_miles: 50, condition: 'new', discovery_waived: true, limit: 10 } });
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Tacoma, WA', radius_miles: 50, condition: 'new', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 10 } });
     const body = JSON.parse(result.content[0].text);
     expect(body.results.length).toBeGreaterThan(0);
     const year = new Date().getFullYear();
@@ -37,7 +40,7 @@ describe('MCP release transport', () => {
     }
   });
   it('nationwide lowest-price sort never surfaces sub-floor prices', async () => {
-    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { sort: 'price_asc', condition: 'new', discovery_waived: true, constraints: { rvTypes: ['travel_trailer'] }, limit: 10 } });
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { sort: 'price_asc', condition: 'new', shopper_requested_results_now: true, shopper_words: 'just show me', constraints: { rvTypes: ['travel_trailer'] }, limit: 10 } });
     const body = JSON.parse(result.content[0].text);
     for (const r of body.results) expect(r.price).toBeGreaterThanOrEqual(8000);
   });
@@ -47,9 +50,9 @@ describe('MCP release transport', () => {
     expect(data.status).toBe('needs_discovery');
     expect(data.results).toEqual([]);
     expect(data.nextQuestion.id).toBe('sleepers');
-    expect(data.missingForProducts).toEqual(['sleepers', 'pay_way', 'pay_numbers']);
+    expect(data.missingForProducts).toEqual(['sleepers', 'size_limit', 'pay_way', 'pay_numbers']);
     // Same request with the party and the way they'll pay known searches normally.
-    const open = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', sleepers: 2, payment_method: 'cash', out_the_door_budget_usd: 60000, floorplan_intent: 'couples', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
+    const open = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', sleepers: 2, no_length_limit: true, payment_method: 'cash', out_the_door_budget_usd: 60000, floorplan_intent: 'couples', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
     const openData = JSON.parse(open.content.find((c: any) => c.type === 'text').text);
     expect(openData.status).not.toBe('needs_discovery');
     expect(openData.sherpa.towStatus).toContain('preliminary');

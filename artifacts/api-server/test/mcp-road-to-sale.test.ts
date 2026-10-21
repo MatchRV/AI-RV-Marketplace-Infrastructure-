@@ -18,11 +18,11 @@ const call = async (name: string, args: Record<string, unknown>) => {
   return JSON.parse(r.content.find((c: any) => c.type === 'text').text);
 };
 
-describe('MCP 2.2.0 — Road to the Sale + make/model search', () => {
-  it('reports version 2.2.0 and the Road to the Sale instructions', async () => {
-    expect(MCP_VERSION).toBe('2.2.0');
+describe('MCP 2.2.2 — Road to the Sale + make/model search', () => {
+  it('reports version 2.2.2 and the Road to the Sale instructions', async () => {
+    expect(MCP_VERSION).toBe('2.2.2');
     const init = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'r2s-test', version: '1' } });
-    expect(init.serverInfo.version).toBe('2.2.0');
+    expect(init.serverInfo.version).toBe('2.2.2');
     expect(init.instructions).toContain('ROAD TO THE SALE');
     const list = await rpc('tools/list');
     const search = list.tools.find((t: any) => t.name === 'search_rvs');
@@ -30,7 +30,7 @@ describe('MCP 2.2.0 — Road to the Sale + make/model search', () => {
   }, 60000);
 
   it('"Tiffin Allegro Red" returns only Allegro REDs', async () => {
-    const d = await call('search_rvs', { query: 'Tiffin Allegro Red', discovery_waived: true, limit: 10 });
+    const d = await call('search_rvs', { query: 'Tiffin Allegro Red', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 10 });
     expect(d.appliedConstraints).toMatchObject({ makes: ['Tiffin'], models: ['Allegro RED'] });
     expect(d.appliedConstraints.fuelType).toBeUndefined();
     expect(d.results.length).toBeGreaterThan(0);
@@ -43,16 +43,16 @@ describe('MCP 2.2.0 — Road to the Sale + make/model search', () => {
   }, 60000);
 
   it('constraints.make / model are no longer stripped (top-level and nested both work)', async () => {
-    const nested = await call('search_rvs', { constraints: { make: 'Tiffin', model: 'Phaeton' }, discovery_waived: true, limit: 10 });
+    const nested = await call('search_rvs', { constraints: { make: 'Tiffin', model: 'Phaeton' }, shopper_requested_results_now: true, shopper_words: 'just show me', limit: 10 });
     expect(nested.appliedConstraints).toMatchObject({ makes: ['Tiffin'], models: ['Phaeton'] });
     for (const r of nested.results) expect(r.series).toBe('Phaeton');
-    const top = await call('search_rvs', { make: 'tiffin motorhomes', model: 'phaeton', discovery_waived: true, limit: 5 });
+    const top = await call('search_rvs', { make: 'tiffin motorhomes', model: 'phaeton', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 5 });
     expect(top.appliedConstraints).toMatchObject({ makes: ['Tiffin'], models: ['Phaeton'] });
-    expect(top.funnel.verifiedMatches).toBe(nested.funnel.verifiedMatches);
+    expect(top.results.map((r: any) => r.unit_id)).toEqual(nested.results.slice(0, 5).map((r: any) => r.unit_id));
   }, 60000);
 
   it('"Tiffin motorhomes" returns only motorized Tiffins', async () => {
-    const d = await call('search_rvs', { query: 'Tiffin motorhomes', discovery_waived: true, limit: 10 });
+    const d = await call('search_rvs', { query: 'Tiffin motorhomes', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 10 });
     expect(d.appliedConstraints.makes).toEqual(['Tiffin']);
     expect(d.appliedConstraints.rvTypes).toEqual(['class_a', 'class_b', 'class_c']);
     for (const r of d.results) {
@@ -62,10 +62,10 @@ describe('MCP 2.2.0 — Road to the Sale + make/model search', () => {
   }, 60000);
 
   it('"good gas mileage" never applies a fuel filter; explicit "diesel" does', async () => {
-    const mpg = await call('search_rvs', { query: 'class a with good gas mileage', discovery_waived: true, limit: 3 });
+    const mpg = await call('search_rvs', { query: 'class a with good gas mileage', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 3 });
     expect(mpg.appliedConstraints.fuelType).toBeUndefined();
     expect(JSON.stringify(mpg.nextStep ?? '')).not.toMatch(/gas (?:vs\.?|or) diesel/i);
-    const diesel = await call('search_rvs', { query: 'diesel class a', discovery_waived: true, limit: 3 });
+    const diesel = await call('search_rvs', { query: 'diesel class a', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 3 });
     expect(diesel.appliedConstraints.fuelType).toBe('diesel');
   }, 60000);
 
@@ -79,7 +79,7 @@ describe('MCP 2.2.0 — Road to the Sale + make/model search', () => {
   }, 60000);
 
   it('"just show me" lists results and hands back the questions to resume', async () => {
-    const d = await call('search_rvs', { query: 'Tiffin Allegro Red', discovery_waived: true, limit: 3 });
+    const d = await call('search_rvs', { query: 'Tiffin Allegro Red', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 3 });
     expect(d.roadToSale.waived).toBe(true);
     expect(d.roadToSale.resumeQuestions.map((q: any) => q.id)).toEqual(expect.arrayContaining(['sleepers']));
   }, 60000);

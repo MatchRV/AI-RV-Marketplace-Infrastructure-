@@ -49,6 +49,68 @@ export interface BuyerProfile {
   cargoLbs?: number | null;
   /** Buyer explicitly said "just show me / skip questions". */
   discoveryWaived?: boolean | null;
+
+  // ── Road to the Sale (see road-to-sale.ts). All optional; never guessed. ──
+  /** Brand(s) the shopper named, e.g. ["Tiffin"]. */
+  makes?: string[] | null;
+  /** Model / series the shopper named, e.g. ["Allegro RED"]. */
+  models?: string[] | null;
+  newOrUsed?: "new" | "used" | "either" | null;
+  whoFor?: string | null;
+  climate?: "hot" | "cold" | "mixed" | "all_seasons" | null;
+  tripLength?: "weekends" | "weeks" | "months" | "full_time" | null;
+  /** Free-text "how they'll use it" notes (destinations, campsite conditions …). */
+  useNotes?: string | null;
+  storage?: string | null;
+  onOffRoad?: "on" | "off" | "both" | null;
+  drivenBefore?: boolean | null;
+  mustHaves?: string[] | null;
+  dontWant?: string[] | null;
+  hobbies?: string | null;
+  hasTradeIn?: boolean | null;
+  tradePayoffUsd?: number | null;
+  paymentMethod?: PaymentMethod | null;
+  outTheDoorBudgetUsd?: number | null;
+  downPaymentUsd?: number | null;
+  monthlyPaymentUsd?: number | null;
+  licensingState?: string | null;
+  adReference?: string | null;
+  /** Shopper preferred not to share a budget — accepted, searched without a ceiling. */
+  budgetDeclined?: boolean | null;
+  owners?: string | null;
+  coBuyerInvolved?: boolean | null;
+  creditConcerns?: "none" | "some" | "prefer_not_say" | null;
+  /** The host already showed this shopper RVs (moves the road to dealer contact). */
+  productsShown?: boolean | null;
+}
+
+/** Goal Two: the six ways to pay (Randy Sobel, How to Make a Big Ticket Purchase). */
+export type PaymentMethod = "cash" | "difference" | "finance" | "discount" | "ad_shopper" | "special_finance";
+export const PAYMENT_METHODS: PaymentMethod[] = ["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"];
+
+/** Down + monthly → estimated buying power (same assumption the Outfitter already discloses). */
+export const MONTHLY_PAYMENT_MULTIPLIER = 111.4;
+
+/** The budget ceiling the profile implies (explicit ceiling > out-the-door > finance estimate). */
+export function effectiveBudgetMaxUsd(p: BuyerProfile): number | null {
+  if (p.budgetMaxUsd != null) return p.budgetMaxUsd;
+  if (p.outTheDoorBudgetUsd != null) return p.outTheDoorBudgetUsd;
+  if (p.monthlyPaymentUsd != null && (p.paymentMethod === "finance" || p.paymentMethod === "special_finance" || p.paymentMethod == null)) {
+    return Math.round((p.downPaymentUsd ?? 0) + p.monthlyPaymentUsd * MONTHLY_PAYMENT_MULTIPLIER);
+  }
+  return null;
+}
+
+const MOTOR_TYPES = ["class_a", "class_b", "class_c"];
+/** The word to use for the shopper's RV in questions ("motorhome", "trailer", "Allegro RED" …). */
+export function rvWord(p: Pick<BuyerProfile, "rvTypes" | "models">): string {
+  if (p.models?.length === 1) return p.models[0];
+  const t = p.rvTypes ?? [];
+  if (t.length && t.every((x) => MOTOR_TYPES.includes(x))) return "motorhome";
+  if (t.length === 1 && t[0] === "fifth_wheel") return "fifth wheel";
+  if (t.length === 1 && t[0] === "toy_hauler") return "toy hauler";
+  if (t.length && t.every((x) => x === "travel_trailer" || x === "popup_camper")) return "trailer";
+  return "RV";
 }
 
 export interface DiscoveryQuestion {
@@ -68,10 +130,10 @@ export interface DiscoveryAssessment {
   knownSummary: string[];
 }
 
-const QUESTION_ORDER: DiscoveryQuestion[] = [
+export const QUESTION_ORDER: DiscoveryQuestion[] = [
   {
     id: "sleepers",
-    prompt: "Before I pull any trailers, one quick thing so I don't waste your time: how many people will normally sleep in it?",
+    prompt: "Who's this RV for, and how many people will normally sleep in it?",
     options: ["Just me", "Two adults", "3–4 people", "5 or more"],
     why: "Sleeping count decides couples vs. bunkhouse floorplans — guessing here is how buyers get shown the wrong trailers.",
   },
@@ -165,6 +227,7 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
 
   const nextId = missingEssentials[0] ?? missingRefinements[0] ?? null;
   let nextQuestion = nextId ? (QUESTION_ORDER.find((q) => q.id === nextId) ?? null) : null;
+  if (nextQuestion?.id === "sleepers") nextQuestion = { ...nextQuestion, prompt: nextQuestion.prompt.replace("this RV", `this ${rvWord(p)}`) };
   if (nextQuestion?.id === "length_reason" && p.lengthMaxFt != null) {
     nextQuestion = { ...nextQuestion, prompt: `Is that ${p.lengthMaxFt}-foot limit for storage — a garage, driveway, or spot it has to fit — or is it more about what you're comfortable with?` };
   }
@@ -196,7 +259,11 @@ export function profileToConstraints(p: BuyerProfile): Constraints {
   const intent = impliedFloorplan(p);
   const c: Constraints = {};
   if (p.sleepers != null) c.sleepsMin = p.sleepers;
-  if (p.budgetMaxUsd != null) c.priceMaxUsd = p.budgetMaxUsd;
+  const budget = effectiveBudgetMaxUsd(p);
+  if (budget != null) c.priceMaxUsd = budget;
+  if (p.makes?.length) c.makes = p.makes;
+  if (p.models?.length) c.models = p.models;
+  if (p.newOrUsed === "new" || p.newOrUsed === "used") c.condition = p.newOrUsed;
   if (p.budgetMinUsd != null) c.priceMinUsd = p.budgetMinUsd;
   if (p.rvTypes?.length) c.rvTypes = p.rvTypes;
   if (p.lengthMaxFt != null) c.lengthMaxFt = effectiveLengthMaxFt(p);

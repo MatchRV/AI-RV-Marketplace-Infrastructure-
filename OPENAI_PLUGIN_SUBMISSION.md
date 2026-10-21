@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.1)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.2)
 
-Status: **Submission candidate v2.2.0 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.0`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.2 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.2`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,7 +34,7 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.0)
+## MCP tools and annotations (as advertised by v2.2.2)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
@@ -87,7 +87,8 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 ## Positive reviewer test cases
 
-1. **Structured search:** `search_rvs` with type/price/length/sleeps constraints. Results include identity, known facts, match status, provenance and unknowns, and nothing is invented. (Fixture: e.g. new travel trailers ≤ $40,000 sleeping 4 within 50 mi of Tacoma, WA.)
+1. **Structured search:** `search_rvs` with the shopper's stated facts returns a shortlist of the 3 best fits. Results include identity, known facts, match status, provenance and unknowns, and nothing is invented or counted. (Fixture: "a travel trailer for 4 of us near Tacoma, WA, no tow vehicle yet, no length limit, paying cash, $40,000 out the door" → `party_size: 4`, `tow_vehicle: "none yet"`, `no_length_limit: true`, `payment_method: "cash"`, `out_the_door_budget_usd: 40000`.)
+1a. **Ask, don't assume:** "I want a travel trailer for my family near Tacoma" returns `status: needs_discovery`, no RVs, and asks how many are going, what will tow it, and any length or size limit; the next turn asks how they'll pay. The assistant asks and waits rather than guessing.
 2. **Unit detail:** `get_rv` on a returned unit_id shows canonical details with provenance and unknowns.
 3. **Compare:** `compare_rvs` on two returned ids shows side by side, with gaps marked unknown.
 4. **Tow fit:** `evaluate_tow_fit` with the reviewer's vehicle and towable unit ids gives per-unit screening plus what still needs verification, and never says "safe". No memory is written.
@@ -103,6 +104,13 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 4. **No relaxed limits** without explicit approval.
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
+
+## Release notes (v2.2.2)
+
+- **Ask, don't assume (server-enforced).** `search_rvs` returns `status: needs_discovery` with no RVs and 1–3 `nextQuestions` until the shopper has told the assistant: RV type or use, how many are going (`party_size`), the area, and the budget with how they'll pay. For a travel trailer, fifth wheel, toy hauler or pop-up it also needs the tow vehicle (`tow_vehicle`, where "none yet" is an answer) and any length or size limit (`length_max_ft`, or `no_length_limit: true`). The same questions come back from `outfitter_discovery` and `rv_outfitter`. Questions follow the Road to the Sale order: party size, tow vehicle and size limit first, then how they'll pay; the budget numbers are never asked in the same breath as the way of paying.
+- **"Just show me" is verified.** The old `discovery_waived` / `force_search` bypasses are gone (and `constraints.sherpa.discoveryWaived` is ignored). The waiver is now `shopper_requested_results_now: true` plus the shopper's own words in `shopper_words`, and the server checks those words. A waiver the shopper didn't ask for is rejected with `waiverRejected`, and the questions stay on.
+- **Shortlist of three.** Results default to the 3 best fits (`limit` up to 10 only when the shopper asks for more). Units with dealer-published sleeping capacity come first, three different model lines are preferred over three floorplans of one trailer, stated length limits are hard, and every towable says `towFit: "verify tow fit"` unless it was checked against a stated tow vehicle. Total match counts (`funnel`, `units_in_area`, `nationwide_total`) are no longer in what the model sees; they ride only in the tool result's `_meta["matchrv/internal"]`. The tool text and server instructions say never to quote a total count. A named make/model still gets its `modelCount` first.
+- Server `version` 2.2.2. There are still 12 tools, with the same names and annotations.
 
 ## Release notes (v2.2.0)
 
@@ -139,7 +147,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.0).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.2).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

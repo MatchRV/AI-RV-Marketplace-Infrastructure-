@@ -12,7 +12,7 @@ Muse, any MCP host), the WebMCP tools, and the matchrv.com Outfitter.
    `outfitter_discovery` with whatever is known. Ask its `nextQuestion` —
    one question only — then wait. Do not call `search_rvs` yet; it returns
    `status: "needs_discovery"` with zero results until `sleepers` is known
-   (or the shopper says "just show me" → `discovery_waived: true`).
+   (or the shopper literally says "just show me" → `shopper_requested_results_now: true` with their words in `shopper_words`, which the server checks).
 2. **Clarify every limit's reason.** A stated max length is never assumed
    hard or soft: ask storage (physical fit — never exceed by any amount) vs.
    comfort. For comfort only, ask permission to keep the gate open 1–2 ft
@@ -38,7 +38,7 @@ Muse, any MCP host), the WebMCP tools, and the matchrv.com Outfitter.
 | Tool | Purpose |
 | --- | --- |
 | `outfitter_discovery` | Sherpa intake: returns the one next question, or `readyToSearch` + compiled `searchConstraints`. Stateless — pass the accumulated profile each call. |
-| `search_rvs` | Gated search. Needs-discovery requests return no inventory, by design. Accepts `sleepers`, `floorplan_intent`, `wants_bunks`, `camping_style`, `truck_payload_lbs`, `truck_tow_rating_lbs`, `passengers_lbs`, `cargo_lbs`, `discovery_waived`. |
+| `search_rvs` | Gated search. Needs-discovery requests return no inventory, by design. Accepts `sleepers`, `floorplan_intent`, `wants_bunks`, `camping_style`, `truck_payload_lbs`, `truck_tow_rating_lbs`, `passengers_lbs`, `cargo_lbs`, `party_size`, `tow_vehicle`, `length_max_ft` / `no_length_limit`, `payment_method`, `shopper_requested_results_now` + `shopper_words`. Results are a shortlist of 3 (limit ≤ 10), with no total match count. |
 | `get_rv` / `compare_rvs` | Full sourced detail / side-by-side, unknowns intact. |
 | `evaluate_tow_fit` | Rating-range fit plus payload math when `truck_payload_lbs` is supplied. Planning guidance, never a safety guarantee. |
 

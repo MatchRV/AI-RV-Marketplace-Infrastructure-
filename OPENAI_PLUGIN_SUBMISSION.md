@@ -1,6 +1,6 @@
 # MatchRV — OpenAI / Meta App Submission Package (v2.1)
 
-Status: **Submission candidate v2.1.0 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.1.0`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.0 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.0`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,12 +34,12 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.1.0)
+## MCP tools and annotations (as advertised by v2.2.0)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
 | `rv_outfitter` | Clarify needs; firm limits vs approved flexibility | true | false | true | false |
-| `outfitter_discovery` | Sherpa intake: one next question, or compiled search constraints | true | false | true | false |
+| `outfitter_discovery` | Road to the Sale intake: Sherpa welcome/route, the next 1–3 questions, or compiled search constraints | true | false | true | false |
 | `outfitter_guide` | Buyer-education knowledge (towing basics, types, costs, financing) | true | false | true | false |
 | `outfitter_memory` | Read this shopper's own remembered facts + MatchRV-curated facts | true | false | true | false |
 | `teach_outfitter` | **Write**: remember a fact the shopper confirmed, for this shopper only | false | false | false | false |
@@ -104,6 +104,25 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
 
+## Release notes (v2.2.0)
+
+- **Road to the Sale.** Discovery now follows MatchRV's Road to the Sale, adapted from Randy Sobel's *How to Make a Big Ticket Purchase*. The steps are extendable data in `lib/agent-core/src/road-to-sale.ts`:
+  1. A short Sherpa welcome, only when the first message is vague or a greeting.
+  2. Product Selection, Goals 1–4: want and use; how they'll pay (the six ways); who the owners are; and credit, asked only when financing.
+  3. Present products.
+  4. Dealer contact, through the existing `prepare_dealer_inquiry`, explicit confirmation, then `send_dealer_inquiry` gate.
+- **Minimum before listing RVs:** RV type or use, how many it sleeps, area, and budget with how they'll pay. Other questions come along the way, 1–3 at a time. If the shopper says "just show me" (`discovery_waived`), results are listed and the remaining questions come back as `roadToSale.resumeQuestions`.
+- **Make and model are first-class `search_rvs` filters.** New inputs: `make`, `model`, `exclude_makes`, `exclude_models`, plus the same keys inside `constraints`, which are no longer silently stripped. How matching works:
+  - Brand aliases are recognized (for example "tiffin motorhomes" and "Tiffin Motor Homes" are both Tiffin).
+  - The brand at the start of the title wins over a mislabelled make field.
+  - Curated Tiffin series are matched against model and title (Allegro RED, Allegro Bus, Phaeton, Allegro Open Road, and others). A listing that doesn't state its series is counted, not listed.
+  - Free text such as "Tiffin Allegro Red" is parsed into make and model. "Motorhome" means Class A, B or C.
+- When an exact model is named, `search_rvs` first returns how many there are (`modelCount`), then the Goal 1/2 questions, before listing.
+- **Fuel filters only on an explicit gas or diesel request.** "Gas mileage", "propane" and "gas or diesel" never filter. Approved Tiffin series fuel map: Allegro Bus, Allegro RED, Phaeton, Allegro Breeze, Zephyr and Wayfarer are diesel; Allegro Open Road and Allegro Bay are gas. It fills an unpublished fuel only, and is labelled "typical for the <series>; confirm with dealer". The fuel nudges were removed from `nextStep`.
+- **New `outfitter_guide` topics:** `road_to_sale`, `how_to_pay`, `owners_and_credit` and `campsite_setup`.
+- `outfitter_discovery` accepts `message` and returns a `route`: `welcome`, `education`, `specific_rv` or `help_choose`.
+- Server `version` 2.2.0. There are still 12 tools, with the same names and annotations.
+
 ## Release notes (v2.1.0)
 
 - Read-only tools no longer write memory (previously `search_rvs` and `evaluate_tow_fit` stored stated ratings in shared memory, and `search_rvs` counted discovery answers).
@@ -120,7 +139,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.1.0).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.0).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

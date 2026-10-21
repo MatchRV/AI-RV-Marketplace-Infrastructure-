@@ -209,7 +209,14 @@ export interface Constraints {
   freshWaterMinGal?: number | null;
   /** Soft: weight boondocking readiness heavily in ranking. */
   boondocking?: boolean | null;
-  /** Hard: engine fuel (motorhomes). */
+  /** Hard: brand(s). Matched on the canonical brand (title wins over a mislabelled make field). */
+  makes?: string[] | null;
+  /** Hard: model / series name(s), e.g. "Allegro RED", "Phaeton", or a family like "Allegro". */
+  models?: string[] | null;
+  /** Hard exclusions the shopper ruled out. */
+  excludeMakes?: string[] | null;
+  excludeModels?: string[] | null;
+  /** Hard: engine fuel (motorhomes). Only set when the shopper explicitly asks for gas or diesel. */
   fuelType?: FuelType | null;
   /** Hard minimum: a lower stated rating fails, an unknown rating can never pass. */
   horsepowerMin?: number | null;

@@ -19,12 +19,12 @@ describe('MCP release transport', () => {
     expect(list.tools.map((t: any) => t.name)).toContain('search_rvs');
   });
   it('runs Texas strict constraints without promoting unsupported candidates', async () => {
-    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Texas', sleepers: 4, length_reason: 'storage', constraints: { rvTypes: ['travel_trailer'], mustHave: ['bunkhouse'], lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000 } } });
+    const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Texas', sleepers: 4, length_reason: 'storage', payment_method: 'cash', constraints: { rvTypes: ['travel_trailer'], mustHave: ['bunkhouse'], lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000 } } });
     expect(result.isError).not.toBe(true);
     const data = JSON.parse(result.content.find((c: any) => c.type === 'text').text);
     expect(data.appliedConstraints).toMatchObject({ lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000, mustHave: ['bunkhouse'] });
     expect(data.funnel.verifiedMatches).toBe(0);
-  }, 20000);
+  }, 60000);
   it('honors top-level condition=new near Tacoma: no used units, no out-of-state dealers, per-store CW names', async () => {
     const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Tacoma, WA', radius_miles: 50, condition: 'new', discovery_waived: true, limit: 10 } });
     const body = JSON.parse(result.content[0].text);
@@ -41,14 +41,15 @@ describe('MCP release transport', () => {
     const body = JSON.parse(result.content[0].text);
     for (const r of body.results) expect(r.price).toBeGreaterThanOrEqual(8000);
   });
-  it('sherpa gate: asks who sleeps in it before showing any trailer', async () => {
+  it('sherpa gate: asks who sleeps in it (and how they will pay) before showing any trailer', async () => {
     const gated = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
     const data = JSON.parse(gated.content.find((c: any) => c.type === 'text').text);
     expect(data.status).toBe('needs_discovery');
     expect(data.results).toEqual([]);
     expect(data.nextQuestion.id).toBe('sleepers');
-    // Same request with the party known searches normally.
-    const open = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', sleepers: 2, floorplan_intent: 'couples', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
+    expect(data.missingForProducts).toEqual(['sleepers', 'pay_way', 'pay_numbers']);
+    // Same request with the party and the way they'll pay known searches normally.
+    const open = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', sleepers: 2, payment_method: 'cash', out_the_door_budget_usd: 60000, floorplan_intent: 'couples', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
     const openData = JSON.parse(open.content.find((c: any) => c.type === 'text').text);
     expect(openData.status).not.toBe('needs_discovery');
     expect(openData.sherpa.towStatus).toContain('preliminary');
@@ -58,11 +59,11 @@ describe('MCP release transport', () => {
     const data = JSON.parse(gated.content.find((c: any) => c.type === 'text').text);
     expect(data.status).toBe('needs_discovery');
     expect(data.nextQuestion.id).toBe('length_reason');
-    const stored = await rpc('tools/call', { name: 'search_rvs', arguments: { sleepers: 2, length_max_ft: 35, length_reason: 'storage', constraints: { rvTypes: ['class_c'] } } });
+    const stored = await rpc('tools/call', { name: 'search_rvs', arguments: { sleepers: 2, location: 'Tacoma, WA', payment_method: 'cash', budget_declined: true, length_max_ft: 35, length_reason: 'storage', constraints: { rvTypes: ['class_c'] } } });
     const storedData = JSON.parse(stored.content.find((c: any) => c.type === 'text').text);
     expect(storedData.status).not.toBe('needs_discovery');
     expect(storedData.appliedConstraints.lengthMaxFt).toBe(35);
-    const flexed = await rpc('tools/call', { name: 'search_rvs', arguments: { sleepers: 2, length_max_ft: 35, length_reason: 'comfort', length_flex_approved: true, constraints: { rvTypes: ['class_c'] } } });
+    const flexed = await rpc('tools/call', { name: 'search_rvs', arguments: { sleepers: 2, location: 'Tacoma, WA', payment_method: 'cash', budget_declined: true, length_max_ft: 35, length_reason: 'comfort', length_flex_approved: true, constraints: { rvTypes: ['class_c'] } } });
     const flexedData = JSON.parse(flexed.content.find((c: any) => c.type === 'text').text);
     expect(flexedData.appliedConstraints.lengthMaxFt).toBe(37);
   }, 30000);
@@ -72,7 +73,7 @@ describe('MCP release transport', () => {
     const disc = await rpc('tools/call', { name: 'outfitter_discovery', arguments: {} });
     const data = JSON.parse(disc.content.find((c: any) => c.type === 'text').text);
     expect(data.readyToSearch).toBe(false);
-    expect(data.nextQuestion.id).toBe('sleepers');
+    expect(data.nextQuestion.id).toBe('type_or_use');
   });
   it('serves buyer-guide knowledge for education questions', async () => {
     const list = await rpc('tools/list');

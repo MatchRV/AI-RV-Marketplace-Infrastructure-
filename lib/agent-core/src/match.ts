@@ -26,6 +26,7 @@ import { coordsMatchState } from "./enrich-snapshot.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
 import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
 import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
+import { brandMatches, modelMatches, unitMakeModel } from "./brands.js";
 
 export class ConstraintError extends Error {
   constructor(
@@ -195,6 +196,30 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   const unknowns: string[] = [];
   const breakdown: { label: string; points: number }[] = [];
 
+  // — hard: make / model (first, so the funnel attributes exclusions to them)
+  if ((c.makes?.length ?? 0) > 0 || (c.models?.length ?? 0) > 0 || (c.excludeMakes?.length ?? 0) > 0 || (c.excludeModels?.length ?? 0) > 0) {
+    const mm = unitMakeModel(unit);
+    const brandLabel = `${mm.brand}${mm.series ? ` ${mm.series}` : ""}`;
+    if (c.makes?.length) {
+      hardChecks.push(check(`make = ${c.makes.join(" or ")}`, c.makes.some((w) => brandMatches(mm.brand, w)) ? "pass" : "fail", mm.brand || "unknown", mm.brandSource === "title" ? "derived_text" : "dealer_listing"));
+    }
+    if (c.excludeMakes?.length && c.excludeMakes.some((w) => brandMatches(mm.brand, w))) {
+      hardChecks.push(check(`make not ${c.excludeMakes.join("/")}`, "fail", mm.brand, "dealer_listing"));
+    }
+    if (c.models?.length) {
+      // A listing that never states its series is NOT shown as a match for a
+      // named model (it is usually another series); callers count these
+      // separately as "series not stated — confirm with dealer".
+      const results = c.models.map((w) => modelMatches(unit, w));
+      const pass = results.includes("pass");
+      const notStated = !pass && results.includes("unknown");
+      hardChecks.push(check(`model = ${c.models.join(" or ")}`, pass ? "pass" : "fail", notStated ? `${mm.brand} — series not stated in the listing` : brandLabel, "dealer_listing"));
+    }
+    if (c.excludeModels?.length && c.excludeModels.some((w) => modelMatches(unit, w) === "pass")) {
+      hardChecks.push(check(`model not ${c.excludeModels.join("/")}`, "fail", brandLabel, "dealer_listing"));
+    }
+  }
+
   // — hard: rv type
   if (c.rvTypes && c.rvTypes.length > 0) {
     hardChecks.push(
@@ -352,8 +377,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   };
   if (c.fuelType) {
+    const implied = pt.fuelType.value === null ? unitMakeModel(unit).impliedFuel : null;
     if (!isMotorized(unit)) hardChecks.push(check(`fuel = ${c.fuelType}`, "fail", "not a motorhome", "dealer_listing"));
-    else if (pt.fuelType.value === null) {
+    else if (pt.fuelType.value === null && implied) {
+      // Series-typical fuel (e.g. Phaeton = diesel): labelled, never presented as dealer-published.
+      hardChecks.push(check(`fuel = ${c.fuelType}`, implied === c.fuelType ? "pass" : "fail", `${implied} (typical for the ${unitMakeModel(unit).series}; confirm with dealer)`, "derived_model_code"));
+    } else if (pt.fuelType.value === null) {
       unknowns.push("fuelType");
       hardChecks.push(check(`fuel = ${c.fuelType}`, "unknown", "needs verification — not published", null));
     } else hardChecks.push(check(`fuel = ${c.fuelType}`, pt.fuelType.value === c.fuelType ? "pass" : "fail", pt.fuelType.value, pt.fuelType.source));

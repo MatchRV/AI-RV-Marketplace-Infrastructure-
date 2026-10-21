@@ -117,6 +117,58 @@ export const GUIDE_TOPICS: GuideTopic[] = [
       "Read for prepayment penalties, and get insurance quotes before finalising the budget.",
     ],
   },
+  {
+    id: "road_to_sale",
+    title: "The Road to the Sale: how buying an RV works, step by step",
+    source: "Randy Sobel, How to Make a Big Ticket Purchase (Ch. 1-2), adapted for MatchRV",
+    keywords: ["road to the sale", "process", "steps", "how buying works", "how to buy", "buying process", "good deal", "negotiate", "salesperson", "dealer process"],
+    points: [
+      "Buying goes one step at a time and no step gets skipped: first work out what you want and how you'll use it, then how you'll pay, who the owners are, and any credit questions. Only after that do you look at RVs that fit, and then talk to the dealer.",
+      "A good deal means you get the RV you actually want for what you planned to spend. A deal both sides can live with lasts longer than one 'won' by either side.",
+      "Honesty both ways makes it fast: say what your trade is really like, what you still owe, your real budget and your credit situation up front, and you'll get real answers back.",
+      "A good guide listens more than they talk, knows the product, never uses lines like 'what would it take…', and never pushes you past a step you're not ready for.",
+      "Narrowing down is part of the job: ruling out what you don't want keeps you from being swamped by choices.",
+    ],
+  },
+  {
+    id: "how_to_pay",
+    title: "Six ways to pay for an RV (and what to know for each)",
+    source: "Randy Sobel, How to Make a Big Ticket Purchase (Ch. 2, Goal Two), adapted for MatchRV",
+    keywords: ["pay", "paying", "cash", "out the door", "out-the-door", "otd", "trade", "trade-in", "down payment", "monthly", "special finance", "ad", "advertised", "discount", "how will i pay", "budget"],
+    points: [
+      "Cash: set an out-the-door number. That covers the price plus tax, license, title, doc fees, freight and prep, not just the sticker.",
+      "Difference: your trade plus a cash difference. Know your trade's honest condition and what you'd pay on top, out the door.",
+      "Finance: five things matter: trade-in, what's still owed on it, where it will be licensed, your down payment, and a comfortable monthly payment. Work from those and skip the stressful haggling over selling price and trade value.",
+      "Discount shopper: a fair price matters, but not at the cost of the RV you want. The wrong RV is never a bargain.",
+      "Ad shopper: bring the ad (the unit and its price). Ads change and units sell, so check what's actually in stock.",
+      "Special finance: if there are credit problems, get approved before falling in love with a unit, so the RVs you look at are ones you can actually get.",
+    ],
+  },
+  {
+    id: "owners_and_credit",
+    title: "Who will own it, and talking about credit up front",
+    source: "Randy Sobel, How to Make a Big Ticket Purchase (Ch. 2, Goals Three and Four), adapted for MatchRV",
+    keywords: ["owner", "owners", "title", "spouse", "partner", "co-buyer", "cosigner", "credit", "credit score", "bad credit", "approval", "approved"],
+    points: [
+      "Know who the real buyers are, meaning whose names go on the title and the loan. If a spouse or partner is part of the decision, shop together.",
+      "Deciding together avoids second-guessing later. An RV is a shared space, so both people should love the floorplan.",
+      "If there's anything on the credit side, say so before looking at RVs. It shapes which units, terms and lenders make sense.",
+      "Getting approved first protects you from falling for an RV you can't finance. A pre-approval from a credit union or bank gives the dealer a rate to beat.",
+    ],
+  },
+  {
+    id: "campsite_setup",
+    title: "Setting up at a campsite",
+    source: "MatchRV Outfitter field notes (buyer-guides companion)",
+    keywords: ["campsite", "set up", "setup", "set-up", "camp", "campground", "level", "leveling", "hookup", "hookups", "arrive", "arrival", "site"],
+    points: [
+      "Before you pull in, check the site's length, shape and hookups (30A or 50A power, water, sewer), and where the power post is in relation to your RV.",
+      "Level side to side first with blocks or levelers, then chock the wheels before you unhitch or lower the jacks. Level front to back last.",
+      "Power: test the pedestal with a surge protector before you plug in. Water: use a pressure regulator and a drinking-water hose. Sewer: hook up last and keep the black valve closed until the tank is mostly full.",
+      "Extend slides and the awning only after you've checked for clearance from trees, posts and neighbors, and pull the awning in when wind is forecast.",
+      "Leaving is the reverse: close and dump tanks (black, then grey), stow and latch everything, retract slides and jacks, then walk around once more before you drive off.",
+    ],
+  },
 ];
 
 /** Keyword search over the guide library; empty query lists all topics. */

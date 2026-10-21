@@ -79,7 +79,9 @@ describe("dealer website conversion and public routes", () => {
   it("keeps displayed and JSON MCP configuration on the same branded endpoint", () => {
     expect(JSON.parse(MCP_JSON_CONFIG).mcpServers.MatchRV.url).toBe(MCP_ENDPOINT);
     const html = render(<McpSetup/>, "/mcp-setup");
-    expect(html).toContain("https://mcp.matchrv.com/mcp");
+    expect(html).toContain("https://matchrv.com/mcp");
+    expect(html).not.toContain("mcp.matchrv.com");
+    expect(html).not.toContain("Copy alternative public address");
     expect(html).toContain("Copy JSON configuration");
     expect(html).not.toContain("onrender.com");
   });

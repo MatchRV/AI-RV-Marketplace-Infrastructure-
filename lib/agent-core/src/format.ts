@@ -11,6 +11,7 @@ import type { CanonicalUnit, SearchOutcome, UnitMatch } from "./types.js";
 import { freshnessHours } from "./dataset.js";
 import { isMotorized, powertrainOf, towingOf } from "./motorhome.js";
 import { classifyFloorplan } from "./discovery.js";
+import { unitMakeModel } from "./brands.js";
 
 const usd = (n: number | null) => (n === null ? null : Math.round(n));
 
@@ -18,7 +19,8 @@ const usd = (n: number | null) => (n === null ? null : Math.round(n));
 function motorhomeSummary(u: CanonicalUnit): Record<string, unknown> {
   const p = powertrainOf(u);
   const t = towingOf(u);
-  return { fuel: p.fuelType.value, hp: p.horsepower.value, torqueLbFt: p.torqueLbFt.value, hitchTowRatingLbs: t.hitchTowRatingLbs.value, gcwrLbs: t.gcwrLbs.value };
+  const implied = p.fuelType.value === null ? unitMakeModel(u).impliedFuel : null;
+  return { fuel: p.fuelType.value ?? implied, ...(implied ? { fuelBasis: "series-typical — confirm with dealer" } : {}), hp: p.horsepower.value, torqueLbFt: p.torqueLbFt.value, hitchTowRatingLbs: t.hitchTowRatingLbs.value, gcwrLbs: t.gcwrLbs.value };
 }
 
 export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
@@ -35,6 +37,9 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     id: u.id,
     unit_id: u.id,
     title: u.title,
+    // Brand only when the title doesn't already lead with it (mislabelled feeds).
+    ...(unitMakeModel(u).brandSource !== "title" && unitMakeModel(u).brand ? { make: unitMakeModel(u).brand } : {}),
+    ...(unitMakeModel(u).series ? { series: unitMakeModel(u).series } : {}),
     price: usd(u.priceUsd.value),
     lengthFt: u.lengthFt.value,
     dryLbs: u.dryWeightLbs.value,

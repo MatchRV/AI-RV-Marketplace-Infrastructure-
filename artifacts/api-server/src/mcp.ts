@@ -18,6 +18,18 @@ import {
   GUIDE_TOPICS,
   profileToConstraints,
   evaluatePayloadFit,
+  assessRoadToSale,
+  brandForSeries,
+  resolveWantedSeries,
+  canonicalBrand,
+  classifyOpening,
+  knownSummary as roadKnownSummary,
+  parseShopperText,
+  placeFromText,
+  runSearch as runEngineSearch,
+  unitMakeModel,
+  SHERPA_WELCOME,
+  ROAD_TO_SALE_STEPS,
   type BuyerProfile,
   type Constraints,
   type CanonicalUnit,
@@ -45,6 +57,18 @@ const searchInput = z.object({
   price_max_usd: z.number().min(0).max(2_000_000).optional(),
   price_min_usd: z.number().min(0).max(2_000_000).optional(),
   sort: z.enum(["best_match", "price_asc", "price_desc", "distance", "newest_model_year"]).optional(),
+  make: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe("Brand(s) the shopper named, e.g. \"Tiffin\". Hard filter."),
+  model: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe("Model / series the shopper named, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", or a family like \"Allegro\". Hard filter."),
+  exclude_makes: z.array(z.string().max(60)).max(6).optional().describe("Brands the shopper ruled out."),
+  exclude_models: z.array(z.string().max(60)).max(6).optional().describe("Models / series the shopper ruled out."),
+  fuel_type: z.enum(["gas", "diesel"]).optional().describe("ONLY when the shopper explicitly asked for gas or diesel. Never infer it."),
+  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional(),
+  payment_method: z.enum(["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"]).optional().describe("Road to the Sale Goal Two: how the shopper will pay."),
+  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional(),
+  down_payment_usd: z.number().min(0).max(2_000_000).optional(),
+  monthly_payment_usd: z.number().min(0).max(50_000).optional(),
+  budget_declined: z.boolean().optional().describe("Shopper preferred not to share a budget (searched without a ceiling)."),
+  products_shown: z.boolean().optional(),
   constraints: z.preprocess(
     (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
     constraintsSchema,
@@ -69,6 +93,36 @@ const searchInput = z.object({
 });
 
 const profileInput = z.object({
+  message: z.string().max(4000).optional().describe("The shopper's latest message (used for Sherpa welcome routing and to pick up facts they just stated)."),
+  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional(),
+  make: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional(),
+  model: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional(),
+  location: z.string().max(80).optional(),
+  radius_miles: z.number().min(1).max(3000).optional(),
+  new_or_used: z.enum(["new", "used", "either"]).optional(),
+  who_for: z.string().max(200).optional(),
+  climate: z.enum(["hot", "cold", "mixed", "all_seasons"]).optional(),
+  trip_length: z.enum(["weekends", "weeks", "months", "full_time"]).optional(),
+  use_notes: z.string().max(400).optional(),
+  storage: z.string().max(200).optional(),
+  on_off_road: z.enum(["on", "off", "both"]).optional(),
+  driven_one_before: z.boolean().optional(),
+  must_haves: z.array(z.string().max(80)).max(12).optional(),
+  dont_want: z.array(z.string().max(80)).max(12).optional(),
+  hobbies: z.string().max(200).optional(),
+  has_trade_in: z.boolean().optional(),
+  trade_payoff_usd: z.number().min(0).max(2_000_000).optional(),
+  payment_method: z.enum(["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"]).optional(),
+  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional(),
+  down_payment_usd: z.number().min(0).max(2_000_000).optional(),
+  monthly_payment_usd: z.number().min(0).max(50_000).optional(),
+  licensing_state: z.string().max(40).optional(),
+  ad_reference: z.string().max(300).optional(),
+  budget_declined: z.boolean().optional(),
+  owners: z.string().max(200).optional(),
+  co_buyer_involved: z.boolean().optional(),
+  credit_concerns: z.enum(["none", "some", "prefer_not_say"]).optional(),
+  products_shown: z.boolean().optional(),
   sleepers: z.number().int().min(1).max(14).optional(),
   adults: z.number().int().min(0).max(14).optional(),
   kids: z.number().int().min(0).max(14).optional(),
@@ -104,6 +158,108 @@ function profileFrom(input: Record<string, unknown>, constraints: Constraints): 
     lengthMaxFt: (input.length_max_ft as number | undefined) ?? constraints.lengthMaxFt ?? sherpa?.lengthMaxStatedFt ?? null,
     lengthReason: (input.length_reason as BuyerProfile["lengthReason"]) ?? sherpa?.lengthReason ?? null,
     lengthFlexApproved: (input.length_flex_approved as boolean | undefined) ?? sherpa?.lengthFlexApproved ?? null,
+    rvTypes: constraints.rvTypes ?? null,
+    makes: constraints.makes ?? null,
+    models: constraints.models ?? null,
+    place: constraints.location?.place ?? null,
+    radiusMiles: constraints.location?.radiusMiles ?? null,
+    newOrUsed: constraints.condition === "new" || constraints.condition === "used" ? constraints.condition : null,
+    paymentMethod: (input.payment_method as BuyerProfile["paymentMethod"]) ?? null,
+    outTheDoorBudgetUsd: (input.out_the_door_budget_usd as number | undefined) ?? null,
+    downPaymentUsd: (input.down_payment_usd as number | undefined) ?? null,
+    monthlyPaymentUsd: (input.monthly_payment_usd as number | undefined) ?? null,
+    budgetDeclined: (input.budget_declined as boolean | undefined) ?? null,
+    productsShown: (input.products_shown as boolean | undefined) ?? null,
+  };
+}
+
+const asList = (v: unknown): string[] | undefined => {
+  if (v == null) return undefined;
+  const arr = (Array.isArray(v) ? v : String(v).split(/\s*(?:,|\bor\b|\/)\s*/)).map((x) => String(x).trim()).filter(Boolean);
+  return arr.length ? arr : undefined;
+};
+
+/** Canonical brands, and the brand implied by a curated series when only a model was given. */
+function normalizeMakeModel(c: Constraints): Constraints {
+  const out: Constraints = { ...c };
+  if (out.makes?.length) out.makes = [...new Set(out.makes.map((m) => canonicalBrand(m) ?? m))];
+  if (out.excludeMakes?.length) out.excludeMakes = out.excludeMakes.map((m) => canonicalBrand(m) ?? m);
+  if (out.models?.length && !out.makes?.length) {
+    const brands = [...new Set(out.models.map((m) => brandForSeries(m)).filter((b): b is string => Boolean(b)))];
+    if (brands.length === 1) out.makes = brands;
+  }
+  // Canonical series spelling ("phaeton" → "Phaeton", "allegro red" → "Allegro RED") for curated brands.
+  const canonModel = (m: string) => {
+    for (const b of out.makes ?? []) {
+      const hit = resolveWantedSeries(b, m.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim());
+      if (hit) return hit.name;
+    }
+    return m;
+  };
+  if (out.models?.length) out.models = [...new Set(out.models.map(canonModel))];
+  if (out.excludeModels?.length) out.excludeModels = [...new Set(out.excludeModels.map(canonModel))];
+  return out;
+}
+
+/** Discovery-tool input (snake_case) → BuyerProfile, filling gaps from the latest message. */
+function discoveryProfile(input: Record<string, any>, fromText: Partial<Constraints> = {}, textPlace: string | null = null): BuyerProfile {
+  const makes = asList(input.make)?.map((m) => canonicalBrand(m) ?? m) ?? fromText.makes ?? null;
+  const models = asList(input.model) ?? fromText.models ?? null;
+  const norm = normalizeMakeModel({ makes: makes ?? undefined, models: models ?? undefined } as Constraints);
+  return {
+    sleepers: input.sleepers ?? fromText.sleepsMin ?? null, adults: input.adults ?? null, kids: input.kids ?? null,
+    floorplanIntent: input.floorplan_intent ?? null, wantsBunks: input.wants_bunks ?? null,
+    budgetMaxUsd: input.budget_max_usd ?? fromText.priceMaxUsd ?? null, campingStyle: input.camping_style ?? null,
+    towVehicle: input.tow_vehicle ?? null, truckPayloadLbs: input.truck_payload_lbs ?? null,
+    truckTowRatingLbs: input.truck_tow_rating_lbs ?? null, discoveryWaived: input.discovery_waived ?? null,
+    lengthMaxFt: input.length_max_ft ?? fromText.lengthMaxFt ?? null, lengthReason: input.length_reason ?? null, lengthFlexApproved: input.length_flex_approved ?? null,
+    rvTypes: input.rv_types ?? fromText.rvTypes ?? null,
+    makes: norm.makes ?? null, models: norm.models ?? null,
+    place: input.location ?? textPlace ?? null, radiusMiles: input.radius_miles ?? null,
+    newOrUsed: input.new_or_used ?? (fromText.condition === "new" || fromText.condition === "used" ? fromText.condition : null),
+    whoFor: input.who_for ?? null, climate: input.climate ?? null, tripLength: input.trip_length ?? null, useNotes: input.use_notes ?? null,
+    storage: input.storage ?? null, onOffRoad: input.on_off_road ?? null, drivenBefore: input.driven_one_before ?? null,
+    mustHaves: input.must_haves ?? null, dontWant: input.dont_want ?? null, hobbies: input.hobbies ?? null,
+    hasTradeIn: input.has_trade_in ?? null, tradePayoffUsd: input.trade_payoff_usd ?? null,
+    paymentMethod: input.payment_method ?? null, outTheDoorBudgetUsd: input.out_the_door_budget_usd ?? null,
+    downPaymentUsd: input.down_payment_usd ?? null, monthlyPaymentUsd: input.monthly_payment_usd ?? null,
+    licensingState: input.licensing_state ?? null, adReference: input.ad_reference ?? null, budgetDeclined: input.budget_declined ?? null,
+    owners: input.owners ?? null, coBuyerInvolved: input.co_buyer_involved ?? null, creditConcerns: input.credit_concerns ?? null,
+    productsShown: input.products_shown ?? null,
+  };
+}
+
+/** How many of the named make/model exist in the area (shown before any listing). */
+function makeModelCount(corpus: CanonicalUnit[], c: Constraints) {
+  const scoped: Constraints = { makes: c.makes, models: c.models, excludeMakes: c.excludeMakes, excludeModels: c.excludeModels, rvTypes: c.rvTypes, ...(c.location ? { location: c.location } : {}) };
+  const out = runEngineSearch(corpus, scoped);
+  const bySeries: Record<string, number> = {};
+  const byDealer: Record<string, number> = {};
+  for (const m of out.results) {
+    const n = 1 + (m.identicalUnitIds?.length ?? 0);
+    const mm = unitMakeModel(m.unit);
+    const key = mm.series ? `${mm.brand} ${mm.series}` : `${mm.brand} (series not stated)`;
+    bySeries[key] = (bySeries[key] ?? 0) + n;
+    const d = `${m.unit.dealer.name}, ${m.unit.dealer.city}`;
+    byDealer[d] = (byDealer[d] ?? 0) + n;
+  }
+  // Same brand in the area whose listing never states a series: possible
+  // matches the shopper can ask the dealer about, never listed as matches.
+  let seriesNotStated = 0;
+  if (c.models?.length && c.makes?.length) {
+    const brandOnly = runEngineSearch(corpus, { makes: c.makes, rvTypes: c.rvTypes, ...(c.location ? { location: c.location } : {}) });
+    for (const m of brandOnly.results) if (unitMakeModel(m.unit).series == null) seriesNotStated += 1 + (m.identicalUnitIds?.length ?? 0);
+  }
+  const top = (r: Record<string, number>, k: number) => Object.entries(r).sort((a, b) => b[1] - a[1]).slice(0, k).map(([name, count]) => ({ name, count }));
+  return {
+    make: c.makes ?? null,
+    model: c.models ?? null,
+    area: out.coverage.requestedArea ?? "nationwide",
+    radiusMiles: out.locationResolution?.state ? null : out.coverage.radiusMiles,
+    count: out.funnel.passedHard + out.funnel.unverified,
+    ...(c.models?.length ? { seriesNotStated, seriesNotStatedNote: seriesNotStated ? `${seriesNotStated} more ${c.makes?.join("/") ?? ""} unit(s) in the area don't state their series; not counted or listed. Offer to ask the dealer if the shopper wants.` : undefined } : {}),
+    bySeries: top(bySeries, 8),
+    topDealers: top(byDealer, 5),
   };
 }
 
@@ -170,6 +326,17 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
     tow_trailer_lbs: "trailerWeightLbs",
     trailer_tongue_lbs: "trailerTongueLbs",
     coach_loaded_weight_lbs: "coachLoadedWeightLbs",
+    make: "makes",
+    brand: "makes",
+    brands: "makes",
+    manufacturer: "makes",
+    model: "models",
+    series: "models",
+    model_name: "models",
+    exclude_make: "excludeMakes",
+    exclude_makes: "excludeMakes",
+    exclude_model: "excludeModels",
+    exclude_models: "excludeModels",
   };
   const rvSynonyms: Record<string, string> = {
     "travel trailer": "travel_trailer",
@@ -199,6 +366,10 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
         return rvSynonyms[s] ?? s.replace(/\s+/g, "_");
       });
     }
+    if (mapped === "makes" || mapped === "models" || mapped === "excludeMakes" || mapped === "excludeModels") {
+      v = asList(v);
+      if (!v) continue;
+    }
     if (mapped === "location") {
       if (typeof v === "string") {
         v = { place: v, radiusMiles: 150 };
@@ -213,49 +384,6 @@ function cleanConstraints(value: Record<string, unknown> | undefined | null): Co
     if (out[mapped] === undefined) out[mapped] = v;
   }
   return out as Constraints;
-}
-
-/** Pull structured constraints out of a ChatGPT-style free-text query. */
-function constraintsFromQuery(query: string | undefined): Partial<Constraints> {
-  if (!query?.trim()) return {};
-  const q = query.toLowerCase();
-  const out: Record<string, unknown> = {};
-  const sleeps = /sleeps?\s*:?\s*(\d{1,2})/.exec(q);
-  if (sleeps) out.sleepsMin = Math.min(14, Math.max(1, parseInt(sleeps[1], 10)));
-  const types: string[] = [];
-  const typeMap: [RegExp, string][] = [
-    [/travel\s*trailers?|\btt\b/, "travel_trailer"],
-    [/fifth\s*wheels?|5th\s*wheels?/, "fifth_wheel"],
-    [/toy\s*haulers?/, "toy_hauler"],
-    [/class\s*a\b/, "class_a"],
-    [/class\s*b\b/, "class_b"],
-    [/class\s*c\b/, "class_c"],
-    [/truck\s*campers?/, "truck_camper"],
-    [/pop\s*-?\s*ups?|popup/, "popup_camper"],
-  ];
-  for (const [re, t] of typeMap) if (re.test(q)) types.push(t);
-  if (types.length) out.rvTypes = types;
-  const price = /under\s*\$?([\d,]+)|\$?([\d,]+)\s*(?:or\s*)?less|max(?:imum)?\s*price\s*\$?([\d,]+)/.exec(q);
-  if (price) {
-    const raw = price[1] || price[2] || price[3];
-    const n = parseInt(raw.replace(/,/g, ""), 10);
-    if (Number.isFinite(n) && n > 1000) out.priceMaxUsd = n;
-  }
-  const lenMax = /(?:nothing longer than|no longer than|not longer than|under|less than|up to|max(?:imum)?(?: of)?|at most)\s*(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\b/.exec(q) ?? /(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\s*(?:or less|max(?:imum)?|and under)\b/.exec(q);
-  if (lenMax) { const n = parseFloat(lenMax[1]); if (n >= 8 && n <= 60) out.lengthMaxFt = n; }
-  if (/\bdiesel\b/.test(q)) out.fuelType = "diesel";
-  else if (/\bgas(oline)?\b/.test(q)) out.fuelType = "gas";
-  // "450 hp" / "at least 450 horsepower" = minimum; "450 hp preferred"/"ideally" = preference.
-  const hp = /(\d{3})\s*(?:hp|horsepower)\b(\s*(?:preferred|ideally|if possible))?/.exec(q);
-  if (hp) out[hp[2] || /(prefer|ideally)[^.]{0,30}\d{3}\s*(?:hp|horse)/.test(q) ? "horsepowerPreferred" : "horsepowerMin"] = parseInt(hp[1], 10);
-  const tq = /([\d,]{3,5})\s*(?:lb[\s.-]*ft|ft[\s.-]*lbs?|pound[\s-]*feet)/.exec(q);
-  if (tq) out.torqueMinLbFt = parseInt(tq[1].replace(/,/g, ""), 10);
-  const trailer = /([\d,]{4,6})\s*(?:-?\s*(?:lb|lbs|pound))?\s*(?:loaded\s+)?(?:trailer|car|toad)/.exec(q) ?? /tow(?:ing)?\s+(?:a\s+)?([\d,]{4,6})/.exec(q);
-  if (trailer) {
-    const n = parseInt(trailer[1].replace(/,/g, ""), 10);
-    if (n >= 500 && n <= 40_000) out.trailerWeightLbs = n;
-  }
-  return out as Partial<Constraints>;
 }
 
 function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | undefined>): Constraints {
@@ -296,7 +424,7 @@ function mcpSchema<T extends z.ZodType>(schema: T) {
   };
 }
 
-export const MCP_VERSION = "2.1.0";
+export const MCP_VERSION = "2.2.0";
 
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(
@@ -312,7 +440,7 @@ function buildMatchRvServer(): McpServer {
         "MEMORY: search, detail, compare and tow tools never store anything. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, and agrees to MatchRV remembering it, call teach_outfitter. Taught facts are private to this shopper/conversation (never shown to other shoppers) and labelled learned. If teach_outfitter returns a session_key, pass it as session_key on later calls in this conversation. Before asking for a rating, check outfitter_memory / sherpa.memory; ask the shopper to confirm a recalled value matches their exact vehicle. " +
         "DEALER INQUIRIES: only when the shopper asks to contact a dealership about a specific unit, collect their name, email and/or phone and message, call prepare_dealer_inquiry (sends nothing), show the full preview, and call send_dealer_inquiry with confirmed=true ONLY after the shopper explicitly approves that exact preview. Report the returned status honestly (delivered / queued_for_matchrv / failed); never claim the dealer replied unless get_dealer_inquiry_status shows a recorded dealerReply. " +
         "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
-        "ROAD TO THE SALE - SHERPA RULES (RV Outfitter): The whole journey from first contact to the sale is the Road to the Sale, and you are the guide on it. LENGTH RULE: when a shopper states a max length, never treat it as hard or soft silently - ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. " + "SHERPA RULES (RV Outfitter): You are a sherpa, not a listings feed. (1) DISCOVERY BEFORE INVENTORY: if sleepers/party is unknown, call outfitter_discovery and ask its ONE nextQuestion, then wait — do not call search_rvs yet. Never guess party size from a tow vehicle or weight limit. (2) One question at a time; never re-ask known facts. (3) 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer — after discovery, favour the most liveable trailer safely under the ceiling. (4) 1-2 sleepers / no kids = couples layouts first; bunkhouses only if they ask for bunks/guests. 3+ or kids = sleeping capacity first. (5) Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR, and ask the payload question. (6) Explain every pick in lifestyle terms with its tradeoff; never pad to three. (7) 'Just show me' waives discovery (discovery_waived=true). " +
+        "ROAD TO THE SALE (MCP tools): The shared method above decides the order. outfitter_discovery (pass the shopper's latest message plus every known fact) returns the current step and goal, 1-3 nextQuestions to ask together, and readyForProducts. For a greeting or vague first message it returns the Sherpa welcome, and you send it. General questions and comparisons go to outfitter_guide. A named make/model goes to search_rvs with make/model: it first returns modelCount (how many are nearby), so share that count, then ask the open Goal One/Goal Two questions before listing. 'Help me choose' goes to Product Selection. MINIMUM BEFORE ANY RV IS SHOWN: RV type or use, how many it sleeps, area, and budget with how they'll pay (payment_method + its numbers, or budget_declined). 'Just show me' means discovery_waived=true: show results, then ask resumeQuestions. After products, ask whether they want to contact the dealer (DEALER INQUIRIES). MAKE/MODEL: always pass make and model to search_rvs when the shopper names them (e.g. make=Tiffin, model=Allegro RED), and never substitute another brand or series without asking. FUEL: pass fuel_type only when the shopper explicitly says gas or diesel; never infer it from 'gas mileage', 'propane' or 'gas or diesel is fine', and never bring fuel up unprompted. LENGTH RULE: when a shopper states a max length, ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. TOW: 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer. Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR. 1-2 sleepers / no kids = couples layouts first; 3+ or kids = sleeping capacity first. Explain every pick in lifestyle terms with its tradeoff, and never pad to three. " +
         "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Cite coverage.units_in_area and funnel totals. sleepsConfirmed=false means capacity was inferred — disclose that. results.length is top matches only. Never claim towing safety from a generic vehicle model. VIN lookup is not available through this MCP server.",
     },
   );
@@ -383,26 +511,45 @@ function buildMatchRvServer(): McpServer {
   server.registerTool(
     "outfitter_discovery",
     {
-      title: "RV Outfitter sherpa discovery",
+      title: "RV Outfitter: Road to the Sale guide",
       description:
-        "Road to the Sale intake. Start here when the shopper has not yet said who sleeps in the RV, or has stated a length limit whose reason (storage vs comfort) is not yet known. Pass everything already known (sleepers, adults/kids, floorplan_intent, wants_bunks, budget, camping_style, tow_vehicle, door-sticker payload). Returns ONE next question to ask — or readyToSearch with compiled constraints for search_rvs. Stateless: pass the accumulated profile on every call. Never show inventory while readyToSearch is false unless the shopper waived discovery.",
+        "Road to the Sale guide. Call it on the shopper's first message and after every answer. Pass the latest message plus everything already known: who it's for and how many sleep; type and/or make/model; area; use (climate, trip length, camping style, storage, on/off road); new or pre-owned; trade-in and payoff; how they'll pay (payment_method: cash / difference / finance / discount / ad_shopper / special_finance) with its numbers (out-the-door budget, down payment, monthly payment); owners; credit concerns; tow vehicle and payload; any length limit and its reason. Returns route (welcome / education / specific_rv / help_choose), plus the Sherpa welcome text when the first message is vague; step and goal (where they are on the Road to the Sale); 1-3 nextQuestions to ask together; openGoals; and readyForProducts with searchConstraints for search_rvs. Minimum before any RV is shown: type or use, sleeps, area, and budget with how they'll pay. Stateless: pass the accumulated profile on every call. Don't show inventory while readyForProducts is false unless the shopper asked to just see options (discovery_waived=true).",
       inputSchema: mcpSchema(profileInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async (input) => {
-      const profile: BuyerProfile = {
-        sleepers: input.sleepers ?? null, adults: input.adults ?? null, kids: input.kids ?? null,
-        floorplanIntent: input.floorplan_intent ?? null, wantsBunks: input.wants_bunks ?? null,
-        budgetMaxUsd: input.budget_max_usd ?? null, campingStyle: input.camping_style ?? null,
-        towVehicle: input.tow_vehicle ?? null, truckPayloadLbs: input.truck_payload_lbs ?? null,
-        truckTowRatingLbs: input.truck_tow_rating_lbs ?? null, discoveryWaived: input.discovery_waived ?? null,
-        lengthMaxFt: input.length_max_ft ?? null, lengthReason: input.length_reason ?? null, lengthFlexApproved: input.length_flex_approved ?? null,
-      };
-      const discovery = assessDiscovery(profile);
+      const opening = input.message ? classifyOpening(input.message) : null;
+      const profile = discoveryProfile(input as Record<string, any>, opening?.extracted ?? {}, input.message ? placeFromText(input.message) : null);
+      const nothingKnown = roadKnownSummary(profile).length === 0;
+      if (opening?.route === "welcome" && nothingKnown) {
+        return textResult({
+          route: "welcome",
+          welcome: SHERPA_WELCOME,
+          step: { id: ROAD_TO_SALE_STEPS[0].id, number: ROAD_TO_SALE_STEPS[0].number, title: ROAD_TO_SALE_STEPS[0].title },
+          readyForProducts: false,
+          readyToSearch: false,
+          nextQuestions: [],
+          nextQuestion: null,
+          guidance: "Send this Sherpa welcome (verbatim or very close) and wait. Then route: general questions or comparisons go to outfitter_guide; a specific RV (make/model) goes to search_rvs with make/model; 'help me choose' means call outfitter_discovery again with their answer.",
+        });
+      }
+      const road = assessRoadToSale(profile);
+      const route = opening?.route ?? (profile.makes?.length || profile.models?.length ? "specific_rv" : "help_choose");
       return textResult({
-        ...discovery,
+        route,
+        ...(opening?.route === "education" ? { guideTopics: opening.guideTopics } : {}),
+        ...road,
+        readyToSearch: road.readyForProducts,
+        nextQuestion: road.nextQuestions[0] ?? null,
+        missingEssentials: road.missingForProducts,
         profile,
-        ...(discovery.readyToSearch ? { searchConstraints: profileToConstraints(profile), guidance: "Discovery is sufficient. Briefly reflect what you heard, then call search_rvs with these constraints (plus location/price/radius). Tow verdicts stay preliminary until payload or an exact rating is supplied." } : { guidance: "Ask nextQuestion.prompt as the only question and wait. Do not describe or rank trailers yet." }),
+        guidance: route === "education" && !road.readyForProducts
+          ? "Answer their question first from outfitter_guide (guideTopics). Then, if they want to look at RVs, ask nextQuestions."
+          : road.readyForProducts
+            ? `Minimum covered${road.waived ? " (shopper waived questions)" : ""}. Briefly reflect what you heard, then call search_rvs with searchConstraints (plus payment_method etc.). ${road.waived && road.resumeQuestions.length ? "After showing results, come back to resumeQuestions." : "Keep asking nextQuestions along the way, 1-3 at a time."} Tow verdicts stay preliminary until payload or an exact rating is supplied.`
+            : route === "specific_rv"
+              ? "They named a specific RV. Call search_rvs with make/model (and location if known) to get modelCount, tell them how many are nearby, then ask nextQuestions together. Don't list units yet."
+              : "Ask nextQuestions together (they're written to be asked in one friendly message) and wait. Don't describe or rank RVs yet.",
       });
     },
   );
@@ -412,9 +559,9 @@ function buildMatchRvServer(): McpServer {
     {
       title: "RV Outfitter buyer guides",
       description:
-        "MatchRV's buyer-education knowledge, distilled from its published guides (towing/payload basics, motorhome vs trailer, travel trailer vs fifth wheel, families, full-time living, buying used, costs, financing). Use for general 'how does this work / which is better' questions BEFORE any inventory search — teach first, sell never. Pass topic for an exact guide or query to search. Towing points defer to evaluate_tow_fit for the buyer's actual vehicle; never quote a model-level tow table.",
+        "MatchRV's buyer education, distilled from its published guides and the Road to the Sale method. Topics: road_to_sale (how buying works, step by step), how_to_pay (the six ways: cash, difference, finance, discount, ad shopper, special finance; out-the-door math), owners_and_credit, campsite_setup, tow_basics, motorhome_vs_trailer, trailer_vs_fifth_wheel, families, full_time, used_buying, costs, financing. Use it for 'how does this work / which is better / how should I pay / how do I set up camp' questions BEFORE any inventory search: teach first, never pressure. Pass topic for an exact guide or query to search. Towing points defer to evaluate_tow_fit for the buyer's actual vehicle, so never quote a model-level tow table.",
       inputSchema: mcpSchema(z.object({
-        topic: z.enum(["tow_basics", "motorhome_vs_trailer", "trailer_vs_fifth_wheel", "families", "full_time", "used_buying", "costs", "financing"]).optional(),
+        topic: z.enum(["road_to_sale", "how_to_pay", "owners_and_credit", "campsite_setup", "tow_basics", "motorhome_vs_trailer", "trailer_vs_fifth_wheel", "families", "full_time", "used_buying", "costs", "financing"]).optional(),
         query: z.string().max(160).optional(),
       })),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -429,8 +576,8 @@ function buildMatchRvServer(): McpServer {
   );
 
   server.registerTool("rv_outfitter", {
-    title: "RV Outfitter - clarify and confirm shopper needs",
-    description: "Use this guide when a shopper starts an RV conversation or gives an ambiguous preference. Returns one useful follow-up, a confirmation summary and authoritative constraints. Ask about firm limits versus explicitly approved flexibility; never relax a limit automatically. Continue in this chat, then call search_rvs for real options. Does not contact dealers or send messages.",
+    title: "RV Outfitter: read the shopper's message",
+    description: "Use this on the shopper's first RV message, or any free-text message, to turn what they said into Road to the Sale facts. Returns: route (welcome / education / specific_rv / help_choose) plus the Sherpa welcome text when the message is a greeting or vague; extractedProfile (type, make/model, area, sleepers, budget, length limit, and fuel only when stated); step/goal and 1-3 nextQuestions; a short confirmation summary; and authoritative constraints. Ask about firm limits versus explicitly approved flexibility, and never relax a limit automatically. Continue in this chat: call outfitter_discovery with the profile, then search_rvs once readyForProducts is true. Does not contact dealers or send messages.",
     inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
@@ -440,7 +587,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. Until the Road to the Sale minimum is known (type or use, sleeps, area, budget with payment_method, or budget_declined) it returns status=needs_discovery with nextQuestions instead of listings; when a make/model was named it also returns modelCount (how many are in the area), so share that count first, then ask. discovery_waived=true ('just show me') shows results and returns resumeQuestions. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). Read coverage.units_in_area; if no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -448,8 +595,9 @@ function buildMatchRvServer(): McpServer {
     async (input, ctx) => {
       try {
         const t0 = performance.now();
-        const fromQuery = constraintsFromQuery(input.query);
-        const topLocation = input.location || input.place;
+        const parsedQuery = parseShopperText(input.query);
+        const fromQuery = parsedQuery.constraints;
+        const topLocation = input.location || input.place || (!input.constraints?.location?.place ? placeFromText(input.query) ?? undefined : undefined);
         const fromTop: Partial<Constraints> = {};
         if (topLocation) {
           fromTop.location = {
@@ -467,23 +615,43 @@ function buildMatchRvServer(): McpServer {
         if (input.price_max_usd != null) fromTop.priceMaxUsd = input.price_max_usd;
         if (input.price_min_usd != null) fromTop.priceMinUsd = input.price_min_usd;
         if (input.sort != null) fromTop.sort = input.sort;
+        if (input.make != null) fromTop.makes = asList(input.make);
+        if (input.model != null) fromTop.models = asList(input.model);
+        if (input.exclude_makes?.length) fromTop.excludeMakes = input.exclude_makes;
+        if (input.exclude_models?.length) fromTop.excludeModels = input.exclude_models;
+        if (input.fuel_type != null) fromTop.fuelType = input.fuel_type;
+        if (input.rv_types?.length) fromTop.rvTypes = input.rv_types;
 
-        const baseConstraints = mergeConstraints(
+        const baseConstraints = normalizeMakeModel(mergeConstraints(
           cleanConstraints(input.constraints as Record<string, unknown>),
-          fromQuery,
           fromTop,
-        );
+          fromQuery,
+        ));
         const profile = profileFrom(input as unknown as Record<string, unknown>, baseConstraints);
         const discovery = assessDiscovery(profile);
-        if (!discovery.readyToSearch && !input.force_search) {
+        const road = assessRoadToSale(profile);
+        const scope = resolveScope(ctx, input.session_key);
+        const wantsMakeModel = Boolean(baseConstraints.makes?.length || baseConstraints.models?.length);
+        const gated = (!road.readyForProducts || !discovery.readyToSearch) && !input.force_search && !profile.discoveryWaived;
+        if (gated) {
+          const questions = road.nextQuestions.length ? road.nextQuestions : discovery.nextQuestion ? [{ ...discovery.nextQuestion, goal: "goal_1_want_and_use", blocking: true }] : [];
+          const modelCount = wantsMakeModel ? makeModelCount(applyMemory(scope, candidateUnits(baseConstraints.location?.place)), baseConstraints) : null;
           return textResult({
             status: "needs_discovery",
             results: [],
+            step: road.step,
+            goal: road.goal,
+            ...(modelCount ? { modelCount } : {}),
             knownProfile: profile,
-            knownSummary: discovery.knownSummary,
-            missingEssentials: discovery.missingEssentials,
-            nextQuestion: discovery.nextQuestion,
-            guidance: "Ask nextQuestion.prompt (offer its options) as the ONLY question, then wait. Do not show, rank, or describe any trailer yet. When the shopper answers, call search_rvs again with sleepers/floorplan_intent filled in (or outfitter_discovery to continue). If they say 'just show me', retry with discovery_waived=true.",
+            knownSummary: road.knownSummary,
+            missingForProducts: road.missingForProducts,
+            missingEssentials: road.missingForProducts,
+            nextQuestions: questions,
+            nextQuestion: questions[0] ?? null,
+            ...(parsedQuery.fuelMentionUnclear ? { fuelNote: "The shopper mentioned gas/diesel without a clear request. No fuel filter was applied; ask only if it matters to them." } : {}),
+            guidance: modelCount
+              ? `First tell the shopper how many ${[...(modelCount.make ?? []), ...(modelCount.model ?? [])].join(" ")} units MatchRV has ${modelCount.area === "nationwide" ? "nationwide (ask their area)" : `in the ${modelCount.area} area`} (modelCount.count; bySeries / topDealers for detail). Then ask nextQuestions together in one friendly message and wait. Don't list or rank units yet. When they answer, call search_rvs again with the answers filled in (sleepers, location, payment_method + numbers). If they say 'just show me', retry with discovery_waived=true.`
+              : "Ask nextQuestions together (offer their options) in one friendly message, then wait. Don't show, rank or describe any RV yet. When the shopper answers, call search_rvs again with the answers filled in (or outfitter_discovery to continue). If they say 'just show me', retry with discovery_waived=true.",
           });
         }
         const constraints = mergeConstraints(profileToConstraints(profile), baseConstraints);
@@ -495,7 +663,6 @@ function buildMatchRvServer(): McpServer {
         if (profile.sleepers != null && constraints.sleepsMin == null) constraints.sleepsMin = profile.sleepers;
 
         // READ-ONLY: recall this shopper's own (or curated) memory; never write.
-        const scope = resolveScope(ctx, input.session_key);
         const learnedVehicle = profile.towVehicle ? recallVehicle(scope, profile.towVehicle) : null;
         const learnedTow = learnedVehicle?.towRatingLbs != null && profile.truckTowRatingLbs == null
           ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source }
@@ -504,6 +671,7 @@ function buildMatchRvServer(): McpServer {
         const corpus = applyMemory(scope, candidateUnits(place));
         const outcome = runSearch(corpus, constraints, learnedTow);
         const compact = compactSearchResult(outcome, input.limit ?? 10);
+        const makeModelSummary = wantsMakeModel ? makeModelCount(corpus, constraints) : null;
         const inventoryQuality = getInventory().inventoryQuality;
         const ms = Math.round(performance.now() - t0);
         return textResult({
@@ -512,9 +680,18 @@ function buildMatchRvServer(): McpServer {
           appliedConstraints: outcome.appliedConstraints,
           timingMs: ms,
           source: "MatchRV nationwide inventory snapshot",
+          ...(makeModelSummary ? { makeModelSummary } : {}),
+          ...(parsedQuery.fuelMentionUnclear ? { fuelNote: "The shopper mentioned gas/diesel without a clear request. No fuel filter was applied; ask only if it matters to them." } : {}),
+          roadToSale: {
+            step: road.waived && !road.readyForProducts ? { id: "present_products", number: 3, title: "Present products that fit needs and budget" } : road.step,
+            waived: road.waived,
+            nextQuestions: road.nextQuestions,
+            resumeQuestions: road.waived ? road.resumeQuestions.length ? road.resumeQuestions : road.nextQuestions : [],
+            missingForProducts: road.missingForProducts,
+          },
           sherpa: {
-            knownSummary: discovery.knownSummary,
-            readyToSearch: discovery.readyToSearch,
+            knownSummary: road.knownSummary,
+            readyToSearch: true,
             towStatus: profile.truckPayloadLbs != null || profile.truckTowRatingLbs != null ? "payload-aware" : profile.towVehicle ? "preliminary - payload/rating not yet confirmed" : "not requested",
             memoryHint: profile.towVehicle && (profile.truckTowRatingLbs != null || profile.truckPayloadLbs != null) ? "This search used the rating/payload stated in this request but did not store it. If the shopper wants MatchRV to remember it, call teach_outfitter." : null,
             memory: learnedTow ? `Recalled a LEARNED rating for this vehicle (${learnedTow.towRatingLbs.toLocaleString()} lbs, confirmed ${learnedTow.confirmations}x). Say it is learned, and ask the shopper to confirm it matches their exact truck.` : null,
@@ -522,8 +699,8 @@ function buildMatchRvServer(): McpServer {
               ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
               : null,
           },
-          outfitterGuidance: "Explain each pick in lifestyle terms (why it fits how they camp, plus its tradeoff). Tow verdicts are preliminary until payload/exact rating is known. If the shopper wants to contact the dealership about a unit, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. VIN lookup is unavailable through MCP.",
-          nextStep: "Explain real matches and unknowns. Ask one relevant follow-up if needed; gas versus diesel, dedicated versus convertible bunks, or a required towing load may change the recommendation. Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.",
+          outfitterGuidance: "Explain each pick in lifestyle terms (why it fits how they camp, plus its tradeoff). Tow verdicts are preliminary until payload/exact rating is known. Road to the Sale step 4: once they like a unit, ask whether they'd like to contact the dealership; if yes, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. VIN lookup is unavailable through MCP.",
+          nextStep: `Explain real matches and unknowns. ${makeModelSummary ? "They named a make/model: say how many of that exact series are in the area (makeModelSummary) and never pad the list with other brands or series. " : ""}${road.waived && (road.resumeQuestions.length || road.nextQuestions.length) ? "They asked to just see options, so after the results, come back to roadToSale.resumeQuestions (1-3 at a time). " : road.nextQuestions.length ? "Keep the road moving: ask roadToSale.nextQuestions along the way, 1-3 at a time, never an interrogation. " : ""}Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.`,
         });
       } catch (error) {
         return textResult(

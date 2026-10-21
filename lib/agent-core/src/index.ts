@@ -14,3 +14,6 @@ export * from "./discovery.js";
 export * from "./knowledge.js";
 export * from "./learning.js";
 export * from "./enrich-snapshot.js";
+export * from "./brands.js";
+export * from "./shopper-text.js";
+export * from "./road-to-sale.js";

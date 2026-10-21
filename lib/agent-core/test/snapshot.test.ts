@@ -72,6 +72,8 @@ describe("committed inventory snapshot", () => {
     const fl = idx.units.filter((u) => u.dealer.state === "FL");
     expect(fl.length).toBeGreaterThan(100);
     expect(fl.every((u) => u.dealer.lat !== null)).toBe(true);
+    // Unresolved cities get no coordinates rather than a state centroid.
+    expect(idx.units.filter((u) => u.dealer.lat === 27.6648 && u.dealer.lng === -81.5158)).toHaveLength(0);
   });
 
   it("every unit an assistant sees has photos, a model and a price", { timeout: 30000 }, () => {

@@ -17,11 +17,21 @@ describe("outfitter guide knowledge (mined from the knowledge pack)", () => {
 
   it("every topic is sourced and no topic reproduces a model-level tow table", () => {
     for (const g of GUIDE_TOPICS) {
-      expect(g.source).toContain("buyer-guides");
+      expect(g.source).toMatch(/buyer-guides|How to Make a Big Ticket Purchase/);
       expect(g.points.length).toBeGreaterThanOrEqual(4);
       expect(g.points.join(" ")).not.toMatch(/F-150 \| 13,000|Tow Capacity \(lbs\)/);
     }
     expect(getGuide("tow_basics")?.points.join(" ")).toContain("80%");
     expect(getGuide("nope")).toBeNull();
+  });
+
+  it("serves the Road to the Sale, six ways to pay, owners/credit and campsite setup", () => {
+    expect(getGuide("road_to_sale")?.points.join(" ")).toMatch(/good deal/i);
+    const pay = getGuide("how_to_pay")!.points.join(" ");
+    for (const way of ["Cash", "Difference", "Finance", "Discount", "Ad shopper", "Special finance"]) expect(pay).toContain(way);
+    expect(pay).toMatch(/out-the-door/);
+    expect(getGuide("owners_and_credit")?.points.join(" ")).toMatch(/shop together/i);
+    expect(searchGuides("how do I set up at a campsite?")[0]?.id).toBe("campsite_setup");
+    expect(searchGuides("should I pay cash or trade in my old one?")[0]?.id).toBe("how_to_pay");
   });
 });

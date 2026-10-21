@@ -59,10 +59,24 @@ describe("horsepower / torque requirements", () => {
   });
 
   it("fuel requirement: towables fail, unknown fuel is unverified", () => {
-    const noFuel = coach("D");
+    // A coach outside the curated series tables, with no published fuel.
+    const noFuel: CanonicalUnit = { ...coach("D"), make: "Newmar", model: "Dutch Star 4369", title: "2024 Newmar Dutch Star 4369" };
     const out = runSearch([hp450, noFuel], { fuelType: "diesel" });
     expect(out.funnel.passedHard).toBe(1);
     expect(out.funnel.unverified).toBe(1);
+  });
+
+  it("series-typical fuel (approved Tiffin map) fills an unpublished fuel, labelled, never as dealer data", () => {
+    const bus = coach("E"); // Tiffin Allegro Bus, no fuel published
+    const diesel = runSearch([bus], { fuelType: "diesel" });
+    expect(diesel.funnel.passedHard).toBe(1);
+    const chk = diesel.results[0].hardChecks.find((h) => h.constraint.startsWith("fuel"))!;
+    expect(chk.actual).toMatch(/typical for the Allegro Bus; confirm with dealer/);
+    expect(chk.source).toBe("derived_model_code");
+    expect(runSearch([bus], { fuelType: "gas" }).funnel.passedHard).toBe(0);
+    // A published fuel always wins over the series default.
+    const gasBus = coach("F", { fuelType: listed("gas") });
+    expect(runSearch([gasBus], { fuelType: "diesel" }).funnel.passedHard).toBe(0);
   });
 });
 

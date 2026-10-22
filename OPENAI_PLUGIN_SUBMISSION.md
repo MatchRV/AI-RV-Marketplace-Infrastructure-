@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.2.4)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.5)
 
-Status: **Submission candidate v2.2.4 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.4`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.5 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.5`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,12 +34,11 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.4)
+## MCP tools and annotations (as advertised by v2.2.5)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
-| `rv_outfitter` | RV fit interview: read the shopper's message into fit answers (no names, contact info, income or credit); firm limits vs approved flexibility | true | false | true | false |
-| `outfitter_discovery` | RV fit interview: the one next question (with its reason) to find the right RV; every input is an optional fit factor, any question can be declined, nothing shared with dealers | true | false | true | false |
+| `outfitter_discovery` | RV fit interview: returns the next question and, once enough fit facts are known, search constraints. Takes RV-fit facts and interview step names only (no rapport answers, names, contact info, income or credit) | true | false | true | false |
 | `outfitter_guide` | Buyer-education knowledge (towing basics, types, costs, financing) | true | false | true | false |
 | `outfitter_memory` | Read this shopper's own remembered facts + MatchRV-curated facts | true | false | true | false |
 | `teach_outfitter` | **Write**: remember a fact the shopper confirmed, for this shopper only | false | false | false | false |
@@ -93,7 +92,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 3. **Compare:** `compare_rvs` on two returned ids shows side by side, with gaps marked unknown.
 4. **Tow fit:** `evaluate_tow_fit` with the reviewer's vehicle and towable unit ids gives per-unit screening plus what still needs verification, and never says "safe". No memory is written.
 5. **Dealer inquiry:** `prepare_dealer_inquiry` first, showing the full preview, with nothing sent. Only after explicit approval, `send_dealer_inquiry` with `confirmed=true` (reviewers should use `dry_run: true` so no dealership is contacted). Status is visible through `get_dealer_inquiry_status`.
-6. **Outfitter firm limit:** `rv_outfitter` / `outfitter_discovery` confirm a 30-ft limit as firm or comfort and convert $450/mo + $5,000 down to $55,130 total. Nothing over the limits is presented as a match.
+6. **Outfitter firm limit:** `outfitter_discovery` confirms a 30-ft limit as firm or comfort and convert $450/mo + $5,000 down to $55,130 total. Nothing over the limits is presented as a match.
 7. **Memory, explicit only:** after the shopper confirms "my truck is rated 9,100 lbs, remember it", `teach_outfitter` stores it. `outfitter_memory` recalls it for that shopper only.
 
 ## Negative reviewer test cases
@@ -104,6 +103,15 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 4. **No relaxed limits** without explicit approval.
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
+
+## Release notes (v2.2.5)
+
+- **OpenAI scan finding fixed for `outfitter_discovery` and `rv_outfitter`** ("This tool appears to request information beyond what its stated operation requires"). Tools now take only RV-fit facts.
+- **`rv_outfitter` removed** (it took the shopper's raw message). Its job, reading facts the shopper already gave so nothing is asked twice, is now done by the assistant, which passes the facts as structured fields. 11 tools.
+- **`outfitter_discovery`** ("RV fit interview: next question and search constraints") returns the next question in the guided RV-fit interview and, once enough fit facts are known, search constraints. Inputs: `request_kind` (find_rv / general_question / greeting), `rv_types`, `make`, `model`, `use_type`, `desired_features`, `off_grid`, `four_season`, `party_size`, `tow_vehicle` / `towed_vehicle`, `truck_payload_lbs`, `truck_tow_rating_lbs`, length fields, `location`, `radius_miles`, `condition`, `payment_method` (cash / finance), `budget_max_usd`, `down_payment_usd`, `monthly_payment_usd`, plus `covered_steps` and `declined_questions` (interview step names only). No raw `message`.
+- **Rapport questions stay in the conversation.** Time off, who's buying, the trade-in and planned trips are still asked, in order, one per turn, each with its reason (the server returns the verbatim question for the next step), but their answers are never sent: the assistant marks the step in `covered_steps` and passes only fit facts the answer implies (e.g. grilling → `desired_features: ["outdoor_kitchen"]`, winter trips → `four_season: true`).
+- **`search_rvs`** takes the same fit facts and step names; removed `time_off`, `party_notes`, `owners`, `co_buyer_involved`, `has_trade_in`, `trade_description`, `trade_reason`, `planned_trips`, `storage`, `activities`, `planned_use`, `cash_budget_usd`, `out_the_door_budget_usd`, `budget_declined`, `adults`, `kids`, `sleepers`, `place` and others. `query` is scoped to short search keywords.
+- Behavior unchanged: same questions and order, one per turn, never re-asked, skip only when the shopper says so, comparisons answered directly, shortlist of 3 with no counts.
 
 ## Release notes (v2.2.4)
 
@@ -164,7 +172,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.4).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (11 tools, version 2.2.5).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

@@ -50,7 +50,27 @@ export interface RoadQuestion {
   why: string;
   /** True when this must be answered before RVs are shown. */
   blocking: boolean;
+  /** Interview step this question belongs to (what goes in covered_steps once it's answered). */
+  step?: string | null;
+  /** For fit-fact follow-ups with no step (length limit, payload): the input field the answer fills. */
+  fills?: string | null;
+  /** A follow-up to ask on the next turn, only when the condition holds (e.g. they have a trade). */
+  followUp?: { when: string; prompt: string };
 }
+
+/**
+ * The interview steps, in order. Tools receive only RV-fit facts plus these
+ * step names (covered / declined); rapport answers stay in the conversation.
+ */
+export const INTERVIEW_STEPS = ["rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "towing", "storage", "trips", "area", "payment"] as const;
+export type InterviewStep = (typeof INTERVIEW_STEPS)[number];
+/** Question id → interview step. Length clarifications and payment numbers come from facts, so covering a step doesn't skip them. */
+const STEP_OF: Record<string, InterviewStep> = {
+  rv_type: "rv_type", use: "use", activities: "activities", vacation: "vacation", who_going: "who_going", buyers: "buyers",
+  trade: "trade", trade_details: "trade", towing: "towing", storage: "storage", trips: "trips", location: "area",
+  pay_way: "payment", pay_numbers: "payment", fin_down: "payment", fin_monthly: "payment", fin_cash: "payment",
+};
+export const stepOfQuestion = (id: string): InterviewStep | null => STEP_OF[id] ?? null;
 
 export interface RoadItem {
   id: string;
@@ -296,7 +316,13 @@ function flatten(steps: RoadStep[]): FlatItem[] {
   return out;
 }
 
-const toQuestion = (f: FlatItem, p: BuyerProfile, blocking: boolean): RoadQuestion => ({ id: f.item.id, goal: f.goal.id, blocking, ...f.item.question(p) });
+const TRADE_FOLLOW_UP = "What are you trading in, and what's making you want to trade it? I ask so I know which features and options you're hoping to get that you don't have now.";
+const FILLS: Record<string, string> = { length_reason: "length_reason", length_flex: "length_flex_approved", tow_payload: "truck_payload_lbs" };
+const toQuestion = (f: FlatItem, p: BuyerProfile, blocking: boolean): RoadQuestion => ({
+  id: f.item.id, goal: f.goal.id, blocking, step: STEP_OF[f.item.id] ?? null, ...f.item.question(p),
+  ...(FILLS[f.item.id] ? { fills: FILLS[f.item.id] } : {}),
+  ...(f.item.id === "trade" ? { followUp: { when: "they have a trade", prompt: TRADE_FOLLOW_UP } } : {}),
+});
 
 export function knownSummary(p: BuyerProfile): string[] {
   const k: string[] = [];
@@ -338,6 +364,7 @@ export function knownSummary(p: BuyerProfile): string[] {
   if (p.monthlyPaymentUsd != null) k.push(`monthly ~${usd(p.monthlyPaymentUsd)}`);
   if (p.cashBudgetUsd != null) k.push(`cash budget (out of pocket) ${usd(p.cashBudgetUsd)}`);
   if (p.creditConcerns) k.push(`credit: ${p.creditConcerns.replace(/_/g, " ")}`);
+  if (p.coveredSteps?.length) k.push(`already asked: ${p.coveredSteps.join(", ")}`);
   if (p.declinedQuestions?.length) k.push(`prefers not to answer: ${p.declinedQuestions.join(", ")}`);
   return k;
 }
@@ -352,9 +379,21 @@ const DECLINE_FOLLOWUPS: Record<string, string[]> = {
   pay_way: ["pay_numbers", "fin_down", "fin_monthly", "fin_cash"],
   storage: ["length_reason", "length_flex"],
 };
+/** Accepts interview step names (or question ids): every question of a declined step is skipped. */
 export function declinedQuestionIds(p: Pick<BuyerProfile, "declinedQuestions">): Set<string> {
   const out = new Set<string>();
-  for (const id of p.declinedQuestions ?? []) { out.add(id); for (const f of DECLINE_FOLLOWUPS[id] ?? []) out.add(f); }
+  for (const name of p.declinedQuestions ?? []) {
+    out.add(name);
+    for (const [id, step] of Object.entries(STEP_OF)) if (step === name) out.add(id);
+    for (const id of [...out]) for (const f of DECLINE_FOLLOWUPS[id] ?? []) out.add(f);
+  }
+  if (out.has("area")) out.add("location");
+  return out;
+}
+/** Questions answered in conversation: their step is in coveredSteps. */
+export function coveredQuestionIds(p: Pick<BuyerProfile, "coveredSteps">): Set<string> {
+  const out = new Set<string>();
+  for (const step of p.coveredSteps ?? []) for (const [id, s] of Object.entries(STEP_OF)) if (s === step) out.add(id);
   return out;
 }
 
@@ -366,7 +405,8 @@ export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; ma
   const flat = flatten(steps);
   // The shopper may decline any question; a declined question is never asked again.
   const declined = declinedQuestionIds(p);
-  const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p) && !declined.has(f.item.id));
+  const covered = coveredQuestionIds(p);
+  const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p) && !declined.has(f.item.id) && !covered.has(f.item.id));
   const blocking = open.filter((f) => f.item.requiredForProducts && (presentIdx < 0 || f.stepIndex < presentIdx));
   const nonBlocking = open.filter((f) => !blocking.includes(f));
   const waived = p.discoveryWaived === true;

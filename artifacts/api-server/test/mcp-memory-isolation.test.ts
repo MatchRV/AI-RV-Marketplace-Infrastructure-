@@ -44,14 +44,13 @@ describe('tool annotations', () => {
 describe('read-only tools never change memory', () => {
   it('search_rvs, evaluate_tow_fit, get_rv, compare_rvs, outfitter_* and inquiry preview/status leave the store untouched — even when a rating is stated', async () => {
     const before = memoryFingerprint();
-    await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', sleepers: 4, truck_tow_rating_lbs: 8800, truck_payload_lbs: 1500, constraints: { towVehicle: VEHICLE }, limit: 3 }, A);
+    await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', party_size: 4, truck_tow_rating_lbs: 8800, truck_payload_lbs: 1500, constraints: { towVehicle: VEHICLE }, limit: 3 }, A);
     await call('evaluate_tow_fit', { vehicle: `${VEHICLE} rated 8,800 lbs`, unit_ids: [unitIds[0]], truck_payload_lbs: 1500 }, A);
     await call('get_rv', { unit_id: unitIds[0] }, A);
     await call('compare_rvs', { unit_ids: unitIds.slice(0, 2) }, A);
     await call('outfitter_memory', { vehicle: VEHICLE }, A);
-    await call('outfitter_discovery', { sleepers: 4, tow_vehicle: VEHICLE, truck_tow_rating_lbs: 8800 }, A);
+    await call('outfitter_discovery', { party_size: 4, tow_vehicle: VEHICLE, truck_tow_rating_lbs: 8800 }, A);
     await call('outfitter_guide', { topic: 'tow_basics' }, A);
-    await call('rv_outfitter', { message: 'family of four, my truck is rated 8,800 lbs' }, A);
     await call('prepare_dealer_inquiry', { unit_id: unitIds[0], name: 'Test Shopper', email: 'shopper@example.com', message: 'Is it available?' }, A);
     await call('get_dealer_inquiry_status', { inquiry_id: 'inq_doesnotexist', status_token: 'ist_doesnotexist000' }, A);
     expect(memoryFingerprint()).toBe(before);
@@ -67,8 +66,8 @@ describe('memory isolation between shoppers', () => {
     expect((await call('outfitter_memory', { vehicle: VEHICLE }, A)).data.recall.towRatingLbs).toBe(7300);
     expect((await call('outfitter_memory', { vehicle: VEHICLE }, B)).data.recall).toBeNull();
     expect((await call('outfitter_memory', { vehicle: VEHICLE })).data.recall).toBeNull();
-    const searchA = await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', sleepers: 4, constraints: { towVehicle: VEHICLE }, limit: 3 }, A);
-    const searchB = await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', sleepers: 4, constraints: { towVehicle: VEHICLE }, limit: 3 }, B);
+    const searchA = await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', party_size: 4, constraints: { towVehicle: VEHICLE }, limit: 3 }, A);
+    const searchB = await call('search_rvs', { location: 'Tacoma, WA', shopper_requested_results_now: true, shopper_words: 'just show me', party_size: 4, constraints: { towVehicle: VEHICLE }, limit: 3 }, B);
     expect(searchA.data.sherpa.memory).toMatch(/LEARNED/);
     expect(searchB.data.sherpa.memory).toBeNull();
   });

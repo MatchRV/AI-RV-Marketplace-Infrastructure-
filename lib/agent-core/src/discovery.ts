@@ -92,6 +92,8 @@ export interface BuyerProfile {
   rvTypeUndecided?: boolean | null;
   /** Product Selection question ids the shopper chose not to answer. Declined questions are never asked again. */
   declinedQuestions?: string[] | null;
+  /** Interview steps the assistant already asked and the shopper answered (rapport answers stay in the conversation). */
+  coveredSteps?: string[] | null;
   /** Q1: what they plan to use it for. */
   plannedUses?: PlannedUse[] | null;
   /** Q2: activities they enjoy (used to match features, e.g. outdoor cooking -> outside kitchen). */
@@ -240,7 +242,7 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
   // Budget, camping style and payload refine ranking / tow verdicts and are
   // asked after (payload before any trailer is called a tow "match").
   const missingEssentials: string[] = [];
-  const declined = (id: string) => Boolean(p.declinedQuestions?.includes(id));
+  const declined = (id: string) => Boolean(p.declinedQuestions?.includes(id) || p.coveredSteps?.includes(id));
   if (p.sleepers == null) { if (!declined("who_going")) missingEssentials.push("sleepers"); }
   else if (!intent) missingEssentials.push("floorplan");
   // length_reason / length_flex are appended after this (Road to the Sale).

@@ -1,15 +1,15 @@
-# MatchRV MCP transport (v2.2.4)
+# MatchRV MCP transport (v2.2.5)
 
 ## Endpoint
 
 Stateless Streamable HTTP MCP endpoint at `POST /mcp` on the `matchrv-mcp` Render service:
 `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` once the domain points at the same service).
-It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.2.4`.
+It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.2.5`.
 
 ## Tools
 
 See the annotation table in `OPENAI_PLUGIN_SUBMISSION.md`. In summary:
-- Read-only: `rv_outfitter`, `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry`, `get_dealer_inquiry_status`.
+- Read-only: `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry`, `get_dealer_inquiry_status`.
 - Write: `teach_outfitter` (shopper-scoped memory).
 - Consequential: `send_dealer_inquiry` (destructive + open-world; requires the preview's `confirmation_token` and `confirmed=true`).
 

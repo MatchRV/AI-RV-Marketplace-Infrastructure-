@@ -86,7 +86,32 @@ export interface BuyerProfile {
   creditConcerns?: "none" | "some" | "prefer_not_say" | null;
   /** The host already showed this shopper RVs (moves the road to dealer contact). */
   productsShown?: boolean | null;
+
+  // ── Golden Ticket (Product Selection question list; see road-to-sale.ts). ──
+  /** Shopper said they're not sure which type yet (an answer: help them decide). */
+  rvTypeUndecided?: boolean | null;
+  /** Q1: what they plan to use it for. */
+  plannedUses?: PlannedUse[] | null;
+  /** Q2: activities they enjoy (used to match features, e.g. outdoor cooking -> outside kitchen). */
+  activities?: string[] | null;
+  /** Q3: time off per year / vacation ("3 weeks", "retired, full time"). Rapport. */
+  timeOff?: string | null;
+  /** Q4: who's going, in their words ("my wife and our dog", "grandkids"). Party size is `sleepers`. */
+  partyNotes?: string | null;
+  /** Q6: what the trade is (no values; that's for the dealership). */
+  tradeDescription?: string | null;
+  /** Q6: why they're trading / what they want that they don't have now. */
+  tradeReason?: string | null;
+  /** Q7 (motorhome): what they'll tow behind it ("Jeep Wrangler", "nothing"). */
+  towingBehind?: string | null;
+  /** Q9: planned trips or favorite campsites ("Yellowstone in June", "nothing planned yet"). */
+  plannedTrips?: string | null;
+  /** Q10: cash budget, i.e. how much they want to spend out of pocket. */
+  cashBudgetUsd?: number | null;
 }
+
+/** Golden Ticket Q1: what they plan to use it for. */
+export type PlannedUse = "living" | "camping" | "tailgating" | "traveling";
 
 /** Goal Two: the six ways to pay (Randy Sobel, How to Make a Big Ticket Purchase). */
 export type PaymentMethod = "cash" | "difference" | "finance" | "discount" | "ad_shopper" | "special_finance";
@@ -99,6 +124,8 @@ export const MONTHLY_PAYMENT_MULTIPLIER = 111.4;
 export function effectiveBudgetMaxUsd(p: BuyerProfile): number | null {
   if (p.budgetMaxUsd != null) return p.budgetMaxUsd;
   if (p.outTheDoorBudgetUsd != null) return p.outTheDoorBudgetUsd;
+  const financing = p.paymentMethod === "finance" || p.paymentMethod === "special_finance";
+  if (p.cashBudgetUsd != null && !financing) return p.cashBudgetUsd;
   if (p.monthlyPaymentUsd != null && (p.paymentMethod === "finance" || p.paymentMethod === "special_finance" || p.paymentMethod == null)) {
     return Math.round((p.downPaymentUsd ?? 0) + p.monthlyPaymentUsd * MONTHLY_PAYMENT_MULTIPLIER);
   }

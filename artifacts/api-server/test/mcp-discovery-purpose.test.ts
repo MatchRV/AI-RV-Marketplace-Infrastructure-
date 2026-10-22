@@ -16,54 +16,45 @@ const call = async (name: string, args: Record<string, unknown>) => {
   expect(r.isError).not.toBe(true);
   return JSON.parse(r.content.find((c: any) => c.type === 'text').text);
 };
-const SENSITIVE = /^(?:.*name|email|phone|address|income|salary|credit.*|ssn|dob|birth.*|licensing_state|trade_payoff_usd|trade_value.*)$/i;
-const COUPLE_MSG = "We're a couple, just the two of us. Looking for a travel trailer around Tacoma. Cash budget is $35k out the door.";
+const SENSITIVE = /name$|email|phone|address|income|salary|credit|ssn|dob|birth|licensing|payoff|trade_|time_off|vacation|owners|co_buyer|planned_trips|party_notes|^message$|^activities$/i;
+const COUPLE_FACTS = { rv_types: ['travel_trailer'], location: 'Tacoma, WA', party_size: 2, covered_steps: ['buyers'], payment_method: 'cash', budget_max_usd: 35000 };
 
-describe('MCP 2.2.4: interview tools state their purpose (OpenAI scan)', () => {
-  it('outfitter_discovery, rv_outfitter and search_rvs explain every input as an RV-fit factor, all optional, nothing sensitive', async () => {
+describe('MCP 2.2.5: interview tools take only RV-fit facts (OpenAI scan)', () => {
+  it('outfitter_discovery and search_rvs: every input is an RV-fit fact or a step name, described, optional', async () => {
     const { tools } = await rpc('tools/list');
-    expect(tools).toHaveLength(12);
-    for (const name of ['outfitter_discovery', 'rv_outfitter', 'search_rvs']) {
+    expect(tools).toHaveLength(11);
+    expect(tools.map((t: any) => t.name)).not.toContain('rv_outfitter');
+    for (const name of ['outfitter_discovery', 'search_rvs']) {
       const t = tools.find((x: any) => x.name === name);
       expect(t.description).toMatch(/never asks for names, contact details, income,? (?:or )?credit/i);
-      expect(t.description).toMatch(/decline any question/i);
+      expect(t.description).toMatch(/stores nothing/);
+      expect(t.description).toMatch(/contacts no one/);
       const props = t.inputSchema.properties as Record<string, any>;
       for (const [k, v] of Object.entries(props)) {
-        expect(k).not.toMatch(SENSITIVE);
+        expect(k, `${name}.${k} is not a rapport/personal field`).not.toMatch(SENSITIVE);
         expect(typeof v.description, `${name}.${k} has a description`).toBe('string');
       }
-      expect(t.inputSchema.required ?? []).toEqual(name === 'rv_outfitter' ? ['message'] : []);
+      expect(t.inputSchema.required ?? []).toEqual([]);
+      expect(props.covered_steps.items.enum).toEqual(['rv_type', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'towing', 'storage', 'trips', 'area', 'payment']);
+      expect(props.declined_questions.items.enum).toEqual(props.covered_steps.items.enum);
+      expect(props.desired_features.items.enum).toContain('outdoor_kitchen');
+      expect(props.payment_method.enum).toEqual(['cash', 'finance']);
     }
     const d = tools.find((x: any) => x.name === 'outfitter_discovery');
-    expect(d.title).toBe('RV fit interview: next question to find the right RV');
-    expect(d.description).toMatch(/^Runs MatchRV's guided RV-fit interview/);
-    expect(d.description).toMatch(/Every input is optional/);
-    expect(d.description).toMatch(/Nothing is shared with a dealer unless the shopper explicitly asks and approves/);
-    for (const phrase of [/outdoor kitchen/, /size and comfort tier/, /sleeping capacity/, /dealer handoff/, /never trade values/, /safe weight limits/, /length it must fit/, /off-grid and weather/, /the budget/]) expect(d.description).toMatch(phrase);
-    const p = d.inputSchema.properties;
-    expect(p.activities.description).toMatch(/outdoor kitchen/);
-    expect(p.time_off.description).toMatch(/size and comfort tier/);
-    expect(p.party_size.description).toMatch(/sleeping capacity/);
-    expect(p.owners.description).toMatch(/dealer handoff/);
-    expect(p.trade_description.description).toMatch(/Never pass trade values/);
-    expect(p.tow_vehicle.description).toMatch(/safe weight limit/);
-    expect(p.storage.description).toMatch(/length it must fit/);
-    expect(p.planned_trips.description).toMatch(/off-grid/);
-    expect(p.payment_method.description).toMatch(/budget/);
-    expect(p.declined_questions.items.enum).toContain('vacation');
+    expect(d.title).toBe('RV fit interview: next question and search constraints');
+    expect(d.description).toMatch(/^Returns the next question in MatchRV's guided RV-fit interview and, once enough fit facts are known, the search constraints for search_rvs\./);
+    expect(d.description).toMatch(/their answers are never sent to MatchRV/);
+    expect(Object.keys(d.inputSchema.properties)).toContain('request_kind');
   });
 
-  it('a shopper can decline any question; it is never asked again, still one question per turn', async () => {
-    const base = { rv_types: ['travel_trailer'], location: 'Tacoma, WA', party_size: 2, co_buyer_involved: true, payment_method: 'cash', cash_budget_usd: 35000 };
-    let profile: Record<string, unknown> = { ...base, planned_use: ['camping'], activities: ['hiking'] };
-    const first = await call('outfitter_discovery', profile);
+  it('a shopper can decline any step; it is never asked again, still one question per turn', async () => {
+    const base = { ...COUPLE_FACTS, use_type: ['camping'], covered_steps: ['buyers', 'activities'] };
+    const first = await call('outfitter_discovery', base);
     expect(first.nextQuestions.map((q: any) => q.id)).toEqual(['vacation']);
-    profile = { ...profile, declined_questions: ['vacation'] };
-    const next = await call('outfitter_discovery', profile);
+    const next = await call('outfitter_discovery', { ...base, declined_questions: ['vacation'] });
     expect(next.nextQuestions.map((q: any) => q.id)).toEqual(['trade']);
     expect(next.missingForProducts).not.toContain('vacation');
-    // Declining who's going and the payment question still lets the shortlist happen.
-    const all = { rv_types: ['travel_trailer'], location: 'Tacoma, WA', planned_use: ['camping'], activities: ['hiking'], time_off: '3 weeks', co_buyer_involved: false, has_trade_in: false, tow_vehicle: 'none yet', no_length_limit: true, planned_trips: 'nothing yet', declined_questions: ['who_going', 'pay_way'] };
+    const all = { rv_types: ['travel_trailer'], location: 'Tacoma, WA', use_type: ['camping'], tow_vehicle: 'none yet', no_length_limit: true, covered_steps: ['activities', 'vacation', 'buyers', 'trade', 'trips'], declined_questions: ['who_going', 'payment'] };
     const ready = await call('outfitter_discovery', all);
     expect(ready.readyForProducts).toBe(true);
     const s = await call('search_rvs', all);
@@ -71,8 +62,12 @@ describe('MCP 2.2.4: interview tools state their purpose (OpenAI scan)', () => {
     expect(s.results.length).toBeLessThanOrEqual(3);
   }, 60000);
 
-  it('the couple/cash message still gets exactly one question (use)', async () => {
-    const d = await call('outfitter_discovery', { message: COUPLE_MSG });
+  it('the couple/cash facts still get exactly one question (use); stray rapport answers are ignored, not used', async () => {
+    const d = await call('outfitter_discovery', COUPLE_FACTS);
     expect(d.nextQuestions.map((q: any) => q.id)).toEqual(['use']);
+    expect(d.nextQuestion.step).toBe('use');
+    const stray = await call('outfitter_discovery', { ...COUPLE_FACTS, use_type: ['camping'], covered_steps: ['buyers', 'activities'], time_off: '3 weeks', message: 'we get 3 weeks off' });
+    expect(stray.nextQuestions.map((q: any) => q.id)).toEqual(['vacation']);
+    expect(JSON.stringify(stray)).not.toMatch(/3 weeks/);
   }, 60000);
 });

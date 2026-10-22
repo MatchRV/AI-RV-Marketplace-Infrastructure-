@@ -338,6 +338,7 @@ export function knownSummary(p: BuyerProfile): string[] {
   if (p.monthlyPaymentUsd != null) k.push(`monthly ~${usd(p.monthlyPaymentUsd)}`);
   if (p.cashBudgetUsd != null) k.push(`cash budget (out of pocket) ${usd(p.cashBudgetUsd)}`);
   if (p.creditConcerns) k.push(`credit: ${p.creditConcerns.replace(/_/g, " ")}`);
+  if (p.declinedQuestions?.length) k.push(`prefers not to answer: ${p.declinedQuestions.join(", ")}`);
   return k;
 }
 
@@ -345,13 +346,27 @@ export function knownSummary(p: BuyerProfile): string[] {
  * Where is this shopper on the Road to the Sale, and what should be asked
  * next? Stateless: pass the accumulated profile every time.
  */
+/** Declining a question also declines its follow-ups (trade -> details, payments -> numbers). */
+const DECLINE_FOLLOWUPS: Record<string, string[]> = {
+  trade: ["trade_details"],
+  pay_way: ["pay_numbers", "fin_down", "fin_monthly", "fin_cash"],
+  storage: ["length_reason", "length_flex"],
+};
+export function declinedQuestionIds(p: Pick<BuyerProfile, "declinedQuestions">): Set<string> {
+  const out = new Set<string>();
+  for (const id of p.declinedQuestions ?? []) { out.add(id); for (const f of DECLINE_FOLLOWUPS[id] ?? []) out.add(f); }
+  return out;
+}
+
 export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; maxQuestions?: number } = {}): RoadAssessment {
   const steps = opts.steps ?? ROAD_TO_SALE_STEPS;
   // One question per turn (Jonathan's rule). maxQuestions is kept for callers/tests only.
   const maxQ = Math.min(3, Math.max(1, opts.maxQuestions ?? 1));
   const presentIdx = steps.findIndex((s) => s.presentsProducts);
   const flat = flatten(steps);
-  const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p));
+  // The shopper may decline any question; a declined question is never asked again.
+  const declined = declinedQuestionIds(p);
+  const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p) && !declined.has(f.item.id));
   const blocking = open.filter((f) => f.item.requiredForProducts && (presentIdx < 0 || f.stepIndex < presentIdx));
   const nonBlocking = open.filter((f) => !blocking.includes(f));
   const waived = p.discoveryWaived === true;

@@ -147,7 +147,8 @@ jobs:
 
           const search = parseTool(await rpc("tools/call", {
             name: "search_rvs",
-            arguments: { constraints: {}, discovery_waived: true, limit: 3 },
+            // Only a verified shopper request skips the questions (v2.2.3).
+            arguments: { constraints: {}, shopper_requested_results_now: true, shopper_words: "just show me", limit: 3 },
           }));
           if (!Array.isArray(search.results) || search.results.length < 2) {
             throw new Error(`Expected at least two searchable RVs: ${JSON.stringify(search)}`);

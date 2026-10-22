@@ -1,28 +1,34 @@
 import {
   assessRoadToSale,
   classifyOpening,
+  isNoTowVehicleAnswer,
   placeFromText,
+  mergeProfile,
+  profileFactsFromText,
   type BuyerProfile,
   type Constraints,
 } from "@workspace/agent-core";
 
 export const OUTFITTER_PLAYBOOK = `THE ROAD TO THE SALE — SHARED PROFESSIONAL OUTFITTER METHOD (adapted from Randy Sobel, "How to Make a Big Ticket Purchase")
 The Road to the Sale runs from the shopper's first message to the purchase, one step at a time. Never move to the next step before it's time, and never skip one. People buy from people they trust, so stay honest, knowledgeable and trustworthy, and never be pushy. Listen more than you talk. Never use cheesy sales lines like "what would it take…".
-STEP 1, SHERPA WELCOME: keep it short. Use it only when the first message is a greeting or vague, to find out what kind of help they want, then route. General questions or comparisons get a direct answer (education first). A specific RV (make/model, e.g. "Tiffin Allegro RED") goes to the make/model search. "Help me choose" goes to Product Selection. If the first message already says what they want, skip the welcome and dive in.
-STEP 2, PRODUCT SELECTION. Ask a few questions at a time (1–3), never an interrogation, and never re-ask what you already know.
- Goal One, what you want and how you'll use it: who it's for and who else comes; type (travel trailer, fifth wheel, Class A/B/C, tent or pop-up, toy hauler) or the exact make/model; how they'll use it (hot or cold climate, length of stay, how many sleep, slides, on or off road, where it's stored, campsite conditions, floor plans); new or pre-owned; trade-in; whether they've driven or towed one; must-haves (hitch, towing a car, storage); favorite campsite and hobbies. Help them rule out what they don't want so they aren't overloaded.
- Goal Two, how you'll pay. There are six ways:
-  (1) Cash: an out-the-door budget including tax, license, title, fees, freight and prep.
-  (2) Difference: trade plus a cash difference out the door.
-  (3) Finance: trade-in, payoff owed, where it will be licensed, down payment and monthly payment. Don't make it a stressful selling-price or trade-value negotiation.
-  (4) Discount: they want the price to fit, but not at the expense of what they want.
-  (5) Ad shopper: they researched ads, and ads may change.
-  (6) Special finance: credit challenges, so get approved before falling in love with a unit.
- Goal Three, who will be the owners: the actual buyers and spouses. Encourage them to shop together.
- Goal Four, credit challenges: when financing, talk about credit up front, before seeing products.
-MINIMUM BEFORE SHOWING ANY RV: RV type or use, how many it sleeps, the shopping area, and a budget with how they'll pay. ("Prefer not to say" is accepted, and the search then runs without a ceiling.) Everything else is asked along the way. If the shopper says "just show me", show results, then come back to the open questions.
-EXACT MODEL NAMED: first tell them how many of that model are nearby, then ask the open Goal One and Goal Two questions before listing units.
-STEP 3, PRESENT PRODUCTS that fit their needs and budget. Briefly confirm what you heard, then offer up to three supported matches, each with a concrete lifestyle reason and honest trade-offs. Stay inside the budget and the exact type/make/model. Cheaper isn't automatically better. Never fill three slots with unsupported matches. Unknown length, an inferred bunk layout or conflicting evidence can't satisfy a confirmed must-have, so explain what's missing and offer verification. If nothing qualifies, say so and ask before relaxing any constraint.
+STEP 1, SHERPA WELCOME: keep it short. Use it only when the first message is a greeting or vague, to find out what kind of help they want, then route. General questions or comparisons get a direct answer (education first). A specific RV (make/model, e.g. "Tiffin Allegro RED") or "help me choose" goes to Product Selection. If the first message already says what they want, skip the welcome and dive in.
+STEP 2, PRODUCT SELECTION: the Golden Ticket questions (MatchRV's internal name for this list; never say "Golden Ticket" to the shopper). Ask them in this order, ONE question per turn, conversationally and honestly, and end each question with a short, honest reason for asking (one sentence, no sales pressure; e.g. "How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV."). Never re-ask anything the shopper already told you, even in passing ("we're a couple" already answers who's going and who's buying; "cash budget is $35k out the door" already answers how they'll pay and the budget).
+ 0. What they want: a travel trailer, motorhome, fifth wheel, destination trailer, or something like that.
+ 1. What they plan on using it for: living in it, camping, tailgating, or traveling.
+ 2. What kinds of activities they see themselves doing, to match features to needs and wants (likes to barbecue outside -> an RV with an outside kitchen).
+ 3. Vacation: how much time off they get per year. If they don't work and can use it full time, great. This is rapport.
+ 4. Who's all going with them: grandkids, spouse, dog, etc. (and how many will sleep in it).
+ 5. Who the RV is for: only them making the purchase, or is somebody else going in on it with them?
+ 6. A trade: note what it is and why they want to trade, i.e. what features and options they're trying to get that they don't have now. Never get into trade values or numbers; that's for the dealership.
+ 7. Towing: for a motorhome, do they plan on towing anything behind it; for a trailer or fifth wheel, what are they towing it with ("don't have one yet" is an answer).
+ 8. Storage: somewhere they need to store it, and any length requirement ("no limit" is an answer).
+ 9. Trips planned or favorite campsites: anywhere they're already planning to go.
+ Plus the shopping area (city or ZIP), so the search is local.
+ 10. Payments or cash, to get the budget. If financing, get the down payment, the monthly payment they want to be around, and a cash budget (how much they want to spend out of pocket on the RV).
+ASK, DON'T ASSUME. Never fill an answer the shopper hasn't given: "family" is not a number of people, a price is not a way of paying, and silence is not "no length limit".
+NO RVs UNTIL EVERY QUESTION IS ANSWERED. The only exception: the shopper literally says to skip the questions ("just show me", "skip the questions"). Then show results and come back to the open questions afterward. A named make/model (e.g. "Tiffin Allegro RED") answers question 0 only; it doesn't skip the rest, and never say how many of it exist.
+NOT AN RV SEARCH? Questions like "what's better, a motorhome or a 5th wheel?" get a direct, honest answer with no questions first. Offer to help them find one afterward.
+STEP 3, PRESENT PRODUCTS that fit their needs and budget. Briefly confirm what you heard, then offer a shortlist of up to three supported matches from different model lines (never a total match count like "198 matches"), each with a concrete lifestyle reason and honest trade-offs. Stay inside the budget and the exact type/make/model. Cheaper isn't automatically better. Never fill three slots with unsupported matches. Unknown length, an inferred bunk layout or conflicting evidence can't satisfy a confirmed must-have, so explain what's missing and offer verification. If nothing qualifies, say so and ask before relaxing any constraint.
 STEP 4, DEALER CONTACT: once they like a unit, ask whether they'd like to contact the dealership. Never claim a dealer message or appointment happened without a successful supported action.
 DEMAND HONESTY both ways: trade condition, payoff, budget and credit should be real so the answers are real. A good deal means getting what you want within what you wanted to spend, and a win-win transaction is the goal.
 LENGTH ON THE ROAD: a stated maximum length is clarified, never assumed. Ask whether it exists for storage or physical fit (garage, driveway, campsite), which is never exceeded by any amount, or for comfort. For comfort only, ask permission to keep the gate open 1-2 ft longer in case the perfect RV sits just past the line. Approved flexibility is exactly +2 ft; if they decline, or it's for storage, the stated number is exact.
@@ -70,13 +76,13 @@ export function lengthFromMessage(message: string): number | null {
   return value >= 8 && value <= 60 ? value : null;
 }
 
-/** Turn a shopper message into Road to the Sale facts + the next 1–3 questions. */
+/** Turn a shopper message into Road to the Sale facts + the ONE next question. */
 export function outfitterGuidance(message: string, constraints: Constraints = {}, flexibilityConfirmed = false) {
   const length = lengthFromMessage(message);
   const fixedDimension = /garage|storage|campsite|site limit|driveway|must fit|strict|firm|no longer|not over|maximum|at most|under\s+\d|less than/i.test(message);
   const comfort = /comfortable|comfort|nervous|intimidat|driv|handle|maneuver|manoeuv/i.test(message);
   const lengthQuestion = length && comfort && !fixedDimension && !flexibilityConfirmed
-    ? `Feeling comfortable driving it matters. Should I keep everything at ${length} feet or less, or would you consider a ${length + 1}-foot RV if it otherwise fit what you are looking for?`
+    ? `Should I keep everything at ${length} feet or less, or would you consider a ${length + 1}-foot RV if it otherwise fit what you are looking for? I ask because feeling comfortable driving it matters, and I'll stick to your number unless you say otherwise.`
     : null;
   const opening = classifyOpening(message);
   const place = placeFromText(message);
@@ -85,8 +91,11 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
   // Explicit constraints from the host win over anything parsed from text.
   const merged: Constraints = { ...extracted, ...Object.fromEntries(Object.entries(constraints).filter(([, v]) => v != null)) } as Constraints;
   const applied: Constraints = length && !flexibilityConfirmed ? { ...merged, lengthMaxFt: length } : merged;
-  const profile: BuyerProfile = {
+  const tow = applied.towVehicle ?? null;
+  const explicit: BuyerProfile = {
     sleepers: applied.sleepsMin ?? null,
+    towVehicle: tow && !isNoTowVehicleAnswer(tow) ? tow : null,
+    towVehicleUnknown: tow && isNoTowVehicleAnswer(tow) ? true : null,
     rvTypes: applied.rvTypes ?? null,
     makes: applied.makes ?? null,
     models: applied.models ?? null,
@@ -97,32 +106,45 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
     lengthReason: fixedDimension && length ? "storage" : null,
     newOrUsed: applied.condition === "new" || applied.condition === "used" ? applied.condition : null,
   };
+  // Everything else the shopper said (who's going, who's buying, how they'll pay, the numbers …),
+  // so none of it is asked again.
+  const profile = mergeProfile(explicit, profileFactsFromText(message));
   const road = assessRoadToSale(profile);
   const welcome = opening.route === "welcome" && road.knownSummary.length === 0;
-  const nextQuestion = lengthQuestion;
+  const education = opening.route === "education";
+  const clarify = education ? null : lengthQuestion;
+  // Exactly one question per turn.
+  const nextQuestion = welcome || education ? null : clarify
+    ? { id: "length_comfort", goal: "selection_questions", blocking: true, prompt: clarify, why: "A comfort limit is held exactly unless the shopper approves a different one." }
+    : road.nextQuestions[0] ?? null;
   return {
+    status: welcome ? "welcome" : education ? "answer_directly" : road.readyForProducts && !clarify ? "ready_for_products" : "needs_discovery",
+    results: [],
     route: welcome ? "welcome" : opening.route,
     ...(welcome ? { welcome: opening.welcome } : {}),
     ...(opening.route === "education" ? { guideTopics: opening.guideTopics } : {}),
-    stage: welcome ? "welcome" : nextQuestion ? "clarify" : road.readyForProducts ? "confirm_or_search" : "product_selection",
+    stage: welcome ? "welcome" : education ? "answer_question" : clarify ? "clarify" : road.readyForProducts ? "confirm_or_search" : "product_selection",
     nextQuestion,
     step: road.step,
     goal: road.goal,
-    nextQuestions: welcome || nextQuestion ? [] : road.nextQuestions,
+    nextQuestions: nextQuestion ? [nextQuestion] : [],
+    ...(education ? { pendingQuestions: road.nextQuestions } : {}),
     missingForProducts: road.missingForProducts,
     readyForProducts: road.readyForProducts,
     extractedProfile: profile,
     constraints: applied,
     summary: road.knownSummary.join("; "),
     guidance: OUTFITTER_GUIDANCE,
-    routeGuidance: welcome ? opening.guidance : opening.route === "help_choose" ? "Skip the welcome and dive into Product Selection: ask nextQuestions together, then call outfitter_discovery with the accumulated profile." : opening.guidance,
+    routeGuidance: welcome ? opening.guidance : opening.route === "help_choose" ? "Skip the welcome and dive into Product Selection: ask the one nextQuestion (with its reason), then call outfitter_discovery with the accumulated profile." : opening.guidance,
     next: welcome
       ? "Send the Sherpa welcome and wait."
-      : nextQuestion
+      : education
+        ? "This is a question, not an RV search: answer it directly, with no Product Selection questions first. Afterward, offer to help them find one."
+      : clarify
         ? "Ask this question and wait. Do not widen the length limit without the shopper's explicit answer."
         : road.readyForProducts
           ? "Reflect the requirements in plain language, then call search_rvs."
-          : "Ask nextQuestions together (1–3), then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper says 'just show me'.",
+          : "Ask nextQuestion (exactly one, with its reason for asking), then STOP and wait for the shopper's answer. Never re-ask anything in summary, and don't guess any answer. Then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper literally asks to skip the questions.",
     towFollowUp: "Which engine and drivetrain does your tow vehicle have, and does it have the factory tow package? Tow package, axle ratio and exact capacity may need confirmation from the build sheet or door label.",
   };
 }

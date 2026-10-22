@@ -52,6 +52,8 @@ export interface RoadQuestion {
   blocking: boolean;
   /** Interview step this question belongs to (what goes in covered_steps once it's answered). */
   step?: string | null;
+  /** For fit-fact follow-ups with no step (length limit, payload): the input field the answer fills. */
+  fills?: string | null;
   /** A follow-up to ask on the next turn, only when the condition holds (e.g. they have a trade). */
   followUp?: { when: string; prompt: string };
 }
@@ -315,8 +317,10 @@ function flatten(steps: RoadStep[]): FlatItem[] {
 }
 
 const TRADE_FOLLOW_UP = "What are you trading in, and what's making you want to trade it? I ask so I know which features and options you're hoping to get that you don't have now.";
+const FILLS: Record<string, string> = { length_reason: "length_reason", length_flex: "length_flex_approved", tow_payload: "truck_payload_lbs" };
 const toQuestion = (f: FlatItem, p: BuyerProfile, blocking: boolean): RoadQuestion => ({
   id: f.item.id, goal: f.goal.id, blocking, step: STEP_OF[f.item.id] ?? null, ...f.item.question(p),
+  ...(FILLS[f.item.id] ? { fills: FILLS[f.item.id] } : {}),
   ...(f.item.id === "trade" ? { followUp: { when: "they have a trade", prompt: TRADE_FOLLOW_UP } } : {}),
 });
 

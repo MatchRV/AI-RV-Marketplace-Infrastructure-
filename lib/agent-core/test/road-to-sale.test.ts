@@ -180,6 +180,18 @@ describe("declining a question (v2.2.4)", () => {
 });
 
 describe("covered steps (v2.2.5): rapport answers stay in the conversation", () => {
+  it("a length follow-up has no step and names the fit field it fills", () => {
+    const p: BuyerProfile = { rvTypes: ["travel_trailer"], place: "Tacoma", sleepers: 2, paymentMethod: "cash", cashBudgetUsd: 35000, lengthMaxFt: 24,
+      plannedUses: ["camping"], towVehicleUnknown: true,
+      coveredSteps: ["use", "activities", "vacation", "buyers", "trade", "towing", "storage", "trips"] };
+    const q = assessRoadToSale(p).nextQuestions[0];
+    expect(q.id).toBe("length_reason");
+    expect(q.step).toBeNull();
+    expect(q.fills).toBe("length_reason");
+    const q2 = assessRoadToSale({ ...p, lengthReason: "comfort" }).nextQuestions[0];
+    expect(q2.id).toBe("length_flex");
+    expect(q2.fills).toBe("length_flex_approved");
+  });
   it("a covered step is never asked; fit facts and step names alone walk the list in order", () => {
     const facts: BuyerProfile = { rvTypes: ["travel_trailer"], place: "Tacoma", sleepers: 2, paymentMethod: "cash", cashBudgetUsd: 35000, coveredSteps: ["buyers"] };
     const order: string[] = [];

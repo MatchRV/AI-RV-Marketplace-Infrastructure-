@@ -6,7 +6,7 @@ import { isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
 import app from "./app";
 import { autoImportIfEmpty } from "./lib/auto-import";
 import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
-import { startEnrichmentCron } from "./services/listing-enrichment";
+import { shouldStartEnrichmentCron, startEnrichmentCron } from "./services/listing-enrichment";
 import { warmInventory } from "./services/agent-inventory";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
@@ -90,6 +90,13 @@ function startScraperCron() {
   setInterval(runScheduledScrape, SIX_HOURS);
 }
 
+// Last line of defence: a stray rejected promise (e.g. from a timer) is
+// logged instead of exiting the process. Node 22 exits with code 1 on an
+// unhandled rejection by default, which Render reports as a crash/restart.
+process.on("unhandledRejection", (reason) => {
+  console.error("[process] unhandled promise rejection (process kept alive):", reason);
+});
+
 async function start() {
   if (DB_MODE === "none") {
     // No database (DISABLE_DB=1): the WebMCP agent layer serves entirely from
@@ -118,10 +125,13 @@ async function start() {
 
   app.listen(port, () => {
     console.log(`Server listening on port ${port} (db: ${DB_MODE})`);
-    if (isAnthropicConfigured()) {
+    const anthropicConfigured = isAnthropicConfigured();
+    if (shouldStartEnrichmentCron(DB_MODE, anthropicConfigured)) {
       startEnrichmentCron();
-    } else {
+    } else if (!anthropicConfigured) {
       console.log("[startup] Anthropic integration not configured — AI chat/enrichment disabled; WebMCP agent tools unaffected");
+    } else {
+      console.log("[startup] enrichment cron disabled (no database, DISABLE_DB=1); WebMCP agent tools unaffected");
     }
     if (DB_MODE === "postgres" && existsSync(resolve(SCRAPER_ROOT, "scraper/scheduled-run.js"))) {
       startScraperCron();

@@ -1,116 +1,146 @@
 import { describe, expect, it } from "vitest";
-import { ROAD_TO_SALE_STEPS, assessRoadToSale, effectiveBudgetMaxUsd, type BuyerProfile, type RoadStep } from "../src/index.js";
+import { GOLDEN_TICKET_ITEMS, ROAD_TO_SALE_STEPS, assessRoadToSale, effectiveBudgetMaxUsd, type BuyerProfile, type RoadStep } from "../src/index.js";
 
 const ids = (qs: { id: string }[]) => qs.map((q) => q.id);
-const minimum: BuyerProfile = { rvTypes: ["travel_trailer"], sleepers: 4, place: "Tacoma", paymentMethod: "cash", outTheDoorBudgetUsd: 45000, towVehicleUnknown: true, noLengthLimit: true };
+/** Every Golden Ticket question answered (cash buyer, travel trailer). */
+const complete: BuyerProfile = {
+  rvTypes: ["travel_trailer"], plannedUses: ["camping"], activities: ["fishing"], timeOff: "3 weeks a year",
+  sleepers: 4, partyNotes: "wife and two kids", coBuyerInvolved: true, owners: "me and my wife", hasTradeIn: false,
+  towVehicleUnknown: true, noLengthLimit: true, plannedTrips: "Mt. Rainier", place: "Tacoma", paymentMethod: "cash", cashBudgetUsd: 45000,
+};
 
-describe("Road to the Sale", () => {
-  it("opens with Product Selection Goal One — no meet-and-greet questions", () => {
+describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
+  it("asks the Golden Ticket in Jonathan's order, three at a time", () => {
+    expect(GOLDEN_TICKET_ITEMS.filter((i) => i.requiredForProducts).map((i) => i.id)).toEqual([
+      "rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "trade_details", "towing", "storage",
+      "length_reason", "length_flex", "trips", "location", "pay_way", "fin_down", "fin_monthly", "fin_cash", "pay_numbers",
+    ]);
     const a = assessRoadToSale({});
     expect(a.step.id).toBe("product_selection");
-    expect(a.goal?.id).toBe("goal_1_want_and_use");
-    expect(ids(a.nextQuestions)).toEqual(["type_or_use", "sleepers", "location"]);
+    expect(a.goal?.id).toBe("selection_questions");
+    expect(ids(a.nextQuestions)).toEqual(["rv_type", "use", "activities"]);
     expect(a.readyForProducts).toBe(false);
   });
 
-  it("asks 1–3 at a time and never re-asks what is known", () => {
+  it("walks the whole list without ever re-asking an answered question", () => {
     let p: BuyerProfile = {};
-    const asked = new Set<string>();
-    for (let turn = 0; turn < 10; turn++) {
+    const order: string[] = [];
+    for (let turn = 0; turn < 12; turn++) {
       const a = assessRoadToSale(p);
-      expect(a.nextQuestions.length).toBeLessThanOrEqual(3);
-      for (const q of a.nextQuestions) { expect(asked.has(q.id)).toBe(false); asked.add(q.id); }
       if (a.readyForProducts) break;
-      // Simulate the shopper answering what was asked.
+      expect(a.nextQuestions.length).toBeGreaterThan(0);
+      expect(a.nextQuestions.length).toBeLessThanOrEqual(3);
+      for (const q of a.nextQuestions) { expect(order).not.toContain(q.id); order.push(q.id); }
       for (const q of a.nextQuestions) {
-        if (q.id === "type_or_use") p = { ...p, rvTypes: ["class_c"] };
-        if (q.id === "sleepers") p = { ...p, sleepers: 2 };
-        if (q.id === "location") p = { ...p, place: "Tacoma" };
-        if (q.id === "pay_way") p = { ...p, paymentMethod: "finance" };
-        if (q.id === "pay_numbers") p = { ...p, downPaymentUsd: 10000, monthlyPaymentUsd: 600 };
-        if (q.id === "use") p = { ...p, campingStyle: "mixed" };
-        if (q.id === "new_used_trade") p = { ...p, newOrUsed: "used", hasTradeIn: false };
+        const answers: Record<string, Partial<BuyerProfile>> = {
+          rv_type: { rvTypes: ["fifth_wheel"] }, use: { plannedUses: ["traveling"] }, activities: { activities: ["golf"] },
+          vacation: { timeOff: "retired" }, who_going: { sleepers: 2, partyNotes: "wife and dog" }, buyers: { coBuyerInvolved: false },
+          trade: { hasTradeIn: true }, trade_details: { tradeDescription: "2015 Jayco", tradeReason: "wants a bigger kitchen" },
+          towing: { towVehicle: "2022 Ram 3500" }, storage: { lengthMaxFt: 38, lengthReason: "storage" }, trips: { plannedTrips: "Arizona for the winter" },
+          location: { place: "Spokane" }, pay_way: { paymentMethod: "finance" }, fin_down: { downPaymentUsd: 15000 },
+          fin_monthly: { monthlyPaymentUsd: 700 }, fin_cash: { cashBudgetUsd: 20000 },
+        };
+        p = { ...p, ...answers[q.id] };
       }
     }
+    // The trade follow-up comes on the next turn, never in the same breath as "do you have a trade?".
+    expect(order).toEqual(["rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "towing", "storage", "trade_details", "trips", "location", "pay_way", "fin_down", "fin_monthly", "fin_cash"]);
     expect(assessRoadToSale(p).readyForProducts).toBe(true);
   });
 
-  it("approved minimum: type or use, sleeps, area, and budget WITH how they'll pay", () => {
-    expect(assessRoadToSale(minimum).readyForProducts).toBe(true);
-    expect(assessRoadToSale({ ...minimum, rvTypes: null, campingStyle: "boondocking" }).readyForProducts).toBe(true); // use instead of type
-    expect(assessRoadToSale({ ...minimum, place: null }).missingForProducts).toEqual(["location"]);
-    expect(assessRoadToSale({ ...minimum, sleepers: null }).missingForProducts).toEqual(["sleepers"]);
-    // A price ceiling alone isn't enough: ask how they'll pay.
-    const noWay = assessRoadToSale({ ...minimum, paymentMethod: null, outTheDoorBudgetUsd: null, budgetMaxUsd: 45000 });
+  it("every Golden Ticket answer is required before RVs; the complete profile is ready", () => {
+    expect(assessRoadToSale(complete).readyForProducts).toBe(true);
+    for (const [field, id] of [["plannedUses", "use"], ["activities", "activities"], ["timeOff", "vacation"], ["sleepers", "who_going"], ["hasTradeIn", "trade"], ["plannedTrips", "trips"], ["place", "location"]] as const) {
+      expect(assessRoadToSale({ ...complete, [field]: null }).missingForProducts).toEqual([id]);
+    }
+    expect(assessRoadToSale({ ...complete, owners: null, coBuyerInvolved: null }).missingForProducts).toEqual(["buyers"]);
+    expect(assessRoadToSale({ ...complete, towVehicleUnknown: null }).missingForProducts).toEqual(["towing"]);
+    expect(assessRoadToSale({ ...complete, noLengthLimit: null }).missingForProducts).toEqual(["storage"]);
+    // Living in it full time answers the vacation question.
+    expect(assessRoadToSale({ ...complete, timeOff: null, plannedUses: ["living"] }).readyForProducts).toBe(true);
+  });
+
+  it("a price alone isn't how they'll pay; financing asks down payment, monthly AND cash budget", () => {
+    const noWay = assessRoadToSale({ ...complete, paymentMethod: null, cashBudgetUsd: null, budgetMaxUsd: 45000 });
     expect(noWay.missingForProducts).toEqual(["pay_way"]);
-    expect(noWay.nextQuestions[0].prompt).toContain("$45,000");
+    expect(noWay.nextQuestions[0].prompt).toBe("Are you planning on making payments, or paying cash?");
+    const fin = assessRoadToSale({ ...complete, paymentMethod: "finance", cashBudgetUsd: null });
+    expect(ids(fin.nextQuestions)).toEqual(["fin_down", "fin_monthly", "fin_cash"]);
+    expect(fin.nextQuestions.map((q) => q.prompt).join(" ")).toMatch(/putting down[\s\S]*monthly payment[\s\S]*out of pocket/);
+    // Partial answers: only what's still missing is asked.
+    expect(ids(assessRoadToSale({ ...complete, paymentMethod: "finance", cashBudgetUsd: null, downPaymentUsd: 10000 }).nextQuestions)).toEqual(["fin_monthly", "fin_cash"]);
+    const done: BuyerProfile = { ...complete, paymentMethod: "finance", cashBudgetUsd: 12000, downPaymentUsd: 10000, monthlyPaymentUsd: 500 };
+    expect(assessRoadToSale(done).readyForProducts).toBe(true);
+    expect(effectiveBudgetMaxUsd(done)).toBe(65700);
+    expect(assessRoadToSale(done).searchConstraints?.priceMaxUsd).toBe(65700);
+    // Cash: one budget question, asked only after how they'll pay.
+    const cash = assessRoadToSale({ ...complete, cashBudgetUsd: null });
+    expect(ids(cash.nextQuestions)).toEqual(["pay_numbers"]);
+    expect(cash.nextQuestions[0].prompt).toMatch(/cash budget/);
+    expect(ids(assessRoadToSale({ ...complete, paymentMethod: null, cashBudgetUsd: null }).nextQuestions)).toEqual(["pay_way"]);
     // "Prefer not to say" is accepted.
-    expect(assessRoadToSale({ ...minimum, paymentMethod: null, outTheDoorBudgetUsd: null, budgetDeclined: true }).readyForProducts).toBe(true);
+    expect(assessRoadToSale({ ...complete, paymentMethod: null, cashBudgetUsd: null, budgetDeclined: true }).readyForProducts).toBe(true);
   });
 
-  it("each of the six ways to pay asks for its own numbers", () => {
-    const q = (paymentMethod: BuyerProfile["paymentMethod"]) => assessRoadToSale({ ...minimum, paymentMethod, outTheDoorBudgetUsd: null }).nextQuestions.find((x) => x.id === "pay_numbers")!.prompt;
-    expect(q("cash")).toMatch(/out-the-door/);
-    expect(q("difference")).toMatch(/trade/);
-    expect(q("finance")).toMatch(/down payment and monthly payment/);
-    expect(q("discount")).toMatch(/price range/);
-    expect(q("ad_shopper")).toMatch(/ad/);
-    expect(q("special_finance")).toMatch(/approved first/);
-    // Finance minimum = down + monthly; budget estimated and labelled.
-    const fin: BuyerProfile = { ...minimum, paymentMethod: "finance", outTheDoorBudgetUsd: null, downPaymentUsd: 10000, monthlyPaymentUsd: 500 };
-    expect(assessRoadToSale(fin).readyForProducts).toBe(true);
-    expect(effectiveBudgetMaxUsd(fin)).toBe(65700);
-    expect(assessRoadToSale(fin).searchConstraints?.priceMaxUsd).toBe(65700);
+  it("trade: asks what and why, never values", () => {
+    const a = assessRoadToSale({ ...complete, hasTradeIn: true });
+    expect(ids(a.nextQuestions)).toEqual(["trade_details"]);
+    expect(a.nextQuestions[0].why).toMatch(/Trade values and numbers are for the dealership/);
+    expect(JSON.stringify(a.nextQuestions)).not.toMatch(/owed|payoff|worth|value of/i);
+    expect(assessRoadToSale({ ...complete, hasTradeIn: true, tradeDescription: "2012 Jayco" }).nextQuestions[0].prompt).toContain("2012 Jayco");
   });
 
-  it("Goal Three (owners) is asked along the way, never blocking; Goal Four only when financing", () => {
-    const cash = assessRoadToSale({ ...minimum, campingStyle: "mixed", newOrUsed: "new", hasTradeIn: false, drivenBefore: true, mustHaves: ["outdoor kitchen"], storage: "driveway", hobbies: "kayaks" });
-    expect(cash.readyForProducts).toBe(true);
-    expect(ids(cash.nextQuestions)).toEqual(["owners"]);
-    expect(cash.openGoals.some((g) => g.id === "goal_4_credit")).toBe(false);
-    const fin = assessRoadToSale({ ...minimum, paymentMethod: "finance", outTheDoorBudgetUsd: 60000, owners: "me and my wife", licensingState: "WA", campingStyle: "mixed", newOrUsed: "new", hasTradeIn: false, drivenBefore: true, mustHaves: ["x"], storage: "lot", hobbies: "golf" });
-    expect(ids(fin.nextQuestions)).toEqual(["credit"]);
+  it("towing: motorhomes are asked what they tow behind; trailers what tows them", () => {
+    const mh = assessRoadToSale({ ...complete, rvTypes: ["class_a"], towVehicleUnknown: null });
+    expect(ids(mh.nextQuestions)).toEqual(["towing"]);
+    expect(mh.nextQuestions[0].prompt).toMatch(/towing anything behind it/);
+    expect(assessRoadToSale({ ...complete, rvTypes: ["class_a"], towVehicleUnknown: null, towingBehind: "nothing" }).readyForProducts).toBe(true);
+    const tt = assessRoadToSale({ ...complete, towVehicleUnknown: null });
+    expect(tt.nextQuestions[0].prompt).toMatch(/What are you towing the trailer with/);
   });
 
-  it("'just show me' shows results, then resumes the open questions", () => {
+  it("only the shopper's own skip bypasses the questions, then they resume", () => {
     const a = assessRoadToSale({ models: ["Allegro RED"], makes: ["Tiffin"], discoveryWaived: true });
     expect(a.readyForProducts).toBe(true);
     expect(a.waived).toBe(true);
-    expect(ids(a.resumeQuestions)).toEqual(["sleepers", "location"]);
+    expect(ids(a.resumeQuestions)).toEqual(["use", "activities", "vacation"]);
   });
 
-  it("an exact model counts as Goal One's type; questions use the model's name, never 'trailer'", () => {
+  it("a named exact model answers question 0 only; it doesn't skip the rest", () => {
     const a = assessRoadToSale({ makes: ["Tiffin"], models: ["Allegro RED"], place: "Tacoma" });
-    expect(a.missingForProducts).toEqual(["sleepers", "pay_way", "pay_numbers"]);
-    expect(a.nextQuestions[0].prompt).toBe("Who's this Allegro RED for, and how many will usually sleep in it?");
-    const mh = assessRoadToSale({ rvTypes: ["class_a", "class_b", "class_c"] });
-    expect(mh.nextQuestions[0].prompt).toContain("motorhome");
-    expect(JSON.stringify(mh.nextQuestions)).not.toMatch(/trailers?\b(?! \()/i);
+    expect(a.readyForProducts).toBe(false);
+    expect(a.missingForProducts).not.toContain("rv_type");
+    expect(a.missingForProducts).toEqual(expect.arrayContaining(["use", "who_going", "buyers", "trade", "towing", "storage", "trips", "pay_way"]));
+    const who = assessRoadToSale({ ...complete, rvTypes: null, makes: ["Tiffin"], models: ["Allegro RED"], sleepers: null });
+    expect(who.nextQuestions[0].prompt).toContain("Allegro RED");
   });
 
   it("length storage/comfort clarifications still gate and are asked on their own", () => {
-    const a = assessRoadToSale({ ...minimum, lengthMaxFt: 35 });
+    const base = { ...complete, noLengthLimit: null };
+    const a = assessRoadToSale({ ...base, lengthMaxFt: 35 });
     expect(ids(a.nextQuestions)).toEqual(["length_reason"]);
     expect(a.nextQuestions[0].prompt).toContain("35-foot");
-    expect(ids(assessRoadToSale({ ...minimum, lengthMaxFt: 35, lengthReason: "comfort" }).nextQuestions)).toEqual(["length_flex"]);
-    expect(assessRoadToSale({ ...minimum, lengthMaxFt: 35, lengthReason: "storage" }).readyForProducts).toBe(true);
+    expect(ids(assessRoadToSale({ ...base, lengthMaxFt: 35, lengthReason: "comfort" }).nextQuestions)).toEqual(["length_flex"]);
+    expect(assessRoadToSale({ ...base, lengthMaxFt: 35, lengthReason: "storage" }).readyForProducts).toBe(true);
+    expect(assessRoadToSale({ ...base, storage: "our driveway" }).nextQuestions[0].prompt).toContain("our driveway");
   });
 
   it("after products are shown, the road moves to dealer contact", () => {
-    expect(assessRoadToSale(minimum).step.id).toBe("present_products");
-    const d = assessRoadToSale({ ...minimum, productsShown: true });
+    expect(assessRoadToSale(complete).step.id).toBe("present_products");
+    const d = assessRoadToSale({ ...complete, productsShown: true });
     expect(d.step.id).toBe("dealer_contact");
     expect(d.stepGuidance).toMatch(/prepare_dealer_inquiry[\s\S]*explicitly approve/);
   });
 
+  it("never says 'Golden Ticket' in a question the shopper hears", () => {
+    expect(JSON.stringify(GOLDEN_TICKET_ITEMS.map((i) => i.question({ ...complete, hasTradeIn: true })))).not.toMatch(/golden\s*ticket/i);
+  });
+
   it("is extendable: a new step or goal is data, not code", () => {
     const extra: RoadStep = { id: "demo_drive", number: 5, title: "Demo / test drive", kind: "milestone", done: () => false, guidance: "Offer a walkthrough." };
-    const steps = [...ROAD_TO_SALE_STEPS, extra];
-    const shown = assessRoadToSale({ ...minimum, productsShown: true }, { steps });
+    const shown = assessRoadToSale({ ...complete, productsShown: true }, { steps: [...ROAD_TO_SALE_STEPS, extra] });
     expect(shown.step.id).toBe("dealer_contact");
-    // Insert a new goal into Product Selection: it's asked along the way automatically.
-    const withGoal = ROAD_TO_SALE_STEPS.map((s) => s.id !== "product_selection" ? s : { ...s, goals: [...s.goals!, { id: "goal_5_test", title: "Goal Five: test", items: [{ id: "warranty", label: "warranty", known: () => false, question: () => ({ prompt: "Interested in an extended warranty?", why: "test" }) }] }] });
-    const a = assessRoadToSale({ ...minimum, campingStyle: "mixed", newOrUsed: "new", hasTradeIn: false, drivenBefore: true, mustHaves: ["x"], storage: "lot", hobbies: "golf", owners: "me" }, { steps: withGoal });
-    expect(ids(a.nextQuestions)).toEqual(["warranty"]);
+    const withGoal = ROAD_TO_SALE_STEPS.map((s) => s.id !== "product_selection" ? s : { ...s, goals: [...s.goals!, { id: "goal_x", title: "test", items: [{ id: "warranty", label: "warranty", known: () => false, question: () => ({ prompt: "Interested in an extended warranty?", why: "test" }) }] }] });
+    expect(ids(assessRoadToSale(complete, { steps: withGoal }).nextQuestions)).toEqual(["warranty"]);
   });
 });

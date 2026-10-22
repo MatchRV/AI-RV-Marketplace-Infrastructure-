@@ -163,3 +163,18 @@ describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
     expect(ids(assessRoadToSale(complete, { steps: withGoal }).nextQuestions)).toEqual(["warranty"]);
   });
 });
+
+describe("declining a question (v2.2.4)", () => {
+  it("a declined question and its follow-ups are never asked; the next one comes, one at a time", () => {
+    const { timeOff: _t, hasTradeIn: _h, ...rest } = complete;
+    expect(ids(assessRoadToSale(rest).nextQuestions)).toEqual(["vacation"]);
+    expect(ids(assessRoadToSale({ ...rest, declinedQuestions: ["vacation"] }).nextQuestions)).toEqual(["trade"]);
+    const r = assessRoadToSale({ ...rest, declinedQuestions: ["vacation", "trade"] });
+    expect(r.readyForProducts).toBe(true);
+    expect(r.knownSummary.join(" ")).toMatch(/prefers not to answer: vacation, trade/);
+    const { paymentMethod: _p, cashBudgetUsd: _c, ...noPay } = complete;
+    const pay = assessRoadToSale({ ...noPay, declinedQuestions: ["pay_way"] });
+    expect(pay.readyForProducts).toBe(true);
+    expect(pay.missingForProducts).not.toContain("pay_numbers");
+  });
+});

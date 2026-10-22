@@ -1,6 +1,6 @@
 # MatchRV ChatGPT Plugin V1
 
-Status: superseded by v2.2.3. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
+Status: superseded by v2.2.4. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
 
 ## Product goal
 
@@ -10,7 +10,7 @@ Expose MatchRV's canonical RV inventory and matching intelligence to ChatGPT thr
 
 User intent -> structured constraints -> authorized inventory -> ranked/explainable matches -> RV details/comparison -> explicit user approval -> dealer contact.
 
-## Tool surface (v2.2.3)
+## Tool surface (v2.2.4)
 
 As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral):
 

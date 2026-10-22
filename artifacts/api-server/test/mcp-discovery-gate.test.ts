@@ -28,7 +28,7 @@ const GT = { planned_use: ['camping'], activities: ['hiking', 'grilling outside'
 const COMPLETE = { ...GT, query: 'travel trailer', location: 'Tacoma, WA', radius_miles: 75, party_size: 4, tow_vehicle: 'none yet', no_length_limit: true, payment_method: 'cash', out_the_door_budget_usd: 40000, rv_types: ['travel_trailer'] };
 const PRODUCT_SELECTION = ['rv_type', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'trade_details', 'towing', 'storage', 'length_reason', 'length_flex', 'trips', 'location', 'pay_way', 'fin_down', 'fin_monthly', 'fin_cash', 'pay_numbers'];
 
-describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
+describe('MCP 2.2.4 Golden Ticket gate + shortlist', () => {
   it("vague 'travel trailer for my family near Tacoma' returns no RVs, only the next questions in order", async () => {
     const msg = 'I want a travel trailer for my family near Tacoma';
     const d = await call('search_rvs', { query: msg });
@@ -191,7 +191,7 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
 
   it('tool descriptions and server instructions carry the Golden Ticket; questions never say its name', async () => {
     const init = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'gate-test', version: '1' } });
-    expect(init.serverInfo.version).toBe('2.2.3');
+    expect(init.serverInfo.version).toBe('2.2.4');
     expect(init.instructions).toMatch(/ASK, DON'T ASSUME/);
     expect(init.instructions).toMatch(/Golden Ticket \(internal name; never say/);
     expect(init.instructions).not.toMatch(/share that count/);

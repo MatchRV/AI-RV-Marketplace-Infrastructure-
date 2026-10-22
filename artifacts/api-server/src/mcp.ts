@@ -51,123 +51,124 @@ import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekSco
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
-/** Golden Ticket answers (Product Selection). Pass only what the shopper said; never guess. */
+const OPT = "Optional. Pass only what the shopper actually said; if they'd rather not answer, leave it out and list the question in declined_questions.";
+const QUESTION_IDS = ["rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "trade_details", "towing", "storage", "length_reason", "length_flex", "trips", "location", "pay_way", "pay_numbers", "fin_down", "fin_monthly", "fin_cash", "tow_payload"] as const;
+
+/** RV-fit interview answers (Product Selection). Each one is a fit factor for picking the right RV. Pass only what the shopper said; never guess. */
 const goldenTicketFields = {
-  rv_type_undecided: z.boolean().optional().describe("Q0: true when the shopper said they're not sure which type yet."),
-  planned_use: z.array(z.enum(["living", "camping", "tailgating", "traveling"])).max(4).optional().describe("Q1: what they plan to use it for."),
-  activities: z.array(z.string().max(60)).max(12).optional().describe("Q2: activities they enjoy (fishing, grilling outside, ATVs ...), used to match features."),
-  time_off: z.string().max(120).optional().describe("Q3: vacation / time off per year in their words (\"3 weeks\", \"retired\", \"full time\")."),
-  party_notes: z.string().max(200).optional().describe("Q4: who's going, in their words (spouse, grandkids, dog). The number sleeping goes in party_size."),
-  owners: z.string().max(200).optional().describe("Q5: who the RV is for / who's buying, in their words."),
-  co_buyer_involved: z.boolean().optional().describe("Q5: true when someone else is going in on it with them; false when they're the only buyer."),
-  has_trade_in: z.boolean().optional().describe("Q6: do they have a trade."),
-  trade_description: z.string().max(160).optional().describe("Q6: what the trade is. Never trade values; that's for the dealership."),
-  trade_reason: z.string().max(200).optional().describe("Q6: why they're trading / what they want that they don't have now."),
-  towing_behind: z.string().max(120).optional().describe("Q7 (motorhome): what they'll tow behind it, or \"nothing\"."),
-  storage: z.string().max(200).optional().describe("Q8: where they'll store it (driveway, storage lot ...). The length requirement goes in length_max_ft or no_length_limit."),
-  planned_trips: z.string().max(200).optional().describe("Q9: trips planned or favorite campsites, or \"nothing planned yet\"."),
-  cash_budget_usd: z.number().min(0).max(2_000_000).optional().describe("Q10: cash budget, how much they want to spend out of pocket."),
+  rv_type_undecided: z.boolean().optional().describe(`What they want (Q0): true when the shopper isn't sure which RV type yet, so the interview helps choose the type. ${OPT}`),
+  planned_use: z.array(z.enum(["living", "camping", "tailgating", "traveling"])).max(4).optional().describe(`How they'll use it (Q1). Picks the floorplan and build: full-time living needs residential storage and four-season features; weekend camping or tailgating suits lighter, simpler layouts. ${OPT}`),
+  activities: z.array(z.string().max(60)).max(12).optional().describe(`Activities they enjoy (Q2), e.g. fishing, hiking, grilling outside, ATVs. Matches features: an outdoor kitchen for grilling, a toy-hauler garage for ATVs, gear storage for fishing. ${OPT}`),
+  time_off: z.string().max(120).optional().describe(`Time off per year (Q3), in their words ("3 weeks", "retired"). Shows how much they'll use it, which guides the size and comfort tier worth paying for. ${OPT}`),
+  party_notes: z.string().max(200).optional().describe(`Who's going (Q4), in general terms (spouse, kids, grandkids, the dog); no names. Sets sleeping capacity and layout (bunks, couples layout, pet-friendly floors). The number sleeping goes in party_size. ${OPT}`),
+  owners: z.string().max(200).optional().describe(`Who the RV is for (Q5), in general terms ("me and my wife", "just me"); no names or contact details. Tells MatchRV whose needs the shortlist, and any later dealer handoff the shopper approves, should cover. ${OPT}`),
+  co_buyer_involved: z.boolean().optional().describe(`Who the RV is for (Q5): true when someone else is going in on it, false when they're the only buyer. Makes sure the shortlist covers both people's must-haves. ${OPT}`),
+  has_trade_in: z.boolean().optional().describe(`Trade-in (Q6): whether they have a current RV to trade. Used only to learn what they like and what's missing, never to value it. ${OPT}`),
+  trade_description: z.string().max(160).optional().describe(`Trade-in (Q6): what they have now (type, make or model). Shows what they're used to. Never pass trade values or payoffs; that's for the dealership. ${OPT}`),
+  trade_reason: z.string().max(200).optional().describe(`Trade-in (Q6): why they want to trade. Points to the features they're missing (more space, a slide, a lighter trailer). ${OPT}`),
+  towing_behind: z.string().max(120).optional().describe(`Towing (Q7, motorhomes): what they'll tow behind it (car, Jeep, trailer) or "nothing". Sets the hitch and towing-capacity requirement so the weight limits are safe. ${OPT}`),
+  storage: z.string().max(200).optional().describe(`Storage (Q8): where it will be kept (driveway, storage lot). Sets the length it must fit; the number goes in length_max_ft or no_length_limit. ${OPT}`),
+  planned_trips: z.string().max(200).optional().describe(`Planned trips or favorite campsites (Q9). Guides size (tight campsites, mountain roads), off-grid needs (solar, tanks) and weather features (heated tanks, A/C). ${OPT}`),
+  cash_budget_usd: z.number().min(0).max(2_000_000).optional().describe(`Payments or cash (Q10): their out-of-pocket cash budget in USD. Keeps every pick inside their budget. ${OPT}`),
+  declined_questions: z.array(z.enum(QUESTION_IDS)).max(20).optional().describe("Question ids the shopper said they'd rather not answer. Declined questions are never asked again; the interview moves on and the shortlist simply doesn't filter on them."),
 };
 
 const searchInput = z.object({
   ...goldenTicketFields,
   // ChatGPT often passes free-form top-level fields instead of nested constraints.
-  query: z.string().max(240).optional(),
-  location: z.string().max(80).optional(),
-  place: z.string().max(80).optional(),
-  radius_miles: z.number().min(1).max(3000).optional(),
+  query: z.string().max(240).optional().describe("Optional. The shopper's request in their words (e.g. \"travel trailer sleeps 4 near Tacoma\"); RV-fit facts in it are read so they aren't asked again."),
+  location: z.string().max(80).optional().describe("Optional. Shopping area as a city, state or ZIP (no street address). Hard-filters by distance so picks are nearby."),
+  place: z.string().max(80).optional().describe("Optional. Alias of location."),
+  radius_miles: z.number().min(1).max(3000).optional().describe("Optional. How far the shopper would travel to see an RV."),
   sleeps_min: z.number().int().min(1).max(14).optional().describe("Minimum sleeping capacity, only from a number the shopper stated. Never assume it from words like 'family'."),
   // Top-level shorthands clients send; previously stripped by zod, so a
   // "new" search silently returned used units (2016/2022 Camping World).
-  condition: z.enum(["new", "used", "any"]).optional(),
-  price_max_usd: z.number().min(0).max(2_000_000).optional(),
-  price_min_usd: z.number().min(0).max(2_000_000).optional(),
-  sort: z.enum(["best_match", "price_asc", "price_desc", "distance", "newest_model_year"]).optional(),
+  condition: z.enum(["new", "used", "any"]).optional().describe("Optional. New, used or any, as the shopper said."),
+  price_max_usd: z.number().min(0).max(2_000_000).optional().describe("Optional. Highest price the shopper set, in USD."),
+  price_min_usd: z.number().min(0).max(2_000_000).optional().describe("Optional. Lowest price the shopper set, in USD."),
+  sort: z.enum(["best_match", "price_asc", "price_desc", "distance", "newest_model_year"]).optional().describe("Optional. Result order; default best_match."),
   make: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe("Brand(s) the shopper named, e.g. \"Tiffin\". Hard filter."),
   model: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe("Model / series the shopper named, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", or a family like \"Allegro\". Hard filter."),
   exclude_makes: z.array(z.string().max(60)).max(6).optional().describe("Brands the shopper ruled out."),
   exclude_models: z.array(z.string().max(60)).max(6).optional().describe("Models / series the shopper ruled out."),
   fuel_type: z.enum(["gas", "diesel"]).optional().describe("ONLY when the shopper explicitly asked for gas or diesel. Never infer it."),
-  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional(),
+  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional().describe("Optional. What they want (Q0): RV type(s) they're considering."),
   payment_method: z.enum(["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"]).optional().describe("Q10: how the shopper will pay (payments = finance, or cash)."),
-  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional(),
-  down_payment_usd: z.number().min(0).max(2_000_000).optional(),
-  monthly_payment_usd: z.number().min(0).max(50_000).optional(),
+  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional().describe("Optional. Payments or cash (Q10): out-the-door price ceiling in USD; keeps every pick inside budget."),
+  down_payment_usd: z.number().min(0).max(2_000_000).optional().describe("Optional. If financing (Q10): planned down payment in USD; with the monthly payment it sets the price range."),
+  monthly_payment_usd: z.number().min(0).max(50_000).optional().describe("Optional. If financing (Q10): comfortable monthly payment in USD; with the down payment it sets the price range."),
   budget_declined: z.boolean().optional().describe("Shopper preferred not to share a budget (searched without a ceiling)."),
-  products_shown: z.boolean().optional(),
+  products_shown: z.boolean().optional().describe("Optional. True once a shortlist has been shown in this conversation."),
   constraints: z.preprocess(
     (raw) => cleanConstraints(raw as Record<string, unknown> | undefined),
     constraintsSchema,
-  ).optional().default({}),
+  ).optional().default({}).describe("Optional. Structured limits the shopper stated (price, type, sleeps, length, weights, ratings). Each one is a hard filter on the shortlist and is never relaxed without their OK."),
   party_size: z.number().int().min(1).max(14).optional().describe("How many people the shopper SAID are going camping / sleeping in it. Ask; never assume a number from 'family', 'kids' or 'couple of friends'."),
-  sleepers: z.number().int().min(1).max(14).optional(),
-  adults: z.number().int().min(0).max(14).optional(),
-  kids: z.number().int().min(0).max(14).optional(),
-  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional(),
-  wants_bunks: z.boolean().optional(),
-  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional(),
+  sleepers: z.number().int().min(1).max(14).optional().describe("Optional. Alias of party_size."),
+  adults: z.number().int().min(0).max(14).optional().describe("Optional. Who's going (Q4): number of adults; guides the layout."),
+  kids: z.number().int().min(0).max(14).optional().describe("Optional. Who's going (Q4): number of kids; guides bunks and sleeping capacity."),
+  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional().describe("Optional. Preferred layout style."),
+  wants_bunks: z.boolean().optional().describe("Optional. Whether they want bunks."),
+  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional().describe("Optional. Hookups or off-grid; points to solar, battery and tank sizes."),
   tow_vehicle: z.string().max(120).optional().describe("What the shopper said will tow it (year make model engine), or their answer \"none yet\" / \"not sure\". Required before listing towables. Never guess a vehicle."),
-  truck_payload_lbs: z.number().min(500).max(10000).optional(),
-  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional(),
-  passengers_lbs: z.number().min(0).max(3000).optional(),
-  cargo_lbs: z.number().min(0).max(5000).optional(),
+  truck_payload_lbs: z.number().min(500).max(10000).optional().describe("Optional. Towing: payload from the tow vehicle's door sticker, for a safe tongue-weight check."),
+  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional().describe("Optional. Towing: the tow vehicle's exact rated towing capacity, for a safe weight check."),
+  passengers_lbs: z.number().min(0).max(3000).optional().describe("Optional. Towing: approximate weight of people riding in the tow vehicle, for the payload check."),
+  cargo_lbs: z.number().min(0).max(5000).optional().describe("Optional. Towing: approximate cargo in the tow vehicle, for the payload check."),
   length_max_ft: z.number().min(8).max(60).optional().describe("Length or size limit the shopper stated, in feet."),
   max_length_ft: z.number().min(8).max(60).optional().describe("Alias of length_max_ft."),
   no_length_limit: z.boolean().optional().describe("True only when the shopper said there is no length or size limit."),
-  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional(),
-  length_flex_approved: z.boolean().optional(),
+  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional().describe("Optional. Storage (Q8): whether the length limit is a firm storage fit or a comfort preference."),
+  length_flex_approved: z.boolean().optional().describe("Optional. Storage (Q8): true only if the shopper OK'd looking up to 2 ft past a comfort limit."),
   shopper_requested_results_now: z.boolean().optional().describe("ONLY true when the shopper literally asked to skip the questions and see RVs now (e.g. \"just show me\", \"skip the questions\"). Never set it on your own to save time. Requires shopper_words; the server checks them."),
   shopper_words: z.string().max(400).optional().describe("The shopper's exact words asking to see results now, quoted verbatim (needed with shopper_requested_results_now)."),
-  session_key: z.string().max(80).optional(),
+  session_key: z.string().max(80).optional().describe("Optional. Opaque key returned by teach_outfitter, to recall facts this shopper confirmed."),
   limit: z.number().int().min(1).max(10).optional().default(3).describe("Shortlist size. Default 3 best fits; use more (max 10) only when the shopper asks to see more."),
 });
 
 const profileInput = z.object({
   ...goldenTicketFields,
-  message: z.string().max(4000).optional().describe("The shopper's latest message (used for Sherpa welcome routing and to pick up facts they just stated)."),
-  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional(),
-  make: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional(),
-  model: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional(),
-  location: z.string().max(80).optional(),
-  radius_miles: z.number().min(1).max(3000).optional(),
-  new_or_used: z.enum(["new", "used", "either"]).optional(),
-  who_for: z.string().max(200).optional(),
-  climate: z.enum(["hot", "cold", "mixed", "all_seasons"]).optional(),
-  trip_length: z.enum(["weekends", "weeks", "months", "full_time"]).optional(),
-  use_notes: z.string().max(400).optional(),
-  on_off_road: z.enum(["on", "off", "both"]).optional(),
-  driven_one_before: z.boolean().optional(),
-  must_haves: z.array(z.string().max(80)).max(12).optional(),
-  dont_want: z.array(z.string().max(80)).max(12).optional(),
-  hobbies: z.string().max(200).optional(),
-  trade_payoff_usd: z.number().min(0).max(2_000_000).optional(),
-  payment_method: z.enum(["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"]).optional(),
-  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional(),
-  down_payment_usd: z.number().min(0).max(2_000_000).optional(),
-  monthly_payment_usd: z.number().min(0).max(50_000).optional(),
-  licensing_state: z.string().max(40).optional(),
-  ad_reference: z.string().max(300).optional(),
-  budget_declined: z.boolean().optional(),
-  credit_concerns: z.enum(["none", "some", "prefer_not_say"]).optional(),
-  products_shown: z.boolean().optional(),
-  party_size: z.number().int().min(1).max(14).optional().describe("How many people the shopper SAID are going. Never assume it."),
-  sleepers: z.number().int().min(1).max(14).optional(),
-  adults: z.number().int().min(0).max(14).optional(),
-  kids: z.number().int().min(0).max(14).optional(),
-  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional(),
-  wants_bunks: z.boolean().optional(),
-  budget_max_usd: z.number().min(0).max(2000000).optional(),
-  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional(),
-  tow_vehicle: z.string().max(120).optional().describe("What the shopper said will tow it, or their answer \"none yet\" / \"not sure\". Never guess."),
-  truck_payload_lbs: z.number().min(500).max(10000).optional(),
-  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional(),
-  length_max_ft: z.number().min(8).max(60).optional(),
-  max_length_ft: z.number().min(8).max(60).optional(),
-  no_length_limit: z.boolean().optional().describe("True only when the shopper said there is no length or size limit."),
-  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional(),
-  length_flex_approved: z.boolean().optional(),
+  message: z.string().max(4000).optional().describe("The shopper's latest message. MatchRV reads the RV-fit facts in it (type, area, party size, budget) so nothing they already said is asked again. Not stored."),
+  rv_types: z.array(z.enum(["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"])).max(8).optional().describe(`What they want (Q0): the RV type(s) they're considering. Decides which inventory and which follow-ups (tow vehicle vs. what's towed behind) apply. ${OPT}`),
+  make: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe(`What they want (Q0): a brand the shopper named, e.g. "Tiffin". ${OPT}`),
+  model: z.union([z.string().max(60), z.array(z.string().max(60)).max(6)]).optional().describe(`What they want (Q0): a model or series the shopper named, e.g. "Allegro RED". ${OPT}`),
+  location: z.string().max(80).optional().describe(`Shopping area as a city, state or ZIP (no street address). Used to start with nearby inventory. ${OPT}`),
+  radius_miles: z.number().min(1).max(3000).optional().describe(`How far they'd travel to see an RV. ${OPT}`),
+  new_or_used: z.enum(["new", "used", "either"]).optional().describe(`New or pre-owned preference; narrows the shortlist. ${OPT}`),
+  who_for: z.string().max(200).optional().describe(`Who the RV is for, in general terms (alias of owners); no names. ${OPT}`),
+  climate: z.enum(["hot", "cold", "mixed", "all_seasons"]).optional().describe(`Weather they'll camp in; points to insulation, heated tanks or A/C. ${OPT}`),
+  trip_length: z.enum(["weekends", "weeks", "months", "full_time"]).optional().describe(`Typical trip length; guides storage, tank sizes and comfort tier. ${OPT}`),
+  use_notes: z.string().max(400).optional().describe(`Anything else about how they'll use it, in their words. ${OPT}`),
+  on_off_road: z.enum(["on", "off", "both"]).optional().describe(`Paved campgrounds or rough roads; points to ground clearance and off-road suspension. ${OPT}`),
+  driven_one_before: z.boolean().optional().describe(`Whether they've driven or towed an RV before; guides how large a unit to suggest. ${OPT}`),
+  must_haves: z.array(z.string().max(80)).max(12).optional().describe(`Features they want (e.g. outdoor kitchen, bunks, king bed). ${OPT}`),
+  dont_want: z.array(z.string().max(80)).max(12).optional().describe(`Features or layouts they've ruled out. ${OPT}`),
+  hobbies: z.string().max(200).optional().describe(`Alias of activities: hobbies that point to features. ${OPT}`),
+  payment_method: z.enum(["cash", "difference", "finance", "discount", "ad_shopper", "special_finance"]).optional().describe(`Payments or cash (Q10): how they plan to pay (payments = finance). Decides which budget number fits; no credit or income details. ${OPT}`),
+  out_the_door_budget_usd: z.number().min(0).max(2_000_000).optional().describe(`Payments or cash (Q10): out-the-door price ceiling in USD. Keeps every pick inside budget. ${OPT}`),
+  down_payment_usd: z.number().min(0).max(2_000_000).optional().describe(`If financing (Q10): planned down payment in USD; with the monthly payment it sets the price range. ${OPT}`),
+  monthly_payment_usd: z.number().min(0).max(50_000).optional().describe(`If financing (Q10): comfortable monthly payment in USD; with the down payment it sets the price range. ${OPT}`),
+  ad_reference: z.string().max(300).optional().describe(`If they're shopping from an ad (Q10): the advertised RV or price they saw, used as the price reference. ${OPT}`),
+  budget_declined: z.boolean().optional().describe("True when the shopper would rather not share a budget; the shortlist is built without a price ceiling."),
+  products_shown: z.boolean().optional().describe("True once a shortlist has been shown in this conversation."),
+  party_size: z.number().int().min(1).max(14).optional().describe(`Who's going (Q4): how many people the shopper said will sleep in it. Sets sleeping capacity. Never assume it from words like "family". ${OPT}`),
+  sleepers: z.number().int().min(1).max(14).optional().describe(`Alias of party_size. ${OPT}`),
+  adults: z.number().int().min(0).max(14).optional().describe(`Who's going (Q4): number of adults; guides the layout (couples layout vs. bunks). ${OPT}`),
+  kids: z.number().int().min(0).max(14).optional().describe(`Who's going (Q4): number of kids; guides bunks and sleeping capacity. ${OPT}`),
+  floorplan_intent: z.enum(["couples", "family_bunks", "flexible", "solo"]).optional().describe(`Preferred layout style. ${OPT}`),
+  wants_bunks: z.boolean().optional().describe(`Whether they want bunks. ${OPT}`),
+  budget_max_usd: z.number().min(0).max(2000000).optional().describe(`Alias of out_the_door_budget_usd. ${OPT}`),
+  camping_style: z.enum(["full_hookup", "boondocking", "mixed"]).optional().describe(`Hookups or off-grid; points to solar, battery and tank sizes. ${OPT}`),
+  tow_vehicle: z.string().max(120).optional().describe(`Towing (Q7, trailers): the vehicle that will tow it (year, make, model, engine), or "none yet" / "not sure". Sets the safe weight limit; never guess a vehicle. ${OPT}`),
+  truck_payload_lbs: z.number().min(500).max(10000).optional().describe(`Towing: payload from the tow vehicle's door sticker, for a safe tongue-weight check. ${OPT}`),
+  truck_tow_rating_lbs: z.number().min(1000).max(40000).optional().describe(`Towing: the tow vehicle's exact rated towing capacity, for a safe weight check. ${OPT}`),
+  length_max_ft: z.number().min(8).max(60).optional().describe(`Storage (Q8): the longest RV that fits where it will be kept or that they're comfortable with, in feet. ${OPT}`),
+  max_length_ft: z.number().min(8).max(60).optional().describe(`Alias of length_max_ft. ${OPT}`),
+  no_length_limit: z.boolean().optional().describe("Storage (Q8): true only when the shopper said there is no length limit."),
+  length_reason: z.enum(["storage", "comfort", "hard_limit"]).optional().describe(`Storage (Q8): whether the length limit is a firm storage fit or a comfort preference. ${OPT}`),
+  length_flex_approved: z.boolean().optional().describe(`Storage (Q8): true only if the shopper OK'd looking up to 2 ft past a comfort limit. ${OPT}`),
   shopper_requested_results_now: z.boolean().optional().describe("ONLY when the shopper literally asked to skip the questions and see RVs now. Requires shopper_words (verbatim); the server checks them."),
-  shopper_words: z.string().max(400).optional(),
+  shopper_words: z.string().max(400).optional().describe("The shopper's exact words asking to see results now (needed with shopper_requested_results_now)."),
 });
 
 /** A "just show me" claim counts only when the shopper's own words say so. */
@@ -244,6 +245,7 @@ function goldenTicketProfile(input: Record<string, any>): Partial<BuyerProfile> 
     storage: input.storage ?? null,
     plannedTrips: input.planned_trips ?? null,
     cashBudgetUsd: input.cash_budget_usd ?? null,
+    declinedQuestions: input.declined_questions ?? null,
   };
 }
 
@@ -304,11 +306,11 @@ function discoveryProfile(input: Record<string, any>, fromText: Partial<Constrai
     whoFor: input.who_for ?? null, climate: input.climate ?? null, tripLength: input.trip_length ?? null, useNotes: input.use_notes ?? null,
     storage: input.storage ?? null, onOffRoad: input.on_off_road ?? null, drivenBefore: input.driven_one_before ?? null,
     mustHaves: input.must_haves ?? null, dontWant: input.dont_want ?? null, hobbies: input.hobbies ?? null,
-    hasTradeIn: input.has_trade_in ?? null, tradePayoffUsd: input.trade_payoff_usd ?? null,
+    hasTradeIn: input.has_trade_in ?? null,
     paymentMethod: input.payment_method ?? null, outTheDoorBudgetUsd: input.out_the_door_budget_usd ?? null,
     downPaymentUsd: input.down_payment_usd ?? null, monthlyPaymentUsd: input.monthly_payment_usd ?? null,
-    licensingState: input.licensing_state ?? null, adReference: input.ad_reference ?? null, budgetDeclined: input.budget_declined ?? null,
-    owners: input.owners ?? null, coBuyerInvolved: input.co_buyer_involved ?? null, creditConcerns: input.credit_concerns ?? null,
+    adReference: input.ad_reference ?? null, budgetDeclined: input.budget_declined ?? null,
+    owners: input.owners ?? null, coBuyerInvolved: input.co_buyer_involved ?? null,
     productsShown: input.products_shown ?? null,
     ...goldenTicketProfile(input),
   };
@@ -518,7 +520,7 @@ export const ASK_DONT_ASSUME =
 
 /** Internal name for Jonathan's question list. The model may use it; the shopper never hears it. */
 const GOLDEN_TICKET_TEXT =
-  "PRODUCT SELECTION = the Golden Ticket (internal name; never say 'Golden Ticket' to the shopper). Before any RV is shown, ask these in order, ONE question per turn, conversationally, each ending with its short, honest reason for asking (use the server's wording), and never re-ask what the shopper already said: 0) what they want (travel trailer, fifth wheel, motorhome, destination trailer ...); 1) what they plan to use it for (living in it, camping, tailgating, traveling); 2) what activities they enjoy, to match features (loves grilling -> outside kitchen); 3) vacation: how much time off a year (rapport; retired/full time is great); 4) who's going (spouse, kids, grandkids, dog) and how many sleep in it (party_size); 5) who it's for: just them buying, or someone going in on it (co_buyer_involved); 6) a trade: what it is and why they're trading / what they want that they don't have (no trade values; that's for the dealership); 7) towing: for a motorhome, anything towed behind it (towing_behind); for a trailer or fifth wheel, what tows it (tow_vehicle, or 'none yet'); 8) storage and any length requirement (length_max_ft, or no_length_limit); 9) planned trips or favorite campsites (planned_trips); plus the shopping area; 10) payments or cash (payment_method). If financing, get the down payment, the monthly payment they want to be around, and a cash budget (how much out of pocket), one at a time. The ONLY way to skip: the shopper literally asks to skip the questions (shopper_requested_results_now=true with their words in shopper_words). A named make/model answers question 0 only; it doesn't skip the rest. Questions that aren't an RV search (\"what's better, a motorhome or a 5th wheel?\") are answered directly, with no questions first.";
+  "PRODUCT SELECTION = the Golden Ticket (internal name; never say 'Golden Ticket' to the shopper). Before any RV is shown, ask these in order, ONE question per turn, conversationally, each ending with its short, honest reason for asking (use the server's wording), and never re-ask what the shopper already said: 0) what they want (travel trailer, fifth wheel, motorhome, destination trailer ...); 1) what they plan to use it for (living in it, camping, tailgating, traveling); 2) what activities they enjoy, to match features (loves grilling -> outside kitchen); 3) vacation: how much time off a year (rapport; retired/full time is great); 4) who's going (spouse, kids, grandkids, dog) and how many sleep in it (party_size); 5) who it's for: just them buying, or someone going in on it (co_buyer_involved); 6) a trade: what it is and why they're trading / what they want that they don't have (no trade values; that's for the dealership); 7) towing: for a motorhome, anything towed behind it (towing_behind); for a trailer or fifth wheel, what tows it (tow_vehicle, or 'none yet'); 8) storage and any length requirement (length_max_ft, or no_length_limit); 9) planned trips or favorite campsites (planned_trips); plus the shopping area; 10) payments or cash (payment_method). If financing, get the down payment, the monthly payment they want to be around, and a cash budget (how much out of pocket), one at a time. The ONLY way to skip: the shopper literally asks to skip the questions (shopper_requested_results_now=true with their words in shopper_words). A named make/model answers question 0 only; it doesn't skip the rest. Questions that aren't an RV search (\"what's better, a motorhome or a 5th wheel?\") are answered directly, with no questions first. The shopper may decline any question: pass its id in declined_questions, don't ask it again, and move on. Never ask for names, contact details, income or credit while finding the right RV.";
 
 const sleepsKnown = (m: UnitMatch) => m.unit.sleeps.value !== null && (m.unit.sleeps.source === "dealer_listing" || m.unit.sleeps.confidence === "high");
 
@@ -567,7 +569,7 @@ function towFitFlag(m: UnitMatch | undefined, o: { towVehicleGiven: boolean; tow
   return {};
 }
 
-export const MCP_VERSION = "2.2.3";
+export const MCP_VERSION = "2.2.4";
 
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(
@@ -654,9 +656,9 @@ function buildMatchRvServer(): McpServer {
   server.registerTool(
     "outfitter_discovery",
     {
-      title: "RV Outfitter: Road to the Sale guide",
+      title: "RV fit interview: next question to find the right RV",
       description:
-        "Road to the Sale guide. Call it on the shopper's first message and after every answer. Pass the latest message (MatchRV reads the facts in it, so nothing they said is asked again) plus every answer already known: rv_types or make/model (Q0), planned_use (Q1), activities (Q2), time_off (Q3), party_size + party_notes (Q4), owners / co_buyer_involved (Q5), has_trade_in + trade_description + trade_reason (Q6, no trade values), tow_vehicle or towing_behind (Q7), storage + length_max_ft or no_length_limit (Q8), planned_trips (Q9), location, payment_method (Q10) with cash_budget_usd or out_the_door_budget_usd, and if financing down_payment_usd, monthly_payment_usd and cash_budget_usd. Returns route (welcome / education / specific_rv / help_choose), the Sherpa welcome when the first message is vague, status (needs_discovery / ready_for_products / answer_directly for non-search questions), the ONE next Product Selection question in order (nextQuestion, ending with its short reason for asking; ask it word for word, one per turn), knownSummary, and readyForProducts with searchConstraints for search_rvs. Every question is answered before any RV is shown; the only skip is the shopper literally asking to skip the questions (shopper_requested_results_now=true with their words in shopper_words). Ask, don't assume: never pass an answer the shopper didn't give. Stateless: pass the accumulated profile on every call.",
+        "Runs MatchRV's guided RV-fit interview and returns the ONE next question to ask the shopper. Its job is to work out which RV fits this shopper: type, floorplan, features, sleeping capacity, length, safe towing weight, and price range. Every input is one of those fit factors, collected one question per turn, in this order: what they want (RV type or a named make/model, which sets the inventory and follow-ups); how they'll use it (living, camping, tailgating, traveling: floorplan and build); activities (features such as an outdoor kitchen for grilling or a toy-hauler garage for ATVs); time off per year (how much they'll use it, which guides size and comfort tier); who's going (sleeping capacity and layout); who the RV is for (sole buyer or a co-buyer, so the shortlist and any dealer handoff the shopper later approves cover the right people); trade-in (what they have and why they're trading, to learn which features they're missing; never trade values); towing (tow vehicle for a trailer, or what's towed behind a motorhome, for safe weight limits); storage (the length it must fit); planned trips (size, off-grid and weather features); shopping area (nearby inventory); and payments or cash (the budget, plus down and monthly payment if financing). Every input is optional. Pass only what the shopper actually said. The shopper may decline any question: list it in declined_questions and it is never asked again. This tool never asks for names, contact details, income, credit or account information. It stores nothing and contacts no one. Nothing is shared with a dealer unless the shopper explicitly asks and approves the exact message, and that is a separate tool (prepare_dealer_inquiry, then send_dealer_inquiry). Call it on the shopper's first message and after each answer. Pass their latest message (MatchRV reads the fit facts in it, so nothing they said is asked twice) plus the answers so far; it is stateless. Returns: route (welcome / education / specific_rv / help_choose); the welcome text for a vague first message; status (needs_discovery, ready_for_products, or answer_directly for questions that aren't an RV search, like 'motorhome or fifth wheel?'); nextQuestion (exactly one, ending with a short reason for asking; ask it close to word for word, one per turn); knownSummary (never re-ask these); and readyForProducts with searchConstraints for search_rvs. RVs are shown once the questions are answered or declined, or right away if the shopper says to skip them (shopper_requested_results_now=true with their words in shopper_words). Read-only.",
       inputSchema: mcpSchema(profileInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -732,9 +734,13 @@ function buildMatchRvServer(): McpServer {
   );
 
   server.registerTool("rv_outfitter", {
-    title: "RV Outfitter: read the shopper's message",
-    description: "Use this on the shopper's first RV message, or any free-text message, to turn what they said into Road to the Sale answers so nothing they said is asked again (e.g. 'We're a couple ... cash budget is $35k out the door' = two people, buying together, paying cash, $35k cash budget). Returns: route (welcome / education / specific_rv / help_choose) plus the Sherpa welcome text when the message is a greeting or vague; status (needs_discovery, ready_for_products, or answer_directly when it's a question rather than an RV search); extractedProfile; the ONE next Product Selection question (with its reason for asking); a short confirmation summary; and authoritative constraints. Ask about firm limits versus explicitly approved flexibility, and never relax a limit automatically. Never returns RVs. When status is needs_discovery, ask nextQuestion (one per turn) and wait; never fill any answer in yourself. Continue in this chat: call outfitter_discovery with the profile, then search_rvs once readyForProducts is true. Does not contact dealers or send messages.",
-    inputSchema: mcpSchema(z.object({ message: z.string().min(1).max(4000), constraints: constraintsSchema.optional().default({}), flexibility_confirmed: z.boolean().optional().default(false) })),
+    title: "RV fit interview: read the shopper's message",
+    description: "Reads one free-text shopper message and turns the RV-fit facts in it into interview answers, so nothing they already said is asked again. Example: 'We're a couple ... cash budget is $35k out the door' becomes two people, buying together, paying cash, $35k budget. Only fit factors are read: RV type or make/model, use, activities, party size, who it's for, trade-in type, tow vehicle, length or storage, trips, area (city, state or ZIP) and budget. It never asks for names, contact details, income, or credit details, and nothing is stored or shared with a dealer. Returns: route (welcome / education / specific_rv / help_choose), plus the welcome text for a greeting or vague message; status (needs_discovery, ready_for_products, or answer_directly when it's a question rather than an RV search); extractedProfile; the ONE next interview question, with its reason for asking; a short confirmation summary; and authoritative constraints. The shopper may decline any question (pass it in declined_questions on outfitter_discovery). Ask about firm limits versus explicitly approved flexibility, and never relax a limit automatically. Never returns RVs. When status is needs_discovery, ask nextQuestion (one per turn) and wait; never fill an answer in yourself. Then continue with outfitter_discovery, and call search_rvs once readyForProducts is true. Read-only; contacts no one.",
+    inputSchema: mcpSchema(z.object({
+      message: z.string().min(1).max(4000).describe("The shopper's message, as written. Only RV-fit facts are read from it; it is not stored."),
+      constraints: constraintsSchema.optional().default({}).describe("Optional. Limits the shopper already confirmed (length, weight, budget), so they're kept exactly."),
+      flexibility_confirmed: z.boolean().optional().default(false).describe("Optional. True only when the shopper explicitly approved going past a stated limit."),
+    })),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async ({ message, constraints, flexibility_confirmed }) => textResult(outfitterGuidance(message, constraints, flexibility_confirmed)));
 
@@ -743,7 +749,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every Product Selection question is answered (what they want, use, activities, time off, who's going + party_size, who's buying, trade, towing, storage/length, trips, area, payments or cash with its numbers; see server instructions) it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). If coverage.no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
+        "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. The fit inputs are the RV-fit interview answers (see outfitter_discovery): each one narrows the shortlist (use and activities: floorplan and features; time off: size and comfort tier; who's going: sleeping capacity; who it's for: whose needs the picks cover; trade: missing features, never values; towing: safe weight limits; storage: length; trips: size, off-grid and weather features; payments or cash: budget). Every input is optional; the shopper may decline any question (declined_questions). This tool never asks for names, contact details, income or credit, stores nothing, and shares nothing with a dealer; contacting a dealer is a separate step that needs the shopper's explicit approval. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every interview question is answered or declined, it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (\"travel trailer sleeps 8\"), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). If coverage.no_local_matches, say there is no local inventory and offer to widen radius. sleepsConfirmed tells you whether capacity is dealer-published or inferred.",
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },

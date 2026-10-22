@@ -90,6 +90,8 @@ export interface BuyerProfile {
   // ── Golden Ticket (Product Selection question list; see road-to-sale.ts). ──
   /** Shopper said they're not sure which type yet (an answer: help them decide). */
   rvTypeUndecided?: boolean | null;
+  /** Product Selection question ids the shopper chose not to answer. Declined questions are never asked again. */
+  declinedQuestions?: string[] | null;
   /** Q1: what they plan to use it for. */
   plannedUses?: PlannedUse[] | null;
   /** Q2: activities they enjoy (used to match features, e.g. outdoor cooking -> outside kitchen). */
@@ -238,7 +240,8 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
   // Budget, camping style and payload refine ranking / tow verdicts and are
   // asked after (payload before any trailer is called a tow "match").
   const missingEssentials: string[] = [];
-  if (p.sleepers == null) missingEssentials.push("sleepers");
+  const declined = (id: string) => Boolean(p.declinedQuestions?.includes(id));
+  if (p.sleepers == null) { if (!declined("who_going")) missingEssentials.push("sleepers"); }
   else if (!intent) missingEssentials.push("floorplan");
   // length_reason / length_flex are appended after this (Road to the Sale).
 
@@ -253,8 +256,9 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
   // Road to the Sale: a stated length cap is clarified, never silently
   // treated as hard (storage) or soft (comfort). Clarification gates the
   // search because the answer changes which inventory even exists for them.
-  if (p.lengthMaxFt != null && !p.lengthReason && p.lengthFlexApproved == null) missingEssentials.push("length_reason");
-  else if (p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null) missingEssentials.push("length_flex");
+  // A declined clarification keeps the stated length as a firm limit.
+  if (p.lengthMaxFt != null && !p.lengthReason && p.lengthFlexApproved == null) { if (!declined("length_reason")) missingEssentials.push("length_reason"); }
+  else if (p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null) { if (!declined("length_flex")) missingEssentials.push("length_flex"); }
 
   const nextId = missingEssentials[0] ?? missingRefinements[0] ?? null;
   let nextQuestion = nextId ? (QUESTION_ORDER.find((q) => q.id === nextId) ?? null) : null;

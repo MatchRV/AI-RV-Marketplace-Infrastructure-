@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.2.3)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.4)
 
-Status: **Submission candidate v2.2.3 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.3`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.4 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.4`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,12 +34,12 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.3)
+## MCP tools and annotations (as advertised by v2.2.4)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
-| `rv_outfitter` | Clarify needs; firm limits vs approved flexibility | true | false | true | false |
-| `outfitter_discovery` | Road to the Sale intake: Sherpa welcome/route, the one next question (with its reason for asking), or compiled search constraints | true | false | true | false |
+| `rv_outfitter` | RV fit interview: read the shopper's message into fit answers (no names, contact info, income or credit); firm limits vs approved flexibility | true | false | true | false |
+| `outfitter_discovery` | RV fit interview: the one next question (with its reason) to find the right RV; every input is an optional fit factor, any question can be declined, nothing shared with dealers | true | false | true | false |
 | `outfitter_guide` | Buyer-education knowledge (towing basics, types, costs, financing) | true | false | true | false |
 | `outfitter_memory` | Read this shopper's own remembered facts + MatchRV-curated facts | true | false | true | false |
 | `teach_outfitter` | **Write**: remember a fact the shopper confirmed, for this shopper only | false | false | false | false |
@@ -105,6 +105,14 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
 
+## Release notes (v2.2.4)
+
+- **OpenAI scan finding fixed** ("This tool appears to request information beyond what its stated operation requires", `outfitter_discovery`). The tool is now titled "RV fit interview: next question to find the right RV" and its description states the whole guided RV-fit interview as its operation, explaining how each answer picks the right RV: use and activities set the floorplan and features (e.g. an outdoor kitchen); time off sets how much use and the size/comfort tier; who's going sets sleeping capacity; who it's for sets whose needs the shortlist and any approved dealer handoff cover; the trade shows missing features (never values); towing sets safe weight limits; storage sets length; trips set size, off-grid and weather features; payments or cash set the budget.
+- Every input on `outfitter_discovery`, `rv_outfitter` and `search_rvs` now has a description saying how it is used, and all are optional.
+- **Shoppers may decline any question.** New `declined_questions` input; a declined question (and its follow-ups) is never asked again and the shortlist simply doesn't filter on it.
+- **Less collected.** `credit_concerns`, `licensing_state` and `trade_payoff_usd` were removed from `outfitter_discovery`. No tool in the interview asks for names, contact details, income or credit. Nothing is shared with a dealer without the shopper's explicit approval of the exact message (`prepare_dealer_inquiry` → `send_dealer_inquiry`).
+- No question removed; still one question per turn, each with its reason. Server `version` 2.2.4; still 12 tools with the same names and annotations.
+
 ## Release notes (v2.2.3)
 
 - **Product Selection follows the Golden Ticket** (MatchRV's internal name for Jonathan Kitchel's question list; never said to shoppers). Before any RV is shown, MatchRV asks, in order and ONE question per turn (each ending with a short, honest reason for asking, e.g. "How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV."): what they want (type), what it's for (living, camping, tailgating, traveling), activities (to match features), time off per year, who's going (and how many sleep in it), who's buying (sole buyer or co-buyer), a trade (what and why, never values), towing (tow vehicle for a towable; anything towed behind a motorhome), storage and length, planned trips or favorite campsites, the shopping area, and payments or cash. Financing also asks the down payment, the target monthly payment, and the cash (out-of-pocket) budget, one at a time. The server enforces it: `search_rvs` returns `needs_discovery` with `results: []` until every answer is in.
@@ -156,7 +164,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.3).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.4).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

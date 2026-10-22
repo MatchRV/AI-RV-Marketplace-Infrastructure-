@@ -1,10 +1,10 @@
-# MatchRV MCP transport (v2.2.5)
+# MatchRV MCP transport (v2.2.6)
 
 ## Endpoint
 
 Stateless Streamable HTTP MCP endpoint at `POST /mcp` on the `matchrv-mcp` Render service:
 `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` once the domain points at the same service).
-It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.2.5`.
+It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.2.6`.
 
 ## Tools
 

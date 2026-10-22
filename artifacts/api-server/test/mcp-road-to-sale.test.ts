@@ -19,11 +19,11 @@ const callRaw = async (name: string, args: Record<string, unknown>) => {
 };
 const call = async (name: string, args: Record<string, unknown>) => (await callRaw(name, args)).d;
 
-describe('MCP 2.2.3 — Road to the Sale + make/model search', () => {
-  it('reports version 2.2.3 and the Road to the Sale instructions', async () => {
-    expect(MCP_VERSION).toBe('2.2.3');
+describe('MCP 2.2.4 — Road to the Sale + make/model search', () => {
+  it('reports version 2.2.4 and the Road to the Sale instructions', async () => {
+    expect(MCP_VERSION).toBe('2.2.4');
     const init = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'r2s-test', version: '1' } });
-    expect(init.serverInfo.version).toBe('2.2.3');
+    expect(init.serverInfo.version).toBe('2.2.4');
     expect(init.instructions).toContain('ROAD TO THE SALE');
     const list = await rpc('tools/list');
     const search = list.tools.find((t: any) => t.name === 'search_rvs');

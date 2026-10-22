@@ -12,7 +12,7 @@ import {
 export const OUTFITTER_PLAYBOOK = `THE ROAD TO THE SALE — SHARED PROFESSIONAL OUTFITTER METHOD (adapted from Randy Sobel, "How to Make a Big Ticket Purchase")
 The Road to the Sale runs from the shopper's first message to the purchase, one step at a time. Never move to the next step before it's time, and never skip one. People buy from people they trust, so stay honest, knowledgeable and trustworthy, and never be pushy. Listen more than you talk. Never use cheesy sales lines like "what would it take…".
 STEP 1, SHERPA WELCOME: keep it short. Use it only when the first message is a greeting or vague, to find out what kind of help they want, then route. General questions or comparisons get a direct answer (education first). A specific RV (make/model, e.g. "Tiffin Allegro RED") or "help me choose" goes to Product Selection. If the first message already says what they want, skip the welcome and dive in.
-STEP 2, PRODUCT SELECTION: the Golden Ticket questions (MatchRV's internal name for this list; never say "Golden Ticket" to the shopper). Ask them in this order, a few at a time, conversationally and honestly. Never re-ask anything the shopper already told you, even in passing ("we're a couple" already answers who's going and who's buying; "cash budget is $35k out the door" already answers how they'll pay and the budget).
+STEP 2, PRODUCT SELECTION: the Golden Ticket questions (MatchRV's internal name for this list; never say "Golden Ticket" to the shopper). Ask them in this order, ONE question per turn, conversationally and honestly, and end each question with a short, honest reason for asking (one sentence, no sales pressure; e.g. "How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV."). Never re-ask anything the shopper already told you, even in passing ("we're a couple" already answers who's going and who's buying; "cash budget is $35k out the door" already answers how they'll pay and the budget).
  0. What they want: a travel trailer, motorhome, fifth wheel, destination trailer, or something like that.
  1. What they plan on using it for: living in it, camping, tailgating, or traveling.
  2. What kinds of activities they see themselves doing, to match features to needs and wants (likes to barbecue outside -> an RV with an outside kitchen).
@@ -76,13 +76,13 @@ export function lengthFromMessage(message: string): number | null {
   return value >= 8 && value <= 60 ? value : null;
 }
 
-/** Turn a shopper message into Road to the Sale facts + the next 1–3 questions. */
+/** Turn a shopper message into Road to the Sale facts + the ONE next question. */
 export function outfitterGuidance(message: string, constraints: Constraints = {}, flexibilityConfirmed = false) {
   const length = lengthFromMessage(message);
   const fixedDimension = /garage|storage|campsite|site limit|driveway|must fit|strict|firm|no longer|not over|maximum|at most|under\s+\d|less than/i.test(message);
   const comfort = /comfortable|comfort|nervous|intimidat|driv|handle|maneuver|manoeuv/i.test(message);
   const lengthQuestion = length && comfort && !fixedDimension && !flexibilityConfirmed
-    ? `Feeling comfortable driving it matters. Should I keep everything at ${length} feet or less, or would you consider a ${length + 1}-foot RV if it otherwise fit what you are looking for?`
+    ? `Should I keep everything at ${length} feet or less, or would you consider a ${length + 1}-foot RV if it otherwise fit what you are looking for? I ask because feeling comfortable driving it matters, and I'll stick to your number unless you say otherwise.`
     : null;
   const opening = classifyOpening(message);
   const place = placeFromText(message);
@@ -112,18 +112,22 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
   const road = assessRoadToSale(profile);
   const welcome = opening.route === "welcome" && road.knownSummary.length === 0;
   const education = opening.route === "education";
-  const nextQuestion = education ? null : lengthQuestion;
+  const clarify = education ? null : lengthQuestion;
+  // Exactly one question per turn.
+  const nextQuestion = welcome || education ? null : clarify
+    ? { id: "length_comfort", goal: "selection_questions", blocking: true, prompt: clarify, why: "A comfort limit is held exactly unless the shopper approves a different one." }
+    : road.nextQuestions[0] ?? null;
   return {
-    status: welcome ? "welcome" : education ? "answer_directly" : road.readyForProducts && !nextQuestion ? "ready_for_products" : "needs_discovery",
+    status: welcome ? "welcome" : education ? "answer_directly" : road.readyForProducts && !clarify ? "ready_for_products" : "needs_discovery",
     results: [],
     route: welcome ? "welcome" : opening.route,
     ...(welcome ? { welcome: opening.welcome } : {}),
     ...(opening.route === "education" ? { guideTopics: opening.guideTopics } : {}),
-    stage: welcome ? "welcome" : education ? "answer_question" : nextQuestion ? "clarify" : road.readyForProducts ? "confirm_or_search" : "product_selection",
+    stage: welcome ? "welcome" : education ? "answer_question" : clarify ? "clarify" : road.readyForProducts ? "confirm_or_search" : "product_selection",
     nextQuestion,
     step: road.step,
     goal: road.goal,
-    nextQuestions: welcome || nextQuestion || education ? [] : road.nextQuestions,
+    nextQuestions: nextQuestion ? [nextQuestion] : [],
     ...(education ? { pendingQuestions: road.nextQuestions } : {}),
     missingForProducts: road.missingForProducts,
     readyForProducts: road.readyForProducts,
@@ -131,16 +135,16 @@ export function outfitterGuidance(message: string, constraints: Constraints = {}
     constraints: applied,
     summary: road.knownSummary.join("; "),
     guidance: OUTFITTER_GUIDANCE,
-    routeGuidance: welcome ? opening.guidance : opening.route === "help_choose" ? "Skip the welcome and dive into Product Selection: ask nextQuestions together, then call outfitter_discovery with the accumulated profile." : opening.guidance,
+    routeGuidance: welcome ? opening.guidance : opening.route === "help_choose" ? "Skip the welcome and dive into Product Selection: ask the one nextQuestion (with its reason), then call outfitter_discovery with the accumulated profile." : opening.guidance,
     next: welcome
       ? "Send the Sherpa welcome and wait."
       : education
         ? "This is a question, not an RV search: answer it directly, with no Product Selection questions first. Afterward, offer to help them find one."
-      : nextQuestion
+      : clarify
         ? "Ask this question and wait. Do not widen the length limit without the shopper's explicit answer."
         : road.readyForProducts
           ? "Reflect the requirements in plain language, then call search_rvs."
-          : "Ask nextQuestions together (a few at a time, in order), then STOP and wait for the shopper's answer. Never re-ask anything in summary, and don't guess any answer. Then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper literally asks to skip the questions.",
+          : "Ask nextQuestion (exactly one, with its reason for asking), then STOP and wait for the shopper's answer. Never re-ask anything in summary, and don't guess any answer. Then call outfitter_discovery with everything known. Don't show RVs until readyForProducts is true unless the shopper literally asks to skip the questions.",
     towFollowUp: "Which engine and drivetrain does your tow vehicle have, and does it have the factory tow package? Tow package, axle ratio and exact capacity may need confirmation from the build sheet or door label.",
   };
 }

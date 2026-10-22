@@ -34,17 +34,17 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
     const d = await call('search_rvs', { query: msg });
     expect(d.status).toBe('needs_discovery');
     expect(d.results).toEqual([]);
-    expect(ids(d.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(d.nextQuestions)).toEqual(['use']);
     expect(d.missingForProducts).toEqual(['use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'towing', 'storage', 'trips', 'pay_way', 'pay_numbers']);
     expect(d.instruction).toMatch(/ASK, DON'T ASSUME/);
     expect(JSON.stringify(d)).not.toMatch(COUNT_TEXT);
     const rv = await call('rv_outfitter', { message: msg });
     expect(rv.status).toBe('needs_discovery');
     expect(rv.results).toEqual([]);
-    expect(ids(rv.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(rv.nextQuestions)).toEqual(['use']);
     const disc = await call('outfitter_discovery', { message: msg });
     expect(disc.status).toBe('needs_discovery');
-    expect(ids(disc.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(disc.nextQuestions)).toEqual(['use']);
   }, 60000);
 
   it('the couple/cash message is read in all three tools, and none of it is asked again', async () => {
@@ -58,8 +58,11 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
     const search = await call('search_rvs', { query: COUPLE_MSG });
     expect(search.knownProfile).toMatchObject({ rvTypes: ['travel_trailer'], place: 'Tacoma', sleepers: 2, paymentMethod: 'cash', cashBudgetUsd: 35000 });
     for (const d of [rv, disc, search]) {
+      expect(d.nextQuestions).toHaveLength(1);
+      expect(d.nextQuestion.id).toBe('use');
+      expect(d.nextQuestion.prompt).toMatch(/I ask because/);
       expect(d.missingForProducts).toEqual(open);
-      expect(ids(d.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+      expect(ids(d.nextQuestions)).toEqual(['use']);
       for (const id of answered) expect(d.missingForProducts).not.toContain(id);
       expect(JSON.stringify(d.nextQuestions)).not.toMatch(/how many will|making payments, or paying cash|cash budget/i);
     }
@@ -72,9 +75,11 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
       use: { planned_use: ['camping'] }, activities: { activities: ['fishing'] }, vacation: { time_off: 'about 4 weeks' },
       trade: { has_trade_in: false }, towing: { tow_vehicle: '2021 Ford F-150 3.5L EcoBoost' }, storage: { no_length_limit: true }, trips: { planned_trips: 'Ocean Shores' },
     };
-    for (let turn = 0; turn < 6; turn++) {
+    for (let turn = 0; turn < 12; turn++) {
       const d = await call('outfitter_discovery', profile);
       if (d.readyForProducts) break;
+      expect(d.nextQuestions).toHaveLength(1);
+      expect(d.nextQuestion.prompt).toMatch(/[?.]\s+I ask (?:so|because)\b/);
       for (const q of d.nextQuestions) { expect(asked).not.toContain(q.id); asked.push(q.id); profile = { ...profile, ...answers[q.id] }; }
     }
     expect(asked).toEqual(['use', 'activities', 'vacation', 'trade', 'towing', 'storage', 'trips']);
@@ -88,9 +93,14 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
     const base = { ...GT, location: 'Spokane, WA', party_size: 2, rv_types: ['fifth_wheel'], tow_vehicle: '2022 Ram 2500', no_length_limit: true, payment_method: 'finance' };
     const d = await call('search_rvs', base);
     expect(d.status).toBe('needs_discovery');
-    expect(ids(d.nextQuestions)).toEqual(['fin_down', 'fin_monthly', 'fin_cash']);
+    // One at a time: down payment, then monthly, then cash budget.
+    expect(ids(d.nextQuestions)).toEqual(['fin_down']);
+    expect(d.missingForProducts).toEqual(['fin_down', 'fin_monthly', 'fin_cash']);
     const partial = await call('outfitter_discovery', { ...base, location: 'Spokane', message: 'We can put $8,000 down.' });
-    expect(ids(partial.nextQuestions)).toEqual(['fin_monthly', 'fin_cash']);
+    expect(ids(partial.nextQuestions)).toEqual(['fin_monthly']);
+    const partial2 = await call('outfitter_discovery', { ...base, location: 'Spokane', down_payment_usd: 8000, message: 'Around $600 a month.' });
+    expect(ids(partial2.nextQuestions)).toEqual(['fin_cash']);
+    expect(partial2.nextQuestion.prompt).toMatch(/out of pocket/);
     const done = await call('search_rvs', { ...base, down_payment_usd: 8000, monthly_payment_usd: 600, cash_budget_usd: 10000 });
     expect(done.status).toBe('shortlist');
     expect(done.appliedConstraints.priceMaxUsd).toBe(Math.round(8000 + 600 * 111.4));
@@ -100,7 +110,7 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
     const d = await call('search_rvs', { location: 'Tacoma, WA', radius_miles: 75, sleeps_min: 4, price_max_usd: 35000, rv_types: ['travel_trailer'], condition: 'any' });
     expect(d.status).toBe('needs_discovery');
     expect(d.results).toEqual([]);
-    expect(ids(d.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(d.nextQuestions)).toEqual(['use']);
   }, 60000);
 
   it('only an explicit skip in the shopper\'s words bypasses; host flags and named models do not', async () => {
@@ -114,14 +124,14 @@ describe('MCP 2.2.3 Golden Ticket gate + shortlist', () => {
     const model = await call('search_rvs', { make: 'Tiffin', model: 'Allegro RED', location: 'Tacoma, WA', radius_miles: 150, party_size: 2, payment_method: 'cash', budget_declined: true });
     expect(model.status).toBe('needs_discovery');
     expect(model.results).toEqual([]);
-    expect(ids(model.nextQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(model.nextQuestions)).toEqual(['use']);
     // The shopper's own "skip the questions" shows a shortlist, then the questions resume.
     const skip = await call('search_rvs', { query: 'travel trailer near Tacoma', shopper_requested_results_now: true, shopper_words: 'Skip the questions, just show me what you have' });
     expect(skip.status).toBe('shortlist');
     expect(skip.results.length).toBeGreaterThan(0);
     expect(skip.results.length).toBeLessThanOrEqual(3);
     expect(skip.roadToSale.waived).toBe(true);
-    expect(ids(skip.roadToSale.resumeQuestions)).toEqual(['use', 'activities', 'vacation']);
+    expect(ids(skip.roadToSale.resumeQuestions)).toEqual(['use']);
     const discSkip = await call('outfitter_discovery', { message: 'just show me', shopper_requested_results_now: true, shopper_words: 'just show me', rv_types: ['travel_trailer'] });
     expect(discSkip.readyForProducts).toBe(true);
   }, 90000);

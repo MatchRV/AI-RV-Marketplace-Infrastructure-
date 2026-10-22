@@ -79,7 +79,7 @@ describe('MCP 2.2.3 — Road to the Sale + make/model search', () => {
     expect(d.modelCount).toBeUndefined();
     expect(typeof r._meta['matchrv/internal'].modelCount.count).toBe('number');
     // The model answers "what do you want"; the rest of the list is still asked, in order.
-    expect(d.nextQuestions.map((q: any) => q.id)).toEqual(['use', 'activities', 'vacation']);
+    expect(d.nextQuestions.map((q: any) => q.id)).toEqual(['use']);
     expect(d.missingForProducts).not.toContain('rv_type');
     expect(d.missingForProducts).toEqual(expect.arrayContaining(['who_going', 'buyers', 'trade', 'towing', 'storage', 'trips', 'pay_way']));
   }, 60000);
@@ -87,7 +87,7 @@ describe('MCP 2.2.3 — Road to the Sale + make/model search', () => {
   it('"just show me" lists results and hands back the questions to resume', async () => {
     const d = await call('search_rvs', { query: 'Tiffin Allegro Red', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 3 });
     expect(d.roadToSale.waived).toBe(true);
-    expect(d.roadToSale.resumeQuestions.map((q: any) => q.id)).toEqual(['use', 'activities', 'vacation']);
+    expect(d.roadToSale.resumeQuestions.map((q: any) => q.id)).toEqual(['use']);
   }, 60000);
 
   it('outfitter_discovery: Sherpa welcome for a vague opener; skips it when they say what they want', async () => {

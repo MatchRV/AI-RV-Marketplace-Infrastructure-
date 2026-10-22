@@ -19,8 +19,9 @@
  *   Step 3  Present a shortlist of three that fit needs AND budget
  *   Step 4  Dealer contact (prepare → explicit approval → send)
  *
- * Every Golden Ticket question is answered before any RV is shown, asked a
- * few at a time in that order, never re-asking what the shopper already
+ * Every Golden Ticket question is answered before any RV is shown, asked
+ * ONE per turn in that order (each ending with a short, honest reason for
+ * asking), never re-asking what the shopper already
  * said. The ONLY way past them is the shopper literally asking to skip the
  * questions ("just show me", verified against their words); then results are
  * shown and the road resumes. A named make/model answers question 0 only.
@@ -111,11 +112,11 @@ function payNumbersKnown(p: BuyerProfile): boolean {
 function payNumbersQuestion(p: BuyerProfile): { prompt: string; options?: string[]; why: string } {
   const why = "Keeps every RV inside a real budget. MatchRV never shows anything over it.";
   switch (p.paymentMethod as PaymentMethod | null | undefined) {
-    case "cash": return { prompt: "What's your cash budget: the most you want to spend out of pocket, out the door (price, tax, license and fees)?", why };
-    case "difference": return { prompt: "On top of the trade, what cash difference out of pocket works for you? (The trade's value is something the dealership works out with you.)", why };
-    case "discount": return { prompt: "What price range would feel like a win, as long as it's still the RV you actually want?", why };
-    case "ad_shopper": return { prompt: "Which ad caught your eye, the RV and the price? Ads change and units sell, so I'll check what's actually in stock.", why: "An ad is a starting point; inventory and prices move." };
-    default: return { prompt: "And what budget should I stay inside, out of pocket and out the door?", why };
+    case "cash": return { prompt: "What's your cash budget: the most you want to spend out of pocket, out the door? I ask so I only show you RVs that fit it, with nothing over.", why };
+    case "difference": return { prompt: "On top of your trade, what cash difference out of pocket works for you? I ask so the numbers stay comfortable; the trade's value is something the dealership works out with you.", why };
+    case "discount": return { prompt: "What price range would feel like a win, as long as it's still the RV you actually want? I ask so a good price never costs you the right RV.", why };
+    case "ad_shopper": return { prompt: "Which ad caught your eye, the RV and the price? I ask because ads change and units sell, so I'll check what's actually in stock.", why: "An ad is a starting point; inventory and prices move." };
+    default: return { prompt: "What budget should I stay inside, out of pocket and out the door? I ask so I only show you RVs that fit it.", why };
   }
 }
 
@@ -132,89 +133,89 @@ export const GOLDEN_TICKET_ITEMS: RoadItem[] = [
   {
     id: "rv_type", label: "0. what they want (RV type)", requiredForProducts: true,
     known: (p) => Boolean(p.rvTypes?.length || p.makes?.length || p.models?.length || p.rvTypeUndecided),
-    question: () => ({ prompt: "What are you looking for: a travel trailer, a fifth wheel, a motorhome, a destination trailer, or something like that? Not sure yet is fine too.", options: ["Travel trailer", "Fifth wheel", "Motorhome", "Destination trailer", "Not sure yet"], why: "The type decides which RVs even make sense." }),
+    question: () => ({ prompt: "What are you looking for: a travel trailer, a fifth wheel, a motorhome, a destination trailer, or something like that? Not sure yet is fine too. I ask because each type lives and travels very differently, so it's the best place to start.", options: ["Travel trailer", "Fifth wheel", "Motorhome", "Destination trailer", "Not sure yet"], why: "The type decides which RVs even make sense." }),
   },
   {
     id: "use", label: "1. what they plan to use it for", requiredForProducts: true,
     known: (p) => Boolean(p.plannedUses?.length || p.useNotes || p.tripLength === "full_time"),
-    question: () => ({ prompt: "What do you plan on using it for: living in it, camping, tailgating, traveling, or a mix?", options: ["Living in it", "Camping", "Tailgating", "Traveling", "A mix"], why: "Full-time living, weekend camping and tailgating call for very different RVs." }),
+    question: () => ({ prompt: "What do you plan on using it for: living in it, camping, tailgating, or traveling? I ask because living in an RV and getting away for a weekend call for pretty different setups.", options: ["Living in it", "Camping", "Tailgating", "Traveling", "A mix"], why: "Full-time living, weekend camping and tailgating call for very different RVs." }),
   },
   {
     id: "activities", label: "2. activities (to match features)", requiredForProducts: true,
     known: (p) => Boolean(p.activities?.length || p.hobbies),
-    question: () => ({ prompt: "What kinds of activities do you see yourself doing? Fishing, hiking, grilling outside, riding ATVs, that sort of thing.", why: "Activities point to features: love to barbecue? An outside kitchen might be a great fit. Hauling toys? Maybe a toy hauler." }),
+    question: () => ({ prompt: "What kinds of activities do you see yourself doing, like fishing, hiking, grilling outside or riding ATVs? I ask so I can match features to what you enjoy, like an outside kitchen if you love to grill.", why: "Activities point to features: love to barbecue? An outside kitchen might be a great fit. Hauling toys? Maybe a toy hauler." }),
   },
   {
     id: "vacation", label: "3. vacation / time off per year", requiredForProducts: true,
     applies: (p) => !p.plannedUses?.includes("living"),
     known: (p) => Boolean(p.timeOff || p.tripLength),
-    question: () => ({ prompt: "How much time do you get off each year to get out and use it? If you're retired or can use it full time, even better.", why: "Rapport, and it shows how much they'll really use it." }),
+    question: () => ({ prompt: "How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV.", why: "Rapport, and it shows how much they'll really use it." }),
   },
   {
     id: "who_going", label: "4. who's going (party size)", requiredForProducts: true,
     known: (p) => p.sleepers != null,
-    question: (p) => ({ prompt: `Who's all going to be going with you: a spouse, kids, grandkids, the dog? How many will be sleeping in the ${rvWord(p) === "RV" ? "RV" : rvWord(p)}?`, options: ["Just me", "Two of us", "3–4 people", "5 or more"], why: "Who's coming decides couples vs. bunkhouse layouts. Guessing is how buyers get shown the wrong RVs." }),
+    question: (p) => ({ prompt: `Who's all going to be going with you (a spouse, kids, grandkids, the dog), and how many will be sleeping in the ${rvWord(p)}? I ask so everyone has a comfortable place to sleep and you're not paying for beds you don't need.`, options: ["Just me", "Two of us", "3–4 people", "5 or more"], why: "Who's coming decides couples vs. bunkhouse layouts. Guessing is how buyers get shown the wrong RVs." }),
   },
   {
     id: "buyers", label: "5. who it's for (sole buyer or co-buyer)", requiredForProducts: true,
     known: (p) => Boolean(p.owners) || p.coBuyerInvolved != null,
-    question: (p) => ({ prompt: `Who's the ${rvWord(p)} for: is it only going to be you making the purchase, or is somebody else going in on it with you?`, options: ["Just me", "Me and my spouse/partner", "Someone else is going in on it"], why: "Everyone who's part of the decision should be part of the shopping." }),
+    question: (p) => ({ prompt: `Who's the ${rvWord(p)} for: is it only going to be you making the purchase, or is somebody else going in on it with you? I ask so everyone who's part of the decision gets a say in what we look at.`, options: ["Just me", "Me and my spouse/partner", "Someone else is going in on it"], why: "Everyone who's part of the decision should be part of the shopping." }),
   },
   {
     id: "trade", label: "6. trade-in", requiredForProducts: true,
     known: (p) => p.hasTradeIn != null,
-    question: () => ({ prompt: "Do you have a trade?", options: ["Yes", "No"], why: "Knowing the trade, and why they're trading, shows what they want that they don't have now." }),
+    question: () => ({ prompt: "Do you have a trade? I ask because knowing what you have now helps me understand what you'd like next.", options: ["Yes", "No"], why: "Knowing the trade, and why they're trading, shows what they want that they don't have now." }),
   },
   {
     id: "trade_details", label: "6. trade: what it is and why", requiredForProducts: true, dependsOn: "trade",
     applies: (p) => p.hasTradeIn === true,
     known: (p) => Boolean(p.tradeDescription && p.tradeReason),
-    question: (p) => ({ prompt: p.tradeDescription ? `What's making you want to trade the ${p.tradeDescription}? What are you hoping to get that it doesn't have?` : "What are you trading in, and why? What are you hoping to get, as far as features and options, that you don't have now?", why: "Note the trade and the reason only. Trade values and numbers are for the dealership." }),
+    question: (p) => ({ prompt: p.tradeDescription ? `What's making you want to trade the ${p.tradeDescription}? I ask so I know which features and options you're hoping to get that you don't have now.` : "What are you trading in, and what's making you want to trade it? I ask so I know which features and options you're hoping to get that you don't have now.", why: "Note the trade and the reason only. Trade values and numbers are for the dealership." }),
   },
   {
     id: "towing", label: "7. towing (tow vehicle, or what's towed behind)", requiredForProducts: true,
     known: towingKnown,
     question: (p) => isMotorizedSearch(p)
-      ? { prompt: "Do you plan on towing anything behind it, like a car, a Jeep or a trailer?", options: ["Yes (I'll say what)", "Nothing"], why: "What's towed behind sets the hitch rating and combined weight the motorhome needs." }
+      ? { prompt: "Do you plan on towing anything behind it, like a car, a Jeep or a trailer? I ask because what you tow decides how much hitch and weight capacity the motorhome needs.", options: ["Yes (I'll say what)", "Nothing"], why: "What's towed behind sets the hitch rating and combined weight the motorhome needs." }
       : isTowableSearch(p)
-        ? { prompt: `What are you towing ${towWord(p)} with? Year, make and model (and the engine, if you know it). If you don't have a tow vehicle yet, that's fine, just say so.`, options: ["I'll tell you my truck/SUV", "I don't have a tow vehicle yet", "Not sure what I have"], why: "The tow vehicle sets the real weight ceiling. MatchRV never guesses it." }
-        : { prompt: "If it's a trailer or fifth wheel, what would you tow it with? If it's a motorhome, do you plan on towing anything behind it?", why: "Towing sets the weight limits either way." },
+        ? { prompt: `What are you towing ${towWord(p)} with? Year, make and model (and the engine, if you know it), or just say so if you don't have one yet. I ask because your tow vehicle sets the real weight limit, and I never want to guess at that.`, options: ["I'll tell you my truck/SUV", "I don't have a tow vehicle yet", "Not sure what I have"], why: "The tow vehicle sets the real weight ceiling. MatchRV never guesses it." }
+        : { prompt: "If it's a trailer or fifth wheel, what would you tow it with? If it's a motorhome, would you tow anything behind it? I ask because towing sets the weight limits either way.", why: "Towing sets the weight limits either way." },
   },
   {
     id: "storage", label: "8. storage / length requirement", requiredForProducts: true,
     known: (p) => p.lengthMaxFt != null || p.noLengthLimit === true,
-    question: (p) => ({ prompt: p.storage ? `Is there a length it has to fit where you'll store it (${p.storage})? "No limit" is a fine answer.` : "Do you have somewhere you need to store it, and is there a length requirement? \"No limit\" is a fine answer.", options: ["It has to fit a spot (I'll give the length)", "I'd prefer around a certain size", "No limit"], why: "A storage limit is never exceeded, so the length has to be known before anything is shown." }),
+    question: (p) => ({ prompt: p.storage ? `Is there a length it has to fit where you'll store it (${p.storage}), or no limit? I ask so I never show you something that won't fit where it needs to live.` : "Do you have somewhere you need to store it, and is there a length it has to fit, or no limit? I ask so I never show you something that won't fit where it needs to live.", options: ["It has to fit a spot (I'll give the length)", "I'd prefer around a certain size", "No limit"], why: "A storage limit is never exceeded, so the length has to be known before anything is shown." }),
   },
   {
     id: "length_reason", label: "8. length limit: storage or comfort", requiredForProducts: true, askAlone: true,
     applies: (p) => p.lengthMaxFt != null && !p.lengthReason && p.lengthFlexApproved == null,
     known: () => false,
-    question: (p) => ({ prompt: `Is that ${p.lengthMaxFt}-foot limit for storage (a garage, driveway, or spot it has to fit) or is it more about what you're comfortable with?`, options: discoveryQ("length_reason").options, why: discoveryQ("length_reason").why }),
+    question: (p) => ({ prompt: `Is that ${p.lengthMaxFt}-foot limit for storage (a garage, driveway, or spot it has to fit) or is it more about what you're comfortable with? I ask because a storage limit is firm, while a comfort limit might have a little room.`, options: discoveryQ("length_reason").options, why: discoveryQ("length_reason").why }),
   },
   {
     id: "length_flex", label: "8. comfort length: keep the gate open +2 ft?", requiredForProducts: true, askAlone: true,
     applies: (p) => p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null,
     known: () => false,
-    question: (p) => ({ prompt: `Is it okay if we keep it maybe 1 or 2 feet longer than ${p.lengthMaxFt}, so up to about ${(p.lengthMaxFt ?? 0) + 2}, just in case? I'm not going to take you way up the range; I just want to keep that gate open in case the right one is sitting right there.`, options: discoveryQ("length_flex").options, why: discoveryQ("length_flex").why }),
+    question: (p) => ({ prompt: `Is it okay if we keep it maybe 1 or 2 feet longer than ${p.lengthMaxFt}, so up to about ${(p.lengthMaxFt ?? 0) + 2}, just in case? I ask because the right one is sometimes sitting just past the line, and I'll never go further than that without your OK.`, options: discoveryQ("length_flex").options, why: discoveryQ("length_flex").why }),
   },
   {
     id: "trips", label: "9. planned trips / favorite campsites", requiredForProducts: true,
     known: (p) => Boolean(p.plannedTrips),
-    question: () => ({ prompt: "Are any trips planned, or do you have a favorite campsite? Anywhere you're already planning to go?", why: "Destinations and campsites can set size, off-grid and weather needs." }),
+    question: () => ({ prompt: "Are any trips planned, or do you have a favorite campsite? I ask because where you're headed can affect the size, the weather features, and whether you'll need to camp off-grid.", why: "Destinations and campsites can set size, off-grid and weather needs." }),
   },
   {
     id: "location", label: "shopping area", requiredForProducts: true,
     known: (p) => Boolean(p.place),
-    question: () => ({ prompt: "And what area are you shopping in? A city or ZIP works, and I'll start with what's closest to you.", why: "MatchRV only calls something local when it really is." }),
+    question: () => ({ prompt: "What area are you shopping in? A city or ZIP works. I ask so I can start with what's closest to you.", why: "MatchRV only calls something local when it really is." }),
   },
   {
     id: "pay_way", label: "10. payments or cash", requiredForProducts: true,
     known: (p) => Boolean(p.paymentMethod || p.budgetDeclined),
-    question: () => ({ prompt: "Are you planning on making payments, or paying cash?", options: ["Making payments (financing)", "Paying cash", "Trade plus a cash difference", "Rather not say yet"], why: "How they'll pay is how we get to a real budget." }),
+    question: () => ({ prompt: "Are you planning on making payments, or paying cash? I ask so we can land on a budget that actually works for you.", options: ["Making payments (financing)", "Paying cash", "Trade plus a cash difference", "Rather not say yet"], why: "How they'll pay is how we get to a real budget." }),
   },
-  finQ("fin_down", "10. financing: down payment", (p) => p.downPaymentUsd != null, "About how much are you thinking of putting down?", "Down payment and monthly payment set a real range without haggling over selling price."),
-  finQ("fin_monthly", "10. financing: monthly payment", (p) => p.monthlyPaymentUsd != null, "What monthly payment would you like to be around?", "Down payment and monthly payment set a real range without haggling over selling price."),
-  finQ("fin_cash", "10. financing: cash budget (out of pocket)", (p) => p.cashBudgetUsd != null || p.outTheDoorBudgetUsd != null || p.budgetMaxUsd != null, "And what's your cash budget: how much do you want to spend out of pocket on the RV?", "Keeps the out-of-pocket side real, too."),
+  finQ("fin_down", "10. financing: down payment", (p) => p.downPaymentUsd != null, "About how much are you thinking of putting down? I ask because your down payment and monthly payment together show me which price range fits.", "Down payment and monthly payment set a real range without haggling over selling price."),
+  finQ("fin_monthly", "10. financing: monthly payment", (p) => p.monthlyPaymentUsd != null, "What monthly payment would you like to be around? I ask so you stay comfortable every month, not just on the day you buy.", "Down payment and monthly payment set a real range without haggling over selling price."),
+  finQ("fin_cash", "10. financing: cash budget (out of pocket)", (p) => p.cashBudgetUsd != null || p.outTheDoorBudgetUsd != null || p.budgetMaxUsd != null, "And what's your cash budget, meaning how much you want to spend out of pocket on the RV? I ask so the up-front cost fits too, not just the payment.", "Keeps the out-of-pocket side real, too."),
   {
     id: "pay_numbers", label: "10. budget for that way of paying", requiredForProducts: true, dependsOn: "pay_way",
     applies: (p) => !isFinance(p),
@@ -243,7 +244,7 @@ export const ROAD_TO_SALE_STEPS: RoadStep[] = [
     number: 2,
     title: "Product Selection",
     kind: "goals",
-    guidance: "Ask the Product Selection questions in order, a few at a time, conversationally and honestly. Never re-ask anything the shopper already told you, and never fill an answer in yourself. \"Golden Ticket\" is MatchRV's internal name for this list; never say it to the shopper. No RVs until every question is answered, unless the shopper literally asks to skip the questions.",
+    guidance: "Ask the Product Selection questions in order, ONE per turn, conversationally and honestly, each with its short reason for asking. Never re-ask anything the shopper already told you, and never fill an answer in yourself. \"Golden Ticket\" is MatchRV's internal name for this list; never say it to the shopper. No RVs until every question is answered, unless the shopper literally asks to skip the questions.",
     goals: [
       { id: "selection_questions", title: "Product Selection questions", items: GOLDEN_TICKET_ITEMS },
     ],
@@ -275,7 +276,7 @@ export interface RoadAssessment {
   waived: boolean;
   /** Minimum items still open before RVs can be shown. */
   missingForProducts: string[];
-  /** Ask these together (1–3), then wait. */
+  /** The ONE question to ask this turn (empty when none is open), then wait. */
   nextQuestions: RoadQuestion[];
   /** When the shopper waived questions: what to come back to after they've seen results. */
   resumeQuestions: RoadQuestion[];
@@ -346,7 +347,8 @@ export function knownSummary(p: BuyerProfile): string[] {
  */
 export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; maxQuestions?: number } = {}): RoadAssessment {
   const steps = opts.steps ?? ROAD_TO_SALE_STEPS;
-  const maxQ = Math.min(3, Math.max(1, opts.maxQuestions ?? 3));
+  // One question per turn (Jonathan's rule). maxQuestions is kept for callers/tests only.
+  const maxQ = Math.min(3, Math.max(1, opts.maxQuestions ?? 1));
   const presentIdx = steps.findIndex((s) => s.presentsProducts);
   const flat = flatten(steps);
   const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p));
@@ -379,12 +381,12 @@ export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; ma
   let next: RoadQuestion[] = [];
   let resume: RoadQuestion[] = [];
   if (!readyForProducts) {
-    // Up to three Golden Ticket questions, in order. Nothing else is mixed in
+    // The next Golden Ticket question, in order. Nothing else is mixed in
     // before RVs are shown (along-the-way refinements wait for the shortlist).
     next = batch(blocking, maxQ).map((f) => toQuestion(f, p, true));
   } else {
     // Ready: keep the road moving with at most two along-the-way questions.
-    next = batch(nonBlocking, 2).map((f) => toQuestion(f, p, false));
+    next = batch(nonBlocking, maxQ).map((f) => toQuestion(f, p, false));
     if (waived && blocking.length) resume = batch(blocking, maxQ).map((f) => toQuestion(f, p, true));
   }
   next = next.slice(0, maxQ);

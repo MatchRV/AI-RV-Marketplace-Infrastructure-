@@ -10,7 +10,7 @@ const complete: BuyerProfile = {
 };
 
 describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
-  it("asks the Golden Ticket in Jonathan's order, three at a time", () => {
+  it("asks the Golden Ticket in Jonathan's order, ONE question per turn, each with its reason", () => {
     expect(GOLDEN_TICKET_ITEMS.filter((i) => i.requiredForProducts).map((i) => i.id)).toEqual([
       "rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "trade_details", "towing", "storage",
       "length_reason", "length_flex", "trips", "location", "pay_way", "fin_down", "fin_monthly", "fin_cash", "pay_numbers",
@@ -18,18 +18,27 @@ describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
     const a = assessRoadToSale({});
     expect(a.step.id).toBe("product_selection");
     expect(a.goal?.id).toBe("selection_questions");
-    expect(ids(a.nextQuestions)).toEqual(["rv_type", "use", "activities"]);
+    expect(ids(a.nextQuestions)).toEqual(["rv_type"]);
     expect(a.readyForProducts).toBe(false);
+    // Every question ends with a short, honest reason ("I ask ...").
+    const all = { ...complete, hasTradeIn: true, lengthMaxFt: 30 };
+    for (const item of GOLDEN_TICKET_ITEMS) {
+      for (const p of [{}, all, { ...all, paymentMethod: "finance" as const }, { rvTypes: ["class_a" as const] }, { lengthMaxFt: 30, lengthReason: "comfort" as const }]) {
+        const q = item.question(p as BuyerProfile);
+        expect(q.prompt, item.id).toMatch(/[?.]\s+I ask (?:so|because)\b[^?]*\.$/);
+      }
+    }
+    // Jonathan's exact wording for the vacation question.
+    expect(GOLDEN_TICKET_ITEMS.find((i) => i.id === "vacation")!.question({}).prompt).toBe("How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV.");
   });
 
   it("walks the whole list without ever re-asking an answered question", () => {
     let p: BuyerProfile = {};
     const order: string[] = [];
-    for (let turn = 0; turn < 12; turn++) {
+    for (let turn = 0; turn < 30; turn++) {
       const a = assessRoadToSale(p);
       if (a.readyForProducts) break;
-      expect(a.nextQuestions.length).toBeGreaterThan(0);
-      expect(a.nextQuestions.length).toBeLessThanOrEqual(3);
+      expect(a.nextQuestions.length).toBe(1);
       for (const q of a.nextQuestions) { expect(order).not.toContain(q.id); order.push(q.id); }
       for (const q of a.nextQuestions) {
         const answers: Record<string, Partial<BuyerProfile>> = {
@@ -43,8 +52,8 @@ describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
         p = { ...p, ...answers[q.id] };
       }
     }
-    // The trade follow-up comes on the next turn, never in the same breath as "do you have a trade?".
-    expect(order).toEqual(["rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "towing", "storage", "trade_details", "trips", "location", "pay_way", "fin_down", "fin_monthly", "fin_cash"]);
+    // One per turn, so the trade follow-up comes right after "do you have a trade?".
+    expect(order).toEqual(["rv_type", "use", "activities", "vacation", "who_going", "buyers", "trade", "trade_details", "towing", "storage", "trips", "location", "pay_way", "fin_down", "fin_monthly", "fin_cash"]);
     expect(assessRoadToSale(p).readyForProducts).toBe(true);
   });
 
@@ -63,12 +72,22 @@ describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
   it("a price alone isn't how they'll pay; financing asks down payment, monthly AND cash budget", () => {
     const noWay = assessRoadToSale({ ...complete, paymentMethod: null, cashBudgetUsd: null, budgetMaxUsd: 45000 });
     expect(noWay.missingForProducts).toEqual(["pay_way"]);
-    expect(noWay.nextQuestions[0].prompt).toBe("Are you planning on making payments, or paying cash?");
-    const fin = assessRoadToSale({ ...complete, paymentMethod: "finance", cashBudgetUsd: null });
-    expect(ids(fin.nextQuestions)).toEqual(["fin_down", "fin_monthly", "fin_cash"]);
-    expect(fin.nextQuestions.map((q) => q.prompt).join(" ")).toMatch(/putting down[\s\S]*monthly payment[\s\S]*out of pocket/);
-    // Partial answers: only what's still missing is asked.
-    expect(ids(assessRoadToSale({ ...complete, paymentMethod: "finance", cashBudgetUsd: null, downPaymentUsd: 10000 }).nextQuestions)).toEqual(["fin_monthly", "fin_cash"]);
+    expect(noWay.nextQuestions[0].prompt).toBe("Are you planning on making payments, or paying cash? I ask so we can land on a budget that actually works for you.");
+    // Financing follow-ups come one at a time: down payment, then monthly, then cash budget.
+    const finBase: BuyerProfile = { ...complete, paymentMethod: "finance", cashBudgetUsd: null };
+    const fin = assessRoadToSale(finBase);
+    expect(ids(fin.nextQuestions)).toEqual(["fin_down"]);
+    expect(fin.missingForProducts).toEqual(["fin_down", "fin_monthly", "fin_cash"]);
+    expect(fin.nextQuestions[0].prompt).toMatch(/putting down/);
+    const fin2 = assessRoadToSale({ ...finBase, downPaymentUsd: 10000 });
+    expect(ids(fin2.nextQuestions)).toEqual(["fin_monthly"]);
+    expect(fin2.nextQuestions[0].prompt).toMatch(/monthly payment/);
+    const fin3 = assessRoadToSale({ ...finBase, downPaymentUsd: 10000, monthlyPaymentUsd: 500 });
+    expect(ids(fin3.nextQuestions)).toEqual(["fin_cash"]);
+    expect(fin3.nextQuestions[0].prompt).toMatch(/out of pocket/);
+    // Only what's still missing is asked (cash budget already known -> monthly is next).
+    expect(ids(assessRoadToSale({ ...finBase, cashBudgetUsd: 8000 }).nextQuestions)).toEqual(["fin_down"]);
+    expect(ids(assessRoadToSale({ ...finBase, cashBudgetUsd: 8000, downPaymentUsd: 5000 }).nextQuestions)).toEqual(["fin_monthly"]);
     const done: BuyerProfile = { ...complete, paymentMethod: "finance", cashBudgetUsd: 12000, downPaymentUsd: 10000, monthlyPaymentUsd: 500 };
     expect(assessRoadToSale(done).readyForProducts).toBe(true);
     expect(effectiveBudgetMaxUsd(done)).toBe(65700);
@@ -103,7 +122,7 @@ describe("Road to the Sale: Product Selection = the Golden Ticket", () => {
     const a = assessRoadToSale({ models: ["Allegro RED"], makes: ["Tiffin"], discoveryWaived: true });
     expect(a.readyForProducts).toBe(true);
     expect(a.waived).toBe(true);
-    expect(ids(a.resumeQuestions)).toEqual(["use", "activities", "vacation"]);
+    expect(ids(a.resumeQuestions)).toEqual(["use"]);
   });
 
   it("a named exact model answers question 0 only; it doesn't skip the rest", () => {

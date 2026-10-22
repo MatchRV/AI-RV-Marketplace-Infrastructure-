@@ -20,7 +20,7 @@ describe("Golden Ticket gate: ask, don't assume, never re-ask (v2.2.3)", () => {
     const a = assessRoadToSale(f as BuyerProfile);
     expect(a.missingForProducts).toEqual(["use", "activities", "vacation", "trade", "towing", "storage", "trips"]);
     for (const answered of ["rv_type", "who_going", "buyers", "location", "pay_way", "pay_numbers"]) expect(a.missingForProducts).not.toContain(answered);
-    expect(ids(a.nextQuestions)).toEqual(["use", "activities", "vacation"]);
+    expect(ids(a.nextQuestions)).toEqual(["use"]);
   });
 
   it("reads financing follow-ups, trades, towing and storage from plain words", () => {

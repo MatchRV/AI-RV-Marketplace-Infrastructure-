@@ -188,7 +188,7 @@ export const QUESTION_ORDER: DiscoveryQuestion[] = [
   },
   {
     id: "tow_payload",
-    prompt: "Last safety check before I rank anything: what does the yellow payload sticker inside your driver's door say? It reads 'The combined weight of occupants and cargo should never exceed ___ lbs.' A photo works too — you can cover the VIN.",
+    prompt: "One safety check: what does the yellow payload sticker inside your driver's door say? It reads 'The combined weight of occupants and cargo should never exceed ___ lbs.' A photo works too (you can cover the VIN). I ask because that number, not the truck's model name, tells us what you can safely tow.",
     options: ["I'll check the sticker", "I know my exact tow rating instead", "Skip for now — show preliminary fits only"],
     why: "Tongue weight counts against payload. A model name (e.g. 'F-150') spans thousands of pounds of rating, so only the sticker gives a real fit.",
   },

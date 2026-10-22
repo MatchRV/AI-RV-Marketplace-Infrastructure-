@@ -178,3 +178,28 @@ describe("declining a question (v2.2.4)", () => {
     expect(pay.missingForProducts).not.toContain("pay_numbers");
   });
 });
+
+describe("covered steps (v2.2.5): rapport answers stay in the conversation", () => {
+  it("a covered step is never asked; fit facts and step names alone walk the list in order", () => {
+    const facts: BuyerProfile = { rvTypes: ["travel_trailer"], place: "Tacoma", sleepers: 2, paymentMethod: "cash", cashBudgetUsd: 35000, coveredSteps: ["buyers"] };
+    const order: string[] = [];
+    let p: BuyerProfile = { ...facts };
+    for (let i = 0; i < 10; i++) {
+      const r = assessRoadToSale(p);
+      if (r.readyForProducts) break;
+      const q = r.nextQuestions[0];
+      expect(r.nextQuestions).toHaveLength(1);
+      order.push(q.id);
+      if (q.id === "trade") expect(q.followUp?.prompt).toMatch(/^What are you trading in/);
+      p = q.id === "towing" ? { ...p, towVehicleUnknown: true, coveredSteps: [...(p.coveredSteps ?? []), q.step!] }
+        : q.id === "storage" ? { ...p, noLengthLimit: true, coveredSteps: [...(p.coveredSteps ?? []), q.step!] }
+        : { ...p, coveredSteps: [...(p.coveredSteps ?? []), q.step!] };
+    }
+    expect(order).toEqual(["use", "activities", "vacation", "trade", "towing", "storage", "trips"]);
+    expect(assessRoadToSale(p).readyForProducts).toBe(true);
+  });
+  it("declining a step skips all of its questions (payment covers the budget follow-ups)", () => {
+    const r = assessRoadToSale({ ...complete, paymentMethod: "finance", cashBudgetUsd: null, declinedQuestions: ["payment"] });
+    expect(r.readyForProducts).toBe(true);
+  });
+});

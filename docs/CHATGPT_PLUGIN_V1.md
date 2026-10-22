@@ -1,6 +1,6 @@
 # MatchRV ChatGPT Plugin V1
 
-Status: superseded by v2.2.4. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
+Status: superseded by v2.2.5. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
 
 ## Product goal
 
@@ -10,11 +10,11 @@ Expose MatchRV's canonical RV inventory and matching intelligence to ChatGPT thr
 
 User intent -> structured constraints -> authorized inventory -> ranked/explainable matches -> RV details/comparison -> explicit user approval -> dealer contact.
 
-## Tool surface (v2.2.4)
+## Tool surface (v2.2.5)
 
 As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral):
 
-- Read-only: `rv_outfitter`, `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry` (preview only, sends and stores nothing), `get_dealer_inquiry_status`.
+- Read-only: `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry` (preview only, sends and stores nothing), `get_dealer_inquiry_status`.
 - Write: `teach_outfitter` (shopper-scoped memory only).
 - Consequential (destructive, open-world): `send_dealer_inquiry`, which requires the preview's confirmation token and `confirmed=true`, and returns an honest delivery status (`delivered` / `queued_for_matchrv` / `failed` / `dry_run`).
 

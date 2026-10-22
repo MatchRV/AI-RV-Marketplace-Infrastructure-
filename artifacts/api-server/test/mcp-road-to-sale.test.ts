@@ -19,11 +19,11 @@ const callRaw = async (name: string, args: Record<string, unknown>) => {
 };
 const call = async (name: string, args: Record<string, unknown>) => (await callRaw(name, args)).d;
 
-describe('MCP 2.2.4 — Road to the Sale + make/model search', () => {
-  it('reports version 2.2.4 and the Road to the Sale instructions', async () => {
-    expect(MCP_VERSION).toBe('2.2.4');
+describe('MCP 2.2.5 — Road to the Sale + make/model search', () => {
+  it('reports version 2.2.5 and the Road to the Sale instructions', async () => {
+    expect(MCP_VERSION).toBe('2.2.5');
     const init = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'r2s-test', version: '1' } });
-    expect(init.serverInfo.version).toBe('2.2.4');
+    expect(init.serverInfo.version).toBe('2.2.5');
     expect(init.instructions).toContain('ROAD TO THE SALE');
     const list = await rpc('tools/list');
     const search = list.tools.find((t: any) => t.name === 'search_rvs');
@@ -91,15 +91,15 @@ describe('MCP 2.2.4 — Road to the Sale + make/model search', () => {
   }, 60000);
 
   it('outfitter_discovery: Sherpa welcome for a vague opener; skips it when they say what they want', async () => {
-    const hi = await call('outfitter_discovery', { message: 'hi' });
+    const hi = await call('outfitter_discovery', { request_kind: 'greeting' });
     expect(hi.route).toBe('welcome');
     expect(hi.welcome).toMatch(/^I'd love to help with anything RV\. Think of me as your Sherpa/);
-    const edu = await call('outfitter_discovery', { message: "What's the difference between a motorhome and a trailer?" });
+    const edu = await call('outfitter_discovery', { request_kind: 'general_question' });
     expect(edu.route).toBe('education');
     expect(edu.status).toBe('answer_directly');
     expect(edu.nextQuestions).toEqual([]);
     expect(edu.welcome).toBeUndefined();
-    const specific = await call('outfitter_discovery', { message: 'Looking for a Tiffin Phaeton near Spokane' });
+    const specific = await call('outfitter_discovery', { make: 'Tiffin', model: 'Phaeton', location: 'Spokane, WA' });
     expect(specific.route).toBe('specific_rv');
     expect(specific.welcome).toBeUndefined();
     expect(specific.nextQuestions.length).toBeGreaterThan(0);

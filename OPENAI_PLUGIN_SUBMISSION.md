@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.2.2)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.3)
 
-Status: **Submission candidate v2.2.2 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.2`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.3 — twelve MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.3`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,7 +34,7 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.2)
+## MCP tools and annotations (as advertised by v2.2.3)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
@@ -105,6 +105,15 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
 
+## Release notes (v2.2.3)
+
+- **Product Selection follows the Golden Ticket** (MatchRV's internal name for Jonathan Kitchel's question list; never said to shoppers). Before any RV is shown, MatchRV asks, in order and a few at a time: what they want (type), what it's for (living, camping, tailgating, traveling), activities (to match features), time off per year, who's going (and how many sleep in it), who's buying (sole buyer or co-buyer), a trade (what and why, never values), towing (tow vehicle for a towable; anything towed behind a motorhome), storage and length, planned trips or favorite campsites, the shopping area, and payments or cash. Financing also asks the down payment, the target monthly payment, and the cash (out-of-pocket) budget. The server enforces it: `search_rvs` returns `needs_discovery` with `results: []` until every answer is in.
+- **Never re-asks.** All three entry points (`rv_outfitter`, `outfitter_discovery`, `search_rvs` `query`) read the shopper's own words, e.g. "We're a couple, just the two of us … travel trailer around Tacoma … cash budget is $35k out the door" records type, area, party of 2, buying together, cash and a $35,000 cash budget, so none of those are asked again. Explicit tool arguments still win over parsed text, and a trade-in's make/model is never read as what they want.
+- **Only the shopper can skip.** The named-model shortcut is gone: a make/model answers "what do you want" only. The only skip is `shopper_requested_results_now: true` with the shopper's words in `shopper_words`.
+- **Questions aren't gated.** "What's better, a motorhome or a 5th wheel?" returns `status: answer_directly` with no questions first.
+- **No counts to the shopper, including model counts.** `modelCount` and `makeModelSummary` moved to `_meta["matchrv/internal"]` with the other totals.
+- New optional inputs on `search_rvs` and `outfitter_discovery`: `rv_type_undecided`, `planned_use`, `activities`, `time_off`, `party_notes`, `owners`, `co_buyer_involved`, `has_trade_in`, `trade_description`, `trade_reason`, `towing_behind`, `storage`, `planned_trips`, `cash_budget_usd`. Server `version` 2.2.3; still 12 tools with the same names and annotations.
+
 ## Release notes (v2.2.2)
 
 - **Ask, don't assume (server-enforced).** `search_rvs` returns `status: needs_discovery` with no RVs and 1–3 `nextQuestions` until the shopper has told the assistant: RV type or use, how many are going (`party_size`), the area, and the budget with how they'll pay. For a travel trailer, fifth wheel, toy hauler or pop-up it also needs the tow vehicle (`tow_vehicle`, where "none yet" is an answer) and any length or size limit (`length_max_ft`, or `no_length_limit: true`). The same questions come back from `outfitter_discovery` and `rv_outfitter`. Questions follow the Road to the Sale order: party size, tow vehicle and size limit first, then how they'll pay; the budget numbers are never asked in the same breath as the way of paying.
@@ -147,7 +156,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.2).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (12 tools, version 2.2.3).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.2.5)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.6)
 
-Status: **Submission candidate v2.2.5 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.5`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.6 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.6`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,7 +34,7 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.5)
+## MCP tools and annotations (as advertised by v2.2.6)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
@@ -104,6 +104,12 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
 
+## Release notes (v2.2.6)
+
+- **Shopper panel (`ui://matchrv/shopper-v1.html`) fixed for the interview gate.** The panel's "Search inventory" form no longer sends `discovery_waived` (removed from `search_rvs` in v2.2.3); it sends only the shopper's filters.
+- When `search_rvs` returns `status: needs_discovery`, the panel now shows the next interview question and asks the shopper to answer in the chat, keeps the filters they typed, and never displays text addressed to the assistant (`guidance`, `instruction`). Previously it showed "0 best fits", the assistant guidance, and cleared the form.
+- No tool, schema, description or annotation changes. Still 11 tools with the same names and annotations.
+
 ## Release notes (v2.2.5)
 
 - **OpenAI scan finding fixed for `outfitter_discovery` and `rv_outfitter`** ("This tool appears to request information beyond what its stated operation requires"). Tools now take only RV-fit facts.
@@ -172,7 +178,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (11 tools, version 2.2.5).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (11 tools, version 2.2.6).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

@@ -510,7 +510,7 @@ function towFitFlag(m: UnitMatch | undefined, o: { towVehicleGiven: boolean; tow
   return {};
 }
 
-export const MCP_VERSION = "2.2.5";
+export const MCP_VERSION = "2.2.6";
 
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(

@@ -48,6 +48,14 @@ export function DealerHome() {
       <div className="hero-visual"><img src="/images/stitch-rv-road.jpg" alt="Camper van on a forest road"/><div className="hero-visual-caption"><span>THE NEXT CUSTOMER JOURNEY</span><h2>Be understood.<br/>Be part of the conversation.</h2></div><div className="hero-proof"><FileSearch size={22}/><div><strong>Evidence behind every finding</strong><p>Clear observations. Honest unknowns. Practical next steps.</p></div></div></div>
     </section>
     <div className="brand-value-strip"><div className="brand-container"><span>Built for RV dealerships</span><span>Inventory-specific findings</span><span>Clear, actionable recommendations</span></div></div>
+    <aside className="brand-container press-feature" aria-label="MatchRV in the news">
+      <div>
+        <p className="brand-eyebrow">In the news · October 22, 2026</p>
+        <h2>RVBusiness profiles MatchRV</h2>
+        <p>Read how MatchRV is working to connect RV shoppers with specific, available dealer inventory through AI.</p>
+      </div>
+      <a className="brand-text-link" href="https://rvbusiness.com/startup-matchrv-looking-to-make-ai-a-better-salesman/" target="_blank" rel="noopener noreferrer" aria-label="Read the MatchRV article on RVBusiness (opens in a new tab)">Read the RVBusiness article <ArrowRight size={17}/></a>
+    </aside>
     <section className="brand-container brand-section free-sample-section" id="request-report" aria-label="Free sample report of your website"><QuickReport/></section>
     <section className="brand-container brand-section dealer-video-section" aria-labelledby="dealer-video-heading">
       <div>

@@ -12,6 +12,7 @@ export const CORE_SITEMAP_URLS: string[] = [
   "https://matchrv.com/advertising",
   "https://matchrv.com/shop",
   "https://matchrv.com/mcp-setup",
+  "https://matchrv.com/mcp-docs",
   "https://matchrv.com/about",
   "https://matchrv.com/contact",
   "https://matchrv.com/terms-and-conditions",

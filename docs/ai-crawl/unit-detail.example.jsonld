@@ -1,0 +1,206 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": [
+        "Product",
+        "Vehicle"
+      ],
+      "@id": "https://matchrv.com/listing/vin:EXAMPLE0VIN000001#unit",
+      "url": "https://matchrv.com/listing/vin:EXAMPLE0VIN000001",
+      "name": "New 2026 Example Coach Trailhead 26BH Travel Trailer at Example RV Center | Tacoma, WA",
+      "description": "EXAMPLE DATA. Bunkhouse travel trailer with rear double-over-double bunks, front queen bedroom, one slide-out and an outdoor kitchen.",
+      "image": [
+        "https://example.com/images/example-trailhead-26bh-1.jpg"
+      ],
+      "sku": "EX-12345",
+      "brand": {
+        "@type": "Brand",
+        "name": "Example Coach"
+      },
+      "manufacturer": {
+        "@type": "Organization",
+        "name": "Example Coach"
+      },
+      "model": "Trailhead 26BH",
+      "vehicleConfiguration": "26BH",
+      "vehicleModelDate": "2026",
+      "vehicleIdentificationNumber": "EXAMPLE0VIN000001",
+      "bodyType": "Travel Trailer",
+      "itemCondition": "https://schema.org/NewCondition",
+      "weightTotal": {
+        "@type": "QuantitativeValue",
+        "value": 7600,
+        "unitCode": "LBR",
+        "name": "GVWR"
+      },
+      "additionalProperty": [
+        {
+          "@type": "PropertyValue",
+          "propertyID": "lengthFt",
+          "name": "Length",
+          "value": 30.5,
+          "unitCode": "FOT",
+          "unitText": "ft",
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "sleeps",
+          "name": "Sleeps",
+          "value": 8,
+          "measurementTechnique": "derived_text",
+          "description": "Source: derived_text; confidence: medium"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "gvwrLbs",
+          "name": "GVWR",
+          "value": 7600,
+          "unitCode": "LBR",
+          "unitText": "lbs",
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "dryWeightLbs",
+          "name": "Dry weight (UVW)",
+          "value": 5820,
+          "unitCode": "LBR",
+          "unitText": "lbs",
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "hitchWeightLbs",
+          "name": "Hitch weight",
+          "value": 640,
+          "unitCode": "LBR",
+          "unitText": "lbs",
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "slideouts",
+          "name": "Slide-outs",
+          "value": 1,
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "freshWaterGal",
+          "name": "Fresh water tank",
+          "value": 48,
+          "unitCode": "GLL",
+          "unitText": "gal",
+          "measurementTechnique": "dealer_listing",
+          "description": "Source: dealer_listing; confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "bunkhouse",
+          "name": "Bunkhouse",
+          "value": true,
+          "measurementTechnique": "derived_model_code",
+          "description": "Source: derived_model_code (BH); confidence: high"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "outdoorKitchen",
+          "name": "Outdoor kitchen",
+          "value": true,
+          "measurementTechnique": "derived_text",
+          "description": "Source: derived_text; confidence: medium"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "lastVerifiedAt",
+          "name": "Last seen on dealer website",
+          "value": "2026-10-24T18:00:00Z"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "unknownFields",
+          "name": "Not published by the dealer",
+          "value": "greyWaterGal, blackWaterGal, solar, lithiumBattery, generator, fourSeason, entryDoors"
+        }
+      ],
+      "offers": {
+        "@type": "Offer",
+        "url": "https://matchrv.com/listing/vin:EXAMPLE0VIN000001",
+        "price": 38995,
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition",
+        "seller": {
+          "@id": "https://matchrv.com/dealers/example-rv-center.example:tacoma#dealer"
+        },
+        "availableAtOrFrom": {
+          "@id": "https://matchrv.com/dealers/example-rv-center.example:tacoma#place"
+        }
+      },
+      "subjectOf": {
+        "@type": "WebAPI",
+        "name": "MatchRV MCP server",
+        "url": "https://matchrv.com/mcp",
+        "documentation": "https://matchrv.com/mcp-setup"
+      }
+    },
+    {
+      "@type": "AutoDealer",
+      "@id": "https://matchrv.com/dealers/example-rv-center.example:tacoma#dealer",
+      "name": "Example RV Center (fictional)",
+      "url": "https://example-rv-center.example",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Tacoma",
+        "addressRegion": "WA",
+        "addressCountry": "US"
+      }
+    },
+    {
+      "@type": "Place",
+      "@id": "https://matchrv.com/dealers/example-rv-center.example:tacoma#place",
+      "name": "Example RV Center (fictional)",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Tacoma",
+        "addressRegion": "WA",
+        "addressCountry": "US"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 47.2529,
+        "longitude": -122.4443
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "MatchRV",
+          "item": "https://matchrv.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Travel Trailers for Sale",
+          "item": "https://matchrv.com/travel-trailers-for-sale"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "2026 Example Coach Trailhead 26BH",
+          "item": "https://matchrv.com/listing/vin:EXAMPLE0VIN000001"
+        }
+      ]
+    }
+  ]
+}

@@ -18,3 +18,5 @@ export * from "./brands.js";
 export * from "./shopper-text.js";
 export * from "./road-to-sale.js";
 export * from "./listing-reconcile.js";
+export * from "./manufacturer-specs.js";
+export * from "./manufacturer-spec-records.js";

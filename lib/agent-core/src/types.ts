@@ -11,6 +11,7 @@
 /** Where a fact came from. */
 export type FactSource =
   | "dealer_listing" // structured field in the dealer's own inventory listing
+  | "manufacturer_spec" // manufacturer's published spec/brochure for the exact year + series + floorplan (sourceUrl required)
   | "derived_text" // deterministically parsed from dealer description/features text
   | "derived_model_code" // decoded from the manufacturer floorplan code (e.g. "26BH")
   | "reference_table" // MatchRV curated reference data (e.g. tow ratings)
@@ -25,6 +26,10 @@ export interface Fact<T> {
   source: FactSource | null; // null when value is null (nothing to attribute)
   confidence: Confidence | null;
   note?: string;
+  /** Page that supports this exact value (required for manufacturer_spec). */
+  sourceUrl?: string;
+  /** When that source was read; not a promise the value is current. */
+  observedAt?: string;
 }
 
 export type RvType =

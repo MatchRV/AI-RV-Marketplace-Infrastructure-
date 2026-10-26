@@ -9,7 +9,7 @@ Files in this folder:
 | `unit-detail.jsonld` | Template for `/listing/{id}`: Product + Vehicle + Offer, seller AutoDealer, Place, BreadcrumbList |
 | `unit-detail.example.jsonld` | The same template filled with **fictional example data** (fake VIN, fake dealer) |
 | `dealer.jsonld` | Template for a dealer page: AutoDealer + LocalBusiness |
-| `homepage.jsonld` | Template for `/`: Organization + WebSite with SearchAction + WebAPI (the MCP server) |
+| `homepage.jsonld` | Template for `/`: Organization + WebSite + WebAPI (the MCP server). No SearchAction until a page reads a query (see below). |
 
 `{{...}}` placeholders refer to `CanonicalUnit` paths. When rendering, numbers and booleans are emitted as JSON numbers and booleans, not strings. The templates are kept as valid JSON so they can be linted.
 
@@ -48,7 +48,7 @@ Files in this folder:
 | `priceUsd.value` | `offers.price` | Omit `price` if unknown. Don't emit `msrpUsd` as `price`. |
 | (constant) | `offers.priceCurrency` | `USD` |
 | `msrpUsd.value` | `offers.priceSpecification` (UnitPriceSpecification, `priceType` = `https://schema.org/ListPrice`) | Optional; only if known |
-| `status` | `offers.availability` | `available` = `InStock`; `pending` = `Reserved`; `removed` = `SoldOut` (and consider `noindex`); `unknown` = **omit** `availability` |
+| `status` | `offers.availability` | `available` = `InStock`; `pending` = `Reserved` (on hold for a buyer; never `PreOrder`); `removed` = `OutOfStock` (and consider `noindex`); `unknown` = **omit** `availability` entirely (never `InStock`). Live in `listing-seo.ts` `availability()`, covered by `artifacts/api-server/test/listing-seo-availability.test.ts`. |
 | `dealer` | `offers.seller` (AutoDealer), `offers.availableAtOrFrom` (Place) | Linked by `@id` to the dealer nodes |
 | `provenance.lastSeenAt` | `additionalProperty` `lastVerifiedAt` | Freshness anchor used by `check_availability` |
 
@@ -98,24 +98,29 @@ For towables, `tongueWeight` and `trailerWeight` don't apply. Those Vehicle prop
 
 | Page | Route | Schema | Status |
 |---|---|---|---|
-| Unit detail | `/listing/:id` | Product + Vehicle + Offer, seller AutoDealer, Place, BreadcrumbList | Partly live: `artifacts/api-server/src/lib/listing-seo.ts` already injects Product + Vehicle + Offer. Specs, provenance and breadcrumbs are the follow-up. |
+| Unit detail | `/listing/:id` | Product + Vehicle + Offer, seller AutoDealer, Place, BreadcrumbList | Partly live: `artifacts/api-server/src/lib/listing-seo.ts` already injects Product + Vehicle + Offer, with the availability mapping above. Specs, provenance and breadcrumbs are the follow-up. |
 | Dealer page | none yet (proposed `/dealers/:dealerId`) | AutoDealer + LocalBusiness, with `makesOffer` AggregateOffer and an ItemList of units | New route needed. `/dealers` and `/rv-dealers` are list pages and should carry an ItemList of dealer links. |
 | Category pages | `/travel-trailers-for-sale`, `/fifth-wheels-for-sale`, etc. | CollectionPage + ItemList of `/listing/` URLs, plus BreadcrumbList | Optional |
-| Homepage | `/` | Organization + WebSite (SearchAction) + WebAPI for the MCP server | `index.html` already has Organization + WebSite. Its SearchAction needs fixing (below). |
+| Homepage | `/` | Organization + WebSite + WebAPI for the MCP server | `index.html` has Organization + WebSite. The broken SearchAction was removed (below). |
 
 ### Homepage SearchAction
 
 `SearchAction` must point at an **HTTP URL template** that a browser can open and that contains `{search_term_string}`. It can't point at the MCP endpoint, which takes JSON-RPC POSTs rather than a GET URL.
 
-- The current `index.html` SearchAction uses `"urlTemplate": "https://matchrv.com/shop"` with no `{search_term_string}` and no `query-input`, so it isn't valid.
+- `index.html` used to carry a SearchAction with `"urlTemplate": "https://matchrv.com/shop"`, no `{search_term_string}` and no `query-input`, so it wasn't valid. **It has been removed**; the WebSite and Organization nodes stay.
 - No page in the router reads a search query today. `/shop`, `/rvs-for-sale` and `/browse` don't read `?q=`. The only GET search endpoint is the JSON API `/api/listings?search=`, which isn't a page.
-- `homepage.jsonld` uses `https://matchrv.com/rvs-for-sale?q={search_term_string}`, which **requires a follow-up code change** so `/rvs-for-sale` reads `q`. Until that ships, omit the SearchAction rather than publish one that ignores the query.
+- `homepage.jsonld` therefore has **no SearchAction**. Add one only after a page actually reads the query, e.g. `/rvs-for-sale?q=`, using `"urlTemplate": "https://matchrv.com/rvs-for-sale?q={search_term_string}"` and `"query-input": "required name=search_term_string"`. Never publish a SearchAction whose page ignores the query.
 - The MCP server is described as a linked `WebAPI` node (`subjectOf`), with `documentation` pointing to `/mcp-setup`.
+
+## Done in PR #55
+
+- `listing-seo.ts` `availability()`: `unknown` now emits no availability (was `InStock`) and `pending` emits `Reserved` (was `PreOrder`). The client-side `/listing/:id` JSON-LD in `listing-detail.tsx` no longer hard-codes `InStock` (those records carry no verified status).
+- Removed the invalid homepage SearchAction from `artifacts/rv-marketplace/index.html`.
+- These templates stay documentation; none of them is added to live pages yet.
 
 ## Follow-up code changes (not in this PR)
 
-1. `listing-seo.ts` `availability()`: `unknown` currently maps to `InStock` and `pending` to `PreOrder`. Change these to omit availability for `unknown` and use `Reserved` for `pending`.
-2. `buildUnitJsonLd()`: add `bodyType`, `vehicleConfiguration`, `itemCondition`, `weightTotal`, the `additionalProperty` specs with provenance, `availableAtOrFrom`, and BreadcrumbList, following this mapping.
-3. Fix or remove the homepage SearchAction in `artifacts/rv-marketplace/index.html`.
-4. Add dealer detail pages if dealer schema is wanted.
-5. Validate rendered output with the Schema.org validator (validator.schema.org) and Google's Rich Results Test before shipping.
+1. `buildUnitJsonLd()`: add `bodyType`, `vehicleConfiguration`, `itemCondition`, `weightTotal`, the `additionalProperty` specs with provenance, `availableAtOrFrom`, and BreadcrumbList, following this mapping.
+2. Add dealer detail pages if dealer schema is wanted.
+3. `dealer-tools.ts` (the dealer JSON-LD generator for dealers' own feeds) still defaults `availability` to `InStock`; review separately.
+4. Validate rendered output with the Schema.org validator (validator.schema.org) and Google's Rich Results Test before shipping.

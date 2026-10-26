@@ -6,11 +6,11 @@ MatchRV serves two audiences. Shoppers (and the AI assistants working for them) 
 
 ## About
 
-- MatchRV is built by Jonathan Kitchel, founder, who spent 8 years in RV sales on a dealership floor before building MatchRV.
+- MatchRV is built by Jonathan Kitchel, founder, who spent eight years in RV sales at Poulsbo RV before building MatchRV.
 - MatchRV is a neutral layer between dealer inventory and the way people now shop: by asking an AI assistant.
 - Core rule: MatchRV never guesses, defaults or fabricates a spec. A missing value is reported as unknown, not filled in.
 - Covered RV types: travel trailers, fifth wheels, toy haulers, Class A, Class B and Class C motorhomes, pop-up campers and truck campers.
-- Based in the Pacific Northwest (Washington State, USA).
+- Based in Tacoma, Washington (Pacific Northwest, USA).
 - [About MatchRV](https://matchrv.com/about): founder story and mission
 - [Agent Shop](https://matchrv.com/shop): human + agent shopping experience with the WebMCP tools
 - [Tow Guide](https://matchrv.com/tow-guide): check whether a tow vehicle fits a specific RV
@@ -53,7 +53,8 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 
 ## Data
 
-- Inventory: 129,000 normalized RV units from US dealer listings, with dealer, price, length, weights, sleeps, slides, tanks and features in one canonical schema.
+- Dealer network: 128,174 RVs across the dealer network (517 dealers, 841 stores, 49 states), as of October 19, 2026. This is the total listed across the network before de-duplication and quality cleaning.
+- Searchable inventory: about 84,000 cleaned, de-duplicated units are searchable through the MCP server, with dealer, price, length, weights, sleeps, slides, tanks and features in one canonical schema. Expect MCP counts near 84,000, not 128,174; records that fail quality checks (unclear RV type, implausible price, duplicates) are held back rather than shown.
 - Provenance: every critical spec is a fact with a source and a confidence. Sources are `dealer_listing` (structured field in the dealer's listing), `derived_text` (parsed from the dealer's description), `derived_model_code` (decoded from the manufacturer floorplan code, e.g. "26BH"), `reference_table` (MatchRV-curated reference data such as tow ratings), `computed` (deterministic math over known facts) and `learned` (confirmed by a shopper or dealer).
 - Unknown stays unknown: a spec MatchRV cannot source is returned as null with no source, never estimated. Agents should say "the dealer doesn't publish this" rather than guess.
 - Freshness: each record carries when MatchRV first and last saw it on the dealer's website; `check_availability` reports staleness. Always confirm availability and price with the dealership.
@@ -80,7 +81,7 @@ Roadmap: MatchRV submitted its ChatGPT app (built on this MCP server) to OpenAI 
 
 - Jonathan Kitchel, Founder, MatchRV
 - Email: jonathan@matchrv.com
-- Location: Tacoma, Washington area (Pacific Northwest, USA)
+- Location: Tacoma, Washington (Pacific Northwest, USA)
 - [Contact page](https://matchrv.com/contact)
 - Website: https://matchrv.com
 

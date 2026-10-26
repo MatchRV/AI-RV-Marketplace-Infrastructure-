@@ -59,7 +59,7 @@
         "url": "https://matchrv.com/listing/{{id}}",
         "price": "{{priceUsd.value}}",
         "priceCurrency": "USD",
-        "availability": "{{status -> see mapping table}}",
+        "availability": "{{status -> see mapping table; OMIT this key when status is unknown}}",
         "itemCondition": "{{condition -> https://schema.org/NewCondition | https://schema.org/UsedCondition}}",
         "seller": { "@id": "https://matchrv.com/dealers/{{dealer.id}}#dealer" },
         "availableAtOrFrom": { "@id": "https://matchrv.com/dealers/{{dealer.id}}#place" }

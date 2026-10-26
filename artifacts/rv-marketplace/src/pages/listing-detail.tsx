@@ -346,7 +346,8 @@ export function ListingDetail() {
       "itemCondition": listing.condition === "new"
         ? "https://schema.org/NewCondition"
         : "https://schema.org/UsedCondition",
-      "availability": "https://schema.org/InStock",
+      // No availability: these listings carry no verified status, and unknown
+      // stays unknown (never claim InStock without a verified status).
       "url": listingUrl,
       "seller": listing.dealer
         ? { "@type": "AutoDealer", "name": listing.dealer.name }

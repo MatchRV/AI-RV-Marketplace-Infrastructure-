@@ -1,0 +1,92 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": ["Product", "Vehicle"],
+      "@id": "https://matchrv.com/listing/{{id}}#unit",
+      "url": "https://matchrv.com/listing/{{id}}",
+      "name": "{{title}}",
+      "description": "{{description | first 500 chars}}",
+      "image": ["{{images[0]}}", "{{images[1]}}"],
+      "sku": "{{stockNumber}}",
+      "brand": { "@type": "Brand", "name": "{{make}}" },
+      "manufacturer": { "@type": "Organization", "name": "{{make}}" },
+      "model": "{{model}} {{trim}}",
+      "vehicleConfiguration": "{{floorplanCode}}",
+      "vehicleModelDate": "{{year}}",
+      "vehicleIdentificationNumber": "{{vin | only if a valid 17-char VIN}}",
+      "bodyType": "{{rvType -> label}}",
+      "itemCondition": "{{condition -> https://schema.org/NewCondition | https://schema.org/UsedCondition}}",
+      "fuelType": "{{powertrain.fuelType.value | motorized only}}",
+      "vehicleEngine": {
+        "@type": "EngineSpecification",
+        "name": "{{powertrain.engine.value}}",
+        "enginePower": { "@type": "QuantitativeValue", "value": "{{powertrain.horsepower.value}}", "unitCode": "BHP" },
+        "torque": { "@type": "QuantitativeValue", "value": "{{powertrain.torqueLbFt.value}}", "unitCode": "F17" }
+      },
+      "vehicleTransmission": "{{powertrain.transmission.value}}",
+      "weightTotal": { "@type": "QuantitativeValue", "value": "{{gvwrLbs.value}}", "unitCode": "LBR", "name": "GVWR" },
+      "payload": { "@type": "QuantitativeValue", "value": "{{towing.cargoCapacityLbs.value}}", "unitCode": "LBR" },
+      "trailerWeight": { "@type": "QuantitativeValue", "value": "{{towing.hitchTowRatingLbs.value}}", "unitCode": "LBR" },
+      "tongueWeight": { "@type": "QuantitativeValue", "value": "{{towing.tongueWeightLimitLbs.value}}", "unitCode": "LBR" },
+      "additionalProperty": [
+        {
+          "@type": "PropertyValue",
+          "propertyID": "lengthFt",
+          "name": "Length",
+          "value": "{{lengthFt.value}}",
+          "unitCode": "FOT",
+          "unitText": "ft",
+          "measurementTechnique": "{{lengthFt.source}}",
+          "description": "Source: {{lengthFt.source}}; confidence: {{lengthFt.confidence}}"
+        },
+        { "@type": "PropertyValue", "propertyID": "sleeps", "name": "Sleeps", "value": "{{sleeps.value}}", "measurementTechnique": "{{sleeps.source}}", "description": "Source: {{sleeps.source}}; confidence: {{sleeps.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "gvwrLbs", "name": "GVWR", "value": "{{gvwrLbs.value}}", "unitCode": "LBR", "unitText": "lbs", "measurementTechnique": "{{gvwrLbs.source}}", "description": "Source: {{gvwrLbs.source}}; confidence: {{gvwrLbs.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "dryWeightLbs", "name": "Dry weight (UVW)", "value": "{{dryWeightLbs.value}}", "unitCode": "LBR", "unitText": "lbs", "measurementTechnique": "{{dryWeightLbs.source}}", "description": "Source: {{dryWeightLbs.source}}; confidence: {{dryWeightLbs.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "hitchWeightLbs", "name": "Hitch weight", "value": "{{hitchWeightLbs.value}}", "unitCode": "LBR", "unitText": "lbs", "measurementTechnique": "{{hitchWeightLbs.source}}", "description": "Source: {{hitchWeightLbs.source}}; confidence: {{hitchWeightLbs.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "slideouts", "name": "Slide-outs", "value": "{{slideouts.value}}", "measurementTechnique": "{{slideouts.source}}", "description": "Source: {{slideouts.source}}; confidence: {{slideouts.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "freshWaterGal", "name": "Fresh water tank", "value": "{{freshWaterGal.value}}", "unitCode": "GLL", "unitText": "gal", "measurementTechnique": "{{freshWaterGal.source}}", "description": "Source: {{freshWaterGal.source}}; confidence: {{freshWaterGal.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "greyWaterGal", "name": "Grey water tank", "value": "{{greyWaterGal.value}}", "unitCode": "GLL", "unitText": "gal", "measurementTechnique": "{{greyWaterGal.source}}", "description": "Source: {{greyWaterGal.source}}; confidence: {{greyWaterGal.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "blackWaterGal", "name": "Black water tank", "value": "{{blackWaterGal.value}}", "unitCode": "GLL", "unitText": "gal", "measurementTechnique": "{{blackWaterGal.source}}", "description": "Source: {{blackWaterGal.source}}; confidence: {{blackWaterGal.confidence}}" },
+        { "@type": "PropertyValue", "propertyID": "bunkhouse", "name": "Bunkhouse", "value": "{{bunkhouse.value}}", "measurementTechnique": "{{bunkhouse.source}}" },
+        { "@type": "PropertyValue", "propertyID": "solar", "name": "Solar", "value": "{{solar.value}}", "measurementTechnique": "{{solar.source}}" },
+        { "@type": "PropertyValue", "propertyID": "gcwrLbs", "name": "GCWR", "value": "{{towing.gcwrLbs.value}}", "unitCode": "LBR", "unitText": "lbs", "measurementTechnique": "{{towing.gcwrLbs.source}}" },
+        { "@type": "PropertyValue", "propertyID": "lastVerifiedAt", "name": "Last seen on dealer website", "value": "{{provenance.lastSeenAt}}" },
+        { "@type": "PropertyValue", "propertyID": "unknownFields", "name": "Not published by the dealer", "value": "{{comma-separated canonical fields whose value is null}}" }
+      ],
+      "offers": {
+        "@type": "Offer",
+        "url": "https://matchrv.com/listing/{{id}}",
+        "price": "{{priceUsd.value}}",
+        "priceCurrency": "USD",
+        "availability": "{{status -> see mapping table; OMIT this key when status is unknown}}",
+        "itemCondition": "{{condition -> https://schema.org/NewCondition | https://schema.org/UsedCondition}}",
+        "seller": { "@id": "https://matchrv.com/dealers/{{dealer.id}}#dealer" },
+        "availableAtOrFrom": { "@id": "https://matchrv.com/dealers/{{dealer.id}}#place" }
+      },
+      "subjectOf": { "@type": "WebAPI", "name": "MatchRV MCP server", "url": "https://matchrv.com/mcp", "documentation": "https://matchrv.com/mcp-setup" }
+    },
+    {
+      "@type": "AutoDealer",
+      "@id": "https://matchrv.com/dealers/{{dealer.id}}#dealer",
+      "name": "{{dealer.name}}",
+      "url": "{{dealer.website}}",
+      "address": { "@type": "PostalAddress", "addressLocality": "{{dealer.city}}", "addressRegion": "{{dealer.state}}", "addressCountry": "US" }
+    },
+    {
+      "@type": "Place",
+      "@id": "https://matchrv.com/dealers/{{dealer.id}}#place",
+      "name": "{{dealer.name}}",
+      "address": { "@type": "PostalAddress", "addressLocality": "{{dealer.city}}", "addressRegion": "{{dealer.state}}", "addressCountry": "US" },
+      "geo": { "@type": "GeoCoordinates", "latitude": "{{dealer.lat}}", "longitude": "{{dealer.lng}}" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "MatchRV", "item": "https://matchrv.com/" },
+        { "@type": "ListItem", "position": 2, "name": "{{rvType -> category label}}", "item": "https://matchrv.com/{{rvType -> category page path}}" },
+        { "@type": "ListItem", "position": 3, "name": "{{title}}", "item": "https://matchrv.com/listing/{{id}}" }
+      ]
+    }
+  ]
+}

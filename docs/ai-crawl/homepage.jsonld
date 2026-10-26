@@ -1,0 +1,65 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://matchrv.com/#org",
+      "name": "MatchRV",
+      "url": "https://matchrv.com",
+      "slogan": "Find the RV that actually fits",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://matchrv.com/matchrv-logo.png",
+        "width": 200,
+        "height": 60
+      },
+      "description": "MatchRV is an AI-native RV discovery marketplace. It normalizes multi-dealer RV inventory into structured records where every critical spec carries its source, and unknown stays unknown.",
+      "founder": {
+        "@type": "Person",
+        "name": "Jonathan Kitchel",
+        "jobTitle": "Founder",
+        "description": "Spent eight years in RV sales at Poulsbo RV before founding MatchRV."
+      },
+      "email": "jonathan@matchrv.com",
+      "foundingLocation": {
+        "@type": "Place",
+        "name": "Tacoma, Washington, USA",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Tacoma",
+          "addressRegion": "WA",
+          "addressCountry": "US"
+        }
+      },
+      "sameAs": [
+        "https://matchrv.com/about"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://matchrv.com/#website",
+      "name": "MatchRV",
+      "url": "https://matchrv.com",
+      "publisher": {
+        "@id": "https://matchrv.com/#org"
+      },
+      "subjectOf": {
+        "@id": "https://matchrv.com/mcp#api"
+      }
+    },
+    {
+      "@type": "WebAPI",
+      "@id": "https://matchrv.com/mcp#api",
+      "name": "MatchRV MCP server",
+      "description": "Public Model Context Protocol (Streamable HTTP) server for searching, comparing and tow-checking normalized dealer RV inventory. No sign-in required.",
+      "url": "https://matchrv-mcp.onrender.com/mcp",
+      "sameAs": [
+        "https://matchrv.com/mcp"
+      ],
+      "documentation": "https://matchrv.com/mcp-setup",
+      "provider": {
+        "@id": "https://matchrv.com/#org"
+      }
+    }
+  ]
+}

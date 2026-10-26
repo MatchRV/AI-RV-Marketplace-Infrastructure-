@@ -1,0 +1,90 @@
+# MatchRV
+
+> MatchRV is an AI-native RV discovery marketplace: "Find the RV that actually fits." It normalizes multi-dealer RV inventory into structured, agent-readable records where every critical spec carries its source, and unknown stays unknown. AI agents can search, explain, compare and tow-check real dealer units through a public MCP server and in-page WebMCP tools.
+
+MatchRV serves two audiences. Shoppers (and the AI assistants working for them) get honest, explainable matches against real dealer stock. RV dealers get AI visibility audits and inventory syndication so AI shopping assistants can find and accurately describe their units.
+
+## About
+
+- MatchRV is built by Jonathan Kitchel, founder, who spent 8 years in RV sales on a dealership floor before building MatchRV.
+- MatchRV is a neutral layer between dealer inventory and the way people now shop: by asking an AI assistant.
+- Core rule: MatchRV never guesses, defaults or fabricates a spec. A missing value is reported as unknown, not filled in.
+- Covered RV types: travel trailers, fifth wheels, toy haulers, Class A, Class B and Class C motorhomes, pop-up campers and truck campers.
+- Based in the Pacific Northwest (Washington State, USA).
+- [About MatchRV](https://matchrv.com/about): founder story and mission
+- [Agent Shop](https://matchrv.com/shop): human + agent shopping experience with the WebMCP tools
+- [Tow Guide](https://matchrv.com/tow-guide): check whether a tow vehicle fits a specific RV
+
+## MCP Endpoint
+
+- Public MCP server (Streamable HTTP, no sign-in required): https://matchrv-mcp.onrender.com/mcp
+- Same server on the main domain: https://matchrv.com/mcp
+- Server name `matchrv`, MCP protocol version 2025-06-18. Clients should send `Accept: application/json, text/event-stream`.
+- [MCP setup guide](https://matchrv.com/mcp-setup): how to connect ChatGPT, Claude and other MCP clients
+
+## Tools
+
+MCP server tools (https://matchrv.com/mcp):
+
+- `outfitter_discovery`: Guided RV-fit interview; returns the next question and, once enough fit facts are known, search constraints for `search_rvs`.
+- `outfitter_guide`: Buyer education distilled from MatchRV's guides (how RV buying works, ways to pay, and more).
+- `outfitter_memory`: Read-only view of facts this shopper taught MatchRV plus MatchRV-curated reference facts, with sources.
+- `teach_outfitter`: Remember a fact the shopper confirmed (for example their truck's exact tow rating or payload), for that shopper only.
+- `search_rvs`: Search and match nationwide US dealer inventory by make, model, type, price, length, sleeps, features and location.
+- `get_rv`: Full canonical record for one unit, including dealer, specs, price, features, provenance, freshness and explicit unknowns.
+- `compare_rvs`: Side-by-side comparison of 2-4 units against the shopper's constraints, with unknowns kept explicit.
+- `evaluate_tow_fit`: Weight-fit check between a stated tow vehicle and 1-6 RVs, or whether a motorhome can tow a loaded trailer. Never guarantees safety.
+- `prepare_dealer_inquiry`: Preview a dealer inquiry for one unit. Sends nothing.
+- `send_dealer_inquiry`: Send an inquiry the shopper has explicitly approved. Consequential: shares the shopper's contact details with the dealership.
+- `get_dealer_inquiry_status`: Read-only status of an inquiry the shopper sent.
+
+WebMCP site tools (registered in the browser on https://matchrv.com/shop via `navigator.modelContext` / `document.modelContext`; descriptors also at https://matchrv.com/api/agent/meta):
+
+- `search_inventory`: Search normalized multi-dealer inventory with structured constraints; updates the shared on-page shopping session.
+- `get_unit_details`: Full normalized record for one unit; every critical fact carries a source and null means the dealer doesn't publish it.
+- `compare_units`: Side-by-side comparison of 2-4 units with unknowns intact.
+- `explain_match`: Deterministic explanation of why a unit matches: hard checks, soft preferences, unknown fields and the match-score arithmetic.
+- `check_availability`: Availability status and when MatchRV last verified the unit on the dealer's site, with a staleness flag.
+- `evaluate_tow_fit`: Tow-vehicle weight-fit guidance against specific units.
+- `get_shopping_session`: Current shared page state: constraints, shortlist, last search, focused unit, pending dealer-contact preview.
+- `update_shortlist`: Add or remove units on the shared shortlist the human sees.
+- `prepare_dealer_contact`: Stage a dealer contact as a preview only; nothing is sent until the human approves it on the page.
+- `submit_dealer_contact`: Submit a dealer contact the human has already approved in the page UI.
+
+## Data
+
+- Inventory: 129,000 normalized RV units from US dealer listings, with dealer, price, length, weights, sleeps, slides, tanks and features in one canonical schema.
+- Provenance: every critical spec is a fact with a source and a confidence. Sources are `dealer_listing` (structured field in the dealer's listing), `derived_text` (parsed from the dealer's description), `derived_model_code` (decoded from the manufacturer floorplan code, e.g. "26BH"), `reference_table` (MatchRV-curated reference data such as tow ratings), `computed` (deterministic math over known facts) and `learned` (confirmed by a shopper or dealer).
+- Unknown stays unknown: a spec MatchRV cannot source is returned as null with no source, never estimated. Agents should say "the dealer doesn't publish this" rather than guess.
+- Freshness: each record carries when MatchRV first and last saw it on the dealer's website; `check_availability` reports staleness. Always confirm availability and price with the dealership.
+- Unit pages: https://matchrv.com/listing/{unit_id} with schema.org Product + Vehicle + Offer JSON-LD. Unit ids look like `vin:<VIN>` or `stk:<dealer>:<stock>`.
+
+## For Dealers
+
+- [Dealer AI Visibility](https://matchrv.com/): how AI shopping assistants see a dealership and its inventory
+- [For Dealers](https://matchrv.com/for-dealers): services overview
+- [AI Visibility Report examples](https://matchrv.com/visibility-report): completed report examples
+- [ChatGPT advertising](https://matchrv.com/advertising): managed ChatGPT ads (beta pilot)
+- [Book a call](https://matchrv.com/book): scope and next steps
+
+Pricing (per rooftop; scope and service terms are confirmed before enrollment):
+
+- AI Visibility snapshot: free.
+- Full AI Visibility Audit: $99 one time, credited in full toward any monthly plan.
+- AI Inventory Syndication: $599/month per rooftop.
+- AI Dominance + Managed ChatGPT Ads: $1,499/month per rooftop, plus ad spend. ChatGPT ads are in beta with a small pilot group of dealers.
+
+Roadmap: MatchRV submitted its ChatGPT app (built on this MCP server) to OpenAI for review on October 22, 2026; it is not yet listed in the ChatGPT app directory. Deeper ChatGPT plugin integration for shoppers and dealers is planned for 2027.
+
+## Contact
+
+- Jonathan Kitchel, Founder, MatchRV
+- Email: jonathan@matchrv.com
+- Location: Tacoma, Washington area (Pacific Northwest, USA)
+- [Contact page](https://matchrv.com/contact)
+- Website: https://matchrv.com
+
+## Optional
+
+- [Terms](https://matchrv.com/terms)
+- [Privacy](https://matchrv.com/privacy)

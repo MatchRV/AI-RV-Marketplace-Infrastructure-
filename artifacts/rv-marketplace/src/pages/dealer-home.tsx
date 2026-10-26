@@ -54,7 +54,7 @@ export function DealerHome() {
         <h2>RVBusiness profiles MatchRV</h2>
         <p>Read how MatchRV is working to connect RV shoppers with specific, available dealer inventory through AI.</p>
       </div>
-      <a className="brand-text-link" href="https://rvbusiness.com/startup-matchrv-looking-to-make-ai-a-better-salesman/" target="_blank" rel="noopener noreferrer" aria-label="Read the MatchRV article on RVBusiness (opens in a new tab)">Read the RVBusiness article <ArrowRight size={17}/></a>
+      <a className="press-feature-link" href="https://rvbusiness.com/startup-matchrv-looking-to-make-ai-a-better-salesman/" target="_blank" rel="noopener noreferrer" aria-label="Read the MatchRV article on RVBusiness (opens in a new tab)">Read the RVBusiness article <ArrowRight size={17}/></a>
     </aside>
     <section className="brand-container brand-section free-sample-section" id="request-report" aria-label="Free sample report of your website"><QuickReport/></section>
     <section className="brand-container brand-section dealer-video-section" aria-labelledby="dealer-video-heading">

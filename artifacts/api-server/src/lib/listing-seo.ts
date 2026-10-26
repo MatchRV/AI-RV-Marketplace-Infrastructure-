@@ -43,11 +43,16 @@ function dealerDisplayName(unit: CanonicalUnit): string {
   return n || "RV Dealer";
 }
 
-function availability(unit: CanonicalUnit): string {
+/**
+ * schema.org availability for a unit, or `undefined` when MatchRV doesn't know.
+ * Unknown stays unknown: an `unknown` status emits no availability at all
+ * (never InStock). `pending` means a buyer has it on hold → Reserved.
+ */
+export function availability(unit: Pick<CanonicalUnit, "status">): string | undefined {
   if (unit.status === "available") return "https://schema.org/InStock";
-  if (unit.status === "pending") return "https://schema.org/PreOrder";
+  if (unit.status === "pending") return "https://schema.org/Reserved";
   if (unit.status === "removed") return "https://schema.org/OutOfStock";
-  return "https://schema.org/InStock";
+  return undefined;
 }
 
 function condition(unit: CanonicalUnit): string {
@@ -81,10 +86,11 @@ export function buildUnitJsonLd(unit: CanonicalUnit): Record<string, unknown> {
     "@type": "Offer",
     url,
     priceCurrency: "USD",
-    availability: availability(unit),
     itemCondition: condition(unit),
     seller,
   };
+  const avail = availability(unit);
+  if (avail) offer.availability = avail;
   if (typeof price === "number" && Number.isFinite(price)) {
     offer.price = price;
   }

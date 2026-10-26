@@ -13,6 +13,20 @@
 .dealer-plan li svg{flex-shrink:0;color:#087b71;margin-top:4px}
 .dealer-plan .brand-button{width:100%;text-align:center;justify-content:center;white-space:normal;min-height:48px}
 .pricing-conditions{max-width:980px;margin:12px auto!important}
+.dealer-booking-panel{display:grid;grid-template-columns:.85fr 1.15fr;gap:24px;max-width:1050px;margin:36px auto 0}
+.dealer-audit-offer,.dealer-calendar-offer{border-radius:14px;padding:34px}
+.dealer-audit-offer{border:1px solid #d5e0e5;background:#f8fafc}
+.dealer-audit-offer h3,.dealer-calendar-offer h3{font-size:1.5rem;margin:10px 0 18px}
+.dealer-audit-offer>p:last-child,.dealer-calendar-offer p{font-size:.95rem;line-height:1.7}
+.dealer-audit-price{display:flex;align-items:baseline;gap:10px;margin:0 0 16px!important}
+.dealer-audit-price strong{font-size:2.7rem;line-height:1;color:#0b1528}
+.dealer-audit-price span{font-size:.9rem;color:#526173}
+.dealer-calendar-offer{background:#0b1528;color:#fff}
+.dealer-calendar-offer>svg{color:#71d6ca}
+.dealer-calendar-offer p{color:#d5e0e5}
+.dealer-calendar-offer .brand-button{background:#0d9488;margin-top:8px}
+.dealer-calendar-offer .brand-button:hover{background:#087b71}
+@media(max-width:720px){.dealer-booking-panel{grid-template-columns:1fr}.dealer-audit-offer,.dealer-calendar-offer{padding:26px}.dealer-calendar-offer .brand-button{width:100%}}
 #plans{scroll-margin-top:100px}
 .buyer-question{margin:26px 0 14px;padding:24px;border-left:4px solid #0d9488;background:#fff;color:#0b1528;font-size:1.2rem;font-weight:600}
 .ai-comparison-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:24px 0}

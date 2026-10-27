@@ -279,12 +279,36 @@ export async function enrichBatch(limit = 20): Promise<EnrichmentRunResult> {
 
 let enrichmentTimer: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * The enrichment batch reads and writes the listings table, so it only makes
+ * sense with a database AND an Anthropic key. With DISABLE_DB=1 (the deployed
+ * snapshot-only demo) every `db` access throws DatabaseUnavailableError; run
+ * from a timer, that rejection was unhandled and exited the process (code 1)
+ * once an hour.
+ */
+export function shouldStartEnrichmentCron(dbMode: string, anthropicConfigured: boolean): boolean {
+  return dbMode !== "none" && anthropicConfigured;
+}
+
+/** One hourly tick. Never throws: a failed batch is logged and the next tick retries. */
+export async function runEnrichmentTick(
+  batch: (limit: number) => Promise<EnrichmentRunResult> = enrichBatch,
+): Promise<EnrichmentRunResult | null> {
+  console.log("[enrichment] Hourly batch starting...");
+  try {
+    const r = await batch(20);
+    console.log(`[enrichment] Done — enriched=${r.enriched} errors=${r.errors} remaining=${r.remaining}`);
+    return r;
+  } catch (err) {
+    console.error("[enrichment] Hourly batch failed (will retry next hour):", err);
+    return null;
+  }
+}
+
 export function startEnrichmentCron() {
   if (enrichmentTimer) return;
   console.log("[enrichment] Cron started — will run every hour");
-  enrichmentTimer = setInterval(async () => {
-    console.log("[enrichment] Hourly batch starting...");
-    const r = await enrichBatch(20);
-    console.log(`[enrichment] Done — enriched=${r.enriched} errors=${r.errors} remaining=${r.remaining}`);
+  enrichmentTimer = setInterval(() => {
+    void runEnrichmentTick();
   }, 60 * 60 * 1000);
 }

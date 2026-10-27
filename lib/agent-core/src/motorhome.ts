@@ -28,8 +28,9 @@ export const powertrainOf = (u: CanonicalUnit): Powertrain => ({ ...emptyPowertr
 export const towingOf = (u: CanonicalUnit): MotorhomeTowing => ({ ...emptyTowing(), ...u.towing });
 
 /** Shopper-facing verification status for one fact. */
-export function verificationStatus(f: Fact<unknown>): "listed_by_dealer" | "parsed_from_dealer_text" | "needs_verification" {
+export function verificationStatus(f: Fact<unknown>): "listed_by_dealer" | "published_by_manufacturer" | "parsed_from_dealer_text" | "needs_verification" {
   if (f.value === null) return "needs_verification";
+  if (f.source === "manufacturer_spec") return "published_by_manufacturer";
   return f.source === "dealer_listing" ? "listed_by_dealer" : "parsed_from_dealer_text";
 }
 
@@ -140,7 +141,7 @@ export function powertrainReport(unit: CanonicalUnit): Record<string, unknown> |
   if (!isMotorized(unit)) return null;
   const p = powertrainOf(unit);
   const t = towingOf(unit);
-  const row = (f: Fact<unknown>) => ({ value: f.value, status: verificationStatus(f), ...(f.source ? { source: f.source } : {}), ...(f.note ? { note: f.note } : {}) });
+  const row = (f: Fact<unknown>) => ({ value: f.value, status: verificationStatus(f), ...(f.source ? { source: f.source } : {}), ...(f.note ? { note: f.note } : {}), ...(f.sourceUrl ? { sourceUrl: f.sourceUrl } : {}) });
   return {
     whatPowersIt: {
       fuelType: row(p.fuelType), engine: row(p.engine), horsepower: row(p.horsepower), horsepowerRpm: row(p.horsepowerRpm),
@@ -148,6 +149,6 @@ export function powertrainReport(unit: CanonicalUnit): Record<string, unknown> |
     },
     whatItCanCarry: { uvwLbs: row(unit.dryWeightLbs), cargoCapacityLbs: row(t.cargoCapacityLbs), gvwrLbs: row(unit.gvwrLbs), frontAxleRatingLbs: row(t.frontAxleRatingLbs), rearAxleRatingLbs: row(t.rearAxleRatingLbs) },
     whatItCanTow: { hitchTowRatingLbs: row(t.hitchTowRatingLbs), tongueWeightLimitLbs: row(t.tongueWeightLimitLbs), gcwrLbs: row(t.gcwrLbs) },
-    legend: "listed_by_dealer = the dealer's listing states it for this unit; parsed_from_dealer_text = stated in the dealer's description; needs_verification = not published. None of these are manufacturer-verified. Horsepower and torque describe engine output only; GVWR, GCWR, axle, hitch and tongue limits apply separately.",
+    legend: "listed_by_dealer = the dealer's listing states it for this unit; published_by_manufacturer = the manufacturer's own spec page for this exact year/series/floorplan (sourceUrl attached); parsed_from_dealer_text = stated in the dealer's description; needs_verification = not published. Horsepower and torque describe engine output only; GVWR, GCWR, axle, hitch and tongue limits apply separately.",
   };
 }

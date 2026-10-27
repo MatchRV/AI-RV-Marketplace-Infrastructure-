@@ -68,12 +68,13 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 - [ChatGPT advertising](https://matchrv.com/advertising): managed ChatGPT ads (beta pilot)
 - [Book a call](https://matchrv.com/book): scope and next steps
 
-Pricing (per rooftop; scope and service terms are confirmed before enrollment):
+Services (scope and service terms are confirmed before enrollment):
 
 - AI Visibility snapshot: free.
-- Full AI Visibility Audit: $99 one time, credited in full toward any monthly plan.
-- AI Inventory Syndication: $599/month per rooftop.
-- AI Dominance + Managed ChatGPT Ads: $1,499/month per rooftop, plus ad spend. ChatGPT ads are in beta with a small pilot group of dealers.
+- Full AI Visibility Audit: $99 one time. Per MatchRV's terms, the audit fee is credited in full toward an ongoing service when you enroll.
+- AI Inventory Syndication: ongoing inventory ingestion, OEM spec backfill (only on a confirmed exact model match), a hosted schema layer, and syndication through MatchRV's MCP tools.
+- AI Dominance + Managed ChatGPT Ads: everything in AI Inventory Syndication plus managed ChatGPT sponsored campaigns, subject to platform eligibility; ad spend is additional and paid directly to OpenAI. ChatGPT ads are in beta with a small pilot group of dealers.
+- Ongoing services are scoped and priced on a call with Jonathan Kitchel; MatchRV does not publish monthly service prices. [Find a time on Jonathan's calendar](https://calendar.app.google/NyJzyheJ7nWM1wJa6). Booking a call does not start a subscription or authorize a charge.
 
 Roadmap: MatchRV submitted its ChatGPT app (built on this MCP server) to OpenAI for review on October 22, 2026; it is not yet listed in the ChatGPT app directory. Deeper ChatGPT plugin integration for shoppers and dealers is planned for 2027.
 

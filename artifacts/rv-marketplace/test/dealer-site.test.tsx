@@ -17,15 +17,12 @@ function render(component: React.ReactNode, path = "/") {
 }
 
 describe("dealer website conversion and public routes", () => {
-  it("shows all three offers, monthly units, credit, and working enrollment destinations", () => {
+  it("shows the $99 audit and the booking calendar without monthly service prices", () => {
     const html = render(<DealerPricing/>);
-    for (const price of ["$99", "$599", "$1,499"]) expect(html).toContain(price);
-    expect(html).toContain("credited in full");
-    expect(html).toContain("/ month per rooftop + ad spend");
-    expect(html).toContain('href="/book"');
-    expect(html).toContain('href="/advertising"');
-    expect(html).toContain("before work or recurring billing begins");
-    expect(html).not.toContain("Most Popular");
+    expect(html).toContain("$99");
+    for (const price of ["$599", "$1,499", "/ month per rooftop"]) expect(html).not.toContain(price);
+    expect(html).toContain("Full AI Visibility Audit");
+    expect(html).toContain("https://calendar.app.google/");
   });
   it("keeps the comparison source-backed and distinct from an actual AI recommendation", () => {
     const html = render(<AiVisibilityComparison/>);

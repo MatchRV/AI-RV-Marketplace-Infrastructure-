@@ -12,6 +12,7 @@ import { freshnessHours } from "./dataset.js";
 import { isMotorized, powertrainOf, towingOf } from "./motorhome.js";
 import { classifyFloorplan } from "./discovery.js";
 import { unitMakeModel } from "./brands.js";
+import { isServableFact } from "./manufacturer-specs.js";
 
 const usd = (n: number | null) => (n === null ? null : Math.round(n));
 
@@ -30,9 +31,8 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     .filter((s) => s.satisfied === true)
     .map((s) => s.preference)
     .slice(0, 3);
-  const sleepsConfirmed =
-    u.sleeps.value !== null &&
-    (u.sleeps.source === "dealer_listing" || u.sleeps.confidence === "high");
+  // Facts only: a served sleeps value is always dealer- or manufacturer-published.
+  const sleepsConfirmed = isServableFact(u.sleeps);
   return {
     id: u.id,
     unit_id: u.id,
@@ -47,6 +47,7 @@ export function compactUnitSummary(m: UnitMatch): Record<string, unknown> {
     sleepsConfirmed,
     sleepsSource: u.sleeps.source,
     sleepsConfidence: u.sleeps.confidence,
+    ...(u.sleeps.sourceUrl ? { sleepsSourceUrl: u.sleeps.sourceUrl } : {}),
     distanceMi: m.distanceMiles,
     dealer: `${u.dealer.name}, ${u.dealer.city}${u.dealer.state ? `, ${u.dealer.state}` : ""}`,
     dealerState: u.dealer.state,
@@ -103,7 +104,7 @@ export function compactSearchResult(
     ...(shown.length === 0
       ? { guidance: emptyGuidance }
       : {
-          note: "Cite coverage.units_in_area for local inventory size. sleepsConfirmed=false means inferred — say so. get_rv for full detail.",
+          note: "Cite coverage.units_in_area for local inventory size. sleeps=null = not published; say so, never estimate. get_rv for detail.",
         }),
   };
 }
@@ -117,9 +118,10 @@ export function compactUnitDetail(u: CanonicalUnit): Record<string, unknown> {
   };
   if (u.floorplanCode) out.floorplan = u.floorplanCode;
 
-  const fact = (label: string, f: { value: unknown; source: string | null }) => {
+  const fact = (label: string, f: { value: unknown; source: string | null; sourceUrl?: string }) => {
     out[label] = f.value;
     if (f.value !== null && f.source) out[`${label}_src`] = f.source;
+    if (f.value !== null && f.sourceUrl) out[`${label}_url`] = f.sourceUrl;
   };
   fact("price", u.priceUsd);
   fact("lengthFt", u.lengthFt);

@@ -3,8 +3,9 @@
  *
  * The live snapshot ships with null dealer lat/lng and sparse sleeps. Rather
  * than recommitting a 49MB JSON blob on every fix, we geocode dealers from
- * city/state and infer sleeping capacity (with explicit low/medium confidence)
- * once when the snapshot is indexed.
+ * city/state once when the snapshot is indexed. Sleeping capacity is NEVER
+ * inferred for serving: it comes from the dealer listing (or the dealer's VIN
+ * feed) or a matched manufacturer spec; otherwise it stays null (not published).
  *
  * IMPORTANT: this module must stay browser-safe (no node:fs / path / url).
  * Agent-core is bundled into the Vite marketplace client.
@@ -153,7 +154,11 @@ function resolveDealerCoordsUnchecked(city: string, state: string): LatLng | nul
   return null;
 }
 
-/** Industry-typical sleeping capacity from floorplan / type when dealer omits it. */
+/**
+ * Industry-typical sleeping capacity from floorplan / type when dealer omits it.
+ * @deprecated Not used for serving (facts-only rule): an estimate is never
+ * shown to shoppers or used to match. Kept only for offline analysis.
+ */
 export function inferSleeps(unit: {
   sleeps: Fact<number>;
   floorplanCode: string | null;
@@ -242,8 +247,11 @@ export interface EnrichStats {
   conditionCorrected: number;
   stillMissingCoords: number;
   sleepsFromVin: number;
+  /** Always 0 now: sleeps are never inferred (kept for log compatibility). */
   sleepsInferred: number;
   sleepsAlreadyKnown: number;
+  /** Units with no dealer-published sleeps; left null (not published). */
+  sleepsNotPublished: number;
 }
 
 /** Mutates units in place (snapshot is loaded once per process). */
@@ -263,6 +271,7 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
     sleepsFromVin: 0,
     sleepsInferred: 0,
     sleepsAlreadyKnown: 0,
+    sleepsNotPublished: 0,
   };
 
   for (const u of units) {
@@ -343,8 +352,9 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
       );
     }
 
-    u.sleeps = inferSleeps(u);
-    stats.sleepsInferred++;
+    // Facts only: no dealer- or manufacturer-published sleeps → null (not published).
+    u.sleeps = fact<number>(null, null, null, "Sleeping capacity not published by the dealer; confirm with the dealer.");
+    stats.sleepsNotPublished++;
   }
 
   return stats;

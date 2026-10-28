@@ -209,6 +209,23 @@ const hasWords = (hay: string, needle: string) => {
   return !!n && new RegExp(`(?:^| )${n.replace(/ /g, " ")}(?: |$)`).test(normText(hay));
 };
 
+const squash = (s: string) => normText(s).replace(/ /g, "");
+/** Title names the series immediately followed by the floorplan code (spacing/hyphens ignored). */
+export function seriesThenCode(title: string, series: string, floorplanCode: string): boolean {
+  const t = ` ${normText(title)} `;
+  const want = `${squash(series)}${normCode(floorplanCode).toLowerCase()}`;
+  // Re-join every run of words and test word-boundary-aligned containment.
+  const words = t.trim().split(" ");
+  for (let i = 0; i < words.length; i++) {
+    let acc = "";
+    for (let j = i; j < words.length && acc.length < want.length; j++) {
+      acc += words[j];
+      if (acc === want) return true;
+    }
+  }
+  return false;
+}
+
 export type MatchFailure =
   | "no_record_for_year_and_code"
   | "code_not_in_title"
@@ -234,7 +251,11 @@ export function findSpecRecord(
   if (modelCodes.size && titleCodes.size && ![...modelCodes].some((c) => titleCodes.has(c))) {
     return { failure: "model_field_names_other_floorplan" };
   }
-  const bySeries = candidates.filter((r) => hasWords(title, r.series));
+  // Exact configuration: the series must be immediately followed by the
+  // floorplan code ("Jay Flight 270BHSW"). A longer series name in the title
+  // ("Jay Flight SLX 270BHSW", "Coleman Lantern 17B") is a different model
+  // line, so a series-level match is refused.
+  const bySeries = candidates.filter((r) => hasWords(title, r.series) && seriesThenCode(title, r.series, r.floorplanCode));
   if (!bySeries.length) return { failure: "series_not_in_title" };
   const unitBrand = canonicalBrand(unitMakeModel(unit).brand) ?? canonicalBrand(unit.make);
   const byBrand = bySeries.filter((r) => {
@@ -424,4 +445,42 @@ export function parseSpecTableText(text: string): { specs: Partial<Record<SpecFi
     }
   }
   return { specs, labels };
+}
+
+// ── Facts-only serving rule ────────────────────────────────────────────────
+// A spec value is served only when it is published for THIS unit: by the
+// dealer (structured listing field, the dealer's own description text, or the
+// dealer's VIN feed), by the manufacturer for the exact year + series +
+// floorplan (with its sourceUrl), or confirmed by the shopper themselves.
+// Anything inferred, estimated, decoded from a naming convention or computed
+// becomes null ("not published") and is treated as needs-verification.
+
+export const SERVABLE_SPEC_SOURCES: readonly FactSource[] = ["dealer_listing", "derived_text", "manufacturer_spec", "learned"];
+
+export function isServableFact(f: Pick<Fact<unknown>, "value" | "source" | "sourceUrl">): boolean {
+  if (f.value === null || f.value === undefined || !f.source) return false;
+  if (!SERVABLE_SPEC_SOURCES.includes(f.source)) return false;
+  if (f.source === "manufacturer_spec" && !f.sourceUrl) return false;
+  return true;
+}
+
+export type FactsOnlyStats = Partial<Record<SpecField, Partial<Record<FactSource, number>>>>;
+
+/** Null every non-servable spec value in place. Returns what was blanked, by field and source. */
+export function enforceFactsOnly(units: CanonicalUnit[]): FactsOnlyStats {
+  const blanked: FactsOnlyStats = {};
+  for (const u of units) {
+    for (const field of SPEC_FIELDS) {
+      const f = u[field] as Fact<number>;
+      if (f.value === null || f.value === undefined || isServableFact(f)) continue;
+      const by = (blanked[field] ??= {});
+      const src = (f.source ?? "computed") as FactSource;
+      by[src] = (by[src] ?? 0) + 1;
+      (u[field] as Fact<number>) = {
+        value: null, source: null, confidence: null,
+        note: `${field === "sleeps" ? "Sleeping capacity" : "Value"} not published by the dealer or the manufacturer for this exact floorplan; confirm with the dealer.`,
+      };
+    }
+  }
+  return blanked;
 }

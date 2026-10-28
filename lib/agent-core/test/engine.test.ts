@@ -229,7 +229,7 @@ describe("runSearch", () => {
     expect(out.results[0].hardChecks.filter((h) => h.status === "unknown")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ constraint: "length ≥ 35 ft" }),
-        expect.objectContaining({ constraint: "sleeps ≥ 8", source: "derived_model_code" }),
+        expect.objectContaining({ constraint: "sleeps ≥ 8", source: null, actual: "not published — confirm with dealer" }),
         expect.objectContaining({ constraint: "has bunkhouse", source: "derived_model_code" }),
       ]),
     );

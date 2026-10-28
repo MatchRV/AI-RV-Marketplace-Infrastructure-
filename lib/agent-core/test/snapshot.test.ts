@@ -64,11 +64,13 @@ describe("committed inventory snapshot", () => {
     expect(match.unit.images).toEqual([]);
   });
 
-  it("geocodes snapshot dealers and backfills sleeps at index time", () => {
+  it("geocodes snapshot dealers and serves only published sleeps (facts only)", () => {
     const withCoords = idx.units.filter((u) => u.dealer.lat !== null && u.dealer.lng !== null).length;
     expect(withCoords / idx.units.length).toBeGreaterThan(0.95);
-    const withSleeps = idx.units.filter((u) => u.sleeps.value !== null).length;
-    expect(withSleeps / idx.units.length).toBeGreaterThan(0.95);
+    // Every served sleeps value is dealer- or manufacturer-published; nothing inferred.
+    const served = idx.units.filter((u) => u.sleeps.value !== null);
+    expect(served.every((u) => ["dealer_listing", "derived_text", "manufacturer_spec", "learned"].includes(u.sleeps.source ?? ""))).toBe(true);
+    expect(served.length / idx.units.length).toBeGreaterThan(0.5);
     const fl = idx.units.filter((u) => u.dealer.state === "FL");
     expect(fl.length).toBeGreaterThan(100);
     expect(fl.every((u) => u.dealer.lat !== null)).toBe(true);

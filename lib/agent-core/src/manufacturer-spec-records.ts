@@ -10,6 +10,7 @@
  */
 
 import type { ManufacturerSpecRecord } from "./manufacturer-specs.js";
+import { JAYCO_SPEC_RECORDS } from "./spec-records/jayco.js";
 import { GRAND_DESIGN_SPEC_RECORDS } from "./spec-records/grand-design.js";
 import { KEYSTONE_SPEC_RECORDS } from "./spec-records/keystone.js";
 
@@ -70,7 +71,7 @@ export const SEED_SPEC_RECORDS: ManufacturerSpecRecord[] = [
 ];
 
 const keyOf = (r: ManufacturerSpecRecord) => `${r.year}|${r.make}|${r.series}|${r.floorplanCode}`.toUpperCase();
-const crawled = [...GRAND_DESIGN_SPEC_RECORDS, ...KEYSTONE_SPEC_RECORDS];
+const crawled = [...JAYCO_SPEC_RECORDS, ...GRAND_DESIGN_SPEC_RECORDS, ...KEYSTONE_SPEC_RECORDS];
 const crawledKeys = new Set(crawled.map(keyOf));
 
 export const MANUFACTURER_SPEC_RECORDS: ManufacturerSpecRecord[] = [

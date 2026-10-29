@@ -11,6 +11,7 @@
 
 import type { ManufacturerSpecRecord } from "./manufacturer-specs.js";
 import { GRAND_DESIGN_SPEC_RECORDS } from "./spec-records/grand-design.js";
+import { KEYSTONE_SPEC_RECORDS } from "./spec-records/keystone.js";
 
 /** Hand-verified seed records (#56). Crawled records for the same year + make + series + floorplan replace them. */
 export const SEED_SPEC_RECORDS: ManufacturerSpecRecord[] = [
@@ -69,7 +70,7 @@ export const SEED_SPEC_RECORDS: ManufacturerSpecRecord[] = [
 ];
 
 const keyOf = (r: ManufacturerSpecRecord) => `${r.year}|${r.make}|${r.series}|${r.floorplanCode}`.toUpperCase();
-const crawled = [...GRAND_DESIGN_SPEC_RECORDS];
+const crawled = [...GRAND_DESIGN_SPEC_RECORDS, ...KEYSTONE_SPEC_RECORDS];
 const crawledKeys = new Set(crawled.map(keyOf));
 
 export const MANUFACTURER_SPEC_RECORDS: ManufacturerSpecRecord[] = [

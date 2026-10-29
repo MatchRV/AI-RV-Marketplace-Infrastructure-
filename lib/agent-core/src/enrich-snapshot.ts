@@ -17,6 +17,7 @@ import { resolvePlace, scanForCity, CITY_COORDS, haversineMiles, type LatLng } f
 import {
   extractFloorplanCode,
   floorplanSuggestsBunks,
+  floorplanCodeIsBunkhouse,
   fact, buildCorpus, extractSpecsFromText, extractBunkhouse,
 } from "./enrich.js";
 import { VIN_SLEEPS } from "./vin-sleeps.js";
@@ -282,7 +283,7 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
     }
     // Scraped listing flags were historically promoted from generic feature text.
     // Preserve explicit negatives, but require unit-specific evidence for positives.
-    u.bunkhouse = extractBunkhouse(u.bunkhouse.value === false ? false : null, corpus, u.floorplanCode);
+    u.bunkhouse = extractBunkhouse(u.bunkhouse.value === false ? false : null, corpus, u.floorplanCode, u.rvType);
     if (u.sleeps.source === "derived_model_code" || u.sleeps.source === "computed") {
       u.sleeps = fact<number>(null, null, null);
     }
@@ -343,12 +344,12 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
     if (!u.floorplanCode) {
       u.floorplanCode = extractFloorplanCode(u.model || "", u.title || "");
     }
-    if (u.bunkhouse.value === null && floorplanSuggestsBunks(u.floorplanCode)) {
+    if (u.bunkhouse.value === null && floorplanCodeIsBunkhouse(u.floorplanCode, u.rvType)) {
       u.bunkhouse = fact(
         true,
         "derived_model_code",
         "medium",
-        `Floorplan code ${u.floorplanCode} indicates a bunk layout.`,
+        `Floorplan code ${u.floorplanCode} carries the manufacturer's BH (bunkhouse) label on a towable.`,
       );
     }
 

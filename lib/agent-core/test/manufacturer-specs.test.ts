@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   applyManufacturerSpecs, applyManufacturerSpecsToAll, buildSpecIndex, findSpecRecord, enforceFactsOnly, isServableFact, seriesThenCode,
-  isManufacturerSource, parseSpecTableText, MANUFACTURER_SPEC_RECORDS, provenanceLabel, powertrainReport,
+  isManufacturerSource, parseSpecTableText, MANUFACTURER_SPEC_RECORDS, SEED_SPEC_RECORDS, provenanceLabel, powertrainReport,
   type CanonicalUnit, type ManufacturerSpecRecord,
 } from "../src/index.js";
 import { matchingUnits } from "./matching-fixture.js";
 
-const seed = { records: MANUFACTURER_SPEC_RECORDS };
+const seed = { records: SEED_SPEC_RECORDS };
 
 const U = { value: null, source: null, confidence: null } as const;
 const blank = (o: Partial<CanonicalUnit>): CanonicalUnit => ({
@@ -35,6 +35,12 @@ describe("spec records are source-backed or rejected", () => {
   it("accepts the committed seed records (first-party manufacturer pages)", () => {
     expect(idx.accepted).toBe(seed.records.length);
     expect(idx.rejected).toEqual([]);
+  });
+  it("accepts every committed record (seeds + crawled), with no duplicates", () => {
+    const all = buildSpecIndex(MANUFACTURER_SPEC_RECORDS);
+    expect(all.rejected).toEqual([]);
+    const keys = MANUFACTURER_SPEC_RECORDS.map((r) => `${r.year}|${r.make}|${r.series}|${r.floorplanCode}`.toUpperCase());
+    expect(new Set(keys).size).toBe(keys.length);
   });
   it("rejects third-party, non-https or look-alike domains", () => {
     expect(isManufacturerSource({ make: "Jayco", sourceUrl: "https://www.jayco.com/rvs/x" })).toBe(true);

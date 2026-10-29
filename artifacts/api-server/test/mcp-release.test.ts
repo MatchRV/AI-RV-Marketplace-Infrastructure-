@@ -27,8 +27,14 @@ describe('MCP release transport', () => {
     expect(data.appliedConstraints).toMatchObject({ lengthMaxFt: 30, priceMinUsd: 35000, priceMaxUsd: 45000, mustHave: ['bunkhouse'] });
     expect(data.status).toBe('shortlist');
     expect(data.funnel).toBeUndefined();
-    expect(result._meta['matchrv/internal'].funnel.verifiedMatches).toBe(0);
-    for (const r of data.results) expect(r.verified).toBe(false);
+    // Only units whose every hard check is backed by a published fact verify (e.g. a 2027 Keystone Hideout 230BH
+    // whose length, sleeps and bunkhouse come from Keystone's own floorplan page); everything else stays unverified.
+    const verified = data.results.filter((r: any) => r.verified);
+    expect(result._meta['matchrv/internal'].funnel.verifiedMatches).toBeGreaterThanOrEqual(verified.length);
+    for (const r of data.results) {
+      const [ok, total] = String(r.checks ?? r.hardChecks).split('/').map(Number);
+      expect(r.verified).toBe(ok === total);
+    }
   }, 60000);
   it('honors top-level condition=new near Tacoma: no used units, no out-of-state dealers, per-store CW names', async () => {
     const result = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Tacoma, WA', radius_miles: 50, condition: 'new', shopper_requested_results_now: true, shopper_words: 'just show me', limit: 10 } });

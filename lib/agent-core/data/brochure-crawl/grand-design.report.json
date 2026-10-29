@@ -1,0 +1,14 @@
+{
+ "maker": "Grand Design",
+ "ranAt": "2026-10-29T17:01:03.703Z",
+ "sitemapFloorplanUrls": 92,
+ "matchingInventory": 85,
+ "fetched": 0,
+ "cached": 85,
+ "records": 85,
+ "skipped": {},
+ "blocked": [],
+ "note": "granddesignrv.com publishes only the current model year; older years are not on the site.",
+ "recordsWritten": 85,
+ "ambiguousDropped": []
+}

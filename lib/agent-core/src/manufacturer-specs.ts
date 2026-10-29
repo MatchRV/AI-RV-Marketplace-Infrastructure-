@@ -109,6 +109,14 @@ export interface ManufacturerSpecRecord {
   note?: string;
   /** Motorhomes only, when the manufacturer states it for this floorplan. */
   fuelType?: FuelType;
+  /** Floorplan name/description exactly as the manufacturer publishes it, e.g. "Single axle, non-slide, single bunks". */
+  floorplanName?: string;
+  /**
+   * Bunkhouse yes/no, only when the manufacturer's own floorplan description or
+   * spec table says so (bunkhouseEvidence quotes it). Omitted = not published.
+   */
+  bunkhouse?: boolean;
+  bunkhouseEvidence?: string;
 }
 
 /** Manufacturer-owned domains (subdomains allowed). Extend only with first-party domains. */
@@ -190,13 +198,19 @@ function validateRecord(r: ManufacturerSpecRecord): string | null {
     const [min, max] = RANGES[f];
     if (typeof v !== "number" || !Number.isFinite(v) || v < min || v > max) return `out_of_range_${f}`;
   }
-  if (!Object.keys(r.specs ?? {}).length && !r.fuelType) return "no_specs";
+  if (r.bunkhouse !== undefined && typeof r.bunkhouse !== "boolean") return "invalid_bunkhouse";
+  if (r.bunkhouse !== undefined && !r.bunkhouseEvidence?.trim()) return "bunkhouse_without_evidence";
+  if (!Object.keys(r.specs ?? {}).length && !r.fuelType && r.bunkhouse === undefined) return "no_specs";
   return null;
 }
 
 // ── Matching ───────────────────────────────────────────────────────────────
 
-const CODE_RE = /\b(\d{2,3}\s?-?[A-Z]{1,6}\d?|\d{1,3}[A-Z]{1,6})\b/g;
+/** Floorplan codes named in a listing title (normalized, e.g. "270BHSW"). */
+export function titleFloorplanCodes(text: string): string[] { return [...codesIn(text)]; }
+
+// 4-digit codes (Grand Design Imagine 2470BH, Keystone Springdale 2880BRS) only in the unspaced form, so "2027 GRAND" is never a code.
+const CODE_RE = /\b(\d{2,3}\s?-?[A-Z]{1,6}\d?|\d{1,4}[A-Z]{1,6}\d?)\b/g;
 
 function codesIn(text: string): Set<string> {
   const out = new Set<string>();
@@ -264,7 +278,7 @@ export function findSpecRecord(
     return accepted.includes(unitBrand) || accepted.includes(normText(unitBrand));
   });
   if (!byBrand.length) return { failure: "brand_conflict" };
-  const distinct = new Set(byBrand.map((r) => JSON.stringify([r.specs, r.fuelType ?? null])));
+  const distinct = new Set(byBrand.map((r) => JSON.stringify([r.specs, r.fuelType ?? null, r.bunkhouse ?? null])));
   if (distinct.size > 1) return { failure: "ambiguous" };
   return { record: byBrand[0] };
 }
@@ -273,7 +287,8 @@ export function findSpecRecord(
 
 export interface SpecConflict {
   unitId: string;
-  field: SpecField;
+  /** "bunkhouse" values are 1 (yes) / 0 (no). */
+  field: SpecField | "bunkhouse";
   unitValue: number;
   unitSource: FactSource | null;
   manufacturerValue: number;
@@ -281,7 +296,7 @@ export interface SpecConflict {
 }
 
 export interface SpecFillResult {
-  filled: SpecField[];
+  filled: (SpecField | "bunkhouse")[];
   fuelFilled: boolean;
   conflicts: SpecConflict[];
   failure?: MatchFailure;
@@ -339,6 +354,24 @@ export function applyManufacturerSpecs(unit: CanonicalUnit, index: SpecIndex): S
     }
   }
 
+  if (r.bunkhouse !== undefined) {
+    const cur = unit.bunkhouse;
+    // Dealer-stated (structured or the dealer's own text) wins; a BH-code reading is a convention, so the brochure replaces it.
+    if (cur.value === null || cur.source === "derived_model_code" || cur.source === "computed") {
+      unit.bunkhouse = {
+        value: r.bunkhouse,
+        source: "manufacturer_spec",
+        confidence: "high",
+        note: `${r.year} ${r.make} ${r.series} ${r.floorplanCode} manufacturer floorplan: "${r.bunkhouseEvidence}".`,
+        sourceUrl: r.sourceUrl,
+        observedAt: r.retrievedAt,
+      };
+      res.filled.push("bunkhouse");
+    } else if (cur.source !== "manufacturer_spec" && cur.value !== r.bunkhouse) {
+      res.conflicts.push({ unitId: unit.id, field: "bunkhouse", unitValue: cur.value ? 1 : 0, unitSource: cur.source, manufacturerValue: r.bunkhouse ? 1 : 0, sourceUrl: r.sourceUrl });
+    }
+  }
+
   if (r.fuelType && !TOWABLE_TYPES.includes(unit.rvType)) {
     const pt = unit.powertrain;
     if (!pt?.fuelType || pt.fuelType.value === null) {
@@ -363,7 +396,7 @@ export function applyManufacturerSpecs(unit: CanonicalUnit, index: SpecIndex): S
 export interface SpecRunStats {
   units: number;
   matched: number;
-  fieldsFilled: Partial<Record<SpecField | "fuelType", number>>;
+  fieldsFilled: Partial<Record<SpecField | "fuelType" | "bunkhouse", number>>;
   conflicts: SpecConflict[];
   failures: Partial<Record<MatchFailure, number>>;
 }

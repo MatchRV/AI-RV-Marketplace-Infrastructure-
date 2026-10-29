@@ -230,7 +230,8 @@ describe("runSearch", () => {
       expect.arrayContaining([
         expect.objectContaining({ constraint: "length ≥ 35 ft" }),
         expect.objectContaining({ constraint: "sleeps ≥ 8", source: null, actual: "not published — confirm with dealer" }),
-        expect.objectContaining({ constraint: "has bunkhouse", source: "derived_model_code" }),
+        // "DB" on a Class A is not bunkhouse evidence (facts only): unknown, no source.
+        expect.objectContaining({ constraint: "has bunkhouse", source: null }),
       ]),
     );
   });

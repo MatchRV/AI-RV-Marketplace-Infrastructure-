@@ -9,8 +9,18 @@ export const CATEGORY_CONFLICT_REASON = "category_conflict";
  * snapshot was built is held back from MCP search, get_rv and eligibility: it
  * may have sold. Measured against the snapshot build time (not wall-clock), so
  * the rule is deterministic per snapshot and a fresh pull re-admits the unit.
+ * Configurable with env STALE_LISTING_MAX_AGE_DAYS (positive number of days).
  */
-export const STALE_LISTING_MAX_AGE_DAYS = 14;
+export const DEFAULT_STALE_LISTING_MAX_AGE_DAYS = 30;
+
+/** Parse STALE_LISTING_MAX_AGE_DAYS; anything missing or not a positive finite number falls back to the default. */
+export function resolveStaleListingMaxAgeDays(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === "") return DEFAULT_STALE_LISTING_MAX_AGE_DAYS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_STALE_LISTING_MAX_AGE_DAYS;
+}
+
+export const STALE_LISTING_MAX_AGE_DAYS = resolveStaleListingMaxAgeDays(process.env.STALE_LISTING_MAX_AGE_DAYS);
 
 /** Days between the unit's last-seen time and the reference time; null when unknown/unparseable. */
 export function listingAgeDays(unit: CanonicalUnit, referenceTime: Date): number | null {

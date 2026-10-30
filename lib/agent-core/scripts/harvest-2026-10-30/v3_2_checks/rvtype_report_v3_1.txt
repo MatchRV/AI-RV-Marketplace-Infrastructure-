@@ -1,0 +1,34 @@
+units 90619 stitchedCW 26208 CWfresh 0 CWbase-nonstitched 10223 control(nonCW) 54188
+vin_side     stitchedCW         checked= 22663 mismatch=    4 (0.0%)
+    ('rv.campingworld.com', '2720824', '5ZTCC0L06VJ053821', '2027 EAST TO WEST COLLEGE AVENUE 2201S', 'class_c', 'tow')
+    ('rv.campingworld.com', '2720825', '5ZTCC0S05VJ053813', '2027 EAST TO WEST COLLEGE AVENUE 2701NS', 'class_c', 'tow')
+    ('rv.campingworld.com', '2720826', '5ZTCC0T09VJ053814', '2027 EAST TO WEST COLLEGE AVENUE 2801S', 'class_c', 'tow')
+    ('rv.campingworld.com', '2720827', '5ZTCC0V01VJ053822', '2027 EAST TO WEST COLLEGE AVENUE 2951OK', 'class_c', 'tow')
+vin_side     CWfresh            checked=     0 mismatch=    0 (0.0%)
+vin_side     CWbaseNonStitched  checked=  8636 mismatch=    4 (0.0%)
+vin_side     controlNonCW       checked= 36186 mismatch=  176 (0.5%)
+family_type  stitchedCW         checked=  6350 mismatch=   61 (1.0%)
+    ('rv.campingworld.com', '2722004', '1E9TF1416R1673662', '2024 ENCORE RV ROG 14TH2', 'toy_hauler', 'travel_trailer')
+    ('rv.campingworld.com', '2727536C', '1E9TF1419P1673393', '2023 ENCORE RV ROG 14TH2', 'toy_hauler', 'travel_trailer')
+    ('rv.campingworld.com', '2673590', '1UJAJ0AE9H12Y0454', '2017 JAYCO JAY SERIES SPORT 10SD', 'popup_camper', 'travel_trailer')
+    ('rv.campingworld.com', '2693045Z', '1UJAJ0AF8G1B30166', '2016 JAYCO JAY SERIES 1207UD', 'popup_camper', 'travel_trailer')
+    ('rv.campingworld.com', '2684765', '1UJAJ0AH3F22J0093', '2015 JAYCO JAY SERIES SPORT 12HSB', 'popup_camper', 'travel_trailer')
+family_type  CWfresh            checked=     0 mismatch=    0 (0.0%)
+family_type  CWbaseNonStitched  checked=  2507 mismatch=   23 (0.9%)
+family_type  controlNonCW       checked= 22300 mismatch=  179 (0.8%)
+family_side  stitchedCW         checked=  6350 mismatch=    0 (0.0%)
+family_side  CWfresh            checked=     0 mismatch=    0 (0.0%)
+family_side  CWbaseNonStitched  checked=  2507 mismatch=    5 (0.2%)
+family_side  controlNonCW       checked= 22300 mismatch=   25 (0.1%)
+title_word   stitchedCW         checked=     0 mismatch=    0 (0.0%)
+title_word   CWfresh            checked=     0 mismatch=    0 (0.0%)
+title_word   CWbaseNonStitched  checked=     0 mismatch=    0 (0.0%)
+title_word   controlNonCW       checked=  6871 mismatch=   26 (0.4%)
+stitchedCW [('travel_trailer', 16854), ('fifth_wheel', 4284), ('class_c', 1809), ('toy_hauler', 1639), ('class_a', 957), ('class_b', 481), ('popup_camper', 157), ('truck_camper', 27)]
+CWfresh []
+CWbaseNonStitched [('travel_trailer', 7719), ('class_c', 768), ('toy_hauler', 677), ('class_a', 467), ('fifth_wheel', 294), ('class_b', 280), ('truck_camper', 18)]
+controlNonCW [('travel_trailer', 30271), ('fifth_wheel', 8824), ('class_c', 4744), ('class_a', 3884), ('toy_hauler', 2795), ('class_b', 2672), ('truck_camper', 698), ('popup_camper', 300)]
+pricecheck stitchedCW classA<30k(2020+) 11 towable>400k 0
+pricecheck CWfresh classA<30k(2020+) 0 towable>400k 0
+pricecheck CWbaseNonStitched classA<30k(2020+) 0 towable>400k 0
+pricecheck controlNonCW classA<30k(2020+) 100 towable>400k 43

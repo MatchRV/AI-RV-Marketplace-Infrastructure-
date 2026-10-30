@@ -1,0 +1,9 @@
+search,live_pass,v3_pass,v3_1_pass,v3_1_minus_v3,note
+Tacoma 50mi all,1654,1631,1631,0,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+Tacoma 50mi travel_trailer,1163,1120,1120,0,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+Tacoma 100mi all,2408,2993,2992,-1,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+Tacoma 100mi travel_trailer,1610,1821,1821,0,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+used TT <$40k within 100mi Tacoma,388,406,364,-42,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+new fifth wheel (nationwide),6703,8042,5401,-2641,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+new fifth wheel within 100mi Tacoma,274,346,317,-29,place=Tacoma (98402 not resolvable: no ZIP support in resolvePlace)
+WA units w/o coords (served),437,437,437,0,apachecamping 436 + libertyrvroofing 1 in all three

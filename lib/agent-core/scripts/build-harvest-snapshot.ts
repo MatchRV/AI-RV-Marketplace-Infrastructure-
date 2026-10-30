@@ -125,14 +125,28 @@ for await (const line of rl) if (line.trim()) rows.push(JSON.parse(line));
 const unitType = new Map<string, string>();
 const unitKey = (vin: unknown, dom: unknown, stock: unknown) => vin ? `vin:${String(vin).toUpperCase()}` : stock ? `stk:${bare(String(dom ?? ""))}:${String(stock).toLowerCase()}` : null;
 for (const u of oldUnits) { const k = unitKey(u.vin, u.provenance.dealerDomain, u.stockNumber); if (k) unitType.set(k, u.rvType); }
+const oldUnitType = new Map(unitType);
+// Dealer-stated categories in the Oct 14 snapshot by make + first model word.
+const oldVotes = new Map<string, Map<string, number>>();
+const mmKey = (make: unknown, model: unknown) => { const a = words(make)[0], b = words(model)[0]; return a && b ? `${a}|${b}` : null; };
+for (const u of oldUnits) { const k = mmKey(u.make, u.model); if (!k) continue; const v = oldVotes.get(k) ?? new Map(); v.set(u.rvType, (v.get(u.rvType) ?? 0) + 1); oldVotes.set(k, v); }
+const oldMajority = (make: unknown, model: unknown) => {
+  const k = mmKey(make, model); const v = k ? oldVotes.get(k) : null; if (!v) return null;
+  const total = [...v.values()].reduce((a, b) => a + b, 0); const [top, n] = [...v.entries()].sort((a, b) => b[1] - a[1])[0];
+  return total >= 3 && n / total >= 0.8 ? top : null;
+};
 for (const r of rows) {
-  const t = normalizeRvType(r._meta.mc_class ?? r.rv_type, String(r.title ?? "")) ?? (r._meta.page_category || null);
+  const t = (r._meta.harvest_method.startsWith("marketcheck") ? null : normalizeRvType(r.rv_type, String(r.title ?? ""))) ?? (r._meta.page_category || null);
   const k = unitKey(r.vin, r._meta.dealer.domain, r.stock_number);
   if (t && k && !unitType.has(k)) unitType.set(k, t);
 }
 // Second-chance category votes from fresh rows that state their category.
-for (const r of rows) { const t = normalizeRvType(r._meta.mc_class ?? r.rv_type, String(r.title ?? "")); if (t && r.make && r.model) vote(String(r.make), String(r.model), t); }
+for (const r of rows) { if (r._meta.harvest_method.startsWith("marketcheck")) continue; const t = normalizeRvType(r.rv_type, String(r.title ?? "")); if (t && r.make && r.model) vote(String(r.make), String(r.model), t); }
 
+const TYPE_STRICT = process.env.TYPE_STRICT !== "0";
+const REFRESH_ONLY = process.env.REFRESH_ONLY === "1";
+// Units whose listing page at the same dealer is gone (404/410), marked sold / sale pending, or no longer shows the unit ("<key>|<domain>").
+const GONE = new Set<string>(process.env.GONE_KEYS ? JSON.parse(readFileSync(process.env.GONE_KEYS, "utf-8")) : []);
 const MC_NOTE = "Copied from MarketCheck's crawl of this dealer listing (see sourceUrl); confirm with the dealer.";
 for (const r of rows) {
   const m = r._meta; inc(byOrigin, m.origin);
@@ -140,19 +154,44 @@ for (const r of rows) {
   const listingUrl = m.listing_url && /^https?:\/\//.test(m.listing_url) ? m.listing_url : null;
   if (!r.vin && !r.stock_number) { rej("no_vin_or_stock"); continue; }
   if (!listingUrl) { rej("no_listing_url"); continue; }
+  if (/(^|\.)archive\.org\//i.test(listingUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "") + "/")) { rej("archive_org_url"); continue; }
   const title = String(r.title ?? "");
-  if (NON_RV.test(`${title} ${r.model ?? ""}`) && !RV_WORDS.test(`${title} ${m.mc_class ?? ""}`)) { rej("not_an_rv"); continue; }
+  const pageTitle = String(m.page_title ?? title);
+  if (NON_RV.test(`${pageTitle} ${title} ${r.model ?? ""}`) && !RV_WORDS.test(`${pageTitle} ${m.mc_class ?? ""}`)) { rej("not_an_rv"); continue; }
+  // New/used only from the dealer's own condition field (or the listing title's leading New/Used).
+  if (!r.condition || !/\b(new|used)\b/i.test(String(r.condition))) { rej("no_dealer_condition"); continue; }
   if (/^\s*(park model|fish house)\b/i.test(String(m.mc_class ?? ""))) { rej("not_an_rv_park_model_or_fish_house"); continue; }
   const d = m.dealer;
   if (!d.state || !STATES.has(String(d.state).toUpperCase()) || !d.city) { rej("no_dealer_location"); continue; }
-  let t = normalizeRvType(m.mc_class ?? r.rv_type, title), via = "dealer_category";
-  if (!t && m.page_category) { t = m.page_category; via = "dealer_page_category_quote"; }
-  if (!t) { t = urlType(listingUrl); via = "listing_url_path"; }
-  if (!t) { const k = unitKey(r.vin, d.domain, r.stock_number); t = k ? unitType.get(k) ?? null : null; via = "same_unit_other_listing"; }
-  if (!t) { t = brochureType(r.make, r.model, title); via = "manufacturer_brochure_series"; }
-  if (!t) { t = consensus(r.make, r.model); via = "make_model_consensus"; }
-  if (!t) { t = seriesConsensus(r.make, r.model); via = "series_consensus"; }
-  if (!t) { rej("unresolvable_rv_type"); continue; }
+  let t: string | null, via: string;
+  if (m.harvest_method.startsWith("marketcheck")) {
+    // MarketCheck's class field is not the dealer's: checked against the Oct 14 dealer-stated categories it
+    // was wrong for ~20% of units (towables labelled Class C). Use what the dealer's own page/URL says first,
+    // and accept MarketCheck's class only when the dealer-stated categories for that make+model agree (>=80%, n>=3).
+    t = m.page_category || null; via = "dealer_page_category_quote";
+    if (!t) { t = urlType(listingUrl); via = "listing_url_path"; }
+    if (!t) { const k = unitKey(r.vin, d.domain, r.stock_number); t = k ? oldUnitType.get(k) ?? null : null; via = "same_unit_other_listing"; }
+    if (!t) {
+      const mcT = normalizeRvType(m.mc_class, ""); const maj = oldMajority(r.make, r.model);
+      if (mcT && maj && maj === mcT) { t = mcT; via = "marketcheck_class_corroborated"; }
+      else if (mcT) { rej(maj ? "marketcheck_class_contradicted" : "marketcheck_class_uncorroborated"); continue; }
+    }
+  } else {
+    t = normalizeRvType(r.rv_type, title); via = "dealer_category";
+    if (!t && m.page_category) { t = m.page_category; via = "dealer_page_category_quote"; }
+    if (!t) { t = urlType(listingUrl); via = "listing_url_path"; }
+    if (!t) { const k = unitKey(r.vin, d.domain, r.stock_number); t = k ? unitType.get(k) ?? null : null; via = "same_unit_other_listing"; }
+  }
+  // TYPE_STRICT (default): the category comes only from what the dealer published for this unit. Brochure and
+  // make/model consensus are used only as a veto: a stated category they contradict is rejected.
+  const evidence = brochureType(r.make, r.model, title) ?? consensus(r.make, r.model) ?? seriesConsensus(r.make, r.model);
+  if (t && evidence && evidence !== t) { rej("type_conflicts_model_evidence"); continue; }
+  if (!TYPE_STRICT) {
+    if (!t) { t = brochureType(r.make, r.model, title); via = "manufacturer_brochure_series"; }
+    if (!t) { t = consensus(r.make, r.model); via = "make_model_consensus"; }
+    if (!t) { t = seriesConsensus(r.make, r.model); via = "series_consensus"; }
+  }
+  if (!t) { rej(TYPE_STRICT ? "no_dealer_stated_rv_type" : "unresolvable_rv_type"); continue; }
   const hasPrice = r.price !== null && r.price !== undefined && Number(r.price) >= 1000;
   const raw: RawScrapeRecord = { ...r, rv_type: t, price: hasPrice ? r.price : 99_999 };
   const res = normalizeRecord(`url:${listingUrl}`, raw);
@@ -160,7 +199,16 @@ for (const r of rows) {
   const u = res.unit;
   if (!u.model || /^(unknown|other|n\/a)$/i.test(u.model.trim())) { rej("no_model"); continue; }
   if (!hasPrice) { u.priceUsd = { value: null, source: null, confidence: null, note: "Price not stated by the dealer; call for price." } as Fact<number>; }
-  else if (u.priceUsd.value !== null) u.priceUsd.sourceUrl = listingUrl;
+  else if (u.priceUsd.value !== null) {
+    u.priceUsd.sourceUrl = listingUrl;
+    const PRICE_NOTE: Record<string, string> = {
+      harvested_price_matches_page: "Dealer's current asking price; matches the price on the listing page (read 2026-10-30).",
+      page_schema_offer_price: "Dealer's current asking price from the listing page's offer price (read 2026-10-30); not MSRP.",
+      page_sale_price_label: "Dealer's current sale/our price as labeled on the listing page (read 2026-10-30); not MSRP.",
+      marketcheck_price_below_msrp: "Dealer's asking price as crawled by MarketCheck (below MSRP); listing page not re-read.",
+    };
+    if (m.price_basis && PRICE_NOTE[m.price_basis]) u.priceUsd.note = PRICE_NOTE[m.price_basis];
+  }
   const dom = bare(d.domain);
   const city = String(d.city).trim();
   u.dealer = { id: `${dom}:${slug(city)}`, name: String(d.name ?? dom).trim(), city, state: String(d.state).toUpperCase(),
@@ -189,7 +237,7 @@ for (const r of rows) {
     }
   }
   u.provenance = { ...u.provenance, dealerDomain: dom, listingUrl, harvestMethod: m.harvest_method,
-    lastSeenBasis: isMc ? "marketcheck_last_seen_at" : "harvested_at" };
+    lastSeenBasis: m.last_seen_basis ?? (isMc ? "marketcheck_last_seen_at" : "harvested_at") };
   inc(typeVia, via);
   if (!hasPrice) noPrice.add(u.id);
   fresh.push(u);
@@ -219,9 +267,15 @@ if (!INCLUDE_NO_PRICE) for (const [k, u] of [...freshBy]) if (u.priceUsd.value =
 const out = new Map<string, CanonicalUnit>();
 let refreshed = 0, sep17Seen = 0, oldDupes = 0;
 const SPEC = ["lengthFt", "dryWeightLbs", "gvwrLbs", "hitchWeightLbs", "sleeps", "slideouts", "freshWaterGal", "greyWaterGal", "blackWaterGal"] as const;
+let goneDropped = 0, refreshOtherDomainSkipped = 0;
 for (const u of oldUnits) {
   const k = u.vin ? `vin:${u.vin.toUpperCase()}` : `stk:${bare(u.provenance.dealerDomain)}:${String(u.stockNumber ?? u.id).toLowerCase()}`;
-  const f = freshBy.get(k);
+  const fk = freshBy.get(k);
+  const liveCopy = !!fk && (!REFRESH_ONLY || bare(fk.provenance.dealerDomain) === bare(u.provenance.dealerDomain));
+  if (GONE.has(`${k}|${bare(u.provenance.dealerDomain)}`) && !liveCopy) { goneDropped++; continue; }
+  let f = freshBy.get(k);
+  // Refresh-only: a fresh copy refreshes an existing unit only at the same dealer domain.
+  if (f && REFRESH_ONLY && bare(f.provenance.dealerDomain) !== bare(u.provenance.dealerDomain)) { refreshOtherDomainSkipped++; f = undefined; }
   if (f) {
     refreshed++;
     if (u.provenance.lastSeenAt.startsWith("2026-09-17")) sep17Seen++;
@@ -233,8 +287,9 @@ for (const u of oldUnits) {
   if (out.has(k)) { oldDupes++; continue; }
   out.set(k, u);
 }
-const newDomainUnits = [...freshBy.values()];
-for (const [k, u] of freshBy) out.set(k, u);
+const newDomainUnits = REFRESH_ONLY ? [] : [...freshBy.values()];
+const notAddedRefreshOnly = REFRESH_ONLY ? freshBy.size : 0;
+if (!REFRESH_ONLY) for (const [k, u] of freshBy) out.set(k, u);
 const units = [...out.values()].sort((a, b) => a.id.localeCompare(b.id));
 // Unique ids (two dealers can share a stock number pattern only via different dealer ids, but guard anyway).
 const seenIds = new Set<string>(); let idCollisions = 0;
@@ -253,6 +308,8 @@ const builtAt = new Date().toISOString();
 const stats = {
   builtAt, oldUnits: oldUnits.length, freshRows: rows.length, freshByOrigin: Object.fromEntries(byOrigin),
   freshAdmitted: fresh.length, freshDupes, freshUnique: fresh.length - freshDupes, rejects: Object.fromEntries(rejects), typeVia: Object.fromEntries(typeVia),
+  mode: REFRESH_ONLY ? "refresh_only_existing_units" : "refresh_and_add", typeStrict: TYPE_STRICT,
+  oldUnitsDroppedGoneOrSold: goneDropped, refreshOtherDomainSkipped, freshUnitsNotAddedRefreshOnly: notAddedRefreshOnly,
   refreshedOldUnits: refreshed, sep17UnitsSeenAgain: sep17Seen, oldDupesDropped: oldDupes, idCollisions,
   addedUnits: newDomainUnits.length, addedFromNewDealerDomains: newDomainUnits.filter(u => !oldDomains.has(bare(u.provenance.dealerDomain))).length,
   noPriceUnitsHeldInSidecar: noPriceHeld.length, noPriceUnitsHeldFromNewDealers: noPriceHeld.filter(u => !oldDomains.has(bare(u.provenance.dealerDomain))).length,
@@ -269,7 +326,10 @@ const payload = JSON.stringify({
     rejections: Object.fromEntries(rejects), uniqueVins: units.filter(u => u.vin).length, withLength: known("lengthFt"), withSleeps: known("sleeps") },
   units,
 });
-writeFileSync(`${SNAPSHOT}.gz`, gzipSync(payload, { level: 9 }));
+// ASCII-only JSON (non-ASCII as \uXXXX escapes): identical parsed values, but the text decodes to a
+// one-byte string at load, halving the transient memory of JSON.parse on the server.
+const asciiPayload = payload.replace(/[\u007f-\uffff]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+writeFileSync(`${SNAPSHOT}.gz`, gzipSync(Buffer.from(asciiPayload, "latin1"), { level: 9 }));
 writeFileSync(statsPath, JSON.stringify(stats, null, 1));
 if (noPriceHeld.length) writeFileSync(statsPath.replace(/\.json$/, "") + ".no-price-units.ndjson.gz", gzipSync(noPriceHeld.map(u => JSON.stringify(u)).join("\n")));
 console.log(`wrote ${SNAPSHOT}.gz (${(payload.length / 1e6).toFixed(0)} MB raw)`);

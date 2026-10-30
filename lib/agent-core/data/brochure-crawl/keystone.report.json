@@ -1,0 +1,16 @@
+{
+ "maker": "Keystone",
+ "ranAt": "2026-10-29T17:01:10.246Z",
+ "sitemapFloorplanUrls": 293,
+ "matchingInventory": 227,
+ "fetched": 0,
+ "cached": 227,
+ "records": 209,
+ "skipped": {
+  "model_year_not_unique": 18
+ },
+ "blocked": [],
+ "note": "keystonerv.com publishes only the current production run; the model year comes from the floorplan drawing file name.",
+ "recordsWritten": 209,
+ "ambiguousDropped": []
+}

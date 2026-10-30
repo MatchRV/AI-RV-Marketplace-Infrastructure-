@@ -50,7 +50,8 @@ export const TOWABLE_TYPES: RvType[] = [
   "truck_camper",
 ];
 
-export type Condition = "new" | "used";
+/** "unknown": the listing did not state it (or it could not be confirmed from the unit's own listing data). */
+export type Condition = "new" | "used" | "unknown";
 
 export type SolarStatus = "installed" | "prep" | "none";
 
@@ -108,6 +109,10 @@ export interface CanonicalUnit {
   stockNumber: string | null;
   title: string;
   year: number;
+  /** Where `year` came from when it was corrected at build time: "dealer_title" = the year stated in the
+   *  dealer's own listing title (the structured field disagreed); "vin" = VIN 10th character (only when the
+   *  listing states no year). Absent = the dealer listing's structured year, as collected. */
+  yearSource?: "dealer_title" | "vin";
   make: string;
   model: string;
   trim: string | null;
@@ -159,6 +164,12 @@ export interface CanonicalUnit {
     dealerDomain: string;
     firstSeenAt: string; // ISO
     lastSeenAt: string; // ISO — the freshness anchor for check_availability
+    /** The unit's own listing page (harvests from 2026-10-30 on). */
+    listingUrl?: string;
+    /** How the record was collected, e.g. "marketcheck_api_v2_rv_active" or "dealer_website_rv_inventory_scraper". */
+    harvestMethod?: string;
+    /** What lastSeenAt measures, e.g. "marketcheck_last_seen_at" (MarketCheck's last crawl of the dealer listing) or "harvested_at". */
+    lastSeenBasis?: string;
   };
 }
 

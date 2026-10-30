@@ -109,6 +109,14 @@ export interface ManufacturerSpecRecord {
   note?: string;
   /** Motorhomes only, when the manufacturer states it for this floorplan. */
   fuelType?: FuelType;
+  /** Floorplan name/description exactly as the manufacturer publishes it, e.g. "Single axle, non-slide, single bunks". */
+  floorplanName?: string;
+  /**
+   * Bunkhouse yes/no, only when the manufacturer's own floorplan description or
+   * spec table says so (bunkhouseEvidence quotes it). Omitted = not published.
+   */
+  bunkhouse?: boolean;
+  bunkhouseEvidence?: string;
 }
 
 /** Manufacturer-owned domains (subdomains allowed). Extend only with first-party domains. */
@@ -190,13 +198,19 @@ function validateRecord(r: ManufacturerSpecRecord): string | null {
     const [min, max] = RANGES[f];
     if (typeof v !== "number" || !Number.isFinite(v) || v < min || v > max) return `out_of_range_${f}`;
   }
-  if (!Object.keys(r.specs ?? {}).length && !r.fuelType) return "no_specs";
+  if (r.bunkhouse !== undefined && typeof r.bunkhouse !== "boolean") return "invalid_bunkhouse";
+  if (r.bunkhouse !== undefined && !r.bunkhouseEvidence?.trim()) return "bunkhouse_without_evidence";
+  if (!Object.keys(r.specs ?? {}).length && !r.fuelType && r.bunkhouse === undefined) return "no_specs";
   return null;
 }
 
 // ── Matching ───────────────────────────────────────────────────────────────
 
-const CODE_RE = /\b(\d{2,3}\s?-?[A-Z]{1,6}\d?|\d{1,3}[A-Z]{1,6})\b/g;
+/** Floorplan codes named in a listing title (normalized, e.g. "270BHSW"). */
+export function titleFloorplanCodes(text: string): string[] { return [...codesIn(text)]; }
+
+// 4-digit codes (Grand Design Imagine 2470BH, Keystone Springdale 2880BRS) only in the unspaced form, so "2027 GRAND" is never a code.
+const CODE_RE = /\b(\d{2,3}\s?-?[A-Z]{1,6}\d?|\d{1,4}[A-Z]{1,6}\d?)\b/g;
 
 function codesIn(text: string): Set<string> {
   const out = new Set<string>();
@@ -208,6 +222,23 @@ const hasWords = (hay: string, needle: string) => {
   const n = normText(needle);
   return !!n && new RegExp(`(?:^| )${n.replace(/ /g, " ")}(?: |$)`).test(normText(hay));
 };
+
+const squash = (s: string) => normText(s).replace(/ /g, "");
+/** Title names the series immediately followed by the floorplan code (spacing/hyphens ignored). */
+export function seriesThenCode(title: string, series: string, floorplanCode: string): boolean {
+  const t = ` ${normText(title)} `;
+  const want = `${squash(series)}${normCode(floorplanCode).toLowerCase()}`;
+  // Re-join every run of words and test word-boundary-aligned containment.
+  const words = t.trim().split(" ");
+  for (let i = 0; i < words.length; i++) {
+    let acc = "";
+    for (let j = i; j < words.length && acc.length < want.length; j++) {
+      acc += words[j];
+      if (acc === want) return true;
+    }
+  }
+  return false;
+}
 
 export type MatchFailure =
   | "no_record_for_year_and_code"
@@ -234,7 +265,11 @@ export function findSpecRecord(
   if (modelCodes.size && titleCodes.size && ![...modelCodes].some((c) => titleCodes.has(c))) {
     return { failure: "model_field_names_other_floorplan" };
   }
-  const bySeries = candidates.filter((r) => hasWords(title, r.series));
+  // Exact configuration: the series must be immediately followed by the
+  // floorplan code ("Jay Flight 270BHSW"). A longer series name in the title
+  // ("Jay Flight SLX 270BHSW", "Coleman Lantern 17B") is a different model
+  // line, so a series-level match is refused.
+  const bySeries = candidates.filter((r) => hasWords(title, r.series) && seriesThenCode(title, r.series, r.floorplanCode));
   if (!bySeries.length) return { failure: "series_not_in_title" };
   const unitBrand = canonicalBrand(unitMakeModel(unit).brand) ?? canonicalBrand(unit.make);
   const byBrand = bySeries.filter((r) => {
@@ -243,7 +278,7 @@ export function findSpecRecord(
     return accepted.includes(unitBrand) || accepted.includes(normText(unitBrand));
   });
   if (!byBrand.length) return { failure: "brand_conflict" };
-  const distinct = new Set(byBrand.map((r) => JSON.stringify([r.specs, r.fuelType ?? null])));
+  const distinct = new Set(byBrand.map((r) => JSON.stringify([r.specs, r.fuelType ?? null, r.bunkhouse ?? null])));
   if (distinct.size > 1) return { failure: "ambiguous" };
   return { record: byBrand[0] };
 }
@@ -252,7 +287,8 @@ export function findSpecRecord(
 
 export interface SpecConflict {
   unitId: string;
-  field: SpecField;
+  /** "bunkhouse" values are 1 (yes) / 0 (no). */
+  field: SpecField | "bunkhouse";
   unitValue: number;
   unitSource: FactSource | null;
   manufacturerValue: number;
@@ -260,7 +296,7 @@ export interface SpecConflict {
 }
 
 export interface SpecFillResult {
-  filled: SpecField[];
+  filled: (SpecField | "bunkhouse")[];
   fuelFilled: boolean;
   conflicts: SpecConflict[];
   failure?: MatchFailure;
@@ -318,6 +354,24 @@ export function applyManufacturerSpecs(unit: CanonicalUnit, index: SpecIndex): S
     }
   }
 
+  if (r.bunkhouse !== undefined) {
+    const cur = unit.bunkhouse;
+    // Dealer-stated (structured or the dealer's own text) wins; a BH-code reading is a convention, so the brochure replaces it.
+    if (cur.value === null || cur.source === "derived_model_code" || cur.source === "computed") {
+      unit.bunkhouse = {
+        value: r.bunkhouse,
+        source: "manufacturer_spec",
+        confidence: "high",
+        note: `${r.year} ${r.make} ${r.series} ${r.floorplanCode} manufacturer floorplan: "${r.bunkhouseEvidence}".`,
+        sourceUrl: r.sourceUrl,
+        observedAt: r.retrievedAt,
+      };
+      res.filled.push("bunkhouse");
+    } else if (cur.source !== "manufacturer_spec" && cur.value !== r.bunkhouse) {
+      res.conflicts.push({ unitId: unit.id, field: "bunkhouse", unitValue: cur.value ? 1 : 0, unitSource: cur.source, manufacturerValue: r.bunkhouse ? 1 : 0, sourceUrl: r.sourceUrl });
+    }
+  }
+
   if (r.fuelType && !TOWABLE_TYPES.includes(unit.rvType)) {
     const pt = unit.powertrain;
     if (!pt?.fuelType || pt.fuelType.value === null) {
@@ -342,7 +396,7 @@ export function applyManufacturerSpecs(unit: CanonicalUnit, index: SpecIndex): S
 export interface SpecRunStats {
   units: number;
   matched: number;
-  fieldsFilled: Partial<Record<SpecField | "fuelType", number>>;
+  fieldsFilled: Partial<Record<SpecField | "fuelType" | "bunkhouse", number>>;
   conflicts: SpecConflict[];
   failures: Partial<Record<MatchFailure, number>>;
 }
@@ -424,4 +478,42 @@ export function parseSpecTableText(text: string): { specs: Partial<Record<SpecFi
     }
   }
   return { specs, labels };
+}
+
+// ── Facts-only serving rule ────────────────────────────────────────────────
+// A spec value is served only when it is published for THIS unit: by the
+// dealer (structured listing field, the dealer's own description text, or the
+// dealer's VIN feed), by the manufacturer for the exact year + series +
+// floorplan (with its sourceUrl), or confirmed by the shopper themselves.
+// Anything inferred, estimated, decoded from a naming convention or computed
+// becomes null ("not published") and is treated as needs-verification.
+
+export const SERVABLE_SPEC_SOURCES: readonly FactSource[] = ["dealer_listing", "derived_text", "manufacturer_spec", "learned"];
+
+export function isServableFact(f: Pick<Fact<unknown>, "value" | "source" | "sourceUrl">): boolean {
+  if (f.value === null || f.value === undefined || !f.source) return false;
+  if (!SERVABLE_SPEC_SOURCES.includes(f.source)) return false;
+  if (f.source === "manufacturer_spec" && !f.sourceUrl) return false;
+  return true;
+}
+
+export type FactsOnlyStats = Partial<Record<SpecField, Partial<Record<FactSource, number>>>>;
+
+/** Null every non-servable spec value in place. Returns what was blanked, by field and source. */
+export function enforceFactsOnly(units: CanonicalUnit[]): FactsOnlyStats {
+  const blanked: FactsOnlyStats = {};
+  for (const u of units) {
+    for (const field of SPEC_FIELDS) {
+      const f = u[field] as Fact<number>;
+      if (f.value === null || f.value === undefined || isServableFact(f)) continue;
+      const by = (blanked[field] ??= {});
+      const src = (f.source ?? "computed") as FactSource;
+      by[src] = (by[src] ?? 0) + 1;
+      (u[field] as Fact<number>) = {
+        value: null, source: null, confidence: null,
+        note: `${field === "sleeps" ? "Sleeping capacity" : "Value"} not published by the dealer or the manufacturer for this exact floorplan; confirm with the dealer.`,
+      };
+    }
+  }
+  return blanked;
 }

@@ -1,0 +1,56 @@
+{
+ "used TT <$40k within 100mi Tacoma": {
+  "v3": 406,
+  "v31": 364,
+  "lost": 42,
+  "gained": 0,
+  "lostWhy": {
+   "condition now unknown": 42
+  },
+  "unknownLostYears": {
+   "yr<=2025": 26,
+   "yr>=2026": 16
+  },
+  "unknownLostDomains": {
+   "rv.campingworld.com": 42
+  },
+  "gainedWhy": {}
+ },
+ "new fifth wheel (nationwide)": {
+  "v3": 8042,
+  "v31": 5401,
+  "lost": 2641,
+  "gained": 0,
+  "lostWhy": {
+   "condition now unknown": 2636,
+   "not in v3.1 build (held/dropped)": 5
+  },
+  "unknownLostYears": {
+   "yr>=2026": 2555,
+   "yr<=2025": 81
+  },
+  "unknownLostDomains": {
+   "rv.campingworld.com": 2599,
+   "meyersrvsuperstores.com": 34,
+   "clickitrv.com": 3
+  },
+  "gainedWhy": {}
+ },
+ "new fifth wheel within 100mi Tacoma": {
+  "v3": 346,
+  "v31": 317,
+  "lost": 29,
+  "gained": 0,
+  "lostWhy": {
+   "condition now unknown": 29
+  },
+  "unknownLostYears": {
+   "yr>=2026": 28,
+   "yr<=2025": 1
+  },
+  "unknownLostDomains": {
+   "rv.campingworld.com": 29
+  },
+  "gainedWhy": {}
+ }
+}

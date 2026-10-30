@@ -1,0 +1,19 @@
+{
+ "maker": "Jayco",
+ "ranAt": "2026-10-29T17:00:58.209Z",
+ "sitemapFloorplanUrls": 952,
+ "matchingInventory": 614,
+ "fetched": 0,
+ "cached": 614,
+ "records": 562,
+ "skipped": {
+  "series_mismatch_title_vs_url": 35,
+  "unparsed_title": 10,
+  "empty_specifications_table": 3,
+  "code_mismatch_title_vs_url": 3,
+  "year_mismatch_title_vs_url": 1
+ },
+ "blocked": [],
+ "recordsWritten": 562,
+ "ambiguousDropped": []
+}

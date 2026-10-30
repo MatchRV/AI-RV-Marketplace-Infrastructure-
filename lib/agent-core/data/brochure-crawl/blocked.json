@@ -1,0 +1,20 @@
+{
+ "checkedAt": "2026-10-29",
+ "policy": "Crawler never retries around a bot check, rotates identity or drives a browser. A blocked maker is recorded here and skipped.",
+ "makers": [
+  {
+   "maker": "Forest River",
+   "site": "https://forestriverinc.com",
+   "robotsTxt": "User-agent: * Allow: / (Content-Signal: search=yes, ai-train=no, use=reference)",
+   "result": "HTTP 403 Cloudflare 'Just a moment...' challenge on /, /sitemap.xml and floorplan pages",
+   "estimatedSleepsUnitsWaiting": 8276
+  },
+  {
+   "maker": "Coachmen",
+   "site": "https://www.coachmenrv.com",
+   "robotsTxt": "User-agent: * Allow: / (Content-Signal: search=yes, ai-train=no, use=reference); Disallow: /downloads/",
+   "result": "HTTP 403 Cloudflare 'Just a moment...' challenge on /, /sitemap.xml and /rvs/",
+   "estimatedSleepsUnitsWaiting": 1778
+  }
+ ]
+}

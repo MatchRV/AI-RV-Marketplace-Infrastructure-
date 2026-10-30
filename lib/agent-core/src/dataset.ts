@@ -5,7 +5,7 @@
 
 import type { CanonicalUnit } from "./types.js";
 import { enrichSnapshotUnits, type EnrichStats } from "./enrich-snapshot.js";
-import { applyManufacturerSpecsToAll, buildSpecIndex, type SpecRunStats } from "./manufacturer-specs.js";
+import { applyManufacturerSpecsToAll, buildSpecIndex, enforceFactsOnly, type FactsOnlyStats, type SpecRunStats } from "./manufacturer-specs.js";
 import { MANUFACTURER_SPEC_RECORDS } from "./manufacturer-spec-records.js";
 
 export interface InventorySnapshot {
@@ -35,6 +35,8 @@ export interface InventoryIndex {
   enrichStats?: EnrichStats;
   /** Manufacturer-spec fill (source-backed, exact configuration only). */
   specStats?: Omit<SpecRunStats, "conflicts"> & { conflicts: number };
+  /** Non-servable (inferred/estimated) spec values nulled at load, by field and source. */
+  factsOnlyBlanked?: FactsOnlyStats;
 }
 
 /** Index a parsed snapshot (loaders differ per runtime; indexing doesn't). */
@@ -45,6 +47,8 @@ export function indexSnapshot(snapshot: InventorySnapshot): InventoryIndex {
   // (exact year + series + floorplan; never overwrites dealer values).
   const specRun = applyManufacturerSpecsToAll(snapshot.units, buildSpecIndex(MANUFACTURER_SPEC_RECORDS));
   const specStats = { ...specRun, conflicts: specRun.conflicts.length };
+  // Facts only: anything still inferred/estimated is served as null.
+  const factsOnlyBlanked = enforceFactsOnly(snapshot.units);
 
   const byId = new Map<string, CanonicalUnit>();
   const byState = new Map<string, CanonicalUnit[]>();
@@ -58,7 +62,7 @@ export function indexSnapshot(snapshot: InventorySnapshot): InventoryIndex {
     }
     bucket.push(u);
   }
-  cache = { snapshot, units: snapshot.units, byId, byState, enrichStats, specStats };
+  cache = { snapshot, units: snapshot.units, byId, byState, enrichStats, specStats, factsOnlyBlanked };
   return cache;
 }
 

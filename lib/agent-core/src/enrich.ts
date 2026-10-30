@@ -8,7 +8,7 @@
  * doesn't mention solar, `solar` stays null (unknown), never "none".
  */
 
-import type { Fact, FactSource, SolarStatus } from "./types.js";
+import type { Fact, FactSource, RvType, SolarStatus } from "./types.js";
 
 export function fact<T>(
   value: T | null,
@@ -28,6 +28,8 @@ interface TextCorpus {
   /** Lowercased description + features + title, for matching. */
   all: string;
   features: string;
+  /** Lowercased title + description only: this unit's own listing text, no generic feature list. */
+  unit?: string;
 }
 
 export function buildCorpus(
@@ -37,7 +39,8 @@ export function buildCorpus(
 ): TextCorpus {
   const f = features.join(" \n ").toLowerCase();
   const all = [title ?? "", description ?? "", f].join(" \n ").toLowerCase();
-  return { all, features: f };
+  const unit = [title ?? "", description ?? ""].join(" \n ").toLowerCase();
+  return { all, features: f, unit };
 }
 
 // ── Floorplan code decoding ────────────────────────────────────────────────
@@ -55,6 +58,7 @@ export function extractFloorplanCode(model: string, title: string): string | nul
 
 const BUNK_CODE = /(BH|DB|QB|BHS|BHX|BHK|DBS|BUNK)/;
 
+/** Legacy convention check (QB/DB/DBS/BUNK included). NOT bunkhouse evidence; use floorplanCodeIsBunkhouse. */
 export function floorplanSuggestsBunks(code: string | null): boolean {
   if (!code) return false;
   const letters = code.replace(/^\d+/, "");
@@ -107,21 +111,60 @@ export function extractGenerator(
   return unknown("Generator not mentioned by dealer.");
 }
 
+/**
+ * Types where a "BH" floorplan suffix is the manufacturer's bunkhouse label.
+ * On motorhomes BH can mean bath-and-a-half (Tiffin Phaeton 37BH), so it is
+ * not evidence there.
+ */
+export const BH_BUNKHOUSE_TYPES: readonly RvType[] = ["travel_trailer", "fifth_wheel", "toy_hauler"];
+
+/** "BH" in the floorplan letters of a towable = manufacturer's bunkhouse label. QB/DB/DBS/BUNK alone are not. */
+export function floorplanCodeIsBunkhouse(code: string | null, rvType: RvType | null | undefined): boolean {
+  if (!code || !rvType || !BH_BUNKHOUSE_TYPES.includes(rvType)) return false;
+  return /BH/.test(code.toUpperCase().replace(/^\d+/, ""));
+}
+
+const BUNK_WORDS = /(bunkhouse|bunk\s*house|bunk\s*beds?|bunk\s*room|double-?size\s*bunks?|set of bunks|bunks\b)/g;
+// Hedged / family-wide wording: not evidence about this unit.
+const HEDGED_SEGMENT = /(select models|bunkhouse models|optional|if equipped|choose that option|\b(?:some|certain|most|all) models\b|\bmodels only\b|\b(?:lb|lbs|pound)[. -]*(?:rated|capacity)|\bcapacity\b)/i;
+// Site navigation, inventory menus, reviews/testimonials glued into descriptions.
+const NAV_SEGMENT = /(\b(?:shop|browse|view|search|filter|explore|see)\s+(?:all\s+|our\s+|more\s+)?(?:\w+\s+){0,2}bunk|bunk\s*house\s+(?:travel trailers|fifth wheels|trailers|campers|rvs|models|inventory|floorplans|for sale)\b|\btook my\b|\breview(?:s|ed)?\b|\btestimonial|\bmy \d{4}\b|\bstars?\b.*\brated\b)/i;
+// Negation/comparison anywhere earlier in the same sentence clause.
+const NEG_BEFORE = /(\bwithout\b|instead of|rather than|\bunlike\b|alternative to|compared (?:to|with)|\bnot\s+(?:a|an|the)\b|isn'?t\s+(?:a|an)\b|no need for|skip the)\s*(?:[\w'-]+\s+){0,8}$|(\bno\b|\bminus\b|not equipped|prep only|prepped for|ready for|\bnon-)\s*(?:\w+\s+){0,2}$/;
+const NEG_AFTER = /^\s*(?:\w+\s+){0,1}(?:not included|not available|is not|isn'?t)\b/;
+
+/** Affirmative bunk evidence in this unit's own title/description (features list and nav/review text excluded). */
+export function unitTextMentionsBunks(corpus: TextCorpus): string | null {
+  const own = corpus.unit ?? corpus.all;
+  const segments = own.replace(/\b(lbs?)\./g, "$1").split(/\n|[!;|•]|\.(?:\s|$)/);
+  for (const seg of segments) {
+    if (HEDGED_SEGMENT.test(seg) || NAV_SEGMENT.test(seg)) continue;
+    for (const m of seg.matchAll(BUNK_WORDS)) {
+      const before = seg.slice(Math.max(0, m.index! - 80), m.index!);
+      const prev = before.slice(-24);
+      if (NEG_BEFORE.test(before) || /traditional|conventional|typical|full-?size(?:d)? bunkhouse/.test(prev)) continue;
+      if (NEG_AFTER.test(seg.slice(m.index! + m[0].length))) continue;
+      return seg.slice(Math.max(0, m.index! - 60), m.index! + m[0].length + 60).trim();
+    }
+  }
+  return null;
+}
+
 export function extractBunkhouse(
   structured: boolean | null | undefined,
   corpus: TextCorpus,
   floorplanCode: string | null,
+  rvType?: RvType | null,
 ): Fact<boolean> {
   if (structured === true) return fact(true, "dealer_listing", "high");
   if (structured === false) return fact(false, "dealer_listing", "medium", "Dealer feed marks no bunkhouse.");
-  const unitText = corpus.all.replace(/\b(lbs?)\./g, "$1").split(/\n|[!;]|\.(?:\s|$)/).filter(part => !/(select models|bunkhouse models|optional|if equipped|choose that option|\b(?:some|certain|most|all) models\b|\bmodels only\b|\b(?:lb|lbs|pound)[. -]*(?:rated|capacity)|\bcapacity\b)/i.test(part)).join("\n");
-  if (mentions({ ...corpus, all: unitText }, /(bunkhouse|bunk\s*house|bunk\s*bed|bunk\s*room|double-?size\s*bunk|set of bunks)/)) {
-    return fact(true, "derived_text", "medium", "Dealer text mentions bunks.");
+  if (unitTextMentionsBunks(corpus)) {
+    return fact(true, "derived_text", "medium", "This unit's dealer title/description says it has bunks.");
   }
-  if (floorplanSuggestsBunks(floorplanCode)) {
-    return fact(true, "derived_model_code", "medium", `Floorplan code ${floorplanCode} indicates a bunk layout.`);
+  if (floorplanCodeIsBunkhouse(floorplanCode, rvType)) {
+    return fact(true, "derived_model_code", "medium", `Floorplan code ${floorplanCode} carries the manufacturer's BH (bunkhouse) label on a towable.`);
   }
-  return unknown("Bunk layout not stated.");
+  return unknown("Bunk layout not stated by the dealer or a matched manufacturer floorplan.");
 }
 
 export function extractEntryDoors(corpus: TextCorpus): Fact<number> {

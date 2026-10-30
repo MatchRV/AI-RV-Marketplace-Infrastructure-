@@ -30,14 +30,46 @@ function findSnapshot(): string {
   throw new Error(`inventory snapshot not found (searched from ${here})`);
 }
 
+function readSnapshotText(path: string): string {
+  const raw = readFileSync(path);
+  return path.endsWith(".gz") ? gunzipSync(raw).toString("utf-8") : raw.toString("utf-8");
+}
+
+/** Replace repeated string values with one shared instance (dealer names, makes, notes, URLs prefixes are highly repeated). Values are unchanged. */
+export function internStrings(root: unknown): number {
+  const pool = new Map<string, string>();
+  const stack: unknown[] = [root];
+  while (stack.length) {
+    const o = stack.pop();
+    if (Array.isArray(o)) {
+      for (let i = 0; i < o.length; i++) {
+        const v = o[i];
+        if (typeof v === "string") { const p = pool.get(v); if (p !== undefined) o[i] = p; else pool.set(v, v); }
+        else if (v && typeof v === "object") stack.push(v);
+      }
+    } else if (o && typeof o === "object") {
+      const rec = o as Record<string, unknown>;
+      for (const k in rec) {
+        const v = rec[k];
+        if (typeof v === "string") { const p = pool.get(v); if (p !== undefined) rec[k] = p; else pool.set(v, v); }
+        else if (v && typeof v === "object") stack.push(v);
+      }
+    }
+  }
+  return pool.size;
+}
+
 export function getInventory(): InventoryIndex {
   if (!index) {
     const path = findSnapshot();
     const t0 = performance.now();
-    const raw = readFileSync(path);
-    const snapshot = JSON.parse(
-      path.endsWith(".gz") ? gunzipSync(raw).toString("utf-8") : raw.toString("utf-8"),
-    ) as InventorySnapshot;
+    // Memory: keep only one copy of the JSON text alive and drop it before indexing, so the
+    // decompressed buffer and the text can be collected while the index is built (peak RSS on a 2 GiB
+    // instance). Repeated string values are shared (same values, one copy each).
+    let text: string | null = readSnapshotText(path);
+    const snapshot = JSON.parse(text) as InventorySnapshot;
+    text = null;
+    internStrings(snapshot.units);
     index = indexSnapshot(snapshot);
     const ms = Math.round(performance.now() - t0);
     const e = index.enrichStats;

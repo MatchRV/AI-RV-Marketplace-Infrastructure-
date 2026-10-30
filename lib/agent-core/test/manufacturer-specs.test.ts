@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyManufacturerSpecs, applyManufacturerSpecsToAll, buildSpecIndex, findSpecRecord,
-  isManufacturerSource, parseSpecTableText, MANUFACTURER_SPEC_RECORDS, provenanceLabel, powertrainReport,
+  applyManufacturerSpecs, applyManufacturerSpecsToAll, buildSpecIndex, findSpecRecord, enforceFactsOnly, isServableFact, seriesThenCode,
+  isManufacturerSource, parseSpecTableText, MANUFACTURER_SPEC_RECORDS, SEED_SPEC_RECORDS, provenanceLabel, powertrainReport,
   type CanonicalUnit, type ManufacturerSpecRecord,
 } from "../src/index.js";
 import { matchingUnits } from "./matching-fixture.js";
 
-const seed = { records: MANUFACTURER_SPEC_RECORDS };
+const seed = { records: SEED_SPEC_RECORDS };
 
 const U = { value: null, source: null, confidence: null } as const;
 const blank = (o: Partial<CanonicalUnit>): CanonicalUnit => ({
@@ -35,6 +35,12 @@ describe("spec records are source-backed or rejected", () => {
   it("accepts the committed seed records (first-party manufacturer pages)", () => {
     expect(idx.accepted).toBe(seed.records.length);
     expect(idx.rejected).toEqual([]);
+  });
+  it("accepts every committed record (seeds + crawled), with no duplicates", () => {
+    const all = buildSpecIndex(MANUFACTURER_SPEC_RECORDS);
+    expect(all.rejected).toEqual([]);
+    const keys = MANUFACTURER_SPEC_RECORDS.map((r) => `${r.year}|${r.make}|${r.series}|${r.floorplanCode}`.toUpperCase());
+    expect(new Set(keys).size).toBe(keys.length);
   });
   it("rejects third-party, non-https or look-alike domains", () => {
     expect(isManufacturerSource({ make: "Jayco", sourceUrl: "https://www.jayco.com/rvs/x" })).toBe(true);
@@ -71,6 +77,13 @@ describe("exact-configuration matching", () => {
     const u = blank({ title: "2027 Jayco Eagle 270BHSW", make: "Jayco", model: "Eagle 270BHSW", year: 2027 });
     expect(findSpecRecord(u, idx)).toEqual({ failure: "series_not_in_title" });
   });
+  it("refuses a series-level match when the title names a longer series (Jay Flight Sport ≠ Jay Flight)", () => {
+    const u = blank({ title: "2027 JAYCO JAY FLIGHT SPORT 270BHSW", make: "JAYCO", model: "JAY FLIGHT SPORT 270BHSW", year: 2027 });
+    expect(findSpecRecord(u, idx)).toEqual({ failure: "series_not_in_title" });
+    expect(seriesThenCode("2027 Keystone Coleman Lantern 17B", "Coleman", "17B")).toBe(false);
+    expect(seriesThenCode("2027 KEYSTONE COLEMAN 17B", "Coleman", "17B")).toBe(true);
+    expect(seriesThenCode("2027 Jayco Jay Flight 270-BHSW", "Jay Flight", "270BHSW")).toBe(true);
+  });
   it("refuses when the brand contradicts the record", () => {
     const u = blank({ title: "2027 Grand Design Jay Flight 270BHSW", make: "Grand Design", model: "Jay Flight 270BHSW", year: 2027 });
     expect(findSpecRecord(u, idx)).toEqual({ failure: "brand_conflict" });
@@ -99,7 +112,7 @@ describe("fill, never overwrite; unknown stays unknown", () => {
   });
   it("keeps dealer values and reports large disagreements for review", () => {
     const u = blank({
-      title: "2027 Jayco Jay Flight Sport 270BHSW", make: "Jayco", model: "Jay Flight Sport 270BHSW", year: 2027,
+      title: "2027 Jayco Jay Flight 270BHSW", make: "Jayco", model: "Jay Flight 270BHSW", year: 2027,
       sleeps: { value: 8, source: "dealer_listing", confidence: "high" },
       dryWeightLbs: { value: 5590, source: "dealer_listing", confidence: "high" },
       freshWaterGal: { value: 52, source: "dealer_listing", confidence: "high" },
@@ -160,5 +173,29 @@ describe("spec table parser (labeled values only)", () => {
   });
   it("ignores unlabeled numbers and implausible values", () => {
     expect(parseSpecTableText("Great family camper, 3,088 lbs\nSleeps 40").specs).toEqual({});
+  });
+});
+
+describe("facts-only serving rule", () => {
+  it("serves only dealer- or manufacturer-published values and nulls every estimate", () => {
+    const u = blank({
+      sleeps: { value: 8, source: "computed", confidence: "low", note: "Inferred" },
+      lengthFt: { value: 26, source: "derived_model_code", confidence: "medium" },
+      dryWeightLbs: { value: 5000, source: "dealer_listing", confidence: "high" },
+      gvwrLbs: { value: 7000, source: "manufacturer_spec", confidence: "medium" }, // no sourceUrl: not servable
+      hitchWeightLbs: { value: 700, source: "manufacturer_spec", confidence: "medium", sourceUrl: "https://www.jayco.com/x" },
+      freshWaterGal: { value: 40, source: "derived_text", confidence: "medium" },
+      slideouts: { value: 1, source: "reference_table", confidence: "medium" },
+    });
+    const stats = enforceFactsOnly([u]);
+    expect(u.sleeps.value).toBeNull();
+    expect(u.lengthFt.value).toBeNull();
+    expect(u.gvwrLbs.value).toBeNull();
+    expect(u.slideouts.value).toBeNull();
+    expect(u.dryWeightLbs.value).toBe(5000);
+    expect(u.hitchWeightLbs.value).toBe(700);
+    expect(u.freshWaterGal.value).toBe(40);
+    expect(stats).toEqual({ sleeps: { computed: 1 }, lengthFt: { derived_model_code: 1 }, gvwrLbs: { manufacturer_spec: 1 }, slideouts: { reference_table: 1 } });
+    expect(isServableFact(u.sleeps)).toBe(false);
   });
 });

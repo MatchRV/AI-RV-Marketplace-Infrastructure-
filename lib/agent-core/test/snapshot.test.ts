@@ -24,6 +24,8 @@ const snapshot = JSON.parse(
     return gunzipSync(readFileSync(`${plain}.gz`)).toString("utf-8");
   })(),
 ) as InventorySnapshot;
+// Dealer city as stated in the snapshot, before load-time geocoding fills it.
+const statedCity = new Map<string, string>(snapshot.units.map((u: { id: string; dealer: { city?: string | null } }) => [u.id, (u.dealer.city ?? "").trim()]));
 const idx = indexSnapshot(snapshot);
 afterEach(() => vi.useRealTimers());
 
@@ -64,11 +66,19 @@ describe("committed inventory snapshot", () => {
     expect(match.unit.images).toEqual([]);
   });
 
-  it("geocodes snapshot dealers and backfills sleeps at index time", () => {
+  it("geocodes snapshot dealers and serves only published sleeps (facts only)", () => {
     const withCoords = idx.units.filter((u) => u.dealer.lat !== null && u.dealer.lng !== null).length;
-    expect(withCoords / idx.units.length).toBeGreaterThan(0.95);
-    const withSleeps = idx.units.filter((u) => u.sleeps.value !== null).length;
-    expect(withSleeps / idx.units.length).toBeGreaterThan(0.95);
+    // Facts only: a lot city that is not stated for the unit is left blank (multi-store dealers such as Meyers,
+    // McClain's, Apache Camping), so those units honestly have no coordinates. Every unit whose dealer city is
+    // stated must still geocode at the old rate; the overall share keeps a floor against regressions.
+    expect(withCoords / idx.units.length).toBeGreaterThan(0.94);
+    const stated = idx.units.filter((u) => statedCity.get(u.id));
+    const statedWithCoords = stated.filter((u) => u.dealer.lat !== null && u.dealer.lng !== null).length;
+    expect(statedWithCoords / stated.length).toBeGreaterThan(0.95);
+    // Every served sleeps value is dealer- or manufacturer-published; nothing inferred.
+    const served = idx.units.filter((u) => u.sleeps.value !== null);
+    expect(served.every((u) => ["dealer_listing", "derived_text", "manufacturer_spec", "learned"].includes(u.sleeps.source ?? ""))).toBe(true);
+    expect(served.length / idx.units.length).toBeGreaterThan(0.5);
     const fl = idx.units.filter((u) => u.dealer.state === "FL");
     expect(fl.length).toBeGreaterThan(100);
     expect(fl.every((u) => u.dealer.lat !== null)).toBe(true);

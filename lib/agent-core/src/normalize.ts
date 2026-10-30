@@ -308,7 +308,7 @@ export function normalizeRecord(
     greyWaterGal,
     blackWaterGal,
 
-    bunkhouse: extractBunkhouse(structBool(rec.bunkhouse), corpus, floorplanCode),
+    bunkhouse: extractBunkhouse(structBool(rec.bunkhouse), corpus, floorplanCode, rvType),
     entryDoors: extractEntryDoors(corpus),
     solar,
     lithiumBattery: lithium,

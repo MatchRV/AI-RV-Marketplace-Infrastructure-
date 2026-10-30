@@ -10,6 +10,7 @@
  * natural-language reasoning; MatchRV does the arithmetic.
  */
 
+import { isServableFact } from "./manufacturer-specs.js";
 import type {
   CanonicalUnit,
   CheckStatus,
@@ -328,9 +329,10 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   }
   // — hard: sleeps
   if (c.sleepsMin != null) {
-    if (unit.sleeps.value === null || unit.sleeps.source === "derived_model_code" || unit.sleeps.source === "computed") {
+    // Facts only: unpublished (or any non-servable) sleeps is needs-verification, never a match.
+    if (unit.sleeps.value === null || !isServableFact(unit.sleeps)) {
       unknowns.push("sleeps");
-      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", unit.sleeps.value === null ? "unknown" : `${unit.sleeps.value} (inferred; confirm with dealer)`, unit.sleeps.source));
+      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", "not published — confirm with dealer", null));
     } else {
       hardChecks.push(
         check(`sleeps ≥ ${c.sleepsMin}`, unit.sleeps.value >= c.sleepsMin ? "pass" : "fail", String(unit.sleeps.value), unit.sleeps.source),

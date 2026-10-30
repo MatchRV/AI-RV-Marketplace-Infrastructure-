@@ -21,7 +21,7 @@ import type {
   TowResolution,
   UnitMatch,
 } from "./types.js";
-import { haversineMiles, knownPlaces, resolvePlace } from "./geo.js";
+import { haversineMiles, knownPlaces, parseZip, resolveSearchPlace, zipCentroidsAvailable } from "./geo.js";
 import { coordsMatchState } from "./enrich-snapshot.js";
 import { qualifiesAsNew } from "./listing-reconcile.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
@@ -135,7 +135,16 @@ export interface SearchContext {
 export function buildContext(constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchContext {
   let location: SearchContext["location"] = null;
   if (constraints.location?.place) {
-    const resolved = resolvePlace(constraints.location.place);
+    const resolved = resolveSearchPlace(constraints.location.place);
+    const zip = parseZip(constraints.location.place);
+    if (!resolved && zip) {
+      throw new ConstraintError(
+        zipCentroidsAvailable()
+          ? `Unknown place "${constraints.location.place}": ZIP code ${zip} is not in the offline US Census ZIP (ZCTA) table.`
+          : `Unknown place "${constraints.location.place}": ZIP codes are not available in this build.`,
+        `Try a nearby city instead, e.g. "Tacoma, WA" or "Spokane, WA", or a state name for state-wide inventory.`,
+      );
+    }
     if (!resolved) {
       const popular = ["Tacoma", "Seattle", "Spokane", "Olympia", "Everett", "Vancouver", "Bellingham", "Yakima", "Portland"];
       const rest = knownPlaces().filter((p) => !popular.includes(p));

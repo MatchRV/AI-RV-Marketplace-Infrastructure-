@@ -4,6 +4,8 @@
  * must work on a fresh clone with zero services.
  */
 
+// Registers the lazy US ZIP → centroid table used by shopper search locations (no I/O until a ZIP is searched).
+import "./zip-centroids";
 import { existsSync, readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { resolve } from "node:path";

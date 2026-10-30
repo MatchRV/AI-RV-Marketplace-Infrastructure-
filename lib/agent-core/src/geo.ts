@@ -182,3 +182,65 @@ export function haversineMiles(a: LatLng, b: LatLng): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+
+// ── US ZIP codes (shopper search locations only) ──────────────────────────
+//
+// ZIP centroids come from the US Census Bureau ZCTA Gazetteer (public domain),
+// bundled server-side as lib/agent-core/data/zcta-centroids.txt.gz and loaded
+// lazily by the API server (see artifacts/api-server/src/services/zip-centroids.ts).
+// agent-core stays browser-safe: it only holds a pluggable lookup. Dealer
+// geocoding (resolvePlace) never uses ZIPs, so snapshot geo is unchanged.
+
+export type ZipCentroidLookup = (zip5: string) => LatLng | null;
+let zipLookup: ZipCentroidLookup | null = null;
+
+/** Install the ZIP → centroid table (server-side). Pass null to remove it. */
+export function registerZipCentroids(lookup: ZipCentroidLookup | null): void {
+  zipLookup = lookup;
+}
+
+export function zipCentroidsAvailable(): boolean {
+  return zipLookup !== null;
+}
+
+/**
+ * The 5-digit ZIP in a shopper location, or null. Accepts "98402",
+ * "98402-1234" (ZIP+4), "ZIP 98444", "zip code: 98444", "Tacoma, WA 98402",
+ * "near 98402". The ZIP must be the whole text or end it.
+ */
+export function parseZip(place: string | null | undefined): string | null {
+  if (!place) return null;
+  const t = place.trim().replace(/\.$/, "");
+  const m = /^(?:near\s+)?(?:.*?[\s,])?(?:zip(?:\s*code)?\s*[:#]?\s*)?(\d{5})(?:-\d{4})?$/i.exec(t);
+  return m ? m[1] : null;
+}
+
+/** Nearest supported city to a point, when it is within `maxMiles`. */
+function nearestKnownCity(p: LatLng, maxMiles: number): string | null {
+  let best: string | null = null;
+  let bestD = maxMiles;
+  for (const [name, c] of Object.entries({ ...CITY_COORDS, ...EXTRA_CITY_COORDS })) {
+    const d = haversineMiles(p, c);
+    if (d <= bestD) { bestD = d; best = name; }
+  }
+  return best ? titleCase(best.replace(/_(tx|or)$/, "")) : null;
+}
+
+/**
+ * Resolve a shopper's search location: a US ZIP (via the registered ZCTA
+ * table) or any place resolvePlace understands. Returns null when unknown.
+ */
+export function resolveSearchPlace(place: string): (LatLng & { canonical: string; state?: string; zip?: string }) | null {
+  const zip = parseZip(place);
+  if (zip) {
+    const c = zipLookup?.(zip) ?? null;
+    if (!c) {
+      // "Tacoma, WA 98499" with a ZIP the table lacks: the stated city still locates the search.
+      const rest = place.replace(/[\s,]*(?:zip(?:\s*code)?\s*[:#]?\s*)?\d{5}(?:-\d{4})?\.?\s*$/i, "").trim();
+      return rest && !/^near$/i.test(rest) ? resolvePlace(rest) : null;
+    }
+    const city = nearestKnownCity(c, 10);
+    return { lat: c.lat, lng: c.lng, canonical: city ? `ZIP ${zip} (near ${city})` : `ZIP ${zip}`, zip };
+  }
+  return resolvePlace(place);
+}

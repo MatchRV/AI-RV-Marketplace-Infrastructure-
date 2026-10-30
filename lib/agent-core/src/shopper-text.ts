@@ -12,7 +12,8 @@
 import type { Constraints, FuelType, RvType } from "./types.js";
 import { parseMakeModel, SERIES } from "./brands.js";
 import { searchGuides } from "./knowledge.js";
-import { resolvePlace } from "./geo.js";
+import { resolvePlace, resolveSearchPlace } from "./geo.js";
+import { US_STATES } from "./national-geo.js";
 import type { BuyerProfile, PlannedUse } from "./discovery.js";
 
 export interface ParsedShopperText {
@@ -327,6 +328,20 @@ export const CURATED_SERIES = Object.fromEntries(Object.entries(SERIES).map(([b,
  */
 export function placeFromText(text: string | null | undefined): string | null {
   if (!text) return null;
+  // ZIPs only with an explicit cue ("ZIP 98444", "my zip is 98444", "near 98402", "Tacoma, WA 98402"),
+  // never a bare 5-digit number (that is usually a price or a budget).
+  const zipCues = [
+    /\bzip(?:\s*code)?(?:\s+is)?\s*[:#]?\s*(\d{5}(?:-\d{4})?)\b/gi,
+    /\b(?:near|around|close\s+to)\s+(\d{5}(?:-\d{4})?)\b/gi,
+    /\b[A-Z][A-Za-z.'-]+,?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\b/g, // City, ST 98402 (case-sensitive state code)
+  ];
+  for (const cue of zipCues) {
+    for (let z: RegExpExecArray | null; (z = cue.exec(text)); ) {
+      if (z.length > 2 && !US_STATES[z[1] as keyof typeof US_STATES]) continue;
+      const zip = z[z.length - 1];
+      if (resolveSearchPlace(zip)) return zip;
+    }
+  }
   const re = /\b(?:near|in|around|by|close\s+to|outside(?:\s+of)?|from)\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2}(?:,\s*[A-Z]{2}\b)?)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {

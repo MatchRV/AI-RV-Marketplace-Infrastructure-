@@ -1,0 +1,3342 @@
+{
+"bourbonrv.com": {
+"city": "Bourbon",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"millersrv.com": {
+"city": "Baton Rouge",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"blackdiamondrv.com": {
+"city": "Marion",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"milacaunclaimedfreight.com": {
+"city": "Milaca",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"parkwayrvcenter.com": {
+"city": "Ringgold",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"airstreamofnewhampshire.com": {
+"city": "Nashua",
+"state": "NH",
+"via": "marketcheck_dealer"
+},
+"sonnysrvs.com": {
+"city": "Evansville",
+"state": "WY",
+"via": "marketcheck_dealer"
+},
+"oasisrvs.world": {
+"city": "Marion",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"mcdowellsouthrv.com": {
+"city": "Jackson",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"ridenorthrecreation.com": {
+"city": "Houlton",
+"state": "ME",
+"via": "marketcheck_dealer"
+},
+"arlingtonrv.com": {
+"city": "East Greenwich",
+"state": "RI",
+"via": "marketcheck_dealer"
+},
+"palmettostaterv.com": {
+"city": "Campobello",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"campersrvcenter.com": {
+"city": "Shreveport",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"robersonrv.com": {
+"city": "Salem",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"stagecoachrvsales.com": {
+"city": "Peru",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"vtrv.com": {
+"city": "East Montpelier",
+"state": "VT",
+"via": "marketcheck_dealer"
+},
+"goodsenserv.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"elmonterv.com": {
+"city": "Santa Fe Springs",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"bartonlakervsales.com": {
+"city": "Fremont",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"getyourcampon.com": {
+"city": "Mcalester",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"jeffbrightrv.com": {
+"city": "Rock Falls",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"stellhornrv.com": {
+"city": "Kokomo",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"williamsfamilyrv.com": {
+"city": "Robertsdale",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"mjmimbachtrailers.com": {
+"city": "St Cloud",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"southerntrucksandrv.com": {
+"city": "Springville",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"brownsrvsuperstore.com": {
+"city": "Mcbee",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"wakleyrv.com": {
+"city": "North East",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"countylinecampers.com": {
+"city": "Gulfport",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"henryhobmotors.com": {
+"city": "Plattsmouth",
+"state": "NE",
+"via": "marketcheck_dealer"
+},
+"portersrv.com": {
+"city": "Coos Bay",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"prosserrv.com": {
+"city": "Sturtevant",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"bestrvprices.com": {
+"city": "Butte",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"hoppersrv.com": {
+"city": "Jacksonville",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"salemrvsales.com": {
+"city": "Selinsgrove",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"rvstationbryan.com": {
+"city": "College Station",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"crabtreerv.com": {
+"city": "Alma",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"jtsrv.com": {
+"city": "Grafton",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"rexandsonsrvs.com": {
+"city": "Wilmington",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"hilmersonsportscenter.com": {
+"city": "Little Falls",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"rileysrvworld.com": {
+"city": "Mayfield",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"flyingamotorsports.com": {
+"city": "Cuba",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"pkbrvs.com": {
+"city": "Parkersburg",
+"state": "WV",
+"via": "marketcheck_dealer"
+},
+"byronrv.com": {
+"city": "Byron",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"selecttrailer.com": {
+"city": "Troy",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"wheelsrv.net": {
+"city": "Springdale",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"riversidecampingcenter.com": {
+"city": "New Bern",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"billshappycamper.com": {
+"city": "Mill Hall",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"independentrv.interactrv.com": {
+"city": "Modesto",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"myersrv.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"glampersrv.com": {
+"city": "Hurricane",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"avrv.com": {
+"city": "Hazelwood",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"nhhrv.com": {
+"city": "Whitewood",
+"state": "SD",
+"via": "marketcheck_dealer"
+},
+"independentrvca.com": {
+"city": "Modesto",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"gullboatsandrv.com": {
+"city": "Missoula",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"hornrapidsrv.com": {
+"city": "Richland",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"thompsonrvinc.com": {
+"city": "Pendleton",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"longhorntrailersales.com": {
+"city": "Mount Pleasant",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"lakeregionrv.com": {
+"city": "Devils Lake",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"budgetrvoutlet.com": {
+"city": "Blasdell",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"eastcoastrvs.com": {
+"city": "Bedford",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"wehrrvs.com": {
+"city": "Mountain Grove",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"camperkingdom.com": {
+"city": "Meridian",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"coastalrvcenter.com": {
+"city": "Ravenel",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"migrvmarine.com": {
+"city": "Bellefontaine",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"fbtrailers.com": {
+"city": "Orange Park",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"trailersandhitches.com": {
+"city": "Augusta",
+"state": "KS",
+"via": "marketcheck_dealer"
+},
+"metrarv.com": {
+"city": "Billings",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"amiauction.com": {
+"city": "St Joseph",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"midwestrvonline.com": {
+"city": "Terre Haute",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"showmerv.com": {
+"city": "Clinton",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"kytruckandtrailer.com": {
+"city": "Richmond",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"niemeyers.com": {
+"city": "Albertville",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"craigsmithrv.com": {
+"city": "Galion",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"triamrv.com": {
+"city": "Bulls Gap",
+"state": "TN",
+"via": "marketcheck_dealer"
+},
+"dnlrec.com": {
+"city": "Wisconsin Rapids",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"cortlandrv.com": {
+"city": "Cortland",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"jerryscampingcenter.com": {
+"city": "Madison",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"delightfuldays.com": {
+"city": "Walton",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"theroadiscalling.com": {
+"city": "Rochester",
+"state": "NH",
+"via": "marketcheck_dealer"
+},
+"countrycamping.com": {
+"city": "Kings Mountain",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"klinesrv.com": {
+"city": "Warren",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"wolffmotors.com": {
+"city": "Evergreen",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"butlerrvcenter.com": {
+"city": "Butler",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"internationalrvworld.com": {
+"city": "Bay City",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"crowleyrv.com": {
+"city": "Bristol",
+"state": "CT",
+"via": "marketcheck_dealer"
+},
+"famerv.com": {
+"city": "Saegertown",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"bolandrvs.com": {
+"city": "Hannibal",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"sunandfunrvs.com": {
+"city": "Tiffin",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"holidayrv.net": {
+"city": "Poncha Springs",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"shaferrv.com": {
+"city": "Delta",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"midwayrv.com": {
+"city": "Grand Rapids",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"rhonesrv.com": {
+"city": "Cogan Station",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"lakesidervsales.com": {
+"city": "Anderson",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"legacypowersportsandrv.com": {
+"city": "Island City",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"pawpawsrvs.com": {
+"city": "Picayune",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"carsoncityrv.com": {
+"city": "Carson City",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"ptrv.net": {
+"city": "Greenleaf",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"airstreaminlandempire.com": {
+"city": "Temecula",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"durhamtrailers.com": {
+"city": "Weatherford",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"colmanscampers.com": {
+"city": "Hartford",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"ranchosantamargaritarv.com": {
+"city": "Rancho Santa Margarita",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"rvtrucksalesmt.com": {
+"city": "Missoula",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"m60rv.com": {
+"city": "Jones",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"steinbring.com": {
+"city": "Garfield",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"crowderrv.com": {
+"city": "Johnson City",
+"state": "TN",
+"via": "marketcheck_dealer"
+},
+"keithskars.com": {
+"city": "Reno",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"colmansrv.com": {
+"city": "Springfield",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"darrenbideauxrv.com": {
+"city": "Haven",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"shabbonacreekrv.com": {
+"city": "Atkinson",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"kriswillisrv.com": {
+"city": "Dexter",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"maintrailersalesinc.com": {
+"city": "Roswell",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"adventurervsales.com": {
+"city": "Fargo",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"autosunder5000.com": {
+"city": "Island Park",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"bayirdrv.com": {
+"city": "Paragould",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"budsrvworld.com": {
+"city": "Madisonville",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"georgiacampers.com": {
+"city": "Newnan",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"minneapolistrailer.com": {
+"city": "Rogers",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"airstreamlosangeles.com": {
+"city": "San Gabriel",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"tiararvsales.com": {
+"city": "Elkhart",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"parkwayrv.com": {
+"city": "Deer Park",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"gokarv.com": {
+"city": "Desert Hot Springs",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"karvrepair.com": {
+"city": "Debary",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"foxrv.com": {
+"city": "North Logan",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"ctrvaztec.com": {
+"city": "Aztec",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"millicanrvs.com": {
+"city": "Hanceville",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"kellysrv.com": {
+"city": "Paragould",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"canopycountry.com": {
+"city": "Gap",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"timstoysrv.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"ultimatervcenter.com": {
+"city": "Carencro",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"waterdogrv.com": {
+"city": "Dayton",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"parklandrvcenter.com": {
+"city": "Leadington",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"santapaularv.com": {
+"city": "Santa Paula",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"airstreamsavannah.com": {
+"city": "Richmond Hill",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"arrowheadcampers.com": {
+"city": "Mayfield",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"campinc.world": {
+"city": "Mcalester",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"horizonrvs.com": {
+"city": "Lake Park",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"airstreamofutah.com": {
+"city": "Valley City",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"airstreamofmontana.com": {
+"city": "St Missoula",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"marjonrvs.com": {
+"city": "Moreno Valley",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"campnorthrv.com": {
+"city": "Schoolcraft",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"hallsrvsales.com": {
+"city": "Albertville",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"wheel-co.com": {
+"city": "Milaca",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"labadierv.com": {
+"city": "Holland",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"bumgarnercamping.com": {
+"city": "Lenoir",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"cavemanrv.com": {
+"city": "Grants Pass",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"hrvc.com": {
+"city": "Wilmington",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"airstreamlasvegas.com": {
+"city": "Las Vegas",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"ddrvandauto.com": {
+"city": "West Alexandria",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"csracamperland.com": {
+"city": "Martinez",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"jakesrvs.com": {
+"city": "Warner Robins",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"oakhillmotorsrv.com": {
+"city": "Frankfort",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"libertyrv4u.com": {
+"city": "Gettysburg",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"bdrv.biz": {
+"city": "Vernal",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"weimeroutdoors.com": {
+"city": "Moorefield",
+"state": "WV",
+"via": "marketcheck_dealer"
+},
+"nealsrvcenter.com": {
+"city": "Orem",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"northernrvs.com": {
+"city": "Quinnesec",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"selkirkrv.com": {
+"city": "Spokane",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"txrv.com": {
+"city": "Kennedale",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"alabamacampers.com": {
+"city": "Tuscaloosa",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"smithtrailers.com": {
+"city": "Cincinnati",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"rvtravelworld.com": {
+"city": "Sacramento",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"advancecamping.com": {
+"city": "Milwaukee",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"eaglecountryrv.com": {
+"city": "Eagle River",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"gorvconnection.com": {
+"city": "Lawton",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"rgvrvsales.com": {
+"city": "Palmview",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"hartvillerv.com": {
+"city": "Hartville",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"lightninrv.com": {
+"city": "Lawrenceville",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"paradiservandsales.com": {
+"city": "Strafford",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"leisureland-rv.com": {
+"city": "East Grand Forks",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"bryantsrv.com": {
+"city": "Dallas",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"reliablerv.com": {
+"city": "Springfield",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"seacoastrv.com": {
+"city": "Saco",
+"state": "ME",
+"via": "marketcheck_dealer"
+},
+"prestigervcenter.com": {
+"city": "Shawnee",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"coloradorvcenter.com": {
+"city": "Wilsonville",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"xtremerv.com": {
+"city": "Eden",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"dolneyrv.com": {
+"city": "Kawkawlin",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"countryroadsrecreation.com": {
+"city": "Florence",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"economyrvs.com": {
+"city": "Mechanicsville",
+"state": "MD",
+"via": "marketcheck_dealer"
+},
+"vicarstrailersales.com": {
+"city": "Taylor",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"allrv.net": {
+"city": "Hampton",
+"state": "CT",
+"via": "marketcheck_dealer"
+},
+"pointnorthrv.com": {
+"city": "Ludington",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"noreinstrailers.com": {
+"city": "Webster",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"yonaksrv.com": {
+"city": "Belmont",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"fullerrv.com": {
+"city": "Boylston",
+"state": "MA",
+"via": "marketcheck_dealer"
+},
+"rvwesttexas.com": {
+"city": "Baird",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"rangerv.com": {
+"city": "Hesperia",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"lewistonrv.com": {
+"city": "Lewiston",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"stevesrv.com": {
+"city": "Lacombe",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"corralsales.com": {
+"city": "Mandan",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"rvcentermontana.com": {
+"city": "Belgrade",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"givlerstrailers.com": {
+"city": "Leesport",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"midwaycarlot.com": {
+"city": "Kansas City",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"gladesrv.net": {
+"city": "Fort Myers",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"iwssales.com": {
+"city": "Mountain Home",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"weekendrvcenter.com": {
+"city": "Clinton",
+"state": "TN",
+"via": "marketcheck_dealer"
+},
+"airstreamorangecounty.com": {
+"city": "Midway City",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"victoriarvs.com": {
+"city": "Victoria",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"chaseautoandrv.com": {
+"city": "Pierre",
+"state": "SD",
+"via": "marketcheck_dealer"
+},
+"happytownrv.com": {
+"city": "St George",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"apachevillage.com": {
+"city": "Hazelwood",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"amosrv.com": {
+"city": "Bradner",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"americasautomartnc.com": {
+"city": "Winston-salem",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"memorylanerv.com": {
+"city": "Commerce",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"rvcity.net": {
+"city": "Huachuca City",
+"state": "AZ",
+"via": "marketcheck_dealer"
+},
+"hiwaycampers.com": {
+"city": "Plainfield",
+"state": "CT",
+"via": "marketcheck_dealer"
+},
+"ardaltonrv.com": {
+"city": "Plumerville",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"cheyennecampingcenter.com": {
+"city": "Walcott",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"rvcity.biz": {
+"city": "Huachuca City",
+"state": "AZ",
+"via": "marketcheck_dealer"
+},
+"dankearneysrvcenter.com": {
+"city": "Rutland",
+"state": "VT",
+"via": "marketcheck_dealer"
+},
+"carteretrv.com": {
+"city": "Cedar Point",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"traxauto2.com": {
+"city": "Broadway",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"southlakerv.com": {
+"city": "Rice Lake",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"idealrvsfl.com": {
+"city": "Lakeland",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"airstreamofbuffalo.com": {
+"city": "Orchard Park",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"sunrisecampingcenter.com": {
+"city": "Hickory",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"3rockrv.com": {
+"city": "Brookville",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"72westmotorsandrvs.com": {
+"city": "Fredericktown",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"baysideoutdoorsgb.com": {
+"city": "Green Bay",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"countryrvwi.com": {
+"city": "Chippewa Falls",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"hossfeldrvplus.com": {
+"city": "Lockport",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"westcoastmotorsportsofcalifornia.com": {
+"city": "Redlands",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"rvdealerarkansas.com": {
+"city": "Searcy",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"carolinarvconsignments.com": {
+"city": "Statesville",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"plazarv.com": {
+"city": "Bondurant",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"hamiltonrvsales.com": {
+"city": "Hamilton",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"normancampers.com": {
+"city": "Marietta",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"lakecountryrv.net": {
+"city": "Rogers",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"moundviewrv.com": {
+"city": "Belmont",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"elitecoachsales.com": {
+"city": "Paducah",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"boykomotors.com": {
+"city": "Tacoma",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"sullivanrv.com": {
+"city": "Decatur",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"brownsrvonline.com": {
+"city": "Guttenberg",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"hudsonrvworld.com": {
+"city": "Hudson",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"smithsrv.com": {
+"city": "Okoboji",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"venturarvconnection.com": {
+"city": "Oxnard",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"reinekefamilydealerships.com": {
+"city": "Tiffin",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"clevelandrvsales.com": {
+"city": "Cleveland",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"holidayrvusa.com": {
+"city": "Jefferson",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"ewaldsairstream.com": {
+"city": "Franklin",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"daltonrv.net": {
+"city": "Dalton",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"franklinmountainrvsales.com": {
+"city": "Canutillo",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"chwaltzoutdoor.com": {
+"city": "Jersey Shore",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"mccannsautomart.com": {
+"city": "Hot Springs Village",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"nextstepprosales.com": {
+"city": "Golden",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"jerrysrvs.com": {
+"city": "Lennox",
+"state": "SD",
+"via": "marketcheck_dealer"
+},
+"norcorvcenter.com": {
+"city": "Norco",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"colonialrv.com": {
+"city": "Millstone",
+"state": "NJ",
+"via": "marketcheck_dealer"
+},
+"idletimerv.com": {
+"city": "Allen",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"joplinrvmarine.com": {
+"city": "Joplin",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"homesteadrv.com": {
+"city": "Girard",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"hoppersrvhouston.com": {
+"city": "Houston",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"bussupply.com": {
+"city": "Mccomb",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"indianshoresrv.com": {
+"city": "Woodruff",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"bergesonrv.com": {
+"city": "Kalispell",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"walkertrailersales.com": {
+"city": "Nora Springs",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"fmrv.com": {
+"city": "Le Mars",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"beilsteincampersales.com": {
+"city": "La Grange",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"route66rvs.com": {
+"city": "Claremore",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"johnsonrvs.com": {
+"city": "Woodlawn",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"premierrvcenter.com": {
+"city": "Lewiston",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"elkriverrv.com": {
+"city": "Elk River",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"kennedykars.com": {
+"city": "Holly Hill",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"bouldercityrv.com": {
+"city": "Boulder City",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"washburnautorv.com": {
+"city": "Orem",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"enstechautomotive.com": {
+"city": "Waterloo",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"midgarvsales.com": {
+"city": "Byron",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"leisurelandrvcenter.com": {
+"city": "Boise",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"airstreamofmississippi.com": {
+"city": "Gulfport",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"midstatecampersales.com": {
+"city": "Vandalia",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"redwoodempirervs.com": {
+"city": "Ukiah",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"stoneysrv.com": {
+"city": "Cambridge",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"airstreamofhouston.com": {
+"city": "Katy",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"airstreamofnorthernmichigan.com": {
+"city": "Traverse",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"kellyrvinc.com": {
+"city": "Milton",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"rvoftherockies.com": {
+"city": "Pueblo West",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"precisionunibody.com": {
+"city": "Columbus",
+"state": "NE",
+"via": "marketcheck_dealer"
+},
+"cogsautosales.com": {
+"city": "Roxbury",
+"state": "ME",
+"via": "marketcheck_dealer"
+},
+"oregonrvoutlet.com": {
+"city": "Grants Pass",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"roadtripcamping.com": {
+"city": "Orange",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"airstreamcharlotte.com": {
+"city": "Monroe",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"jmcamper.com": {
+"city": "Augusta",
+"state": "ME",
+"via": "marketcheck_dealer"
+},
+"airstreamsouthernne.com": {
+"city": "Union",
+"state": "CT",
+"via": "marketcheck_dealer"
+},
+"hufnagel-majors.com": {
+"city": "Harmony",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"truckcamperwarehouse.com": {
+"city": "West Chesterfield",
+"state": "NH",
+"via": "marketcheck_dealer"
+},
+"bigadventurerv.com": {
+"city": "Hermitage",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"timsrvinc.com": {
+"city": "Erving",
+"state": "MA",
+"via": "marketcheck_dealer"
+},
+"mannsrv.com": {
+"city": "Rutland",
+"state": "MA",
+"via": "marketcheck_dealer"
+},
+"ogdenautosales.com": {
+"city": "Spencerport",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"easleycampersales.com": {
+"city": "Easley",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"stevesrvs.com": {
+"city": "Dublin",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"sherwoodautocampersales.com": {
+"city": "Hillsboro",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"cherrycapitalrv.com": {
+"city": "Grawn",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"jjcamper.com": {
+"city": "East Mole",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"polarrvsales.com": {
+"city": "Salem",
+"state": "NH",
+"via": "marketcheck_dealer"
+},
+"rv-consign.com": {
+"city": "Central Point",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"leescountryrv.com": {
+"city": "Batesville",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"ronarv.com": {
+"city": "Pataskala",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"currenpowersports.com": {
+"city": "Pine City",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"qrvsllc.com": {
+"city": "Milwaukie",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"newmexicocampandride.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"warnerautorv.rocks": {
+"city": "Kennewick",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"bmotors.us": {
+"city": "Castle Rock",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"scottsrvvancouver.com": {
+"city": "Vancouver",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"bricknersofantigorvcenter.com": {
+"city": "Antigo",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"bonnersports.com": {
+"city": "Jersey Shore",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"camparama.com": {
+"city": "Benton",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"billingsrv.com": {
+"city": "Billings",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"kentuckianarv.com": {
+"city": "Charlestown",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"sunvalleyrv.com": {
+"city": "Chino,",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"momot.com": {
+"city": "Plattsburgh",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"byefrommellc.com": {
+"city": "Hot Springs",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"autobankandrvs.com": {
+"city": "Greenville",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"overdrivetulsa.com": {
+"city": "Tulsa",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"anydayrv.com": {
+"city": "Brookings",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"performancervsales.com": {
+"city": "Thornville",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"tippytoerepo.com": {
+"city": "Longs",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"mikesrvsales.com": {
+"city": "Spokane",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"hkcampersales.com": {
+"city": "Columbus",
+"state": "KS",
+"via": "marketcheck_dealer"
+},
+"nishnavalleycycle.com": {
+"city": "Atlantic",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"riverwoodrvs.com": {
+"city": "Mandan",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"littleguytrailers.com": {
+"city": "San Diego",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"gatewayrvnevada.com": {
+"city": "Elko",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"aokrvs.com": {
+"city": "Gravois Mills",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"camperland-rv.com": {
+"city": "Madison",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"elitemotorsportsllc.com": {
+"city": "Wynnewood",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"charlestonparadise.com": {
+"city": "Charleston",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"kirklandrvsales.com": {
+"city": "Everett",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"race-haulers.com": {
+"city": "Paducah",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"iervsales.com": {
+"city": "Colton",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"bensrvcenter.com": {
+"city": "York",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"friendshiprvinc.rvusa.com": {
+"city": "Friendship",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"orofinopowersports.com": {
+"city": "Orofino",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"jaycocarolinas.com": {
+"city": "Monroe",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"polarrv-auto.com": {
+"city": "Salem",
+"state": "NH",
+"via": "marketcheck_dealer"
+},
+"chucksrvsales.com": {
+"city": "Paragould",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"seemorcustoms.com": {
+"city": "Mount Crawford",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"irvinescamper.com": {
+"city": "Little Hocking",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"boardmanmotors.com": {
+"city": "Pueblo",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"applevalleycamping.com": {
+"city": "Appleton",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"sunlandsalesrv.com": {
+"city": "Glendale",
+"state": "AZ",
+"via": "marketcheck_dealer"
+},
+"nevadarvonline.com": {
+"city": "Pahrump",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"rvclassified.com": {
+"city": "Salisbury",
+"state": "MD",
+"via": "marketcheck_dealer"
+},
+"free2uyuma.com": {
+"city": "Yuma",
+"state": "AZ",
+"via": "marketcheck_dealer"
+},
+"backcountryrvcenter.com": {
+"city": "Meridian",
+"state": "MS",
+"via": "marketcheck_dealer"
+},
+"earthroamer.com": {
+"city": "Dacono",
+"state": "CO",
+"via": "marketcheck_dealer"
+},
+"compassvans.com": {
+"city": "Carlsbad",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"airstreamchicago.com": {
+"city": "Naperville",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"adirondackpowersports.com": {
+"city": "Malone",
+"state": "NY",
+"via": "marketcheck_dealer"
+},
+"airstreamventura.com": {
+"city": "Ventura",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"williamsonrv.com": {
+"city": "Seymour",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"victorylaneoutdoors.com": {
+"city": "Litchfield",
+"state": "IL",
+"via": "marketcheck_dealer"
+},
+"xgridcampers.com": {
+"city": "Las Vegas",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"gatewayairstream.com": {
+"city": "Wentzville",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"mckeeverrv.com": {
+"city": "Sweetwater",
+"state": "TN",
+"via": "marketcheck_dealer"
+},
+"easycampingrv.com": {
+"city": "Nevada",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"vantasticvans.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"championnwa.com": {
+"city": "Springdale",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"robbinsautoandrv.com": {
+"city": "Aurora",
+"state": "MO",
+"via": "marketcheck_dealer"
+},
+"uniquecarsandcycles.com": {
+"city": "Micco",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"zomerrv.com": {
+"city": "Orange City",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"omarsrv.com": {
+"city": "Wenatchee",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"roughriderrvs.net": {
+"city": "Dickinson",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"airstreamsandiego.com": {
+"city": "San Diego",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"campersandmore.com": {
+"city": "Mobile",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"outbackrvtx.com": {
+"city": "Denton",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"abcamperlandinc.com": {
+"city": "Midland",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"airstreamofarkansas.com": {
+"city": "Conway",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"livingstoncampersales.com": {
+"city": "Piney",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"mtjoyrv.com": {
+"city": "Buchanan",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"uintahvalleymotorsports.com": {
+"city": "Vernal",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"abcrvsales.com": {
+"city": "Anchorage",
+"state": "AK",
+"via": "marketcheck_dealer"
+},
+"skymotorsco.com": {
+"city": "Fillmore",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"hayletttrailers.com": {
+"city": "Coldwater",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"rvmax.us": {
+"city": "Greenville,",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"rvsalespecialist.com": {
+"city": "Davis",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"mandkautosales.com": {
+"city": "Hazlehurst",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"alexanderrv.com": {
+"city": "Clayton",
+"state": "DE",
+"via": "marketcheck_dealer"
+},
+"gloucesterrv.net": {
+"city": "Hayes",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"chesapeakervsolutions.com": {
+"city": "Chesapeake",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"swrv.com": {
+"city": "Sheldon",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"airstreamsouthcarolina.com": {
+"city": "Lexington",
+"state": "SC",
+"via": "marketcheck_dealer"
+},
+"airstreamoforlando.com": {
+"city": "Casselberry",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"razorbackcampersales.com": {
+"city": "Hot Springs",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"huffys.com": {
+"city": "Finleyville",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"friendshiprvinc.com": {
+"city": "Friendship",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"whitesautosalesandrvs.com": {
+"city": "Summersville",
+"state": "WV",
+"via": "marketcheck_dealer"
+},
+"econorv.com": {
+"city": "Bassett",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"premierrvbrokers.com": {
+"city": "St. George",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"rrcampersales.com": {
+"city": "Jesup,",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"vogelsrvs.com": {
+"city": "Ukiah",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"topekarv.com": {
+"city": "Topeka",
+"state": "KS",
+"via": "marketcheck_dealer"
+},
+"nollerrv.com": {
+"city": "Topeka",
+"state": "KS",
+"via": "marketcheck_dealer"
+},
+"mccluskeys.com": {
+"city": "Presque Isle",
+"state": "ME",
+"via": "marketcheck_dealer"
+},
+"atwoodtrailer.com": {
+"city": "Loudonville",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"courvellesrv.com": {
+"city": "Opelousas",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"campoaksrv.com": {
+"city": "Dahlonega",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"dreamfindersrv.com": {
+"city": "Muscle Shoals",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"funtownrv.com": {
+"city": "Hewitt",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"lamesarv.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"wasatchtrailer.com": {
+"city": "Layton",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"parrisrv.com": {
+"city": "Murray",
+"state": "UT",
+"via": "marketcheck_dealer"
+},
+"pleasurelandrv.com": {
+"city": "Ramsey",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"petesrv.com": {
+"city": "South Burlington",
+"state": "VT",
+"via": "marketcheck_dealer"
+},
+"couchsrvnation.com": {
+"city": "Trenton",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"rvwholesalers.com": {
+"city": "Honey Grove",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"petesrvmidatlantic.com": {
+"city": "Chesapeake",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"awesomerv.com": {
+"city": "Chehalis",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"ohiorvwholesale.com": {
+"city": "Lakeview",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"alrvsales.com": {
+"city": "Johnson City",
+"state": "TN",
+"via": "marketcheck_dealer"
+},
+"markquartrvramsey.com": {
+"city": "Ramsey",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"greatlakesrvcenter.com": {
+"city": "Lakeview",
+"state": "OH",
+"via": "marketcheck_dealer"
+},
+"markquartrvappleton.com": {
+"city": "Appleton",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"markquartrvburlington.com": {
+"city": "Burlington",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"markquartrvhallie.com": {
+"city": "Chippewa Falls",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"classicrvsales.com": {
+"city": "Monroeville",
+"state": "NJ",
+"via": "marketcheck_dealer"
+},
+"ridenorth.com": {
+"city": "Kingsford",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"rvexteriorbodypanels.visonerv.com": {
+"city": "Bernstadt",
+"state": "KY",
+"via": "marketcheck_dealer"
+},
+"rvselectinc.com": {
+"city": "Seffner",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"markquartrvmadison.com": {
+"city": "Fitchburg",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"bankstonmotorhomes.com": {
+"city": "Huntsville",
+"state": "AL",
+"via": "marketcheck_dealer"
+},
+"johnsonrv.com": {
+"city": "Sandy",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"keystonervcenter.com": {
+"city": "Greencastle",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"rvvaluemart.com": {
+"city": "Lititz",
+"state": "PA",
+"via": "marketcheck_dealer"
+},
+"moixrv.com": {
+"city": "Springdale",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"gerzenysrvworld.com": {
+"city": "Nokomis",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"vistotrailers.com": {
+"city": "Fargo",
+"state": "ND",
+"via": "marketcheck_dealer"
+},
+"camperliquidators.com": {
+"city": "Salem",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"tg4rv.com": {
+"city": "Virginia Beach",
+"state": "VA",
+"via": "marketcheck_dealer"
+},
+"beckleysrvs.com": {
+"city": "Thurmont",
+"state": "MD",
+"via": "marketcheck_dealer"
+},
+"hilltopcamper.com": {
+"city": "Brainerd",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"petesrvindy.com": {
+"city": "Schererville",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"nirvc.com": {
+"city": "Lawrenceville",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"mckeerv.com": {
+"city": "Perry",
+"state": "IA",
+"via": "marketcheck_dealer"
+},
+"airstreamofgreensboronc.com": {
+"city": "Colfax",
+"state": "NC",
+"via": "marketcheck_dealer"
+},
+"vrstcyr.com": {
+"city": "Levis",
+"state": "QC",
+"via": "marketcheck_dealer"
+},
+"portlandairstream.com": {
+"city": "Clackamas",
+"state": "OR",
+"via": "marketcheck_dealer"
+},
+"renoairstream.com": {
+"city": "Reno",
+"state": "NV",
+"via": "marketcheck_dealer"
+},
+"seattleairstream.com": {
+"city": "Milton",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"airstreamofjacksonville.com": {
+"city": "Jacksonville",
+"state": "FL",
+"via": "marketcheck_dealer"
+},
+"berrylandcampers.com": {
+"city": "Ponchatoula",
+"state": "LA",
+"via": "marketcheck_dealer"
+},
+"airstreamofnewmexico.com": {
+"city": "Albuquerque",
+"state": "NM",
+"via": "marketcheck_dealer"
+},
+"trailersofidaho.com": {
+"city": "Boise",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"airstreamspokane.com": {
+"city": "Spokane Valley",
+"state": "WA",
+"via": "marketcheck_dealer"
+},
+"dillonrv.com": {
+"city": "Boise",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"piercerv.com": {
+"city": "Billings",
+"state": "MT",
+"via": "marketcheck_dealer"
+},
+"gavinspointrec.com": {
+"city": "Yankton",
+"state": "SD",
+"via": "marketcheck_dealer"
+},
+"midwestcampers.com": {
+"city": "Yankton",
+"state": "SD",
+"via": "marketcheck_dealer"
+},
+"bobhurleyrv.com": {
+"city": "Tulsa",
+"state": "OK",
+"via": "marketcheck_dealer"
+},
+"zoomersrv.com": {
+"city": "Wabash",
+"state": "IN",
+"via": "marketcheck_dealer"
+},
+"johngibsonautosales.com": {
+"city": "Hot Springs",
+"state": "AR",
+"via": "marketcheck_dealer"
+},
+"theregistryllc.com": {
+"city": "Omaha",
+"state": "NE",
+"via": "marketcheck_dealer"
+},
+"markquartrvcolumbus.com": {
+"city": "Columbus",
+"state": "WI",
+"via": "marketcheck_dealer"
+},
+"markquartrvduluth.com": {
+"city": "Cloquet",
+"state": "MN",
+"via": "marketcheck_dealer"
+},
+"terrytownrv.com": {
+"city": "Grand Rapids",
+"state": "MI",
+"via": "marketcheck_dealer"
+},
+"southlandrv.com": {
+"city": "Norcross",
+"state": "GA",
+"via": "marketcheck_dealer"
+},
+"rvdepot.us": {
+"city": "Cleburne",
+"state": "TX",
+"via": "marketcheck_dealer"
+},
+"boiseairstream.com": {
+"city": "Caldwell",
+"state": "ID",
+"via": "marketcheck_dealer"
+},
+"epicrvliquidators.com": {
+"city": "Madera",
+"state": "CA",
+"via": "marketcheck_dealer"
+},
+"208rides.com": {
+"city": "Rathdrum",
+"state": "ID",
+"via": "marketcheck_dealer_rows1"
+},
+"83rv.com": {
+"city": "Mundelein",
+"state": "IL",
+"via": "live_snapshot"
+},
+"airstreamofaustin.com": {
+"city": "Buda",
+"state": "TX",
+"via": "live_snapshot"
+},
+"airstreamoftampafl.com": {
+"city": "Dover",
+"state": "FL",
+"via": "live_snapshot"
+},
+"allamericancoach.com": {
+"city": "Sylvania",
+"state": "OH",
+"via": "marketcheck_dealer_rows1"
+},
+"allensautorv.com": {
+"city": "Cadillac",
+"state": "MI",
+"via": "marketcheck_dealer_rows1"
+},
+"americagorv.com": {
+"city": "Seguin",
+"state": "TX",
+"via": "live_snapshot"
+},
+"ansleyrv.com": {
+"city": "Duncansville",
+"state": "PA",
+"via": "marketcheck_dealer_rows1"
+},
+"asrvs.com": {
+"city": "Streetsboro",
+"state": "OH",
+"via": "marketcheck_dealer_rows1"
+},
+"atozrvs.com": {
+"city": "Ocala",
+"state": "FL",
+"via": "live_snapshot"
+},
+"bb-rv.com": {
+"city": "Denver",
+"state": "CO",
+"via": "live_snapshot"
+},
+"bestrv.com": {
+"city": "Turlock",
+"state": "CA",
+"via": "live_snapshot"
+},
+"betterdaysrv.com": {
+"city": "Tampa",
+"state": "FL",
+"via": "live_snapshot"
+},
+"bluecompassrv.com": {
+"city": "Unknown",
+"state": "KY",
+"via": "live_snapshot"
+},
+"boguerv.com": {
+"city": "Newport",
+"state": "NC",
+"via": "marketcheck_dealer_rows1"
+},
+"brewbakers.com": {
+"city": "Onaway",
+"state": "MI",
+"via": "live_snapshot"
+},
+"buyweston.worktrucksolutions.com": {
+"city": "Gresham",
+"state": "OR",
+"via": "marketcheck_dealer_rows1"
+},
+"campbellrv.com": {
+"city": "Sarasota",
+"state": "FL",
+"via": "live_snapshot"
+},
+"campervalleyrv.com": {
+"city": "Unknown",
+"state": "AK",
+"via": "live_snapshot"
+},
+"carpenterscampers.com": {
+"city": "Pensacola",
+"state": "FL",
+"via": "live_snapshot"
+},
+"cflrv.com": {
+"city": "Apopka",
+"state": "FL",
+"via": "live_snapshot"
+},
+"coachlightrv.com": {
+"city": "Unknown",
+"state": "MO",
+"via": "live_snapshot"
+},
+"coastalrv.net": {
+"city": "Carrollton",
+"state": "VA",
+"via": "live_snapshot"
+},
+"coldspringsrv.com": {
+"city": "Weare",
+"state": "NH",
+"via": "marketcheck_dealer_rows1"
+},
+"collierrv.com": {
+"city": "Rockford",
+"state": "IL",
+"via": "live_snapshot"
+},
+"coloniadelreyrv.com": {
+"city": "Corpus Christi",
+"state": "TX",
+"via": "live_snapshot"
+},
+"conejorv.com": {
+"city": "Thousand Oaks",
+"state": "CA",
+"via": "live_snapshot"
+},
+"couchfamilyrv.com": {
+"city": "Cross City",
+"state": "FL",
+"via": "live_snapshot"
+},
+"delmarvarvcenter.com": {
+"city": "Milford",
+"state": "DE",
+"via": "marketcheck_dealer_rows1"
+},
+"demontrondrv.com": {
+"city": "Houston",
+"state": "TX",
+"via": "live_snapshot"
+},
+"dhrvcenter.com": {
+"city": "Apex",
+"state": "NC",
+"via": "marketcheck_dealer_rows1"
+},
+"dhrvjax.com": {
+"city": "JACKSONVILLE",
+"state": "FL",
+"via": "live_snapshot"
+},
+"direct-rv.com": {
+"city": "Souderton",
+"state": "PA",
+"via": "marketcheck_dealer_rows1"
+},
+"eastsidervs.com": {
+"city": "Gillette",
+"state": "WY",
+"via": "live_snapshot"
+},
+"empirervmarine.com": {
+"city": "N Main StLiberty",
+"state": "TX",
+"via": "live_snapshot"
+},
+"findlaytruckrvsales.com": {
+"city": "Findlay",
+"state": "OH",
+"via": "live_snapshot"
+},
+"finksqualityautos.com": {
+"city": "Zanesville",
+"state": "OH",
+"via": "marketcheck_dealer_rows1"
+},
+"firstclassrvmarine.com": {
+"city": "Lake Havasu City",
+"state": "AZ",
+"via": "live_snapshot"
+},
+"florencerv.com": {
+"city": "Florence",
+"state": "OR",
+"via": "live_snapshot"
+},
+"fourwindsrv.com": {
+"city": "Maroa",
+"state": "IL",
+"via": "live_snapshot"
+},
+"freedomrvaz.com": {
+"city": "Tucson",
+"state": "AZ",
+"via": "live_snapshot"
+},
+"fretzrv.com": {
+"city": "Souderton",
+"state": "PA",
+"via": "live_snapshot"
+},
+"gauthiersrv.com": {
+"city": "Scott",
+"state": "LA",
+"via": "marketcheck_dealer_rows1"
+},
+"giantrv.com": {
+"city": "Montclair",
+"state": "CA",
+"via": "live_snapshot"
+},
+"glrv.com": {
+"city": "Webster City",
+"state": "IA",
+"via": "marketcheck_dealer_rows1"
+},
+"greenewayrv.com": {
+"city": "Wisconsin Rapids",
+"state": "WI",
+"via": "marketcheck_dealer_rows1"
+},
+"hornersrvauto.com": {
+"city": "PUNTA GORDA",
+"state": "FL",
+"via": "live_snapshot"
+},
+"hwhrv.com": {
+"city": "Katy",
+"state": "TX",
+"via": "live_snapshot"
+},
+"hwytrailersales.com": {
+"city": "Salem",
+"state": "OR",
+"via": "marketcheck_dealer_rows1"
+},
+"ivccrv.com": {
+"city": "Souderton",
+"state": "PA",
+"via": "marketcheck_dealer_rows1"
+},
+"jackscampers.com": {
+"city": "Mitchell",
+"state": "SD",
+"via": "marketcheck_dealer_rows1"
+},
+"joescampers.com": {
+"city": "New Ulm",
+"state": "MN",
+"via": "marketcheck_dealer_rows1"
+},
+"juniatavalleyrv.com": {
+"city": "Mifflintown",
+"state": "PA",
+"via": "live_snapshot"
+},
+"kalsmotorgroup.com": {
+"city": "Wadena",
+"state": "MN",
+"via": "marketcheck_dealer_rows1"
+},
+"lemkerv.com": {
+"city": "Rocklin",
+"state": "CA",
+"via": "marketcheck_dealer_rows1"
+},
+"lyndenrvcenter.com": {
+"city": "Coopersville",
+"state": "MI",
+"via": "marketcheck_dealer_rows1"
+},
+"markwahlbergvu.com": {
+"city": "Columbus",
+"state": "OH",
+"via": "marketcheck_dealer_rows1"
+},
+"motorhomedepot.org": {
+"city": "Orange",
+"state": "TX",
+"via": "live_snapshot"
+},
+"motorhomefinders.com": {
+"city": "Elfers",
+"state": "FL",
+"via": "live_snapshot"
+},
+"motorhomesoftexas.com": {
+"city": "Nacogdoches",
+"state": "TX",
+"via": "live_snapshot"
+},
+"nhrv.com": {
+"city": "San Mateo",
+"state": "FL",
+"via": "live_snapshot"
+},
+"nicecampers.com": {
+"city": "Russellville",
+"state": "AR",
+"via": "marketcheck_dealer_rows1"
+},
+"oaklakerv.com": {
+"city": "Moose Lake",
+"state": "MN",
+"via": "live_snapshot"
+},
+"optimumrv.com": {
+"city": "Pottstown",
+"state": "PA",
+"via": "live_snapshot"
+},
+"orchardtrailers.com": {
+"city": "Whately",
+"state": "MA",
+"via": "live_snapshot"
+},
+"overlandrv.com": {
+"city": "Riverside",
+"state": "CA",
+"via": "live_snapshot"
+},
+"parkertrailers.com": {
+"city": "Parker",
+"state": "CO",
+"via": "marketcheck_dealer_rows1"
+},
+"pikespeakrv.com": {
+"city": "Colorado Springs",
+"state": "CO",
+"via": "live_snapshot"
+},
+"pinnaclerv.com": {
+"city": "Fort Worth HwyFort Worth",
+"state": "TX",
+"via": "live_snapshot"
+},
+"poulsborv.com": {
+"city": "Mount Vernon",
+"state": "WA",
+"via": "marketcheck_dealer_rows1"
+},
+"premierrv.com": {
+"city": "Blue Grass",
+"state": "IA",
+"via": "marketcheck_dealer_rows1"
+},
+"rendelrv.com": {
+"city": "Rice",
+"state": "TX",
+"via": "live_snapshot"
+},
+"ridesunlimitedchicago.com": {
+"city": "Crest Hill",
+"state": "IL",
+"via": "marketcheck_dealer_rows1"
+},
+"rightpriceautofl.com": {
+"city": "Waldo",
+"state": "FL",
+"via": "live_snapshot"
+},
+"roguevehicleco.com": {
+"city": "Unknown",
+"state": "CA",
+"via": "live_snapshot"
+},
+"rvconnections.com": {
+"city": "Panama City",
+"state": "FL",
+"via": "live_snapshot"
+},
+"rvsalesoforlando.com": {
+"city": "Longwood",
+"state": "FL",
+"via": "live_snapshot"
+},
+"rvsofsac.com": {
+"city": "Elk Grove",
+"state": "CA",
+"via": "marketcheck_dealer_rows1"
+},
+"rvtradesok.com": {
+"city": "Coburg",
+"state": "OR",
+"via": "marketcheck_dealer_rows1"
+},
+"scenicviewrv.net": {
+"city": "West Point",
+"state": "VA",
+"via": "live_snapshot"
+},
+"seguinrv.com": {
+"city": "Seguin",
+"state": "TX",
+"via": "live_snapshot"
+},
+"setzersrv.com": {
+"city": "Huntington",
+"state": "WV",
+"via": "live_snapshot"
+},
+"skaggsrv.com": {
+"city": "Commerce DriveElizabethtown",
+"state": "KY",
+"via": "live_snapshot"
+},
+"southernmarineandrvsales.com": {
+"city": "Fort Myers",
+"state": "FL",
+"via": "live_snapshot"
+},
+"sr1trailers.com": {
+"city": "Loudon",
+"state": "NH",
+"via": "marketcheck_dealer_rows1"
+},
+"suncamperrvs.com": {
+"city": "Fort Pierce",
+"state": "FL",
+"via": "live_snapshot"
+},
+"sunshinerv.com": {
+"city": "Lake Havasu City",
+"state": "AZ",
+"via": "live_snapshot"
+},
+"swluxurycoaches.com": {
+"city": "Phoenix",
+"state": "AZ",
+"via": "live_snapshot"
+},
+"tacrv.com": {
+"city": "Clyde",
+"state": "OH",
+"via": "marketcheck_dealer_rows1"
+},
+"threewaycampers.com": {
+"city": "Unknown",
+"state": "GA",
+"via": "live_snapshot"
+},
+"topchoicerv.com": {
+"city": "Spring",
+"state": "TX",
+"via": "live_snapshot"
+},
+"towtallycamping.com": {
+"city": "Redding",
+"state": "CA",
+"via": "live_snapshot"
+},
+"trailernut.com": {
+"city": "Robinson",
+"state": "TX",
+"via": "marketcheck_dealer_rows1"
+},
+"trailersoftheeastcoast.com": {
+"city": "Mocksville",
+"state": "NC",
+"via": "marketcheck_dealer_rows1"
+},
+"trailersourceinc.com": {
+"city": "Wheat Ridge",
+"state": "CO",
+"via": "live_snapshot"
+},
+"transwest.com": {
+"city": "Belton",
+"state": "MO",
+"via": "marketcheck_dealer_rows1"
+},
+"txcustomtrailers.com": {
+"city": "Decatur",
+"state": "TX",
+"via": "marketcheck_dealer_rows1"
+},
+"txstarrv.com": {
+"city": "Azle",
+"state": "TX",
+"via": "live_snapshot"
+},
+"unitedrv.com": {
+"city": "Haltom City",
+"state": "TX",
+"via": "live_snapshot"
+},
+"utahtrailerpros.com": {
+"city": "Draper",
+"state": "UT",
+"via": "marketcheck_dealer_rows1"
+},
+"veurinksrv.com": {
+"city": "Grand Rapids",
+"state": "MI",
+"via": "marketcheck_dealer_rows1"
+},
+"westtexasrvs.com": {
+"city": "Wolfforth",
+"state": "TX",
+"via": "live_snapshot"
+},
+"1-motoring.com": {
+"city": "Pauls Valley",
+"state": "OK",
+"via": "dealer_homepage_jsonld"
+},
+"4seasonsrv.com": {
+"city": "Abilene",
+"state": "KS",
+"via": "dealer_homepage_jsonld"
+},
+"adventuretimerv.com": {
+"city": "De Soto",
+"state": "IL",
+"via": "dealer_homepage_jsonld"
+},
+"airstreamalbany.com": {
+"city": "Latham",
+"state": "NY",
+"via": "dealer_homepage_jsonld"
+},
+"airstreammaine.com": {
+"city": "Lebanon",
+"state": "ME",
+"via": "dealer_homepage_jsonld"
+},
+"airstreamofdesmoines.com": {
+"city": "Altoona",
+"state": "IA",
+"via": "dealer_homepage_jsonld"
+},
+"airstreamofva.com": {
+"city": "Woodford",
+"state": "VA",
+"via": "dealer_homepage_jsonld"
+},
+"allstarsrv.com": {
+"city": "Littleton",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"americanrvcenter.com": {
+"city": "Evansville",
+"state": "IN",
+"via": "dealer_homepage_jsonld"
+},
+"anniesrvs.com": {
+"city": "Vancouver",
+"state": "WA",
+"via": "dealer_homepage_jsonld"
+},
+"auctiondirectrvs.com": {
+"city": "Ocala",
+"state": "FL",
+"via": "dealer_homepage_jsonld"
+},
+"beavercoachsales.com": {
+"city": "Bend",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"bellcampersales.com": {
+"city": "Bartlesville",
+"state": "OK",
+"via": "dealer_homepage_jsonld"
+},
+"bentsrv.com": {
+"city": "Boutte",
+"state": "LA",
+"via": "dealer_homepage_jsonld"
+},
+"bestcampersales.com": {
+"city": "Stanwood",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"boerv.com": {
+"city": "Stevensville",
+"state": "MD",
+"via": "dealer_homepage_jsonld"
+},
+"bouldercampervans.com": {
+"city": "Boulder",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"bullyanrvs.com": {
+"city": "Duluth",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+},
+"camperlandok.com": {
+"city": "Tulsa",
+"state": "OK",
+"via": "dealer_homepage_jsonld"
+},
+"carfitforu.com": {
+"city": "THREE OAKS",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"carpealuminumrv.com": {
+"city": "Hattiesburg",
+"state": "MS",
+"via": "dealer_homepage_jsonld"
+},
+"carsourceoflenoir.com": {
+"city": "Lenoir",
+"state": "NC",
+"via": "dealer_homepage_jsonld"
+},
+"cenlarv.com": {
+"city": "Alexandria",
+"state": "LA",
+"via": "dealer_homepage_jsonld"
+},
+"charlieobaughrv.com": {
+"city": "Staunton",
+"state": "VA",
+"via": "dealer_homepage_jsonld"
+},
+"chattanoogafishnfun.com": {
+"city": "Hixson",
+"state": "TN",
+"via": "dealer_homepage_jsonld"
+},
+"coastalrec.com": {
+"city": "Ormond Beach",
+"state": "FL",
+"via": "dealer_homepage_jsonld"
+},
+"completetrailers.com": {
+"city": "Oceanside",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"completetrailersca.com": {
+"city": "Oceanside",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"completetrailersco.com": {
+"city": "Henderson",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"completetrailerstx.com": {
+"city": "Keller",
+"state": "TX",
+"via": "dealer_homepage_jsonld"
+},
+"countryboy-trailers.com": {
+"city": "Cumming",
+"state": "GA",
+"via": "dealer_homepage_jsonld"
+},
+"crossroadstrailers.com": {
+"city": "Newfield",
+"state": "NJ",
+"via": "dealer_homepage_jsonld"
+},
+"crtrl.com": {
+"city": "Kalispell",
+"state": "MT",
+"via": "dealer_homepage_jsonld"
+},
+"dadscamperoutlet.com": {
+"city": "Picayune",
+"state": "MS",
+"via": "dealer_homepage_jsonld"
+},
+"daisyrv.com": {
+"city": "Marble Falls",
+"state": "TX",
+"via": "dealer_homepage_jsonld"
+},
+"daybrosrvsales.com": {
+"city": "London",
+"state": "KY",
+"via": "dealer_homepage_jsonld"
+},
+"dchevy.com": {
+"city": "Bridgman",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"explorenationrv.com": {
+"city": "Sacramento",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"ezrvservice.com": {
+"city": "Caldwell",
+"state": "ID",
+"via": "dealer_homepage_jsonld"
+},
+"fourcornersrv.com": {
+"city": "Ignacio",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"fundealer.com": {
+"city": "Lake Park",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+},
+"getawayrvsales.com": {
+"city": "Templeton",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"greshamrvsales.com": {
+"city": "Gresham",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"hollyacres.com": {
+"city": "Woodbridge",
+"state": "VA",
+"via": "dealer_homepage_jsonld"
+},
+"imperialluxurycoach.com": {
+"city": "Dayton",
+"state": "OH",
+"via": "dealer_homepage_jsonld"
+},
+"interstaterv.com": {
+"city": "Poynette",
+"state": "WI",
+"via": "dealer_homepage_jsonld"
+},
+"kroubetz.com": {
+"city": "Lake Crystal",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+},
+"kuhlstrailers.com": {
+"city": "Ingraham",
+"state": "IL",
+"via": "dealer_homepage_jsonld"
+},
+"lakelandrv.com": {
+"city": "Milton",
+"state": "WI",
+"via": "dealer_homepage_jsonld"
+},
+"lakeshorervsales.com": {
+"city": "Lakeland",
+"state": "FL",
+"via": "dealer_homepage_jsonld"
+},
+"lazyhauto.com": {
+"city": "Glen Elder",
+"state": "KS",
+"via": "dealer_homepage_jsonld"
+},
+"lehighgorgerv.com": {
+"city": "White Haven",
+"state": "PA",
+"via": "dealer_homepage_jsonld"
+},
+"linkrvdirect.com": {
+"city": "MINONG",
+"state": "WI",
+"via": "dealer_homepage_jsonld"
+},
+"m53rv.com": {
+"city": "Imlay City",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"markwahlbergrvcleveland.com": {
+"city": "Lorain",
+"state": "OH",
+"via": "dealer_homepage_jsonld"
+},
+"midwestrvconnect.com": {
+"city": "Elkhart",
+"state": "IN",
+"via": "dealer_homepage_jsonld"
+},
+"mmcminnesota.com": {
+"city": "Pine River",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+},
+"mooresauto.com": {
+"city": "Towanda",
+"state": "PA",
+"via": "dealer_homepage_jsonld"
+},
+"mooresrv.com": {
+"city": "N Ridgeville",
+"state": "OH",
+"via": "dealer_homepage_jsonld"
+},
+"morrismotorsandrv.com": {
+"city": "Falcon",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"motorhomes503.com": {
+"city": "Portland",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"mountainluxerv.com": {
+"city": "Castle Rock",
+"state": "CO",
+"via": "dealer_homepage_jsonld"
+},
+"mwrvcenter.com": {
+"city": "St. Louis",
+"state": "MO",
+"via": "dealer_homepage_jsonld"
+},
+"nationaltrailersource.com": {
+"city": "Decatur",
+"state": "TX",
+"via": "dealer_homepage_jsonld"
+},
+"nelsonrv.com": {
+"city": "Tucson",
+"state": "AZ",
+"via": "dealer_homepage_jsonld"
+},
+"offhighwayvan.com": {
+"city": "Salt Lake City",
+"state": "UT",
+"via": "dealer_homepage_jsonld"
+},
+"openroadexchange.com": {
+"city": "Salisbury",
+"state": "NC",
+"via": "dealer_homepage_jsonld"
+},
+"openroads.us": {
+"city": "Jasper",
+"state": "GA",
+"via": "dealer_homepage_jsonld"
+},
+"outletrecreation.com": {
+"city": "Fargo",
+"state": "ND",
+"via": "dealer_homepage_jsonld"
+},
+"paradisecoach.com": {
+"city": "Sweet Home",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"portlandrvwholesale.com": {
+"city": "Oregon City",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"rangitschbrosrv.com": {
+"city": "Missoula",
+"state": "MT",
+"via": "dealer_homepage_jsonld"
+},
+"reliableridesutah.com": {
+"city": "Salt Lake City",
+"state": "UT",
+"via": "dealer_homepage_jsonld"
+},
+"rivercityrv.com": {
+"city": "Grants Pass",
+"state": "OR",
+"via": "dealer_homepage_jsonld"
+},
+"riversidetrailercenter.com": {
+"city": "Stanwood",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"rodscycleandrv.com": {
+"city": "Madison",
+"state": "ME",
+"via": "dealer_homepage_jsonld"
+},
+"rollingretreats.com": {
+"city": "Elk City",
+"state": "OK",
+"via": "dealer_homepage_jsonld"
+},
+"rothrv.com": {
+"city": "Deerwood",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+},
+"rugbyhomesandrvcenter.com": {
+"city": "Rugby",
+"state": "ND",
+"via": "dealer_homepage_jsonld"
+},
+"rvreadyca.com": {
+"city": "Lake Elsinore",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"rvroadway.com": {
+"city": "Calera",
+"state": "AL",
+"via": "dealer_homepage_jsonld"
+},
+"saudermotors.com": {
+"city": "Strasburg",
+"state": "PA",
+"via": "dealer_homepage_jsonld"
+},
+"sghrv.com": {
+"city": "alpine",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"shedsofdothan.com": {
+"city": "Dothan",
+"state": "AL",
+"via": "dealer_homepage_jsonld"
+},
+"sirencampercorral.com": {
+"city": "Siren",
+"state": "WI",
+"via": "dealer_homepage_jsonld"
+},
+"smittysusa.com": {
+"city": "Angola",
+"state": "IN",
+"via": "dealer_homepage_jsonld"
+},
+"sonomarv.com": {
+"city": "Cotati",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"southfifthautomotive.com": {
+"city": "Marietta",
+"state": "OH",
+"via": "dealer_homepage_jsonld"
+},
+"souzawholesaletrailer.com": {
+"city": "Canterbury",
+"state": "CT",
+"via": "dealer_homepage_jsonld"
+},
+"springdalervcenter.com": {
+"city": "Tontitown",
+"state": "AR",
+"via": "dealer_homepage_jsonld"
+},
+"ssapache.com": {
+"city": "Jackson",
+"state": "MS",
+"via": "dealer_homepage_jsonld"
+},
+"starrstrailersales.com": {
+"city": "Brockway",
+"state": "PA",
+"via": "dealer_homepage_jsonld"
+},
+"swensonrv.com": {
+"city": "Minot",
+"state": "ND",
+"via": "dealer_homepage_jsonld"
+},
+"terrystruck.com": {
+"city": "Mountain Home",
+"state": "ID",
+"via": "dealer_homepage_jsonld"
+},
+"thecarstars.com": {
+"city": "Olympia",
+"state": "WA",
+"via": "dealer_homepage_jsonld"
+},
+"toniesrv.com": {
+"city": "Roanoke",
+"state": "VA",
+"via": "dealer_homepage_jsonld"
+},
+"tractionpowersports.net": {
+"city": "Midland",
+"state": "MI",
+"via": "dealer_homepage_jsonld"
+},
+"travelland-rv.com": {
+"city": "Lewiston",
+"state": "ID",
+"via": "dealer_homepage_jsonld"
+},
+"truckandrv.com": {
+"city": "Sherwood",
+"state": "OH",
+"via": "dealer_homepage_jsonld"
+},
+"truerv.net": {
+"city": "Sacramento",
+"state": "CA",
+"via": "dealer_homepage_jsonld"
+},
+"ultimate-trailers.com": {
+"city": "Fargo",
+"state": "ND",
+"via": "dealer_homepage_jsonld"
+},
+"unchartedrec.com": {
+"city": "Meridian",
+"state": "IN",
+"via": "dealer_homepage_jsonld"
+},
+"vhtrvs.com": {
+"city": "Humble",
+"state": "TX",
+"via": "dealer_homepage_jsonld"
+},
+"volkertsales.com": {
+"city": "Denison",
+"state": "IA",
+"via": "dealer_homepage_jsonld"
+},
+"wadesrv.com": {
+"city": "Glenpool",
+"state": "OK",
+"via": "dealer_homepage_jsonld"
+},
+"whitehorserv.com": {
+"city": "Caledonia",
+"state": "NY",
+"via": "dealer_homepage_jsonld"
+},
+"wilderrv.com": {
+"city": "Clinton",
+"state": "MO",
+"via": "dealer_homepage_jsonld"
+},
+"woldsrvsales.com": {
+"city": "Detroit Lakes",
+"state": "MN",
+"via": "dealer_homepage_jsonld"
+}
+}

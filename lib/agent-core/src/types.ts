@@ -50,7 +50,8 @@ export const TOWABLE_TYPES: RvType[] = [
   "truck_camper",
 ];
 
-export type Condition = "new" | "used";
+/** "unknown": the listing did not state it (or it could not be confirmed from the unit's own listing data). */
+export type Condition = "new" | "used" | "unknown";
 
 export type SolarStatus = "installed" | "prep" | "none";
 

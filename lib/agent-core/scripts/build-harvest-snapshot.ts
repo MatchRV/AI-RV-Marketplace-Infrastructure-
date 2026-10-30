@@ -29,6 +29,7 @@ import { normalizeRecord, normalizeRvType, type RawScrapeRecord } from "../src/n
 import type { CanonicalUnit, Fact } from "../src/types.js";
 import { MANUFACTURER_SPEC_RECORDS } from "../src/manufacturer-spec-records.js";
 import { titleModelYear } from "../src/listing-reconcile.js";
+import { BRANDS, canonicalBrand } from "../src/brands.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT = resolve(here, "../data/inventory.snapshot.json");
@@ -39,6 +40,7 @@ type Meta = { page_category?: string; page_category_quote?: string; luna_fields?
   dealer: { name?: string | null; city?: string | null; state?: string | null; lat?: number | null; lng?: number | null; domain: string } };
 type Row = RawScrapeRecord & { _meta: Meta; url?: string | null };
 
+const NON_RV_MAKES_BASE = new Set(["u.s. rack", "us rack", "u s rack", "curt", "roadmaster", "baja designs", "we do consignments", "blue ox", "demco", "continental cargo"]);
 const STATES = new Set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" "));
 const NON_RV = /\b(cargo|utility|enclosed trailer|car hauler|dump trailer|flatbed|flat deck|deckover|equipment trailer|landscape|horse trailer|livestock|stock trailer|boat|pontoon|jet ?ski|atv|utv|side[- ]by[- ]side|motorcycle|golf cart|snowmobile|tractor|mower|gooseneck flatbed|tilt deck|concession|vending|food truck|dump body)\b/i;
 const RV_WORDS = /\b(travel trailer|fifth wheel|5th wheel|toy hauler|motorhome|motor home|class [abc]|camper|bunkhouse|rv)\b/i;
@@ -325,11 +327,167 @@ if (process.env.PRICE_TEMPLATE_HOLDBACK !== "0") {
 const yearFix = { fromTitle: 0, fromTitleVinAgreedWithOld: 0, byDomain: new Map<string, number>() };
 const VIN_CODES = "ABCDEFGHJKLMNPRSTVWXY123456789";
 const vinYear = (v: string | null) => { if (!v || v.length !== 17) return null; const i = VIN_CODES.indexOf(v[9].toUpperCase()); if (i < 0) return null; let y = 1980 + i; while (y + 30 <= new Date().getFullYear() + 1) y += 30; return y; };
+// A title with a year range ("2007-2024 Silverado", "2016 - 2019 GM", "2019-20") is a fitment/coverage range,
+// not the unit's model year: the title year is not applied and the prior value is kept.
+const YEAR_RANGE = /\b(?:19|20)\d{2}\s*[-\u2013\u2014\/]\s*(?:(?:19|20)\d{2}|\d{2})\b/;
+let yearRangeSkipped = 0;
 for (const u of out.values()) {
   const ty = titleModelYear(u.title);
   if (ty === null || ty === u.year) continue;
+  if (YEAR_RANGE.test(u.title)) { yearRangeSkipped++; continue; }
   if (vinYear(u.vin) === u.year) yearFix.fromTitleVinAgreedWithOld++;
   u.year = ty; u.yearSource = "dealer_title"; yearFix.fromTitle++; inc(yearFix.byDomain, bare(u.provenance.dealerDomain));
+}
+// ── Stitched Oct 14 base records (CSO QA "yearfix", 2026-10-30). The Oct 14 scraper joined two units of the
+// same dealer: title, VIN, photos, description and price belong to one unit, while stock number and often make,
+// model, trim/floorplan and condition came from another (CW 2018 Unity U24FX, VIN WDAPF4CC3H9710756, carried
+// stock 2598243 = a 2027 Thor Coleman; its own stock 2738473P is in its photo paths and description). Those
+// fields are re-read from the unit's own title/photos/description; a field that cannot be confirmed there is
+// blanked (condition "unknown"), never kept from the other unit. Camping World: a record is stitched when its
+// stock number is not the one in its own photo path / description. STITCHED_DOMAINS: every base record of
+// these dealers is treated as stitched (QA-confirmed or field-vs-title disagreement on >=20% of base units).
+const tnorm = (x: string) => x.toLowerCase().replace(/&#39;/g, "'").replace(/[^a-z0-9]+/g, " ").trim();
+const makeCounts = new Map<string, number>();
+for (const u of out.values()) { const m = tnorm(u.make); if (m && ` ${tnorm(u.title)} `.includes(` ${m} `)) inc(makeCounts, m); }
+for (const r of rows) { const m = tnorm(String(r.make ?? "")); if (m) inc(makeCounts, m, 2); }
+const aliasSet = new Set([...makeCounts].filter(([m, n]) => n >= 2 && m.length >= 2 && !/^\d+$/.test(m) && !NON_RV_MAKES_BASE.has(m)).map(([m]) => m));
+for (const b of BRANDS) for (const a of b.aliases) aliasSet.add(tnorm(a));
+const aliasList = [...aliasSet].sort((a, b) => b.length - a.length);
+type TitleParse = { make: string; model: string; floorplan: string | null; condition: "new" | "used" | null };
+function parseTitle(title: string): TitleParse | null {
+  const toks = title.replace(/&#39;/g, "'").trim().split(/\s+/);
+  let i = 0, condition: TitleParse["condition"] = null;
+  const condWord = (w: string) => /^(new)$/i.test(w) ? "new" : /^(used|pre-owned|preowned)$/i.test(w) ? "used" : null;
+  if (toks[i] && condWord(toks[i])) condition = condWord(toks[i++]);
+  if (toks[i] && /^\d+'$/.test(toks[i])) i++; // "36' 2017 Crossroads …" length prefix
+  if (!toks[i] || !/^(19|20)\d{2}$/.test(toks[i])) return null;
+  i++;
+  if (toks[i] && condWord(toks[i])) condition = condWord(toks[i++]);
+  const rest = toks.slice(i); const restN = tnorm(rest.join(" "));
+  for (const alias of aliasList) {
+    if (restN !== alias && !restN.startsWith(alias + " ")) continue;
+    let k = 0; while (k < rest.length && tnorm(rest.slice(0, k + 1).join(" ")).length <= alias.length && tnorm(rest.slice(0, k + 1).join(" ")) !== alias) k++;
+    if (tnorm(rest.slice(0, k + 1).join(" ")) !== alias) return null;
+    const makeText = rest.slice(0, k + 1).join(" ");
+    let remainder = rest.slice(k + 1);
+    // Marketing tails ("30DC RV W/ Full Body Paint, King Bed …", "… - Bunk House") are not part of the model.
+    const cut = remainder.findIndex((w, j) => j > 0 && (/^(at|\||w\/|with|-|\u2013)$/i.test(w) || (/^rv$/i.test(w) && /^(w\/|with)$/i.test(remainder[j + 1] ?? ""))));
+    if (cut >= 0) remainder = remainder.slice(0, cut);
+    remainder = remainder.map(w => w.replace(/,$/, "")).filter(Boolean);
+    const comma = remainder.findIndex(w => /,/.test(w)); if (comma > 0) remainder = remainder.slice(0, comma);
+    if (!remainder.length) return null;
+    let floorplan: string | null = null;
+    const last = remainder[remainder.length - 1];
+    if (remainder.length >= 2 && /\d/.test(last) && /^[A-Za-z0-9.\-+]{2,12}$/.test(last)) { floorplan = last; remainder = remainder.slice(0, -1); }
+    return { make: canonicalBrand(makeText) ?? makeText, model: remainder.join(" "), floorplan, condition };
+  }
+  return null;
+}
+const STITCHED_DOMAINS = new Set((process.env.STITCHED_DOMAINS ?? "meyersrvsuperstores.com,bestrv.com,hwhrv.com,theranchrv.com,clickitrv.com,broadmoorrv.com,olathefordrv.com,adventuremotorhomes.net,rvsrfun.com,bayareaairstream.com,carvilla.com,coastalrv.net,brewbakers.com,coloniadelreyrv.com,trailersourceinc.com").split(",").map(x => bare(x.trim())).filter(Boolean));
+const stitch = { records: 0, heldUnconfirmable: 0, titleNotUnit: 0, chassisMakeFixed: 0, chassisByDomain: new Map<string, number>(), byDomain: new Map<string, number>(), heldByDomain: new Map<string, number>(),
+  fieldChanged: { stockNumber: 0, make: 0, model: 0, trim: 0, floorplanCode: 0, condition: 0 } as Record<string, number>,
+  fieldChangedByDomain: new Map<string, Record<string, number>>(), examples: [] as string[] };
+const CW_IMG = /images\.rvs\.com\/[^/]+\/([^/]+)\//;
+for (const [k, u] of [...out]) {
+  if (u.provenance.harvestMethod) continue; // page-verified harvest records are not stitched
+  const dd = bare(u.provenance.dealerDomain);
+  const isCw = dd === "rv.campingworld.com";
+  if (!isCw && !STITCHED_DOMAINS.has(dd)) {
+    // Not a stitched dealer. Two own-title checks still apply to every base record:
+    //  - a title that names no model year is the dealer's site name ("Kunes RV"), not this unit: nothing about
+    //    the unit can be confirmed from it, so the record is held back;
+    //  - a make field that is the chassis maker (Ford, Mercedes-Benz …) while the title names the RV brand:
+    //    make/model/floorplan are re-read from the title (stock and condition are kept: not stitched).
+    if (titleModelYear(u.title) === null && !/^(19|20)\d{2}\b/.test(u.title.replace(/^(new|used)\s+/i, ""))) { stitch.titleNotUnit++; inc(stitch.heldByDomain, dd); out.delete(k); continue; }
+    if (/^(ford|mercedes|mercedes-benz|ram|dodge|chevrolet|chevy|gmc|freightliner|isuzu|spartan|workhorse|volkswagen|vw)$/i.test(u.make.trim().split(/\s+/)[0] ?? "")) {
+      const p = parseTitle(u.title);
+      if (p && !/^(ford|mercedes|ram|dodge|chevrolet|gmc|freightliner|isuzu)/i.test(p.make)) {
+        stitch.chassisMakeFixed++; inc(stitch.chassisByDomain, dd);
+        u.make = p.make; u.model = p.model; u.floorplanCode = p.floorplan ?? u.floorplanCode; u.trim = null;
+      }
+    }
+    continue;
+  }
+  const desc = u.description ?? "";
+  const descStock = (desc.match(/Stock #(\S+?)\.(?:\s|$)/) ?? [])[1] ?? null;
+  const imgStock = isCw ? (u.images.map(im => (im.match(CW_IMG) ?? [])[1]).find(Boolean) ?? null) : null;
+  let ownStock: string | null;
+  if (isCw) {
+    const st = (u.stockNumber ?? "").toLowerCase();
+    if (st && (st === (imgStock ?? "").toLowerCase() || st === (descStock ?? "").toLowerCase())) continue; // not stitched
+    ownStock = imgStock && descStock ? (imgStock.toLowerCase() === descStock.toLowerCase() ? imgStock : null) : (imgStock ?? descStock);
+  } else {
+    const hay = `${u.title} ${desc} ${u.images.join(" ")}`.toLowerCase();
+    ownStock = u.stockNumber && new RegExp(`(^|[^a-z0-9])${u.stockNumber.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`).test(hay) ? u.stockNumber : (descStock ?? null);
+  }
+  const p = parseTitle(u.title);
+  if (!p) { stitch.heldUnconfirmable++; inc(stitch.heldByDomain, dd); out.delete(k); continue; }
+  stitch.records++; inc(stitch.byDomain, dd);
+  const next = { stockNumber: ownStock, make: p.make, model: p.model, trim: null as string | null, floorplanCode: p.floorplan, condition: (p.condition ?? "unknown") as CanonicalUnit["condition"] };
+  const fc = stitch.fieldChangedByDomain.get(dd) ?? {}; let changedAny = false;
+  for (const f of Object.keys(next) as (keyof typeof next)[]) {
+    const before = (u as any)[f] ?? null, after = next[f] ?? null;
+    const same = f === "make" ? tnorm(String(before ?? "")) === tnorm(String(after ?? "")) || canonicalBrand(String(before ?? "")) === canonicalBrand(String(after ?? "")) && !!canonicalBrand(String(after ?? ""))
+      : String(before ?? "").toLowerCase() === String(after ?? "").toLowerCase();
+    if (!same) { stitch.fieldChanged[f]++; fc[f] = (fc[f] ?? 0) + 1; changedAny = true; }
+    (u as any)[f] = after;
+  }
+  stitch.fieldChangedByDomain.set(dd, fc);
+  if (changedAny && stitch.examples.length < 10) stitch.examples.push(`${u.id} | ${u.title} | stock ${next.stockNumber} make ${next.make} model ${next.model} fp ${next.floorplanCode} cond ${next.condition}`);
+}
+// ── Not an RV (CSO QA v3.1): accessories, parts, tow gear and cargo/utility trailers that reached the base
+// snapshot (e.g. Camping World's U.S. Rack over-cab racks typed fifth_wheel, Curt hitches, Roadmaster sway bars,
+// Forest River's Continental Cargo trailers). Deny-list by make and by title/model wording.
+const NON_RV_MAKES = new Set(["u.s. rack", "us rack", "curt", "roadmaster", "baja designs", "we do consignments", "blue ox", "demco", "continental cargo"]);
+const NON_RV_TEXT = /\b(continental cargo|cargo trailers?|enclosed (?:cargo )?trailers?|utility trailers?|car hauler|dump trailer|equipment trailer|landscape trailer|sway bar kit|(?:5th|fifth) wheel hitch|over-cab rack|truck rack|a-pillar kit|tow bar|base ?plate kit)\b/i;
+const nonRvDropped = new Map<string, number>(); const nonRvExamples: string[] = [];
+for (const [k, u] of [...out]) {
+  const mk = u.make.trim().toLowerCase();
+  if (NON_RV_MAKES.has(mk) || NON_RV_TEXT.test(`${u.title} ${u.model}`)) {
+    inc(nonRvDropped, u.make); if (nonRvExamples.length < 12) nonRvExamples.push(`${u.id} | ${u.make} | ${u.title}`); out.delete(k);
+  }
+}
+// ── Low-price sanity check: under $5,000 is plausible only for an older used RV. A model year 2020+ RV under
+// $5,000, a 2010-2019 motorhome under $3,000, or a price equal to a 2010+ model year is not the unit's asking price
+// (monthly payments, deposits or rebates read as the price), so the unit is held back. LOW_PRICE_HOLDBACK=0 disables.
+const MOTORIZED = new Set(["class_a", "class_b", "class_c", "super_c", "motorhome"]);
+const lowPriceHeld = new Map<string, number>(); const lowPriceExamples: string[] = []; let lowPriceKept = 0; const lowPriceKeptByMake = new Map<string, number>();
+for (const [k, u] of [...out]) {
+  const p = u.priceUsd.value; if (p === null || p >= 5000) continue;
+  if (process.env.LOW_PRICE_HOLDBACK !== "0" && (u.year >= 2020 || (MOTORIZED.has(u.rvType) && u.year >= 2010 && p < 3000) || (Math.round(p) === u.year && u.year >= 2010))) {
+    inc(lowPriceHeld, u.make); if (lowPriceExamples.length < 12) lowPriceExamples.push(`${u.id} | ${u.year} ${u.make} | $${p} | ${u.title}`); out.delete(k);
+  } else { lowPriceKept++; inc(lowPriceKeptByMake, u.make); }
+}
+// ── Stock numbers shared by different units of one dealer (the Oct 14 scraper copied one unit's stock onto
+// others, e.g. meyersrvsuperstores.com stock 25153 on two different units): blank stockNumber on every unit of
+// such a (domain, stock) pair. Ids are left as they are (already unique; checked below).
+const normTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const byStock = new Map<string, CanonicalUnit[]>();
+for (const u of out.values()) if (u.stockNumber) { const sk = `${bare(u.provenance.dealerDomain)}|${u.stockNumber.toLowerCase()}`; const a = byStock.get(sk) ?? []; a.push(u); byStock.set(sk, a); }
+let dupStockPairs = 0, dupStockUnitsBlanked = 0; const dupStockByDomain = new Map<string, number>(); const dupStockExamples: string[] = [];
+for (const [sk, us] of byStock) {
+  if (us.length < 2) continue;
+  const vins = new Set(us.map(u => u.vin).filter(Boolean)); const titles = new Set(us.map(u => normTitle(u.title)));
+  const differentTitles = [...titles].some(a => [...titles].some(b => a !== b && !a.startsWith(b) && !b.startsWith(a)));
+  if (vins.size < 2 && !differentTitles) continue;
+  dupStockPairs++; inc(dupStockByDomain, sk.split("|")[0]);
+  if (dupStockExamples.length < 8) dupStockExamples.push(`${sk}: ${us.slice(0, 3).map(u => `${u.id} (${u.title})`).join("; ")}`);
+  for (const u of us) { u.stockNumber = null; dupStockUnitsBlanked++; }
+}
+// ── Dealer city that is a state code or missing: filled only from a dealer-stated location we hold
+// (MarketCheck dealer rows / dealer-site location data via DEALER_LOCATIONS json {domain: {city, state}}, a
+// single location for the domain, same state); otherwise left blank. Nothing is derived from names.
+const STATE_CODES = STATES;
+const DEALER_LOC: Record<string, { city?: string | null; state?: string | null }> = process.env.DEALER_LOCATIONS ? JSON.parse(readFileSync(process.env.DEALER_LOCATIONS, "utf-8")) : {};
+let cityFilled = 0, cityBlanked = 0; const cityBlankedByDomain = new Map<string, number>(); const cityFilledByDomain = new Map<string, number>();
+for (const u of out.values()) {
+  const c = (u.dealer.city ?? "").trim();
+  if (c && !STATE_CODES.has(c.toUpperCase())) continue;
+  const dd = bare(u.provenance.dealerDomain); const loc = DEALER_LOC[dd];
+  const lc = (loc?.city ?? "").trim();
+  if (lc && !STATE_CODES.has(lc.toUpperCase()) && String(loc?.state ?? "").toUpperCase() === u.dealer.state.toUpperCase()) {
+    u.dealer = { ...u.dealer, city: lc }; cityFilled++; inc(cityFilledByDomain, dd);
+  } else if (c) { u.dealer = { ...u.dealer, city: "" }; cityBlanked++; inc(cityBlankedByDomain, dd); }
 }
 const units = [...out.values()].sort((a, b) => a.id.localeCompare(b.id));
 // Unique ids (two dealers can share a stock number pattern only via different dealer ids, but guard anyway).
@@ -357,6 +515,16 @@ const stats = {
   addedNoPrice: newDomainUnits.filter(u => u.priceUsd.value === null).length, addedWithPrice: newDomainUnits.filter(u => u.priceUsd.value !== null).length,
   heldBackDomains: [...HOLDBACK], heldBackUnits: [...heldBackByDomain.values()].reduce((a, b) => a + b, 0), heldBackByDomain: Object.fromEntries(heldBackByDomain),
   priceTemplateHeldUnits: [...priceTemplateHeld.values()].reduce((a, b) => a + b, 0), priceTemplateHeldByDomain: Object.fromEntries(priceTemplateHeld), priceTemplateValues,
+  baseTitleNotUnitHeld: stitch.titleNotUnit, chassisMakeFixedFromTitle: stitch.chassisMakeFixed, chassisMakeFixedByDomain: Object.fromEntries([...stitch.chassisByDomain].sort((a, b) => b[1] - a[1])),
+  stitchedRecordsRebuiltFromOwnTitle: stitch.records, stitchedHeldUnconfirmable: stitch.heldUnconfirmable, stitchedHeldByDomain: Object.fromEntries(stitch.heldByDomain),
+  stitchedByDomain: Object.fromEntries([...stitch.byDomain].sort((a, b) => b[1] - a[1])), stitchedFieldChanged: stitch.fieldChanged,
+  stitchedFieldChangedByDomain: Object.fromEntries([...stitch.fieldChangedByDomain].sort((a, b) => (b[1].make ?? 0) + (b[1].stockNumber ?? 0) - (a[1].make ?? 0) - (a[1].stockNumber ?? 0))), stitchedExamples: stitch.examples,
+  yearTitleRangeSkipped: yearRangeSkipped,
+  nonRvDropped: [...nonRvDropped.values()].reduce((a, b) => a + b, 0), nonRvDroppedByMake: Object.fromEntries(nonRvDropped), nonRvExamples,
+  lowPriceHeld: [...lowPriceHeld.values()].reduce((a, b) => a + b, 0), lowPriceHeldByMake: Object.fromEntries([...lowPriceHeld].sort((a, b) => b[1] - a[1])), lowPriceExamples,
+  lowPriceKept, lowPriceKeptByMake: Object.fromEntries([...lowPriceKeptByMake].sort((a, b) => b[1] - a[1])),
+  dupStockPairs, dupStockUnitsBlanked, dupStockByDomain: Object.fromEntries([...dupStockByDomain].sort((a, b) => b[1] - a[1])), dupStockExamples,
+  cityFilled, cityFilledByDomain: Object.fromEntries(cityFilledByDomain), cityBlanked, cityBlankedByDomain: Object.fromEntries([...cityBlankedByDomain].sort((a, b) => b[1] - a[1])),
   yearFromDealerTitle: yearFix.fromTitle, yearFromDealerTitleWhereVinAgreedWithOldYear: yearFix.fromTitleVinAgreedWithOld,
   yearFromDealerTitleByDomain: Object.fromEntries([...yearFix.byDomain].sort((a, b) => b[1] - a[1]).slice(0, 25)),
   finalUnits: units.length, dealerDomains: dealers.size, locations: new Set(units.map(u => u.dealer.id)).size, states: states.size,

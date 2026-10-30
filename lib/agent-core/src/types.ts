@@ -159,6 +159,12 @@ export interface CanonicalUnit {
     dealerDomain: string;
     firstSeenAt: string; // ISO
     lastSeenAt: string; // ISO — the freshness anchor for check_availability
+    /** The unit's own listing page (harvests from 2026-10-30 on). */
+    listingUrl?: string;
+    /** How the record was collected, e.g. "marketcheck_api_v2_rv_active" or "dealer_website_rv_inventory_scraper". */
+    harvestMethod?: string;
+    /** What lastSeenAt measures, e.g. "marketcheck_last_seen_at" (MarketCheck's last crawl of the dealer listing) or "harvested_at". */
+    lastSeenBasis?: string;
   };
 }
 

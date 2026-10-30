@@ -489,6 +489,45 @@ for (const u of out.values()) {
     u.dealer = { ...u.dealer, city: lc }; cityFilled++; inc(cityFilledByDomain, dd);
   } else if (c) { u.dealer = { ...u.dealer, city: "" }; cityBlanked++; inc(cityBlankedByDomain, dd); }
 }
+// ── Multi-lot dealers whose Oct 14 base records carry a lot city that is not stated for the unit (CSO QA
+// v3.1): Meyers base records are stitched (the city came along with another unit's fields, e.g. VIN
+// 573FM433XK1114170 filed under Caledonia, page lot Farmington) and every McClain's base record is filed under
+// Corinth (page lot for W1X9N33Y5SN347437 is Rockwall). The unit-to-lot mapping is not in our data, so the city
+// is blanked and the state kept. Page-verified harvest records keep their own city. UNSTATED_LOT_DOMAINS overrides.
+const UNSTATED_LOT_DOMAINS = new Set((process.env.UNSTATED_LOT_DOMAINS ?? "meyersrvsuperstores.com,mcclainsrv.com").split(",").map(x => bare(x.trim())).filter(Boolean));
+let lotCityBlanked = 0; const lotCityBlankedByDomain = new Map<string, number>(); const lotCityBefore = new Map<string, number>();
+for (const u of out.values()) {
+  const dd = bare(u.provenance.dealerDomain);
+  if (u.provenance.harvestMethod || !UNSTATED_LOT_DOMAINS.has(dd) || !(u.dealer.city ?? "").trim()) continue;
+  inc(lotCityBefore, `${dd}|${u.dealer.city}`);
+  u.dealer = { ...u.dealer, id: `${dd}:${u.dealer.state.toLowerCase()}`, city: "", lat: null, lng: null };
+  lotCityBlanked++; inc(lotCityBlankedByDomain, dd);
+}
+// ── rvType that contradicts the VIN on stitched base records (CSO QA v3.1 row 23: Meyers Ford-chassis
+// Forester 1FDXE4FN8VDD08460 typed travel_trailer; Jayco Eagle SLE fifth wheels typed class_c). The VIN's
+// manufacturer code (first 3 chars) says motorized (chassis maker) vs towable; codes are taken from the other
+// dealers' records in this build (>=20 units, >=98% one side). A contradicted rvType cannot be confirmed from
+// the record, and RvType has no "unknown", so the record is held back.
+const MOT_TYPES = new Set(["class_a", "class_b", "class_c"]);
+const wmiSide = new Map<string, { mot: number; tow: number }>();
+for (const u of out.values()) {
+  const dd = bare(u.provenance.dealerDomain);
+  if (!u.vin || u.vin.length !== 17 || dd === "rv.campingworld.com" || STITCHED_DOMAINS.has(dd) || UNSTATED_LOT_DOMAINS.has(dd)) continue;
+  const w = wmiSide.get(u.vin.slice(0, 3)) ?? { mot: 0, tow: 0 }; MOT_TYPES.has(u.rvType) ? w.mot++ : w.tow++; wmiSide.set(u.vin.slice(0, 3), w);
+}
+const clearSide = (vin: string): "mot" | "tow" | null => {
+  const w = wmiSide.get(vin.slice(0, 3)); if (!w) return null; const n = w.mot + w.tow;
+  return n >= 20 ? (w.mot / n >= 0.98 ? "mot" : w.tow / n >= 0.98 ? "tow" : null) : null;
+};
+let rvTypeVinHeld = 0; const rvTypeVinHeldByDomain = new Map<string, number>(); const rvTypeVinExamples: string[] = [];
+for (const [k, u] of [...out]) {
+  const dd = bare(u.provenance.dealerDomain);
+  if (u.provenance.harvestMethod || !(dd === "rv.campingworld.com" || STITCHED_DOMAINS.has(dd)) || !u.vin || u.vin.length !== 17) continue;
+  const side = clearSide(u.vin); if (!side || side === (MOT_TYPES.has(u.rvType) ? "mot" : "tow")) continue;
+  rvTypeVinHeld++; inc(rvTypeVinHeldByDomain, dd);
+  if (rvTypeVinExamples.length < 10) rvTypeVinExamples.push(`${u.vin} | ${u.title} | typed ${u.rvType}, VIN says ${side === "mot" ? "motorized" : "towable"}`);
+  out.delete(k);
+}
 const units = [...out.values()].sort((a, b) => a.id.localeCompare(b.id));
 // Unique ids (two dealers can share a stock number pattern only via different dealer ids, but guard anyway).
 const seenIds = new Set<string>(); let idCollisions = 0;
@@ -503,7 +542,12 @@ for (const u of units) {
 const dealers = new Set(units.map(u => bare(u.provenance.dealerDomain)));
 const states = new Map<string, number>(); for (const u of units) inc(states, u.dealer.state);
 const known = (k: keyof CanonicalUnit) => units.filter(u => (u[k] as any)?.value != null).length;
-const builtAt = new Date().toISOString();
+// builtAt is this build's wall-clock time (the harvest as-of time); the MCP stale-listing rule measures each
+// unit's lastSeenAt against it. Never copied from the base snapshot. BUILT_AT (ISO) pins it for reproducible builds.
+const builtAt = process.env.BUILT_AT ? new Date(process.env.BUILT_AT).toISOString() : new Date().toISOString();
+const lastSeenTimes = units.map(u => Date.parse(u.provenance.lastSeenAt)).filter(Number.isFinite);
+const lastSeenRange = { oldest: new Date(Math.min(...lastSeenTimes)).toISOString(), newest: new Date(Math.max(...lastSeenTimes)).toISOString() };
+const staleWindows = Object.fromEntries([14, 21, 30, 45].map(d => [`${d}d`, units.filter(u => Date.parse(builtAt) - Date.parse(u.provenance.lastSeenAt) <= d * 864e5).length]));
 const stats = {
   builtAt, oldUnits: oldUnits.length, freshRows: rows.length, freshByOrigin: Object.fromEntries(byOrigin),
   freshAdmitted: fresh.length, freshDupes, freshUnique: fresh.length - freshDupes, rejects: Object.fromEntries(rejects), typeVia: Object.fromEntries(typeVia),
@@ -524,7 +568,7 @@ const stats = {
   lowPriceHeld: [...lowPriceHeld.values()].reduce((a, b) => a + b, 0), lowPriceHeldByMake: Object.fromEntries([...lowPriceHeld].sort((a, b) => b[1] - a[1])), lowPriceExamples,
   lowPriceKept, lowPriceKeptByMake: Object.fromEntries([...lowPriceKeptByMake].sort((a, b) => b[1] - a[1])),
   dupStockPairs, dupStockUnitsBlanked, dupStockByDomain: Object.fromEntries([...dupStockByDomain].sort((a, b) => b[1] - a[1])), dupStockExamples,
-  cityFilled, cityFilledByDomain: Object.fromEntries(cityFilledByDomain), cityBlanked, cityBlankedByDomain: Object.fromEntries([...cityBlankedByDomain].sort((a, b) => b[1] - a[1])),
+  lotCityBlanked, lotCityBlankedByDomain: Object.fromEntries(lotCityBlankedByDomain), lotCityBefore: Object.fromEntries(lotCityBefore), rvTypeVinHeld, rvTypeVinHeldByDomain: Object.fromEntries(rvTypeVinHeldByDomain), rvTypeVinExamples, cityFilled, cityFilledByDomain: Object.fromEntries(cityFilledByDomain), cityBlanked, cityBlankedByDomain: Object.fromEntries([...cityBlankedByDomain].sort((a, b) => b[1] - a[1])),
   yearFromDealerTitle: yearFix.fromTitle, yearFromDealerTitleWhereVinAgreedWithOldYear: yearFix.fromTitleVinAgreedWithOld,
   yearFromDealerTitleByDomain: Object.fromEntries([...yearFix.byDomain].sort((a, b) => b[1] - a[1]).slice(0, 25)),
   finalUnits: units.length, dealerDomains: dealers.size, locations: new Set(units.map(u => u.dealer.id)).size, states: states.size,
@@ -536,7 +580,8 @@ const payload = JSON.stringify({
   schemaVersion: 1, builtAt,
   datasetNote: "MatchRV nationwide dealer inventory snapshot: the Oct 14 dealer-website snapshot, refreshed and extended with a 2026-10-25..30 harvest (MarketCheck active RV listings + dealer websites). Each harvested unit has a VIN or stock number and a listing URL; specs are copied from the listing or left blank. Units not seen again keep their earlier lastSeenAt.",
   stats: { rawRecords: oldUnits.length + rows.length, units: units.length, dealers: dealers.size,
-    rejections: Object.fromEntries(rejects), uniqueVins: units.filter(u => u.vin).length, withLength: known("lengthFt"), withSleeps: known("sleeps") },
+    rejections: Object.fromEntries(rejects), uniqueVins: units.filter(u => u.vin).length, withLength: known("lengthFt"), withSleeps: known("sleeps"),
+    lastSeenRange, seenWithinDaysOfBuiltAt: staleWindows },
   units,
 });
 // ASCII-only JSON (non-ASCII as \uXXXX escapes): identical parsed values, but the text decodes to a

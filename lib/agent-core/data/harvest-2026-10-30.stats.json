@@ -1,5 +1,5 @@
 {
- "builtAt": "2026-10-30T13:40:14.924Z",
+ "builtAt": "2026-10-30T13:56:47.494Z",
  "oldUnits": 84136,
  "freshRows": 46833,
  "freshByOrigin": {
@@ -345,6 +345,36 @@
   "setzersrv.com|11803: vin:44TRPV26VB037338 (NEW 2027 FOREST RIVER R-POD 205); stk:setzersrv.com:huntington:11803 (2027 Forest River R-POD 205)",
   "setzersrv.com|11837: vin:44TUMB20VB037692 (NEW 2027 FOREST RIVER R-POD UN-MAPPED 26ML); stk:setzersrv.com:huntington:11837 (2027 Forest River R-POD UN-MAPPED 26ML)"
  ],
+ "lotCityBlanked": 1660,
+ "lotCityBlankedByDomain": {
+  "meyersrvsuperstores.com": 954,
+  "mcclainsrv.com": 706
+ },
+ "lotCityBefore": {
+  "meyersrvsuperstores.com|Caledonia": 733,
+  "mcclainsrv.com|Corinth": 706,
+  "meyersrvsuperstores.com|Ripley": 104,
+  "meyersrvsuperstores.com|Albany": 51,
+  "meyersrvsuperstores.com|Bath": 49,
+  "meyersrvsuperstores.com|Farmington": 17
+ },
+ "rvTypeVinHeld": 49,
+ "rvTypeVinHeldByDomain": {
+  "meyersrvsuperstores.com": 44,
+  "rv.campingworld.com": 5
+ },
+ "rvTypeVinExamples": [
+  "1UJCA0BN5V1G20110 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BN9V1G20109 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BNXV1G20104 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BP0V1G40072 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BP3V1G40065 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BR6V1BE0074 | 2027 Jayco Eagle | typed class_c, VIN says towable",
+  "1UJCA0BR6V1BE0091 | 2027 Jayco Eagle | typed class_c, VIN says towable",
+  "1UJCA0BR8V1BE0089 | 2027 Jayco Eagle | typed class_c, VIN says towable",
+  "1UJCA0BRXV1G50075 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable",
+  "1UJCA0BS0V1G30078 | 2027 Jayco Eagle Sle | typed class_c, VIN says towable"
+ ],
  "cityFilled": 0,
  "cityFilledByDomain": {},
  "cityBlanked": 2343,
@@ -390,7 +420,7 @@
   "sonnysrvs.com": 1,
   "myersrv.com": 1
  },
- "finalUnits": 90619,
+ "finalUnits": 90570,
  "dealerDomains": 483,
  "locations": 766,
  "states": 49,
@@ -401,15 +431,15 @@
   "CA": 5313,
   "WA": 5136,
   "IL": 4379,
-  "NY": 3569,
+  "NY": 3533,
   "IN": 3398,
   "AZ": 2993,
   "OH": 2706,
-  "PA": 2314,
+  "PA": 2310,
   "NM": 2291,
   "CO": 2290,
   "GA": 2200,
-  "VA": 1938,
+  "VA": 1937,
   "MO": 1741,
   "NC": 1735,
   "WI": 1621,
@@ -425,8 +455,8 @@
   "KY": 893,
   "MS": 882,
   "LA": 805,
-  "WV": 774,
   "MA": 774,
+  "WV": 766,
   "NV": 763,
   "ID": 714,
   "ME": 701,
@@ -446,10 +476,10 @@
   "RI": 1
  },
  "coverage": {
-  "length": 17978,
-  "sleeps": 54451,
-  "dryWeight": 45975,
-  "gvwr": 38142,
-  "price": 90619
+  "length": 17943,
+  "sleeps": 54404,
+  "dryWeight": 45971,
+  "gvwr": 38105,
+  "price": 90570
  }
 }

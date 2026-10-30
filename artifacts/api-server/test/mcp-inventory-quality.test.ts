@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { CanonicalUnit, InventoryIndex } from "@workspace/agent-core";
-import { inventoryQualityIssues, PRICE_FLOOR_REASON, priceFloorFor, screenMcpInventory } from "../src/services/mcp-inventory-quality";
+import { inventoryQualityIssues, listingAgeDays, PRICE_FLOOR_REASON, priceFloorFor, screenMcpInventory, STALE_LISTING_MAX_AGE_DAYS, STALE_LISTING_REASON, DEFAULT_STALE_LISTING_MAX_AGE_DAYS, resolveStaleListingMaxAgeDays } from "../src/services/mcp-inventory-quality";
 
 const snapshotPath = new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url);
 const snapshot = JSON.parse(
@@ -59,5 +59,63 @@ describe("MCP inventory quality quarantine", () => {
     expect(inventoryQualityIssues({ ...westbrook, rvType: "class_b", condition: "used", year: 2015, priceUsd: { ...westbrook.priceUsd, value: 1030 } })).toHaveLength(1);
     expect(inventoryQualityIssues({ ...westbrook, rvType: "class_a", condition: "new", priceUsd: { ...westbrook.priceUsd, value: 25001 } })).toEqual([]);
     expect(priceFloorFor({ ...westbrook, year: 2018 }).bucket).toBe("used");
+  });
+});
+
+describe("MCP stale-listing hold-back", () => {
+  const built = "2026-10-30T09:00:00.000Z";
+  const seen = (id: string, lastSeenAt: string): CanonicalUnit => ({ ...structuredClone(fixture), id, rvType: "travel_trailer", condition: "used", year: 2015,
+    priceUsd: { value: 30000, source: "dealer_listing", confidence: "high" }, provenance: { ...structuredClone(fixture.provenance), lastSeenAt } });
+  const fresh = seen("test:fresh", "2026-10-29T12:00:00.000Z");
+  const edge = seen("test:edge", "2026-10-16T09:00:00.000Z"); // exactly 14 days: kept at 14
+  const stale = seen("test:stale", "2026-10-16T08:59:00.000Z"); // just over 14 days
+  const sep17 = seen("test:sep17", "2026-09-17T12:00:00.000Z");
+  const unknown = seen("test:unknown", "not-a-date");
+  const index = (units: CanonicalUnit[], builtAt?: string) =>
+    ({ units, byId: new Map(units.map(u => [u.id, u])), ...(builtAt ? { snapshot: { builtAt } } : {}) }) as unknown as InventoryIndex;
+
+  it("defaults to 30 days and reads STALE_LISTING_MAX_AGE_DAYS", () => {
+    expect(DEFAULT_STALE_LISTING_MAX_AGE_DAYS).toBe(30);
+    expect(STALE_LISTING_MAX_AGE_DAYS).toBe(resolveStaleListingMaxAgeDays(process.env.STALE_LISTING_MAX_AGE_DAYS));
+    expect(resolveStaleListingMaxAgeDays(undefined)).toBe(30);
+    expect(resolveStaleListingMaxAgeDays("")).toBe(30);
+    expect(resolveStaleListingMaxAgeDays("21")).toBe(21);
+    expect(resolveStaleListingMaxAgeDays("7.5")).toBe(7.5);
+    for (const bad of ["0", "-3", "abc", "Infinity"]) expect(resolveStaleListingMaxAgeDays(bad)).toBe(30);
+  });
+  it("default window: Sep 17 listing is stale, Oct 16 listing is kept (Oct 30 build)", () => {
+    const screened = screenMcpInventory(index([fresh, stale, sep17], built), { staleAfterDays: DEFAULT_STALE_LISTING_MAX_AGE_DAYS });
+    expect(screened.units.map(u => u.id).sort()).toEqual(["test:fresh", "test:stale"]);
+    expect(screened.inventoryQuality.staleListing.maxAgeDays).toBe(30);
+  });
+  it("holds back units last seen more than the window before the snapshot build, with a stale_listing reason", () => {
+    const screened = screenMcpInventory(index([fresh, edge, stale, sep17, unknown], built), { staleAfterDays: 14 });
+    expect(screened.units.map(u => u.id).sort()).toEqual(["test:edge", "test:fresh"]);
+    expect(screened.byId.has("test:stale")).toBe(false); // get_rv lookups use byId
+    expect(screened.quarantined.get("test:sep17")?.[0]).toContain(`[${STALE_LISTING_REASON}]`);
+    expect(screened.inventoryQuality.heldBackByReason[STALE_LISTING_REASON]).toBe(3);
+    expect(screened.inventoryQuality.staleListing).toEqual({ reason: STALE_LISTING_REASON, maxAgeDays: 14, measuredFrom: built, applied: true });
+    expect(screened.inventoryQuality.notice).toContain("within 14 days");
+  });
+  it("measures from the snapshot build time, not wall-clock time", () => {
+    const old = screenMcpInventory(index([sep17], "2026-09-20T00:00:00.000Z"), { staleAfterDays: 14 });
+    expect(old.units).toHaveLength(1);
+  });
+  it("is configurable and never mutates source records", () => {
+    const before = structuredClone(stale);
+    expect(screenMcpInventory(index([stale, sep17], built), { staleAfterDays: 60 }).units).toHaveLength(2);
+    expect(listingAgeDays(stale, new Date(built))).toBeGreaterThan(14);
+    expect(screenMcpInventory(index([stale, sep17], built), { staleAfterDays: 14 }).units).toHaveLength(0);
+    expect(stale).toEqual(before);
+  });
+  it("counts each held-back reason once per unit alongside price-floor holds", () => {
+    const both = { ...sep17, id: "test:both", condition: "new" as const, year: 2026, priceUsd: { ...sep17.priceUsd, value: 1000 } };
+    const q = screenMcpInventory(index([both, fresh], built), { staleAfterDays: 14 }).inventoryQuality;
+    expect(q.heldBackByReason).toMatchObject({ [STALE_LISTING_REASON]: 1, [PRICE_FLOOR_REASON]: 1 });
+    expect(q.quarantinedUnits).toBe(1);
+  });
+  it("skips the stale rule only when no snapshot build time is available", () => {
+    expect(screenMcpInventory(index([sep17])).units).toHaveLength(1);
+    expect(inventoryQualityIssues(sep17)).toEqual([]);
   });
 });

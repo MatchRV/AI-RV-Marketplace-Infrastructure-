@@ -24,6 +24,7 @@ def clean_fp(f):
     return f
 BADSTOCK=re.compile(r'^(location|n/?a|none|stock|call|tbd|null|-+|new|used|trucks?|trailers?|rvs?|inventory|available|sold|sale|pending|in stock)$',re.I)
 stats=C.Counter()
+MC_SLEEPS1_PAGE=json.load(open("/workspace/harvest-2026-10-30/verify/mc_sleeps1_page.json")) if os.path.exists("/workspace/harvest-2026-10-30/verify/mc_sleeps1_page.json") else {}
 out=open(sys.argv[1] if len(sys.argv)>1 else f"{B}/raw_records2.ndjson","w")
 def num(v):
     if v is None: return None
@@ -49,8 +50,17 @@ def mc_rows(path,tag):
         if url and "archive.org" in url: stats["drop_archive_org_url"]+=1; continue
         L=num(b.get("length"))
         if L is not None and L==int(L): stats["mc_integer_length_blanked"]+=1; b=dict(b); b["length"]=None
+        # MarketCheck's build.sleeps drops the second digit of 11 ("Sleeps 11" on the page -> "1"): of the 14 snapshot
+        # units with MarketCheck sleeps 1, re-read on 2026-10-30, 12 pages state 11, one states 10 and 11, one states no
+        # sleeps; none states 1. A "1" is never kept: it is replaced by
+        # the value the dealer page states (verify/mc_sleeps1_page.json, single unambiguous value) or left blank.
+        SL=num(b.get("sleeps")); sleeps_from_page=False
+        if SL is not None and SL<2:
+            pv=MC_SLEEPS1_PAGE.get(url); b=dict(b); b["sleeps"]=pv; stats["mc_sleeps_1_truncated"]+=1
+            if pv: sleeps_from_page=True; stats["mc_sleeps_1_replaced_from_page"]+=1
+            else: stats["mc_sleeps_1_blanked"]+=1
         pr,ms=num(r.get("price")),num(r.get("msrp"))
-        yield {"_meta":{"origin":tag,"make_ok":bool(rv_make(b.get("make"))),"model_ok":True,"price_eq_msrp":(pr is not None and ms is not None and pr==ms),"harvest_method":"marketcheck_api_v2_rv_active","listing_url":url,
+        yield {"_meta":{"origin":tag,"make_ok":bool(rv_make(b.get("make"))),"model_ok":True,"price_eq_msrp":(pr is not None and ms is not None and pr==ms),"harvest_method":"marketcheck_api_v2_rv_active","listing_url":url,"sleeps_from_page":sleeps_from_page,
                         "mc_id":r.get("id"),"mc_class":b.get("class"),"harvested_at":r["_harvest"]["harvested_at"],
                         "dealer":{"name":d.get("name"),"city":d.get("city"),"state":d.get("state"),"lat":num(d.get("latitude")),"lng":num(d.get("longitude")),"domain":dom},
                         "seller_type":r.get("seller_type")},

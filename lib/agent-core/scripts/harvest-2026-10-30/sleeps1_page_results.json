@@ -1,0 +1,174 @@
+[
+ {
+  "id": "stk:bigadventurerv.com:hermitage:Hi251025",
+  "url": "https://www.bigadventurerv.com/inventory/96035/hermitage-missouri-traveltrai-keystone-hideout-31brd.php",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "stk:bolandrvs.com:hannibal:TT184",
+  "url": "https://www.bolandrvs.com/inventory/110881/hannibal-missouri-traveltrai-puma-camping-edition-305bhce.php",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "stk:friendshiprvinc.com:friendship:UCF2373",
+  "url": "https://friendshiprvinc.rvusa.com/2019-forest-river-salem-hemisphere-glx-370bl-used-fifth-wheel-friendship-wi-53934-i3676452",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "stk:homesteadrv.com:girard:2698",
+  "url": "https://www.homesteadrv.com/inventory/111912/girard-ohio-traveltrai-jayco-jay-flight-slx-325bht.php",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "10",
+   "11"
+  ]
+ },
+ {
+  "id": "stk:homesteadrv.com:girard:2791",
+  "url": "https://www.homesteadrv.com/inventory/120647/girard-ohio-traveltrai-jay-flight-321bds.php",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "stk:irvinescamper.com:little-hocking:1446",
+  "url": "https://www.irvinescamper.com/inventory/121237/little-hocking-ohio-traveltrai-jay-flight-321bds.php",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "stk:santapaularv.com:santa-paula:WW13322",
+  "url": "https://www.santapaularv.com/NEW-Inventory-2026-Forest-River-Trailer-Wildwood-31KQBTS-Forest-River-Wildwood-19211139?ref=list",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:1FTBW2XGXPKB75750",
+  "url": "https://www.trailersourceinc.com/inventory/used/class-b-2023-thor-palladium-1762",
+  "m": "dealer_website_rv_inventory_scraper",
+  "res": "ok",
+  "page_sleeps": [
+   "1"
+  ]
+ },
+ {
+  "id": "vin:3C6LRVBG5TE163479",
+  "url": "https://www.poulsborv.com/rvs/2027-thor-motor-coach-scope-18m-class-b-for-sale-stock-k6359/",
+  "m": "dealer_website_rv_inventory_scraper",
+  "res": "ok",
+  "page_sleeps": [
+   "1",
+   "2"
+  ]
+ },
+ {
+  "id": "vin:3C6LRVBG8TE163430",
+  "url": "https://www.poulsborv.com/rvs/2027-thor-motor-coach-scope-18m-class-b-for-sale-stock-s1094/",
+  "m": "dealer_website_rv_inventory_scraper",
+  "res": "ok",
+  "page_sleeps": [
+   "1",
+   "2"
+  ]
+ },
+ {
+  "id": "vin:4X4TRPV28TB036380",
+  "url": "https://www.coloniadelreyrv.com/inventory/2026-forest-river-r-pod-205",
+  "m": "dealer_website_rv_inventory_scraper",
+  "res": "ok",
+  "page_sleeps": [
+   "1"
+  ]
+ },
+ {
+  "id": "vin:4X4TSVF28VL053963",
+  "url": "https://www.rvvaluemart.com/inventory/new/travel-trailer-2027-forest-river-surveyor-vl053963",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:4X4TUMZ20TB036500",
+  "url": "https://www.trailersourceinc.com/inventory/new/travel-trailer-2026-forest-river-un-mapped-1427",
+  "m": "dealer_website_rv_inventory_scraper",
+  "res": "ok",
+  "page_sleeps": [
+   "1"
+  ]
+ },
+ {
+  "id": "vin:4X4TWDG22T8813527",
+  "url": "https://www.dnlrec.com/inventory/2026-forest-river-wildwood-31kqbts-13527/",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:4YDFARN20TE550549",
+  "url": "https://www.piercerv.com/inventory/new/2026-keystone-rv-arcadia-select-fifth-wheel-gr-26-400",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:4YDFARN27TE550550",
+  "url": "https://www.piercerv.com/inventory/new/2026-keystone-arcadia-select-fifth-wheel-27sbh-r-26-402",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:4YDFARN29TE550551",
+  "url": "https://www.piercerv.com/inventory/new/2026-keystone-arcadia-select-fifth-wheel-27sbh",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:5ZT2FEVB2TW031684",
+  "url": "https://www.rvvaluemart.com/inventory/new/2026-coachmen-freedom-express-select-travel-trailer-30se",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": [
+   "11"
+  ]
+ },
+ {
+  "id": "vin:7L5TCAK25VA038178",
+  "url": "https://www.billshappycamper.com/2027-coachmen-catalina-legacy-edition-343bhts-new-travel-trailer-mill-hall-pa-17751-i5277649",
+  "m": "marketcheck_api_v2_rv_active",
+  "res": "ok",
+  "page_sleeps": []
+ }
+]

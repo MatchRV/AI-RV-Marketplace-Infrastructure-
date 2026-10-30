@@ -1,5 +1,5 @@
 {
- "builtAt": "2026-10-30T12:35:55.364Z",
+ "builtAt": "2026-10-30T13:16:59.908Z",
  "oldUnits": 84136,
  "freshRows": 46833,
  "freshByOrigin": {
@@ -46,20 +46,99 @@
  "noPriceUnitsHeldFromNewDealers": 1328,
  "addedNoPrice": 0,
  "addedWithPrice": 10968,
- "finalUnits": 94899,
- "dealerDomains": 499,
- "locations": 783,
+ "heldBackDomains": [
+  "valleyrvsupercenter.com",
+  "atozrvs.com",
+  "wilderrvs.com"
+ ],
+ "heldBackUnits": 217,
+ "heldBackByDomain": {
+  "valleyrvsupercenter.com": 120,
+  "atozrvs.com": 41,
+  "wilderrvs.com": 56
+ },
+ "priceTemplateHeldUnits": 3517,
+ "priceTemplateHeldByDomain": {
+  "adventuremotorhomes.net": 370,
+  "bestrv.com": 995,
+  "broadmoorrv.com": 347,
+  "hwhrv.com": 528,
+  "meyersrvsuperstores.com": 132,
+  "mhsrv.com": 449,
+  "rvsrfun.com": 97,
+  "olathefordrv.com": 151,
+  "clickitrv.com": 244,
+  "motorsportsland.com": 204
+ },
+ "priceTemplateValues": {
+  "adventuremotorhomes.net": [
+   119851
+  ],
+  "bestrv.com": [
+   19995,
+   21995
+  ],
+  "broadmoorrv.com": [
+   28990
+  ],
+  "hwhrv.com": [
+   54995
+  ],
+  "meyersrvsuperstores.com": [
+   10985
+  ],
+  "mhsrv.com": [
+   25001
+  ],
+  "rvsrfun.com": [
+   7757
+  ],
+  "olathefordrv.com": [
+   21967
+  ],
+  "clickitrv.com": [
+   29980
+  ],
+  "motorsportsland.com": [
+   17995
+  ]
+ },
+ "yearFromDealerTitle": 16970,
+ "yearFromDealerTitleWhereVinAgreedWithOldYear": 256,
+ "yearFromDealerTitleByDomain": {
+  "rv.campingworld.com": 16243,
+  "meyersrvsuperstores.com": 427,
+  "broadmoorrv.com": 75,
+  "clickitrv.com": 71,
+  "bestrv.com": 58,
+  "hwhrv.com": 49,
+  "theranchrv.com": 16,
+  "campingworld.com": 12,
+  "olathefordrv.com": 9,
+  "mcclainsrv.com": 2,
+  "fortverdervandautosales.com": 1,
+  "discountrvs.com": 1,
+  "coltonrv.com": 1,
+  "tucsonparkandsellrvinc.com": 1,
+  "seguinrv.com": 1,
+  "winnebagomotorhomes.com": 1,
+  "sonnysrvs.com": 1,
+  "myersrv.com": 1
+ },
+ "finalUnits": 91165,
+ "dealerDomains": 494,
+ "locations": 778,
  "states": 49,
  "byState": {
-  "TX": 11219,
+  "TX": 10242,
   "MI": 9084,
-  "CA": 6407,
-  "FL": 6263,
-  "WA": 5906,
+  "FL": 6222,
+  "CA": 5412,
+  "WA": 5139,
   "IL": 4410,
-  "NY": 3711,
+  "NY": 3579,
   "IN": 3402,
-  "AZ": 3094,
+  "AZ": 2997,
   "OH": 2706,
   "CO": 2347,
   "PA": 2316,
@@ -69,13 +148,13 @@
   "MO": 1742,
   "NC": 1736,
   "WI": 1632,
-  "SC": 1615,
   "MN": 1479,
   "TN": 1468,
   "OR": 1428,
   "IA": 1321,
-  "UT": 1282,
+  "SC": 1245,
   "AL": 1157,
+  "UT": 1078,
   "AR": 1031,
   "OK": 1001,
   "KY": 893,
@@ -83,10 +162,10 @@
   "LA": 805,
   "MA": 781,
   "WV": 774,
-  "KS": 773,
   "NV": 765,
   "ID": 714,
   "ME": 701,
+  "KS": 622,
   "MT": 554,
   "MD": 490,
   "NH": 466,
@@ -102,10 +181,10 @@
   "RI": 1
  },
  "coverage": {
-  "length": 18362,
-  "sleeps": 55854,
-  "dryWeight": 49230,
-  "gvwr": 38770,
-  "price": 94899
+  "length": 18116,
+  "sleeps": 54559,
+  "dryWeight": 46128,
+  "gvwr": 38203,
+  "price": 91165
  }
 }

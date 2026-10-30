@@ -108,6 +108,10 @@ export interface CanonicalUnit {
   stockNumber: string | null;
   title: string;
   year: number;
+  /** Where `year` came from when it was corrected at build time: "dealer_title" = the year stated in the
+   *  dealer's own listing title (the structured field disagreed); "vin" = VIN 10th character (only when the
+   *  listing states no year). Absent = the dealer listing's structured year, as collected. */
+  yearSource?: "dealer_title" | "vin";
   make: string;
   model: string;
   trim: string | null;

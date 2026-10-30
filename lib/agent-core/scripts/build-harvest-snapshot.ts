@@ -28,13 +28,14 @@ import { fileURLToPath } from "node:url";
 import { normalizeRecord, normalizeRvType, type RawScrapeRecord } from "../src/normalize.js";
 import type { CanonicalUnit, Fact } from "../src/types.js";
 import { MANUFACTURER_SPEC_RECORDS } from "../src/manufacturer-spec-records.js";
+import { titleModelYear } from "../src/listing-reconcile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT = resolve(here, "../data/inventory.snapshot.json");
 const [rawPath, statsPath] = process.argv.slice(2);
 if (!rawPath || !statsPath) { console.log("Usage: tsx scripts/build-harvest-snapshot.ts <raw.ndjson> <stats.json>"); process.exit(1); }
 
-type Meta = { page_category?: string; page_category_quote?: string; luna_fields?: Record<string, string>; origin: string; harvest_method: string; listing_url?: string | null; mc_class?: string | null; harvested_at?: string;
+type Meta = { page_category?: string; page_category_quote?: string; luna_fields?: Record<string, string>; origin: string; harvest_method: string; listing_url?: string | null; mc_class?: string | null; harvested_at?: string; sleeps_from_page?: boolean; page_title?: string | null; price_basis?: string | null; last_seen_basis?: string | null;
   dealer: { name?: string | null; city?: string | null; state?: string | null; lat?: number | null; lng?: number | null; domain: string } };
 type Row = RawScrapeRecord & { _meta: Meta; url?: string | null };
 
@@ -236,6 +237,10 @@ for (const r of rows) {
       f.confidence = "medium"; f.note = MC_NOTE;
     }
   }
+  if (m.sleeps_from_page && u.sleeps.value !== null) {
+    u.sleeps.confidence = "high"; u.sleeps.sourceUrl = listingUrl;
+    u.sleeps.note = "Stated on the dealer's listing page (re-read 2026-10-30); MarketCheck's crawl had dropped a digit (11 -> 1).";
+  }
   u.provenance = { ...u.provenance, dealerDomain: dom, listingUrl, harvestMethod: m.harvest_method,
     lastSeenBasis: m.last_seen_basis ?? (isMc ? "marketcheck_last_seen_at" : "harvested_at") };
   inc(typeVia, via);
@@ -290,6 +295,42 @@ for (const u of oldUnits) {
 const newDomainUnits = REFRESH_ONLY ? [] : [...freshBy.values()];
 const notAddedRefreshOnly = REFRESH_ONLY ? freshBy.size : 0;
 if (!REFRESH_ONLY) for (const [k, u] of freshBy) out.set(k, u);
+// ── Hold-backs (CSO QA v2, 2026-10-30): dealers whose listing pages we cannot parse reliably yet are excluded
+// entirely (old and fresh units). valleyrvsupercenter.com: year read from the "similar units" JSON; atozrvs.com:
+// year read from the brochure "Introduction Year"; wilderrvs.com: series ("19SERIES") stored as the floorplan.
+const HOLDBACK = new Set((process.env.HOLDBACK_DOMAINS ?? "valleyrvsupercenter.com,atozrvs.com,wilderrvs.com").split(",").map(x => bare(x.trim())).filter(Boolean));
+const heldBackByDomain = new Map<string, number>();
+for (const [k, u] of [...out]) { const dd = bare(u.provenance.dealerDomain); if (HOLDBACK.has(dd)) { inc(heldBackByDomain, dd); out.delete(k); } }
+// ── Template prices (Oct 14 base units not re-read in this harvest): on some dealer sites the Oct 14 scraper
+// copied one featured unit's price onto most of the inventory (hwhrv.com: 528 of 580 units at $54,995; the 6
+// listing pages re-read 2026-10-30 all show a different price). A price shared by >=25 units that is >=25% of
+// the dealer's base units (or >=100 units and >=10%) is not that unit's price, so those units are held back.
+// PRICE_TEMPLATE_HOLDBACK=0 disables this.
+const priceTemplateHeld = new Map<string, number>(); const priceTemplateValues: Record<string, number[]> = {};
+if (process.env.PRICE_TEMPLATE_HOLDBACK !== "0") {
+  const base = [...out].filter(([, u]) => !u.provenance.harvestMethod);
+  const perDom = new Map<string, number>(); const perPrice = new Map<string, number>();
+  for (const [, u] of base) { const dd = bare(u.provenance.dealerDomain); inc(perDom, dd); if (u.priceUsd.value !== null) inc(perPrice, `${dd}|${u.priceUsd.value}`); }
+  const tmpl = new Set<string>();
+  for (const [k, n] of perPrice) { const dd = k.split("|")[0]; const share = n / (perDom.get(dd) ?? 1); if (n >= 25 && (share >= 0.25 || (n >= 100 && share >= 0.1))) { tmpl.add(k); (priceTemplateValues[dd] ??= []).push(Number(k.split("|")[1])); } }
+  for (const [k, u] of base) { const dd = bare(u.provenance.dealerDomain); if (u.priceUsd.value !== null && tmpl.has(`${dd}|${u.priceUsd.value}`)) { inc(priceTemplateHeld, dd); out.delete(k); } }
+}
+// ── Model year = the year the dealer's own listing states (CSO QA v2). The Oct 14 base scraper filled the
+// structured year (and stock number) from a different unit on Camping World, hwhrv.com, meyersrvsuperstores.com
+// and others; the listing title it captured is the unit's own (40 of 40 sampled pages re-read 2026-10-30: page
+// heading year == captured title year; stored year differed from the page in 34). So when the captured title
+// states a year that differs from the structured field, the title's year wins (yearSource "dealer_title").
+// A VIN-decoded year is never applied here: a title with no year has no page evidence either way, and a
+// dealer-stated year that disagrees with the VIN is left as stated (listed for review, not changed).
+const yearFix = { fromTitle: 0, fromTitleVinAgreedWithOld: 0, byDomain: new Map<string, number>() };
+const VIN_CODES = "ABCDEFGHJKLMNPRSTVWXY123456789";
+const vinYear = (v: string | null) => { if (!v || v.length !== 17) return null; const i = VIN_CODES.indexOf(v[9].toUpperCase()); if (i < 0) return null; let y = 1980 + i; while (y + 30 <= new Date().getFullYear() + 1) y += 30; return y; };
+for (const u of out.values()) {
+  const ty = titleModelYear(u.title);
+  if (ty === null || ty === u.year) continue;
+  if (vinYear(u.vin) === u.year) yearFix.fromTitleVinAgreedWithOld++;
+  u.year = ty; u.yearSource = "dealer_title"; yearFix.fromTitle++; inc(yearFix.byDomain, bare(u.provenance.dealerDomain));
+}
 const units = [...out.values()].sort((a, b) => a.id.localeCompare(b.id));
 // Unique ids (two dealers can share a stock number pattern only via different dealer ids, but guard anyway).
 const seenIds = new Set<string>(); let idCollisions = 0;
@@ -314,6 +355,10 @@ const stats = {
   addedUnits: newDomainUnits.length, addedFromNewDealerDomains: newDomainUnits.filter(u => !oldDomains.has(bare(u.provenance.dealerDomain))).length,
   noPriceUnitsHeldInSidecar: noPriceHeld.length, noPriceUnitsHeldFromNewDealers: noPriceHeld.filter(u => !oldDomains.has(bare(u.provenance.dealerDomain))).length,
   addedNoPrice: newDomainUnits.filter(u => u.priceUsd.value === null).length, addedWithPrice: newDomainUnits.filter(u => u.priceUsd.value !== null).length,
+  heldBackDomains: [...HOLDBACK], heldBackUnits: [...heldBackByDomain.values()].reduce((a, b) => a + b, 0), heldBackByDomain: Object.fromEntries(heldBackByDomain),
+  priceTemplateHeldUnits: [...priceTemplateHeld.values()].reduce((a, b) => a + b, 0), priceTemplateHeldByDomain: Object.fromEntries(priceTemplateHeld), priceTemplateValues,
+  yearFromDealerTitle: yearFix.fromTitle, yearFromDealerTitleWhereVinAgreedWithOldYear: yearFix.fromTitleVinAgreedWithOld,
+  yearFromDealerTitleByDomain: Object.fromEntries([...yearFix.byDomain].sort((a, b) => b[1] - a[1]).slice(0, 25)),
   finalUnits: units.length, dealerDomains: dealers.size, locations: new Set(units.map(u => u.dealer.id)).size, states: states.size,
   byState: Object.fromEntries([...states].sort((a, b) => b[1] - a[1])),
   coverage: { length: known("lengthFt"), sleeps: known("sleeps"), dryWeight: known("dryWeightLbs"), gvwr: known("gvwrLbs"), price: known("priceUsd") },

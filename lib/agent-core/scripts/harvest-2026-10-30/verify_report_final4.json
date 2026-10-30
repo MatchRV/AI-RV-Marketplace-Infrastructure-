@@ -1,0 +1,52 @@
+{
+ "targets": 31231,
+ "pages_read": 31153,
+ "template_pending_hosts": [
+  "www.camperlandok.com"
+ ],
+ "template_absent_hosts": 3,
+ "by_source": {
+  "dealer_website": {
+   "fetched": 13545,
+   "no_unambiguous_price_on_page": 862,
+   "price_changed_to_page": 1135,
+   "live_price_verified": 11563,
+   "no_dealer_price_call_for_price": 339,
+   "sold_or_pending": 697,
+   "unit_absent_from_page": 51,
+   "dead_404_410": 33,
+   "error": 6
+  },
+  "marketcheck": {
+   "fetched": 17411,
+   "no_unambiguous_price_on_page": 1076,
+   "live_price_verified": 15573,
+   "price_changed_to_page": 2521,
+   "dead_404_410": 128,
+   "sold_or_pending": 369,
+   "robots_disallowed": 144,
+   "no_dealer_price_call_for_price": 192,
+   "bot_wall": 11,
+   "error": 36,
+   "http_500": 1,
+   "http_403": 42,
+   "unit_absent_from_page": 30
+  }
+ },
+ "dead_rate": {
+  "dealer_website": {
+   "fetched_200_or_404": 13545,
+   "dead_404_410": 33,
+   "sold_or_pending": 697,
+   "unit_absent": 51,
+   "dead_or_sold_pct": 5.8
+  },
+  "marketcheck": {
+   "fetched_200_or_404": 17411,
+   "dead_404_410": 128,
+   "sold_or_pending": 369,
+   "unit_absent": 30,
+   "dead_or_sold_pct": 3.0
+  }
+ }
+}

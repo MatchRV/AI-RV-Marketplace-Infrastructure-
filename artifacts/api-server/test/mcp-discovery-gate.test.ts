@@ -30,7 +30,7 @@ const GT = { use_type: ['camping'], desired_features: ['outdoor_kitchen'], cover
 const COMPLETE = { ...GT, query: 'travel trailer', location: 'Tacoma, WA', radius_miles: 75, party_size: 4, tow_vehicle: 'none yet', no_length_limit: true, payment_method: 'cash', budget_max_usd: 40000, rv_types: ['travel_trailer'] };
 const PRODUCT_SELECTION = ['rv_type', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'trade_details', 'towing', 'storage', 'length_reason', 'length_flex', 'trips', 'location', 'pay_way', 'fin_down', 'fin_monthly', 'fin_cash', 'pay_numbers'];
 
-describe('MCP 2.2.6 interview gate (fit facts + covered steps) + shortlist', () => {
+describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () => {
   it("vague 'travel trailer for my family near Tacoma' returns no RVs, only the next question", async () => {
     const d = await call('search_rvs', { query: 'travel trailer for my family near Tacoma' });
     expect(d.status).toBe('needs_discovery');
@@ -172,7 +172,7 @@ describe('MCP 2.2.6 interview gate (fit facts + covered steps) + shortlist', () 
 
   it('server instructions carry the interview; tools list has 11 tools; questions never say its name', async () => {
     const init = await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'gate-test', version: '1' } });
-    expect(init.serverInfo.version).toBe('2.2.6');
+    expect(init.serverInfo.version).toBe('2.2.7');
     expect(init.instructions).toMatch(/ASK, DON'T ASSUME/);
     expect(init.instructions).toMatch(/Golden Ticket \(internal name; never say/);
     expect(init.instructions).toMatch(/How much time do you get off each year|vacation: how much time off/);

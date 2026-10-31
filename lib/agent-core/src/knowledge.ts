@@ -121,13 +121,14 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     id: "road_to_sale",
     title: "The Road to the Sale: how buying an RV works, step by step",
     source: "Randy Sobel, How to Make a Big Ticket Purchase (Ch. 1-2), adapted for MatchRV",
-    keywords: ["road to the sale", "process", "steps", "how buying works", "how to buy", "buying process", "good deal", "negotiate", "salesperson", "dealer process"],
+    keywords: ["road to the sale", "process", "steps", "how buying works", "how to buy", "buying process", "good deal", "negotiate", "salesperson", "dealer process", "refine", "don't like", "change the search", "different results"],
     points: [
       "Buying goes one step at a time and no step gets skipped: first work out what you want and how you'll use it, then how you'll pay, who the owners are, and any credit questions. Only after that do you look at RVs that fit, and then talk to the dealer.",
       "A good deal means you get the RV you actually want for what you planned to spend. A deal both sides can live with lasts longer than one 'won' by either side.",
       "Honesty both ways makes it fast: say what your trade is really like, what you still owe, your real budget and your credit situation up front, and you'll get real answers back.",
       "A good guide listens more than they talk, knows the product, never uses lines like 'what would it take…', and never pushes you past a step you're not ready for.",
       "Narrowing down is part of the job: ruling out what you don't want keeps you from being swamped by choices.",
+      "If the picks aren't right, say what you'd change: the price, the length, the floorplan, how far you'd drive, the type of RV, or new vs. used. A good guide changes one thing at a time and searches again, so you can see what each change does, and never loosens a hard limit (budget, length, tow rating) without your OK.",
     ],
   },
   {

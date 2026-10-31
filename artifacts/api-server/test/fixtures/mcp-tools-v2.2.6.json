@@ -1,0 +1,2065 @@
+[
+  {
+    "name": "compare_rvs",
+    "title": "Compare RVs",
+    "description": "Compare 2-4 MatchRV units side by side against the buyer's constraints. Keeps unknown values explicit and returns deterministic comparison evidence rather than guessed specifications.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "unit_ids": {
+          "minItems": 2,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          }
+        },
+        "constraints": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "location": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "place": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "radiusMiles": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 3000
+                    }
+                  },
+                  "required": [
+                    "place",
+                    "radiusMiles"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "priceMaxUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "priceMinUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rvTypes": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "travel_trailer",
+                      "fifth_wheel",
+                      "toy_hauler",
+                      "class_a",
+                      "class_b",
+                      "class_c",
+                      "popup_camper",
+                      "truck_camper"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "condition": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "used",
+                    "any"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lengthMaxFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 60
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lengthMinFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 60
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 500,
+                  "maximum": 60000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "towVehicle": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sleepsMin": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mustHave": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "bunkhouse",
+                      "solar",
+                      "solar_prep",
+                      "lithium",
+                      "generator",
+                      "four_season",
+                      "outdoor_kitchen",
+                      "two_entry_doors"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prefer": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "bunkhouse",
+                      "solar",
+                      "solar_prep",
+                      "lithium",
+                      "generator",
+                      "four_season",
+                      "outdoor_kitchen",
+                      "two_entry_doors"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "freshWaterMinGal": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 5,
+                  "maximum": 300
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "boondocking": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sort": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "best_match",
+                    "price_asc",
+                    "price_desc",
+                    "distance",
+                    "newest_model_year"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "makes": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "models": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excludeMakes": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excludeModels": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fuelType": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "gas",
+                    "diesel"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "horsepowerMin": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "horsepowerPreferred": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "torqueMinLbFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 3000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "torquePreferredLbFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 3000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "trailerWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 500,
+                  "maximum": 40000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "trailerTongueLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 5000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coachLoadedWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 3000,
+                  "maximum": 80000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sherpa": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "sleepers": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 14
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "floorplanIntent": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "couples",
+                            "family_bunks",
+                            "flexible",
+                            "solo"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "campingStyle": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "full_hookup",
+                            "boondocking",
+                            "mixed"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "truckPayloadLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 500,
+                          "maximum": 10000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "passengersLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 3000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "cargoLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 5000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "discoveryWaived": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthMaxStatedFt": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 8,
+                          "maximum": 60
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "storage",
+                            "comfort",
+                            "hard_limit"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthFlexApproved": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "session_key": {
+          "description": "Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).",
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "unit_ids"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "evaluate_tow_fit",
+    "title": "Evaluate tow fit",
+    "description": "Evaluate weight fit between a shopper-stated tow vehicle and 1-6 RVs, or (with trailer_weight_lbs) whether 1-6 motorhomes can tow a loaded trailer. Motorhome mode checks each limit separately — loaded coach vs GVWR first, then hitch tow rating, GCWR, tongue limit and axle loads — and never reports 'safe'; the best result is 'not yet confirmed' with the ratings that clear. This is screening guidance, not a towing-safety guarantee.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "vehicle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "unit_ids": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          }
+        },
+        "trailer_weight_lbs": {
+          "type": "number",
+          "minimum": 500,
+          "maximum": 40000
+        },
+        "trailer_tongue_lbs": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 5000
+        },
+        "coach_loaded_weight_lbs": {
+          "type": "number",
+          "minimum": 3000,
+          "maximum": 80000
+        },
+        "truck_payload_lbs": {
+          "type": "number",
+          "minimum": 500,
+          "maximum": 10000
+        },
+        "passengers_lbs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "cargo_lbs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "session_key": {
+          "description": "Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).",
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "unit_ids"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_dealer_inquiry_status",
+    "title": "Check a dealer inquiry",
+    "description": "Read-only status of an inquiry this shopper sent: delivered / queued_for_matchrv / failed / dry_run, plus the dealership's reply only if MatchRV has recorded one. Requires the inquiry_id and private status_token returned by send_dealer_inquiry; other shoppers' inquiries are never visible.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "inquiry_id": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 60
+        },
+        "status_token": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "inquiry_id",
+        "status_token"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_rv",
+    "title": "Get RV details",
+    "description": "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Motorhomes include a powertrainAndTowing section (what powers it / what it can carry / what it can tow), each value with its status. Never invent missing specifications or assign an engine family's top rating to a unit.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "unit_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "session_key": {
+          "description": "Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).",
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "unit_id"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "outfitter_discovery",
+    "title": "RV fit interview: next question and search constraints",
+    "description": "Returns the next question in MatchRV's guided RV-fit interview and, once enough fit facts are known, the search constraints for search_rvs. It takes only RV-fit facts: RV type, make or model, use category, desired features, party size, tow vehicle (or what a motorhome will tow), length limit, shopping area and radius, and budget with payment method (plus down and monthly payment if financing). Conversation-only questions (time off, who's buying, a trade-in, planned trips) are tracked by step name in covered_steps; their answers are never sent to MatchRV. Every input is optional, and the shopper may decline any question (declined_questions); a covered or declined step is never asked again. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one. Returns: status (needs_discovery, ready_for_products, or answer_directly when request_kind is general_question); nextQuestion (exactly one, with its step and a short reason for asking, to ask close to word for word; the trade question carries a followUp for when they have one); knownSummary; and, when readyForProducts is true, searchConstraints for search_rvs. Stateless and read-only: pass the fit facts and covered_steps gathered so far on every call.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "request_kind": {
+          "description": "Optional. find_rv (default): they want help finding an RV. general_question: a question that isn't an RV search, like \"motorhome or fifth wheel?\" (answered directly, no interview). greeting: a hello or vague first message (returns the welcome).",
+          "type": "string",
+          "enum": [
+            "find_rv",
+            "general_question",
+            "greeting"
+          ]
+        },
+        "covered_steps": {
+          "description": "Interview steps already asked and answered in this conversation (rv_type, use, activities, vacation, who_going, buyers, trade, towing, storage, trips, area, payment). Only the step name is sent, never the answer. A covered step is never asked again.",
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "rv_type",
+              "use",
+              "activities",
+              "vacation",
+              "who_going",
+              "buyers",
+              "trade",
+              "towing",
+              "storage",
+              "trips",
+              "area",
+              "payment"
+            ]
+          }
+        },
+        "declined_questions": {
+          "description": "Interview steps the shopper chose not to answer. They are never asked again, and the shortlist doesn't filter on them.",
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "rv_type",
+              "use",
+              "activities",
+              "vacation",
+              "who_going",
+              "buyers",
+              "trade",
+              "towing",
+              "storage",
+              "trips",
+              "area",
+              "payment"
+            ]
+          }
+        },
+        "rv_types": {
+          "description": "RV type(s) the shopper wants (a destination trailer counts as travel_trailer; an ATV/toy garage means toy_hauler). Decides which inventory applies. Optional. Pass only what the shopper actually said.",
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "travel_trailer",
+              "fifth_wheel",
+              "toy_hauler",
+              "class_a",
+              "class_b",
+              "class_c",
+              "popup_camper",
+              "truck_camper"
+            ]
+          }
+        },
+        "make": {
+          "description": "RV brand the shopper named, e.g. \"Tiffin\". Hard filter. Optional. Pass only what the shopper actually said.",
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 60
+            },
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            }
+          ]
+        },
+        "model": {
+          "description": "RV model or series the shopper named, e.g. \"Allegro RED\". Hard filter. Optional. Pass only what the shopper actually said.",
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 60
+            },
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            }
+          ]
+        },
+        "use_type": {
+          "description": "How the RV will be used, as a category. Picks the floorplan and build (full-time living needs residential storage and four-season features). Optional. Pass only what the shopper actually said.",
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "living",
+              "camping",
+              "tailgating",
+              "traveling"
+            ]
+          }
+        },
+        "desired_features": {
+          "description": "RV features to favor, derived from what the shopper enjoys (e.g. outdoor_kitchen for someone who loves to grill, bunkhouse for kids). Ranks the shortlist; never excludes. Optional. Pass only what the shopper actually said.",
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "bunkhouse",
+              "outdoor_kitchen",
+              "solar",
+              "solar_prep",
+              "lithium",
+              "generator",
+              "four_season",
+              "two_entry_doors"
+            ]
+          }
+        },
+        "off_grid": {
+          "description": "True when their camping calls for off-grid readiness (solar, generator, larger tanks), e.g. dispersed or no-hookup sites. Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "four_season": {
+          "description": "True when they'll camp in cold weather or year-round (insulation, heated tanks). Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "party_size": {
+          "description": "How many people will sleep in the RV. Sets sleeping capacity and couples vs. bunk layouts. Never assume it from words like \"family\". Optional. Pass only what the shopper actually said.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "tow_vehicle": {
+          "description": "Trailers and fifth wheels: the vehicle that will tow it (year, make, model, engine), or \"none yet\" / \"not sure\". Sets the safe weight limit. Never guess a vehicle. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 120
+        },
+        "towed_vehicle": {
+          "description": "Motorhomes: what will be towed behind it (e.g. \"Jeep Wrangler\", \"small trailer\") or \"nothing\". Sets the hitch and towing-capacity need. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 120
+        },
+        "truck_payload_lbs": {
+          "description": "Tow vehicle payload from its door sticker, for a safe tongue-weight check. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 500,
+          "maximum": 10000
+        },
+        "truck_tow_rating_lbs": {
+          "description": "The tow vehicle's exact rated towing capacity, for a safe weight check. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 40000
+        },
+        "length_max_ft": {
+          "description": "Longest RV that fits where it will be stored, or that they're comfortable with, in feet. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 8,
+          "maximum": 60
+        },
+        "no_length_limit": {
+          "description": "True only when the shopper said there is no length limit.",
+          "type": "boolean"
+        },
+        "length_reason": {
+          "description": "Whether the length limit is a firm storage fit or a comfort preference. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "storage",
+            "comfort",
+            "hard_limit"
+          ]
+        },
+        "length_flex_approved": {
+          "description": "True only if the shopper OK'd looking up to 2 ft past a comfort length limit. Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "location": {
+          "description": "Shopping area: city, state or ZIP (no street address). Used to start with nearby inventory. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 80
+        },
+        "radius_miles": {
+          "description": "How far they'd travel to see an RV. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3000
+        },
+        "condition": {
+          "description": "New or pre-owned, only if the shopper said. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ]
+        },
+        "payment_method": {
+          "description": "Paying cash or making payments. Decides which budget numbers set the price range. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "cash",
+            "finance"
+          ]
+        },
+        "budget_max_usd": {
+          "description": "Cash: the most they'll spend out the door. Financing: the most they want to spend out of pocket. Keeps every pick inside budget. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "down_payment_usd": {
+          "description": "If financing: planned down payment in USD; with the monthly payment it sets the price range. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "monthly_payment_usd": {
+          "description": "If financing: target monthly payment in USD; with the down payment it sets the price range. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50000
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "outfitter_guide",
+    "title": "RV Outfitter buyer guides",
+    "description": "MatchRV's buyer education, distilled from its published guides and the Road to the Sale method. Topics: road_to_sale (how buying works, step by step), how_to_pay (the six ways: cash, difference, finance, discount, ad shopper, special finance; out-the-door math), owners_and_credit, campsite_setup, tow_basics, motorhome_vs_trailer, trailer_vs_fifth_wheel, families, full_time, used_buying, costs, financing. Use it for 'how does this work / which is better / how should I pay / how do I set up camp' questions BEFORE any inventory search: teach first, never pressure. Pass topic for an exact guide or query to search. Towing points defer to evaluate_tow_fit for the buyer's actual vehicle, so never quote a model-level tow table.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "topic": {
+          "type": "string",
+          "enum": [
+            "road_to_sale",
+            "how_to_pay",
+            "owners_and_credit",
+            "campsite_setup",
+            "tow_basics",
+            "motorhome_vs_trailer",
+            "trailer_vs_fifth_wheel",
+            "families",
+            "full_time",
+            "used_buying",
+            "costs",
+            "financing"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 160
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "outfitter_memory",
+    "title": "What the Outfitter has learned",
+    "description": "Read what MatchRV remembers for THIS shopper (facts they taught via teach_outfitter) plus MatchRV-curated reference facts, each with confirmation counts and sources. Read-only. Use it to check for a remembered rating before asking again.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "vehicle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "session_key": {
+          "description": "Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).",
+          "type": "string",
+          "maxLength": 80
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "prepare_dealer_inquiry",
+    "title": "Preview a dealer inquiry (sends nothing)",
+    "description": "Step 1 of contacting a dealership about one RV. Use only when the shopper asks to contact the dealer. Takes unit_id (from search_rvs/get_rv), the shopper's name, email and/or phone, and their message. Validates them and returns the exact preview — dealership name and location, RV title, VIN, stock number, price, the shopper's contact details, the message, and how MatchRV will deliver it — plus a confirmation_token valid for 30 minutes. NOTHING IS SENT. Show the whole preview to the shopper and ask them to approve it before calling send_dealer_inquiry.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "unit_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "name": {
+          "description": "Shopper's name, as they provided it",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "description": "Shopper's email, as they provided it",
+          "type": "string",
+          "maxLength": 160
+        },
+        "phone": {
+          "description": "Shopper's phone, as they provided it",
+          "type": "string",
+          "maxLength": 40
+        },
+        "message": {
+          "description": "Message to the dealership, written or approved by the shopper",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        }
+      },
+      "required": [
+        "unit_id",
+        "name",
+        "message"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "search_rvs",
+    "title": "Search and match RVs",
+    "description": "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. Inputs are RV-fit facts only (type, make/model, use category, desired features, party size, tow vehicle or towed vehicle, length limit, area and radius, budget with payment method), plus covered_steps / declined_questions: the interview steps already asked or declined, by name only. Conversation-only answers (time off, who's buying, a trade-in, planned trips) are never sent. Every input is optional. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one; contacting a dealer is a separate step that needs the shopper's explicit approval. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every interview step is covered (or declined), it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its step and reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (short search keywords like \"travel trailer sleeps 8\", not the shopper's message), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). If coverage.no_local_matches, say there is no local inventory and offer to widen radius. Sleeps and other specs are published facts only (dealer listing or the manufacturer's spec for that exact floorplan, with sleepsSourceUrl / *_url); null = not published.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "covered_steps": {
+          "description": "Interview steps already asked and answered in this conversation (rv_type, use, activities, vacation, who_going, buyers, trade, towing, storage, trips, area, payment). Only the step name is sent, never the answer. A covered step is never asked again.",
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "rv_type",
+              "use",
+              "activities",
+              "vacation",
+              "who_going",
+              "buyers",
+              "trade",
+              "towing",
+              "storage",
+              "trips",
+              "area",
+              "payment"
+            ]
+          }
+        },
+        "declined_questions": {
+          "description": "Interview steps the shopper chose not to answer. They are never asked again, and the shortlist doesn't filter on them.",
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "rv_type",
+              "use",
+              "activities",
+              "vacation",
+              "who_going",
+              "buyers",
+              "trade",
+              "towing",
+              "storage",
+              "trips",
+              "area",
+              "payment"
+            ]
+          }
+        },
+        "rv_types": {
+          "description": "RV type(s) the shopper wants (a destination trailer counts as travel_trailer; an ATV/toy garage means toy_hauler). Decides which inventory applies. Optional. Pass only what the shopper actually said.",
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "travel_trailer",
+              "fifth_wheel",
+              "toy_hauler",
+              "class_a",
+              "class_b",
+              "class_c",
+              "popup_camper",
+              "truck_camper"
+            ]
+          }
+        },
+        "make": {
+          "description": "RV brand the shopper named, e.g. \"Tiffin\". Hard filter. Optional. Pass only what the shopper actually said.",
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 60
+            },
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            }
+          ]
+        },
+        "model": {
+          "description": "RV model or series the shopper named, e.g. \"Allegro RED\". Hard filter. Optional. Pass only what the shopper actually said.",
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 60
+            },
+            {
+              "maxItems": 6,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              }
+            }
+          ]
+        },
+        "use_type": {
+          "description": "How the RV will be used, as a category. Picks the floorplan and build (full-time living needs residential storage and four-season features). Optional. Pass only what the shopper actually said.",
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "living",
+              "camping",
+              "tailgating",
+              "traveling"
+            ]
+          }
+        },
+        "desired_features": {
+          "description": "RV features to favor, derived from what the shopper enjoys (e.g. outdoor_kitchen for someone who loves to grill, bunkhouse for kids). Ranks the shortlist; never excludes. Optional. Pass only what the shopper actually said.",
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "bunkhouse",
+              "outdoor_kitchen",
+              "solar",
+              "solar_prep",
+              "lithium",
+              "generator",
+              "four_season",
+              "two_entry_doors"
+            ]
+          }
+        },
+        "off_grid": {
+          "description": "True when their camping calls for off-grid readiness (solar, generator, larger tanks), e.g. dispersed or no-hookup sites. Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "four_season": {
+          "description": "True when they'll camp in cold weather or year-round (insulation, heated tanks). Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "party_size": {
+          "description": "How many people will sleep in the RV. Sets sleeping capacity and couples vs. bunk layouts. Never assume it from words like \"family\". Optional. Pass only what the shopper actually said.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "tow_vehicle": {
+          "description": "Trailers and fifth wheels: the vehicle that will tow it (year, make, model, engine), or \"none yet\" / \"not sure\". Sets the safe weight limit. Never guess a vehicle. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 120
+        },
+        "towed_vehicle": {
+          "description": "Motorhomes: what will be towed behind it (e.g. \"Jeep Wrangler\", \"small trailer\") or \"nothing\". Sets the hitch and towing-capacity need. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 120
+        },
+        "truck_payload_lbs": {
+          "description": "Tow vehicle payload from its door sticker, for a safe tongue-weight check. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 500,
+          "maximum": 10000
+        },
+        "truck_tow_rating_lbs": {
+          "description": "The tow vehicle's exact rated towing capacity, for a safe weight check. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 40000
+        },
+        "length_max_ft": {
+          "description": "Longest RV that fits where it will be stored, or that they're comfortable with, in feet. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 8,
+          "maximum": 60
+        },
+        "no_length_limit": {
+          "description": "True only when the shopper said there is no length limit.",
+          "type": "boolean"
+        },
+        "length_reason": {
+          "description": "Whether the length limit is a firm storage fit or a comfort preference. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "storage",
+            "comfort",
+            "hard_limit"
+          ]
+        },
+        "length_flex_approved": {
+          "description": "True only if the shopper OK'd looking up to 2 ft past a comfort length limit. Optional. Pass only what the shopper actually said.",
+          "type": "boolean"
+        },
+        "location": {
+          "description": "Shopping area: city, state or ZIP (no street address). Used to start with nearby inventory. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "maxLength": 80
+        },
+        "radius_miles": {
+          "description": "How far they'd travel to see an RV. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3000
+        },
+        "condition": {
+          "description": "New or pre-owned, only if the shopper said. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ]
+        },
+        "payment_method": {
+          "description": "Paying cash or making payments. Decides which budget numbers set the price range. Optional. Pass only what the shopper actually said.",
+          "type": "string",
+          "enum": [
+            "cash",
+            "finance"
+          ]
+        },
+        "budget_max_usd": {
+          "description": "Cash: the most they'll spend out the door. Financing: the most they want to spend out of pocket. Keeps every pick inside budget. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "down_payment_usd": {
+          "description": "If financing: planned down payment in USD; with the monthly payment it sets the price range. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "monthly_payment_usd": {
+          "description": "If financing: target monthly payment in USD; with the down payment it sets the price range. Optional. Pass only what the shopper actually said.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50000
+        },
+        "query": {
+          "description": "Optional short RV search keywords (type, size, features), e.g. \"travel trailer sleeps 4\". Not the shopper's message; only RV-fit facts are read from it.",
+          "type": "string",
+          "maxLength": 240
+        },
+        "sleeps_min": {
+          "description": "Optional. Alias of party_size: minimum sleeping capacity the shopper stated.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "price_max_usd": {
+          "description": "Optional. Highest price the shopper set, in USD (hard filter).",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "price_min_usd": {
+          "description": "Optional. Lowest price the shopper set, in USD.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "sort": {
+          "description": "Optional. Result order; default best_match.",
+          "type": "string",
+          "enum": [
+            "best_match",
+            "price_asc",
+            "price_desc",
+            "distance",
+            "newest_model_year"
+          ]
+        },
+        "exclude_makes": {
+          "description": "Optional. Brands the shopper ruled out.",
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "exclude_models": {
+          "description": "Optional. Models or series the shopper ruled out.",
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "fuel_type": {
+          "description": "Optional. ONLY when the shopper explicitly asked for gas or diesel. Never infer it.",
+          "type": "string",
+          "enum": [
+            "gas",
+            "diesel"
+          ]
+        },
+        "passengers_lbs": {
+          "description": "Optional. Approximate weight of people riding in the tow vehicle, for the payload check.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "cargo_lbs": {
+          "description": "Optional. Approximate cargo in the tow vehicle, for the payload check.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "constraints": {
+          "description": "Optional. Structured limits the shopper stated (price, type, sleeps, length, weights, ratings). Each one is a hard filter on the shortlist and is never relaxed without their OK.",
+          "type": "object",
+          "properties": {
+            "location": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "place": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "radiusMiles": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 3000
+                    }
+                  },
+                  "required": [
+                    "place",
+                    "radiusMiles"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "priceMaxUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "priceMinUsd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rvTypes": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "travel_trailer",
+                      "fifth_wheel",
+                      "toy_hauler",
+                      "class_a",
+                      "class_b",
+                      "class_c",
+                      "popup_camper",
+                      "truck_camper"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "condition": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "used",
+                    "any"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lengthMaxFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 60
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lengthMinFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 8,
+                  "maximum": 60
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 500,
+                  "maximum": 60000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "towVehicle": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sleepsMin": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mustHave": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "bunkhouse",
+                      "solar",
+                      "solar_prep",
+                      "lithium",
+                      "generator",
+                      "four_season",
+                      "outdoor_kitchen",
+                      "two_entry_doors"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prefer": {
+              "anyOf": [
+                {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "bunkhouse",
+                      "solar",
+                      "solar_prep",
+                      "lithium",
+                      "generator",
+                      "four_season",
+                      "outdoor_kitchen",
+                      "two_entry_doors"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "freshWaterMinGal": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 5,
+                  "maximum": 300
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "boondocking": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sort": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "best_match",
+                    "price_asc",
+                    "price_desc",
+                    "distance",
+                    "newest_model_year"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "makes": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "models": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excludeMakes": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excludeModels": {
+              "anyOf": [
+                {
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fuelType": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "gas",
+                    "diesel"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "horsepowerMin": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "horsepowerPreferred": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "torqueMinLbFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 3000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "torquePreferredLbFt": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 3000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "trailerWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 500,
+                  "maximum": 40000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "trailerTongueLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 5000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coachLoadedWeightLbs": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 3000,
+                  "maximum": 80000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sherpa": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "sleepers": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 14
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "floorplanIntent": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "couples",
+                            "family_bunks",
+                            "flexible",
+                            "solo"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "campingStyle": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "full_hookup",
+                            "boondocking",
+                            "mixed"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "truckPayloadLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 500,
+                          "maximum": 10000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "passengersLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 3000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "cargoLbs": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 5000
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "discoveryWaived": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthMaxStatedFt": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 8,
+                          "maximum": 60
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "storage",
+                            "comfort",
+                            "hard_limit"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lengthFlexApproved": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "shopper_requested_results_now": {
+          "description": "ONLY true when the shopper literally asked to skip the questions and see RVs now (e.g. \"just show me\"). Never set it on your own. Requires shopper_words; the server checks them.",
+          "type": "boolean"
+        },
+        "shopper_words": {
+          "description": "Only with shopper_requested_results_now: the shopper's exact words asking to skip the questions (e.g. \"just show me\"). Nothing else.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "session_key": {
+          "description": "Optional. Opaque key returned by teach_outfitter, to recall facts this shopper confirmed.",
+          "type": "string",
+          "maxLength": 80
+        },
+        "limit": {
+          "description": "Shortlist size. Default 3 best fits; use more (max 10) only when the shopper asks to see more.",
+          "default": 3,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "send_dealer_inquiry",
+    "title": "Send the approved dealer inquiry",
+    "description": "Step 2: sends the inquiry previewed by prepare_dealer_inquiry. Consequential — it shares the shopper's name, contact details and message outside MatchRV. Call only after the shopper explicitly approved the exact preview, with confirmed=true. The content is locked to the preview (it cannot be changed here). Returns an inquiry_id, a private status_token and an honest status: delivered (emailed to a dealership that accepts MatchRV inquiries), queued_for_matchrv (MatchRV staff were alerted and will forward it; not yet at the dealer), or failed (tell the shopper to contact the dealership directly). Never retry automatically and never claim the dealer has replied.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "confirmation_token": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "confirmed": {
+          "description": "Must be true, and only after the shopper explicitly approved the preview",
+          "type": "boolean"
+        },
+        "dry_run": {
+          "description": "Testing only: validate and record without delivering to anyone",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "confirmation_token",
+        "confirmed"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "teach_outfitter",
+    "title": "Teach the Outfitter (long-term memory)",
+    "description": "Remember a fact the shopper confirmed, for THIS shopper only: their vehicle's exact tow rating or door-sticker payload (vehicle + tow_rating_lbs/payload_lbs), or a confirmed spec for one unit (unit_id + field + value; fields: sleeps, gvwrLbs, dryWeightLbs, hitchWeightLbs, freshWaterGal, bunkhouse). This is the only tool that writes memory. Facts are scoped to the shopper's ChatGPT identity / MCP session (or the returned session_key) and are never shown to other shoppers; they expire after 30 days of inactivity. Only teach facts the shopper actually confirmed — never guesses.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "vehicle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "tow_rating_lbs": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 40000
+        },
+        "payload_lbs": {
+          "type": "number",
+          "minimum": 500,
+          "maximum": 10000
+        },
+        "unit_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "field": {
+          "type": "string",
+          "enum": [
+            "sleeps",
+            "gvwrLbs",
+            "dryWeightLbs",
+            "hitchWeightLbs",
+            "freshWaterGal",
+            "bunkhouse"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "session_key": {
+          "description": "Opaque MatchRV memory key returned by teach_outfitter in this conversation (only needed when the host does not identify the conversation).",
+          "type": "string",
+          "maxLength": 80
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  }
+]

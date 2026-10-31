@@ -105,7 +105,7 @@ for u in U:
     D=dom(u); url=lu(u); x=X.get(ukey(url)); d=u['dealer']
     # ---- 1) on order / coming soon / in transit
     why=None
-    for k in ('title','model','trim','description'):
+    for k in ('title','model','trim'):   # trial8: own-unit fields only, never description/body text
         v=u.get(k)
         h=text_hit(v if isinstance(v,str) else None)
         if h: why=f'unit {k}: "{h[:120]}"'; break
@@ -113,7 +113,6 @@ for u in U:
         s=status_hit([x.get('lotStatus')]+(x.get('photoBadges') or [])+(x.get('unitTags') or []))
         if s: why=f'own page status/badge "{s}"'
         elif (x.get('ld') or [{}])[0].get('avail') in ('PreOrder','BackOrder','PreSale'): why=f"own schema.org offer availability {(x.get('ld') or [{}])[0].get('avail')}"
-        elif x.get('ld') and text_hit((x['ld'][0].get('desc') or '')): why=f"own listing description: \"{text_hit(x['ld'][0].get('desc'))[:120]}\""
     if why: hold(u,D,'on_order',why); continue
     # ---- 4) street merged into city
     c0,s0=d.get('city') or '',d.get('state') or ''

@@ -923,6 +923,7 @@ export const DEALER_CITY_COORDS: Record<string, readonly [number, number]> = {
   "toledo|OH": [41.6641, -83.5819],
   "toms river|NJ": [39.9949, -74.1878],
   "tonawanda|NY": [43.0119, -78.8834],
+  "tontitown|AR": [36.1674, -94.2421],
   "topeka|KS": [39.0347, -95.6948],
   "tracy|CA": [37.7274, -121.4522],
   "traverse city|MI": [44.7543, -85.603],

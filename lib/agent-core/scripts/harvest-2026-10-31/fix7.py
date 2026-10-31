@@ -21,11 +21,29 @@ OS={}
 for l in open(f'{H}/order_scan.ndjson'):
     o=json.loads(l); OS[ukey(o['u'])]=o
 C=collections.Counter(); chg=[]; holds=[]; held=[]
+# ---- 0) VIN validity: 17 chars, letters/digits, no I/O/Q (check digit recorded, not required). Anything else is
+# not a VIN and is blanked (the raw value is kept in memory only, to stop merges with a conflicting identifier).
+TR={**{str(i):i for i in range(10)},**dict(zip('ABCDEFGH',range(1,9))),**dict(zip('JKLMN',range(1,6))),'P':7,'R':9,**dict(zip('STUVWXYZ',range(2,10)))}
+WT=[8,7,6,5,4,3,2,10,0,9,8,7,6,5,4,3,2]
+def vin_ok(v):
+    if len(v)!=17 or not re.fullmatch(r'[A-HJ-NPR-Z0-9]{17}',v): return None
+    c=sum(TR[ch]*w for ch,w in zip(v,WT))%11
+    return 'check_digit_ok' if (('X' if c==10 else str(c))==v[8]) else 'alnum_17_check_digit_fails'
+for u in U:
+    raw=u.get('vin')
+    if raw is None or raw=='': continue
+    v=str(raw).upper().strip()
+    k=vin_ok(v)
+    if k: u['vin']=v; C[f'vin_valid:{k}']+=1; continue
+    u['_rawvin']=str(raw); u['vin']=None
+    kind='non_alphanumeric' if re.search(r'[^A-Za-z0-9 -]',str(raw)) else ('contains_I_O_Q' if len(v)==17 else f'length_{"short" if len(v)<17 else "long"}')
+    C['vin_invalid_blanked']+=1; C[f'vin_invalid_blanked:{kind}']+=1; C[f'vin_invalid_by_domain:{dom(u)}']+=1
+    chg.append([u['id'],lu(u),'vin',str(raw),'',f'not a VIN ({kind}); blanked'])
 # ---- 1) order holds
 keep=[]
 for u in U:
     D=dom(u); o=OS.get(ukey(lu(u))); why=None
-    for k in ('title','model','trim','description'):
+    for k in ('title','model','trim'):   # trial8: own-unit fields only, never description/body text
         v=u.get(k); h=text_hit(v if isinstance(v,str) else None)
         if h: why=(f'unit {k}','"'+h[:120]+'"'); break
     if not why and o:
@@ -81,14 +99,21 @@ for u in U:
 U=[u for u in U if not u.get('_drop')]
 # ---- 2) dedupe
 def nt(t): return re.sub(r'[^a-z0-9]','',re.sub(r'(?i)\b(new|used|pre-?owned)\b','',t or '').lower())
-def realvin(u):
-    v=(u.get('vin') or '').upper().strip()
-    return v if len(v)==17 and v!=(u.get('stockNumber') or '').upper().strip() else ''
+def realvin(u): return (u.get('vin') or '').upper().strip()   # only valid VINs remain after the blanking pass
+def rawid(u):
+    r=re.sub(r'[^A-Z0-9]','',(u.get('_rawvin') or '').upper())
+    return r if len(r)>=5 and re.fullmatch(r'[A-Z0-9 -]+',(u.get('_rawvin') or '').upper().strip()) else ''
 def stocks(u):
     s={(u.get('stockNumber') or '').upper().strip()}
-    v=(u.get('vin') or '').upper().strip()
-    if v and len(v)!=17: s.add(v)          # a 'VIN' field that is really a stock number
+    if rawid(u): s.add(rawid(u))        # an invalid 'VIN' that is an identifier (e.g. the stock number)
     return {x for x in s if x}
+def vin_conflict(a,b):
+    va,vb=realvin(a),realvin(b); ra,rb=rawid(a),rawid(b)
+    if va and vb: return va!=vb
+    if va and rb: return not (va.endswith(rb) or rb in stocks(a))
+    if vb and ra: return not (vb.endswith(ra) or ra in stocks(b))
+    if ra and rb: return ra!=rb and ra not in stocks(b) and rb not in stocks(a)
+    return False
 def same_stock(a,b):
     if not a or not b: return True
     for x in a:
@@ -102,20 +127,23 @@ for u in U:
 drop=set(); dd=[]
 for k,us in G.items():
     if len(us)<2: continue
-    us.sort(key=lambda u:((u.get('provenance') or {}).get('lastSeenAt') or '',bool(lu(u))),reverse=True)
+    # keep a record with a valid VIN first, then the freshest
+    us.sort(key=lambda u:(bool(realvin(u)),(u.get('provenance') or {}).get('lastSeenAt') or '',bool(lu(u))),reverse=True)
     kept=[us[0]]
     for u in us[1:]:
         tgt=None
         for kp in kept:
-            if realvin(kp) and realvin(u) and realvin(kp)!=realvin(u): continue
+            if vin_conflict(kp,u): continue
             if not same_stock(stocks(kp),stocks(u)): continue
             if kp.get('condition') and u.get('condition') and kp['condition']!=u['condition']: continue
             tgt=kp; break
         if tgt is None: kept.append(u); continue
         how='same VIN' if realvin(u) and realvin(u)==realvin(tgt) else ('same stock number' if stocks(u)&stocks(tgt) else ('stock number differs only by a letter suffix' if stocks(u) and stocks(tgt) else 'year, price and title match; no conflicting VIN or stock'))
+        if ((u.get('provenance') or {}).get('lastSeenAt') or '')>((tgt.get('provenance') or {}).get('lastSeenAt') or ''): C['dedupe_kept_valid_vin_over_fresher']+=1
         drop.add(id(u)); C['dedupe_removed']+=1; C[f'dedupe:{k[0]}']+=1; C[f'dedupe_by:{how}']+=1
         dd.append([k[0],u['id'],tgt['id'],u.get('title'),k[2],(u.get('provenance') or {}).get('lastSeenAt'),(tgt.get('provenance') or {}).get('lastSeenAt'),u.get('vin'),tgt.get('vin'),u.get('stockNumber'),tgt.get('stockNumber'),how])
 U=[u for u in U if id(u) not in drop]
+for u in U: u.pop('_rawvin',None); u.pop('_drop',None)
 S['units']=U
 st=S.get('stats') or {}; st['units']=len(U); st['dealers']=len({(u.get('dealer') or {}).get('id') for u in U})
 st['fix7_2026_10_31']={k:v for k,v in C.items() if ':' not in k}; S['stats']=st

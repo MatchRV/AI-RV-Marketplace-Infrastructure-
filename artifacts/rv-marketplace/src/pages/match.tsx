@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { useChatSession } from "@/hooks/use-chat-session";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackLead } from "@/lib/analytics";
 import { trackClarity } from "@/lib/clarity";
 import { buildLeadBuyerProfile } from "@/lib/buyer-intent";
 import { useAppAuth } from "@/contexts/auth-context";
@@ -141,6 +141,7 @@ function EmailCaptureCard({
       try { localStorage.setItem("matchrv_email", clean); } catch { /* ignore */ }
       trackClarity("email_captured");
       trackEvent("match_report_email_capture", { metadata: { reportId, source: "match_quiz" } });
+      trackLead("buyer_email_capture", { dedupeKey: reportId, metadata: { source: "match_quiz" } });
       onCaptured(clean);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your email. Please try again.");

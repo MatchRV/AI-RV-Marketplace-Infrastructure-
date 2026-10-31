@@ -17,7 +17,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackLead } from "@/lib/analytics";
 import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
@@ -949,6 +949,7 @@ export function ListingDetail() {
                                 });
                                 if (ok) {
                                   recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
+                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
                                   setContactSent(true);
                                   setContactMsg("");
                                   setGuestName("");
@@ -979,6 +980,7 @@ export function ListingDetail() {
                               });
                               if (ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
+                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
                                 setContactSent(true);
                                 setContactMsg("");
                               } else {

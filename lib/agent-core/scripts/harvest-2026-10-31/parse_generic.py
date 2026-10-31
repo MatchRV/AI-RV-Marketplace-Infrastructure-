@@ -113,6 +113,11 @@ def parse(t,rec):
     e["bodyLen"]=len(body)
     # price labels visible on the page (label + amount), for review; MSRP kept apart
     e["priceLabels"]=[(a.strip(),num(b)) for a,b in re.findall(r'(?i)\b(MSRP|List Price|Retail Price|Sale Price|Our Price|Your Price|Internet Price|Price|Now|Special Price|Clearance Price|Cash Price)\s*:?\s*\$\s?([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})(?:\.\d\d)?',body)][:12]
+    # fee amounts printed on the page (doc/prep/PDI/freight...), used only to prove a sale-price + fees = total breakdown
+    e["feeAmts"]=[num(b) for b in re.findall(r'(?i)\b(?:doc(?:umentary|umentation)?|dealer|prep(?:aration)?|pdi|freight|destination|processing|admin(?:istrative)?|handling|title|registration|delivery|reconditioning)\s*(?:fee|charge)?s?\s*:?\s*\$\s?([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{2,6})(?:\.\d\d)?',body)][:12]
+    # the unit's own lot status (inventory JSON on Stealth/Next platforms, e.g. Giant RV) and the badge on its own photo
+    m=re.search(r'\blot_?[sS]tatus\\?"\s*:\s*\\?"([^"\\]{2,40})',t); e["lotStatus"]=m.group(1).strip() if m else None
+    m=re.search(r'class="absolute bottom-3 right-3">\s*<div[^>]*>((?:\s*<span[^>]*>[^<]{2,40}</span>)+)',t); e["photoBadges"]=[H.unescape(b).strip() for b in re.findall(r'>([^<]{2,40})</span>',m.group(1))] if m else []
     e["vinsOnPage"]=sorted(set(re.findall(r'\b[A-HJ-NPR-Z0-9]{17}\b',t)))[:20]
     return e
 def _work(args):

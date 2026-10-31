@@ -45,20 +45,30 @@ def facts(x):
     if own_sp and own_sp>=1000 and own_sp not in msrps:
         f['price']=own_sp; q['price']=f'unit sale price "{ia.get("saleprice")}" ({ia.get("salepricelabel") or ia.get("pricelabel") or "no label"})'
     if 'price' not in f:
-        for o in ld:
-            p=o.get('price')
-            if p and p>=1000 and p not in msrps: f['price']=p; q['price']='schema.org offer price'; break
-    if 'price' not in f and not ia:
-        p=money(x.get('ia_saleprice'))
-        if p and p>=1000 and p not in msrps: f['price']=p; q['price']=f'sale price "{x.get("ia_saleprice")}" ({x.get("ia_pricelabel") or "no label"})'
-    # 2) dealer states a vehicle "Sale Price" and a fee-inclusive total: keep the stated vehicle (pre-fee) price
+        # schema.org offer price of the unit's own listing. Pages can carry offers for "similar units" too: when
+        # several distinct offer prices are present, take only the offer whose name matches this page's heading.
+        pri=[o for o in ld if o.get('price') and o['price']>=1000 and o['price'] not in msrps]
+        if len({o['price'] for o in pri})==1: f['price']=pri[0]['price']; q['price']='schema.org offer price'
+        elif pri:
+            def _n(s_): return re.sub(r'[^a-z0-9]','',(s_ or '').lower())
+            heads={_n(x.get(k)) for k in ('h1','ogTitle') if x.get(k)}
+            own=[o for o in pri if _n(o.get('name')) and any(_n(o.get('name')) in h_ or h_ in _n(o.get('name')) for h_ in heads if h_)]
+            if len({o['price'] for o in own})==1: f['price']=own[0]['price']; q['price']='schema.org offer price (offer named as the page heading)'
+            else: f['priceNote']='own_price_not_identified_several_offers'
+    # (trial6) no page-wide first data-saleprice fallback: it can belong to a similar-units card.
+    # 2) dealer states a vehicle "Sale Price" and a fee-inclusive total: keep the stated vehicle (pre-fee) price,
+    # only when the page's own fee lines add up to the difference (proof that both amounts are this unit's).
     if f.get('price') and not own_sp:
         P=f['price']; PL=x.get('priceLabels') or []
         sale=[p for l,p in PL if l.lower()=='sale price' and p]
         tot=[p for l,p in PL if l.lower() in('price','our price','your price') and p]
-        if sale and sale[0]<P<=sale[0]*1.12 and P in tot:
-            f['price_total_with_fees']=P; f['price']=sale[0]
-            q['price']=f'stated "Sale Price" {sale[0]} (page total incl. fees {P} not used)'
+        fees=[a for a in (x.get('feeAmts') or []) if a and 0<a<P]
+        if sale and sale[0]<P and P in tot:
+            d_=P-sale[0]; fs=sorted(set(fees))
+            ok_=d_ in fs or sum(fs)==d_ or any(a+b==d_ for i_,a in enumerate(fs) for b in fs[i_+1:])
+            if ok_:
+                f['price_total_with_fees']=P; f['price']=sale[0]
+                q['price']=f'stated "Sale Price" {sale[0]} + listed fees {d_} = total {P} (total not used)'
     # MSRP only from the unit's own price block (Interact unit element). Page-wide MSRP labels can belong to
     # "similar units" lists, so they are never used as this unit's MSRP.
     if ia:

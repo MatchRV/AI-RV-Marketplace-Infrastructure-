@@ -589,18 +589,25 @@ const stats = {
   coverage: { length: known("lengthFt"), sleeps: known("sleeps"), dryWeight: known("dryWeightLbs"), gvwr: known("gvwrLbs"), price: known("priceUsd") },
 };
 console.log(JSON.stringify(stats, null, 1));
-const payload = JSON.stringify({
+// The document is serialised unit by unit: a large build's JSON text can exceed V8's maximum string length.
+// "units" is the last key, so the header object is written with an empty array and the units are spliced in.
+const headJson = JSON.stringify({
   schemaVersion: 1, builtAt,
   datasetNote: "MatchRV nationwide dealer inventory snapshot: the Oct 14 dealer-website snapshot, refreshed and extended with a 2026-10-25..31 harvest (MarketCheck active RV listings + dealer websites). Each harvested unit has a VIN or stock number and a listing URL; specs are copied from the listing or left blank. Units not seen again keep their earlier lastSeenAt.",
   stats: { rawRecords: oldUnits.length + rows.length, units: units.length, dealers: dealers.size,
     rejections: Object.fromEntries(rejects), uniqueVins: units.filter(u => u.vin).length, withLength: known("lengthFt"), withSleeps: known("sleeps"),
     lastSeenRange, seenWithinDaysOfBuiltAt: staleWindows },
-  units,
+  units: [],
 });
 // ASCII-only JSON (non-ASCII as \uXXXX escapes): identical parsed values, but the text decodes to a
 // one-byte string at load, halving the transient memory of JSON.parse on the server.
-const asciiPayload = payload.replace(/[\u007f-\uffff]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
-writeFileSync(`${SNAPSHOT}.gz`, gzipSync(Buffer.from(asciiPayload, "latin1"), { level: 9 }));
+const ascii = (t: string) => Buffer.from(t.replace(/[\u007f-\uffff]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0")), "latin1");
+if (!headJson.endsWith('"units":[]}')) throw new Error("snapshot header must end with the units array");
+const asciiParts: Buffer[] = [ascii(headJson.slice(0, -2))];
+units.forEach((u, i) => { asciiParts.push(ascii((i ? "," : "") + JSON.stringify(u))); });
+asciiParts.push(Buffer.from("]}", "latin1"));
+const payloadBytes = Buffer.concat(asciiParts);
+writeFileSync(`${SNAPSHOT}.gz`, gzipSync(payloadBytes, { level: 9 }));
 writeFileSync(statsPath, JSON.stringify(stats, null, 1));
 if (noPriceHeld.length) writeFileSync(statsPath.replace(/\.json$/, "") + ".no-price-units.ndjson.gz", gzipSync(noPriceHeld.map(u => JSON.stringify(u)).join("\n")));
-console.log(`wrote ${SNAPSHOT}.gz (${(payload.length / 1e6).toFixed(0)} MB raw)`);
+console.log(`wrote ${SNAPSHOT}.gz (${(payloadBytes.length / 1e6).toFixed(0)} MB raw)`);

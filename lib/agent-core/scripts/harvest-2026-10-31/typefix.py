@@ -31,6 +31,7 @@ M=[(r'airstream',r'^(interstate|rangeline)\b','class_b'),
    (r'fleetwood',r'^pulse\b','class_c'),(r'tiffin',r'^wayfarer\b','class_c'),(r'tiffin',r'^(allegro|phaeton|zephyr|open road)\b','class_a'),
    (r'leisure travel',r'^(unity|wonder|serenity|free spirit)\b','class_c'),
    (r'forest river|sunseeker|forester',r'^(sunseeker|forester|solera|isata)\b','class_c'),
+   (r'winnebago|itasca',r'^(spirit|aspect)\b','class_c!'),   # ! = Class C only with a motorhome chassis VIN, else held (trial8d)
    (r'gulf stream',r'^conquest\b','class_c*'),   # * = name also used on towables: needs a motorhome chassis VIN
    (r'dynamax',r'^(isata|dx3|europa|grand sport|force|dynaquest)\b','class_c'),
    (r'nexus',r'^(viper|phantom|ghost)\b','class_c'),
@@ -55,14 +56,16 @@ for u in U:
     mt=f"{model} {clean(u.get('trim'))} {u.get('title') or ''}" if re.match(r'(?i)outlaw\b',model) else model
     cls=next((c for a,b,c in M if a.search(make) and b.search(mt)),None)
     if cls and cls.endswith('*'): cls=cls[:-1] if ch else None
+    need_chassis=bool(cls and cls.endswith('!'))
+    if need_chassis: cls=cls[:-1] if ch else None
     mo=bool(MOTOR_ONLY.match(make)); hi=p>300000
-    if not (cls or mo or hi): keep.append(u); continue
-    why='motorized model line' if cls else ('motorhome-only make' if mo else 'towable price above $300,000')
+    if not (cls or mo or hi or need_chassis): keep.append(u); continue
+    why='motorized model line' if cls else ('Class C model line without a motorhome chassis VIN' if need_chassis else ('motorhome-only make' if mo else 'towable price above $300,000'))
     if cls:
         rows.append([u['id'],lu(u),dm(u),u.get('title'),make,model,p,t,cls,f"manufacturer model class ({make} {model.split()[0] if model else ''})",ch]); C['fixed']+=1; C[f'fixed:{dm(u)}:{cls}']+=1; C[f'fixed_type:{cls}']+=1
         if ch: C['fixed_chassis_vin_corroborated']+=1
         u['rvType']=cls; keep.append(u); continue
-    held.append(u); holds.append([u['id'],lu(u),dm(u),u.get('title'),make,model,p,t,'rv_type_unresolved_motorized',f'{why}; model class not in the manufacturer table'+(f'; VIN chassis {ch}' if ch else '')])
+    held.append(u); holds.append([u['id'],lu(u),dm(u),u.get('title'),make,model,p,t,'rv_type_unresolved_motorized',(why if need_chassis else f'{why}; model class not in the manufacturer table')+(f'; VIN chassis {ch}' if ch else '')])
     C['held']+=1; C[f'held:{dm(u)}']+=1
 # ---- trial8c: hold (never retype) units whose stored type contradicts the manufacturer's model line
 # (motorhome lines stored as towables, towable lines stored as motorhomes), whole build incl. v3.3 base units.
@@ -71,7 +74,7 @@ MOTOR_LINES=[(r'fleetwood',r'bounder|flair|discovery|pace arrow|southwind|fortis
  (r'coachmen',r'mirada|pursuit|sportscoach|encore|leprechaun|freelander|prism|concord|cross trail|galleria|beyond|nova|cross country|santara'),   # not Spirit: Coachmen Spirit / Northern Spirit are travel trailers
  (r'forest river',r'fr3|georgetown|berkshire|charleston|legacy|sunseeker|forester|solera|isata|sunway|tribute'),
  (r'thor',r'aspect|a\.?c\.?e\.?|axis|vegas|hurricane|windsport|miramar|palazzo|tuscany|aria|venetian|challenger|luminate|inception|daybreak|four winds|chateau|compass|quantum|freedom elite|delano|gemini|omni|magnitude|tiburon|synergy|siesta|citation|sequence|tellaro|sanctuary|tranquility|rize|scope|talavera|dazzle|twist'),
- (r'winnebago|itasca',r'view|navion|ekko|travato|solis|revel|boldt|journey|forza|adventurer|vista|sunstar|intent|horizon|minnie winnie|era|outlook|brave|sightseer|sunova|tour|meridian|ellipse|suncruiser|reyo|trend|fuse|porto'),
+ (r'winnebago|itasca',r'spirit|aspect|view|navion|ekko|travato|solis|revel|boldt|journey|forza|adventurer|vista|sunstar|intent|horizon|minnie winnie|era|outlook|brave|sightseer|sunova|tour|meridian|ellipse|suncruiser|reyo|trend|fuse|porto'),
  (r'jayco',r'redhawk|greyhawk|melbourne|seneca|precept|alante|embark|terrain|granite ridge'),
  (r'newmar',r'bay star|canyon star|dutch star|ventana|essex|london aire|mountain aire|king aire|new aire|supreme aire|northern star'),
  (r'tiffin',r'allegro|phaeton|zephyr|open road|wayfarer'),

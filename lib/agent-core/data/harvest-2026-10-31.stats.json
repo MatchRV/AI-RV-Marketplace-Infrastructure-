@@ -818,8 +818,8 @@
  },
  "windows": {
   "builtAt": "2026-10-31T19:39:27.326Z",
-  "loaded": 139587,
-  "passing_non_stale_rules": 139550,
+  "loaded": 139586,
+  "passing_non_stale_rules": 139549,
   "windows": {
    "14": {
     "eligible": 76594,
@@ -843,7 +843,7 @@
     "cutoff_PT": "2026-10-01 12:39 PDT"
    },
    "45": {
-    "eligible": 139550,
+    "eligible": 139549,
     "domains": 710,
     "locations": 1422,
     "states": 49,

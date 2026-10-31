@@ -1,5 +1,5 @@
 import { ArrowUpRight, CalendarDays } from "lucide-react";
-import { BOOKING_URL } from "@/config/booking";
+import { BookingLink } from "@/components/booking-link";
 
 export function DealerPricing() {
   return <section className="brand-container brand-section" id="plans" aria-labelledby="dealer-plans-heading">
@@ -19,7 +19,7 @@ export function DealerPricing() {
         <CalendarDays size={32} aria-hidden="true"/>
         <h3>Pick a time that works for you.</h3>
         <p>Open Jonathan’s Google Calendar to choose an available time to talk.</p>
-        <a className="brand-button" href={BOOKING_URL} target="_blank" rel="noopener noreferrer">Find a time and let’s talk <ArrowUpRight size={17} aria-hidden="true"/></a>
+        <BookingLink placement="home_plans">Find a time and let’s talk <ArrowUpRight size={17} aria-hidden="true"/></BookingLink>
       </div>
     </div>
   </section>;

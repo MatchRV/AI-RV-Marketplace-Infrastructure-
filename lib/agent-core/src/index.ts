@@ -21,3 +21,4 @@ export * from "./listing-reconcile.js";
 export * from "./manufacturer-specs.js";
 export * from "./manufacturer-spec-records.js";
 export * from "./inventory-db.js";
+export * from "./walkthrough.js";

@@ -85,6 +85,17 @@ jobs:
           cat /tmp/matchrv-api.log
           exit 1
 
+      - name: Public MCP docs page (/mcp-docs)
+        shell: bash
+        run: |
+          curl --fail --silent --show-error -D /tmp/docs.h http://127.0.0.1:8080/mcp-docs -o /tmp/docs.html
+          grep -qi '^content-type: text/html' /tmp/docs.h
+          for t in teach_outfitter outfitter_memory outfitter_discovery outfitter_guide search_rvs get_rv compare_rvs evaluate_tow_fit prepare_dealer_inquiry send_dealer_inquiry get_dealer_inquiry_status; do
+            grep -q "id=\"$t\"" /tmp/docs.html || { echo "missing $t"; exit 1; }
+          done
+          if grep -qi '<script' /tmp/docs.html; then echo "docs page must not need JS"; exit 1; fi
+          echo "MCP docs page OK"
+
       - name: Exercise MCP initialize and V1 tools
         shell: bash
         run: |

@@ -6,6 +6,7 @@ import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { matchRvMcpNodeHandler } from "./mcp";
+import { getMcpDocsHtml } from "./lib/mcp-docs";
 import { DB_MODE } from "@workspace/db";
 import { lookupUnit } from "./services/inventory-access";
 import { injectListingIntoShell } from "./lib/listing-seo";
@@ -25,6 +26,17 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 app.all("/mcp", matchRvMcpNodeHandler);
+// Public MCP documentation (static, server-rendered HTML; no JS). Registered
+// before express.static and the SPA catch-all so crawlers get real content.
+app.get(["/mcp-docs", "/mcp-docs/"], async (_req: Request, res: Response) => {
+  try {
+    const html = await getMcpDocsHtml();
+    res.set("Cache-Control", "public, max-age=3600").type("html").send(html);
+  } catch (err) {
+    console.error("[mcp-docs] render failed:", err);
+    res.status(503).type("text/plain").send("MCP docs temporarily unavailable");
+  }
+});
 
 // Preserve old links with real HTTP redirects before serving the SPA shell.
 app.get("/terms-and-conditions", (_req: Request, res: Response) => res.redirect(301, "/terms"));

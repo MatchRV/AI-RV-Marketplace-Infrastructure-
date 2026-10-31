@@ -38,6 +38,9 @@ import {
   SHERPA_WELCOME,
   ROAD_TO_SALE_STEPS,
   INTERVIEW_STEPS,
+  walkthroughFor,
+  refineHint,
+  REFINE_RULE,
   type BuyerProfile,
   type Constraints,
   type CanonicalUnit,
@@ -510,7 +513,7 @@ function towFitFlag(m: UnitMatch | undefined, o: { towVehicleGiven: boolean; tow
   return {};
 }
 
-export const MCP_VERSION = "2.2.6";
+export const MCP_VERSION = "2.2.7";
 
 function buildMatchRvServer(): McpServer {
   const server = new McpServer(
@@ -525,6 +528,8 @@ function buildMatchRvServer(): McpServer {
         OUTFITTER_GUIDANCE.replace(/Offer an optional VIN lookup[\s\S]*?Never infer a tow package/, "Never infer a tow package") + "\n" +
         "MEMORY: search, detail, compare and tow tools never store anything. When a shopper confirms an exact tow rating, door-sticker payload, or a unit spec the dealer never published, and agrees to MatchRV remembering it, call teach_outfitter. Taught facts are private to this shopper/conversation (never shown to other shoppers) and labelled learned. If teach_outfitter returns a session_key, pass it as session_key on later calls in this conversation. Before asking for a rating, check outfitter_memory / sherpa.memory; ask the shopper to confirm a recalled value matches their exact vehicle. " +
         "DEALER INQUIRIES: only when the shopper asks to contact a dealership about a specific unit, collect their name, email and/or phone and message, call prepare_dealer_inquiry (sends nothing), show the full preview, and call send_dealer_inquiry with confirmed=true ONLY after the shopper explicitly approves that exact preview. Report the returned status honestly (delivered / queued_for_matchrv / failed); never claim the dealer replied unless get_dealer_inquiry_status shows a recorded dealerReply. " +
+        "REFINING RESULTS: " + REFINE_RULE + " search_rvs returns refine (suggested=true when results are thin) with the exact question to ask. " +
+        "WALKTHROUGH VIDEOS: search_rvs rows and get_rv include walkthrough. When the shopper likes a unit or model, offer 'Want to see a walkthrough video of the inside?' and share walkthrough.url. kind=dealer_video is a link the dealer put in this unit's listing (not verified to film this exact unit; pass on walkthrough.note); kind=model_search is a YouTube search for the same model, so say it shows the model, not this exact unit ('Same model — this unit may differ'). Never describe a video you haven't seen. " +
         "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
         "ROAD TO THE SALE (MCP tools): The shared method above decides the order. outfitter_discovery (pass the fit facts and covered_steps gathered so far; request_kind=greeting for a hello or vague first message) returns the ONE next interview question to ask (nextQuestion, with its step and reason; nextQuestions holds just that one), knownSummary (never re-ask these), and readyForProducts with searchConstraints. For a greeting it returns the Sherpa welcome, and you send it. Questions that aren't an RV search (comparisons like 'what's better, a motorhome or a 5th wheel?', how-to, costs) get answered directly from outfitter_guide with no questions first (route=education, status=answer_directly). " + GOLDEN_TICKET_TEXT + " ENFORCED BY THE SERVER: search_rvs returns status=needs_discovery with results=[] until every question is answered. ASK, DON'T ASSUME: never fill an answer the shopper hasn't given. 'Family' is not a party size, a budget is not a payment method, and silence is not 'no length limit'. When you get needs_discovery, ask its nextQuestion (one question, with its reason) and wait. Skipping counts only when the shopper literally asks: pass shopper_requested_results_now=true with their exact words in shopper_words, show results, then ask resumeQuestions. SHORTLIST: search_rvs returns the 3 best fits (three different model lines) by default (more, up to 10, only if the shopper asks). Present them as a shortlist and never quote or estimate how many RVs matched or exist, including for a named model. After products, ask whether they want to contact the dealer (DEALER INQUIRIES). MAKE/MODEL: always pass make and model to search_rvs when the shopper names them (e.g. make=Tiffin, model=Allegro RED), and never substitute another brand or series without asking. FUEL: pass fuel_type only when the shopper explicitly says gas or diesel; never infer it from 'gas mileage', 'propane' or 'gas or diesel is fine', and never bring fuel up unprompted. LENGTH RULE: when a shopper states a max length, ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer; only approved comfort flexibility widens the cap, by exactly +2 ft. Pass length_max_ft, length_reason and length_flex_approved. TOW: 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer. Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR. 1-2 sleepers / no kids = couples layouts first; 3+ or kids = sleeping capacity first. Explain every pick in lifestyle terms with its tradeoff, and never pad to three. " +
         "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Don't cite inventory totals or match counts to the shopper. sleeps=null means neither the dealer nor the manufacturer published sleeping capacity, so say it's not published and needs confirming (never estimate it); towFit='verify tow fit' means nobody has checked it against their vehicle yet, so say so. Never claim towing safety from a generic vehicle model. VIN lookup is not available through this MCP server.",
@@ -770,7 +775,11 @@ function buildMatchRvServer(): McpServer {
         const ranked = [...(await run.hydrate(ordered.slice(0, shortlistSize))), ...ordered.slice(shortlistSize)];
         const compact = compactSearchResult({ ...outcome, results: ranked }, shortlistSize);
         const towable = isTowableSearch(profile) || Boolean(profile.rvTypes?.some((t) => (TOWED_RV_TYPES as readonly string[]).includes(t)));
-        const shortlist = (compact.results as Record<string, unknown>[]).map((row, i) => ({ ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }) }));
+        const shortlist = (compact.results as Record<string, unknown>[]).map((row, i) => {
+          const walkthrough = ranked[i] ? walkthroughFor(ranked[i].unit) : null;
+          return { ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }), ...(walkthrough ? { walkthrough } : {}) };
+        });
+        const refine = refineHint({ shown: shortlist.length, requested: shortlistSize, verified: shortlist.filter((r) => (r as Record<string, unknown>).verified === true).length, noLocalMatches: Boolean((compact as Record<string, any>).coverage?.no_local_matches) });
         const { funnel, coverage, note: _note, results: _r, ...rest } = compact as Record<string, any>;
         const makeModelSummary = wantsMakeModel ? await makeModelCount(corpusSearch(scope), constraints) : null;
         const inventoryQuality = await mcpInventoryQuality();
@@ -797,6 +806,7 @@ function buildMatchRvServer(): McpServer {
             resumeQuestions: road.waived ? road.resumeQuestions.length ? road.resumeQuestions : road.nextQuestions : [],
             missingForProducts: road.missingForProducts,
           },
+          refine,
           sherpa: {
             knownSummary: road.knownSummary,
             readyToSearch: true,
@@ -807,8 +817,8 @@ function buildMatchRvServer(): McpServer {
               ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
               : null,
           },
-          outfitterGuidance: "Briefly confirm what the shopper told you, then present this shortlist (up to three best fits). Explain each pick in lifestyle terms: why it fits how they camp, plus its tradeoff. Flag every unknown (sleeps=null, towFit='verify tow fit', unknown fields) as not published instead of filling it in. Never pad the list, and never mention a total match count. Tow verdicts are preliminary until payload/exact rating is known. Road to the Sale step 4: once they like a unit, ask whether they'd like to contact the dealership; if yes, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. VIN lookup is unavailable through MCP.",
-          nextStep: `Present the shortlist and its unknowns honestly. ${makeModelSummary ? "They named a make/model: never pad the list with other brands or series. " : ""}Don't say how many RVs matched in total. ${road.waived && (road.resumeQuestions.length || road.nextQuestions.length) ? "They asked to skip the questions, so after the results, come back to roadToSale.resumeQuestions, one question per turn. " : road.nextQuestions.length ? "Then ask roadToSale.nextQuestions, one per turn, never an interrogation. " : ""}Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.`,
+          outfitterGuidance: "Briefly confirm what the shopper told you, then present this shortlist (up to three best fits). Explain each pick in lifestyle terms: why it fits how they camp, plus its tradeoff. Flag every unknown (sleeps=null, towFit='verify tow fit', unknown fields) as not published instead of filling it in. Never pad the list, and never mention a total match count. Tow verdicts are preliminary until payload/exact rating is known. Road to the Sale step 4: once they like a unit, ask whether they'd like to contact the dealership; if yes, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. REFINE: " + REFINE_RULE + " WALKTHROUGH: when they're interested in a unit, offer 'Want to see a walkthrough video of the inside?' and share its walkthrough.url. If walkthrough.kind is model_search, say it shows the same model, not this exact unit (walkthrough.label). VIN lookup is unavailable through MCP.",
+          nextStep: `Present the shortlist and its unknowns honestly. ${makeModelSummary ? "They named a make/model: never pad the list with other brands or series. " : ""}Don't say how many RVs matched in total. ${road.waived && (road.resumeQuestions.length || road.nextQuestions.length) ? "They asked to skip the questions, so after the results, come back to roadToSale.resumeQuestions, one question per turn. " : road.nextQuestions.length ? "Then ask roadToSale.nextQuestions, one per turn, never an interrogation. " : ""}${refine.suggested ? `These results look thin (${refine.reason}), so ask refine.ask and change one thing at a time. ` : "If they don't like these, ask refine.ask and change one thing at a time. "}Offer each unit's walkthrough when they show interest (model_search = same model, not this unit). Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.`,
         }, false, internal);
       } catch (error) {
         return textResult(
@@ -843,7 +853,8 @@ function buildMatchRvServer(): McpServer {
       if (!unit) return textResult({ error: found.quarantine ? "unit_quarantined" : "unit_not_found", issues: found.quarantine, guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
       const info = await datasetInfo();
-      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: info.builtAt, note: info.datasetNote } });
+      const walkthrough = walkthroughFor(unit);
+      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: info.builtAt, note: info.datasetNote } });
     },
   );
 

@@ -14,7 +14,7 @@ UA="Mozilla/5.0 (compatible; MatchRV-collector/1.0; +https://matchrv.com)"
 DELAY=float(os.environ.get("PP_DELAY","1.6"))
 # Challenge / bot-wall pages only. (Turnstile or reCAPTCHA scripts preloaded for a page's own forms are not a wall;
 # a challenge script on a short page with no listing content is.)
-BOT=re.compile(r'cf-chl|<title>\s*Just a moment|Attention Required! \| Cloudflare|/cdn-cgi/challenge-platform/h/|_Incapsula_Resource|px-captcha|captcha-delivery|datadome',re.I)
+BOT=re.compile(r'cf-chl|<title>\s*Just a moment|Attention Required! \| Cloudflare|/cdn-cgi/challenge-platform/h/|_Incapsula_Resource|px-captcha|captcha-delivery|datadome|<title>\s*One moment, please',re.I)
 def walled(body):
     return bool(BOT.search(body[:200000])) or (len(body)<30000 and re.search(r'challenges\.cloudflare\.com|g-recaptcha|hcaptcha',body,re.I) is not None)
 lock=threading.Lock()

@@ -9,8 +9,18 @@ import json,sys,os,re,collections,datetime
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from facts import facts,money
 from rvtype import norm_type
+from urlloc import urlloc
 D,OUT=sys.argv[1],sys.argv[2]
 DI=json.load(open(sys.argv[3])) if len(sys.argv)>3 else {}
+import gzip
+from lotparse import lot_from_page
+LOTDOMS={'optimumrv.com','poulsborv.com','motorsportsland.com','cenlarv.com','bentsrv.com','fourwindsrv.com','unchartedrec.com','rvconnections.com',
+ 'hamiltonrvsales.com','wehrrvs.com','airstreamlasvegas.com','airstreaminlandempire.com','airstreamorangecounty.com','airstreamlosangeles.com','rvtrucksalesmt.com',
+ 'selkirkrv.com','renoairstream.com','seattleairstream.com','airstreamspokane.com','portlandairstream.com','lamesarv.com','nirvc.com','darrenbideauxrv.com',
+ 'millicanrvs.com','robbinsautoandrv.com','mhsrv.com'}
+AIR_LOT={('seattle','WA'):('Milton','WA'),('spokane','WA'):('Spokane Valley','WA'),('portland','OR'):('Clackamas','OR'),('reno','NV'):('Reno','NV')}
+_SL="/workspace/harvest-2026-10-31/site_lots.json"
+SITE_LOTS={d:[(c,st) for c,st,n in v if n>=3] for d,v in json.load(open(_SL)).items()} if os.path.exists(_SL) else {}
 VINRE=re.compile(r'^[A-HJ-NPR-Z0-9]{17}$')
 STATES=set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split())
 GONE_AV={"SoldOut","Discontinued","OutOfStock"}
@@ -76,6 +86,9 @@ for l in open(f"{D}/extracted.ndjson"):
     elif re.search(r'\bnewUnit\b',cls): cond="new"; condq="unit marked new"
     elif re.search(r'\busedUnit\b',cls): cond="used"; condq="unit marked used"
     elif f.get("cond"): cond=f["cond"]; condq=q["cond"]
+    _tags=[t_.lower() for t_ in (x.get("unitTags") or [])]
+    if x.get("factoryOrderText") or any(t_ in ("on order","available to order","factory order","special order","build to order") for t_ in _tags): rej("factory_order"); continue
+    if any(t_ in ("sale pending","sold","pending sale") for t_ in _tags): rej("sold_or_unavailable_unit_tag"); continue
     # price
     price=None; pq=None; msrp=None
     if ia:
@@ -85,8 +98,10 @@ for l in open(f"{D}/extracted.ndjson"):
         if sp and sp>=1000: price=sp; pq=f'{ia.get("salepricelabel") or "sale price"} {ia.get("saleprice")}'
         elif tp and tp>=1000 and "msrp" not in lab: price=tp; pq=f'{ia.get("pricelabel") or "price"} {ia.get("saleorregularprice") or ia.get("totalprice")}'
     elif f.get("price"): price=f["price"]; pq=q["price"]
+    if f.get("price_total_with_fees") and price==f.get("price"): c["price_prefee_sale_price"]+=1
     if price and msrp and abs(price-msrp)<1 and not (ia.get("saleprice") and money(ia.get("saleprice"))): price=None
-    if not msrp and f.get("msrp"): msrp=f["msrp"]
+    # no page-wide MSRP fallback: only the unit's own price block (Interact unit element) may supply MSRP
+    if price and msrp and msrp<=price: msrp=None
     # location: the unit's lot, else the page's seller address, else the dealer record we hold for the domain
     city=state=None; locq=None
     if ia.get("lot-city") and ia.get("lot-state"): city,state=ia["lot-city"].strip(),ia["lot-state"].strip().upper(); locq="unit lot (data-lot-city/state)"
@@ -95,11 +110,40 @@ for l in open(f"{D}/extracted.ndjson"):
     elif (ld.get("seller") or {}).get("city") and (ld.get("seller") or {}).get("state"):
         city,state=ld["seller"]["city"].strip(),str(ld["seller"]["state"]).strip().upper(); locq="listing seller address"
     dom=t.get("domain") or bare(j["url"])
+    if dom in LOTDOMS and j.get("page") and not (locq or "").startswith("unit lot"):
+        # multi-lot dealer: the lot as this unit's own page states it overrides any dealer-level address
+        try: _h=gzip.open(f"{D}/pages/{j['page']}.html.gz").read().decode("utf8","replace")
+        except Exception: _h=""
+        _r=lot_from_page(dom,j.get("finalUrl") or j["url"],_h) if _h else None
+        if _r:
+            _c,_s,_ev=_r
+            if _c and not _s:
+                _s=next((ss for sc,ss in SITE_LOTS.get(dom,[]) if sc.lower()==_c.lower()),None)
+            if not _c and _s:
+                _l=[sc for sc,ss in SITE_LOTS.get(dom,[]) if ss==_s]
+                if len(_l)==1: _c=_l[0]; _ev+=f"; the dealer's only {_s} lot printed on its pages is {_c}, {_s}"
+            if _c and _s in STATES:
+                if (_c.lower(),_s) in AIR_LOT: _c,_s=AIR_LOT[(_c.lower(),_s)]
+                if _c=="Mt. Vernon" and _s=="WA": _c="Mount Vernon"
+                city,state,locq=_c,_s,_ev
+            else: rej("lot_not_determined"); continue
+        else: rej("lot_not_determined"); continue
     dname=ia.get("dealer-name") or (ld.get("seller") or {}).get("name")
     if not (city and state in STATES):
         di=DI.get(dom) or {}
-        if di.get("city") and di.get("state") in STATES and di.get("single_location", True):
-            city,state=di["city"],di["state"]; locq="dealer record (single location)"; dname=dname or di.get("name")
+        # only a dealer that states a single address on its own site; a city merely held in our v3.3 records is not
+        # evidence of the unit's lot (CSO QA trial4: Poulsbo RV / Motor Sportsland multi-lot pinning)
+        if di.get("city") and di.get("state") in STATES and di.get("single_location", True) and not str(di.get("source","")).startswith("v3.3"):
+            city,state=di["city"],di["state"]; locq="dealer homepage single address"; dname=dname or di.get("name")
+        elif di.get("city") and di.get("state") in STATES:
+            uL=urlloc(j.get("finalUrl") or j["url"]); sl=SITE_LOTS.get(dom,[])
+            if len(sl)==1 and sl[0][1]==di["state"] and sl[0][0].lower().replace(".","")==di["city"].lower().replace(".",""):
+                city,state=di["city"],di["state"]; locq=f"dealer's pages print a single lot address ({sl[0][0]}, {sl[0][1]})"; dname=dname or di.get("name")
+            elif not sl and dom in SITE_LOTS:
+                city,state=di["city"],di["state"]; locq="dealer record; the dealer's pages print no lot address (no evidence of another lot)"; dname=dname or di.get("name")
+            elif uL and uL[0] and uL[1]==di["state"] and di["city"].lower() in uL[0].lower():
+                city,state=di["city"],di["state"]; locq=f"listing URL names the lot {di['city']}, {di['state']}"; dname=dname or di.get("name")
+            else: rej("lot_not_determined"); continue
     if not (city and state in STATES): rej("no_location"); continue
     imgs=[]
     for u in (ld.get("images") or []):

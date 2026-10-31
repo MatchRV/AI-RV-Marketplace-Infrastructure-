@@ -38,13 +38,32 @@ def facts(x):
             m=re.match(r'^\s*(New|Used|Pre-Owned|Preowned)\b',x.get(nm) or '',re.I)
             if m: f['cond']='new' if m.group(1).lower()=='new' else 'used'; q['cond']=f'listing {nm} "{x[nm][:80]}"'; break
     msrps={p for l,p in x.get('priceLabels') or [] if l.lower() in('msrp','list price','retail price') and p}
-    for o in ld:
-        p=o.get('price')
-        if p and p>=1000 and p not in msrps: f['price']=p; q['price']='schema.org offer price'; break
+    f['pageMsrps']=sorted(msrps)
+    ia=x.get('ia') or {}
+    own_sp=money(ia.get('saleprice')) if ia else None
+    # 1) the unit's own price block (Interact unit element): sale price, which is the vehicle price before fees
+    if own_sp and own_sp>=1000 and own_sp not in msrps:
+        f['price']=own_sp; q['price']=f'unit sale price "{ia.get("saleprice")}" ({ia.get("salepricelabel") or ia.get("pricelabel") or "no label"})'
     if 'price' not in f:
+        for o in ld:
+            p=o.get('price')
+            if p and p>=1000 and p not in msrps: f['price']=p; q['price']='schema.org offer price'; break
+    if 'price' not in f and not ia:
         p=money(x.get('ia_saleprice'))
         if p and p>=1000 and p not in msrps: f['price']=p; q['price']=f'sale price "{x.get("ia_saleprice")}" ({x.get("ia_pricelabel") or "no label"})'
-    if msrps: f['msrp']=max(msrps)
+    # 2) dealer states a vehicle "Sale Price" and a fee-inclusive total: keep the stated vehicle (pre-fee) price
+    if f.get('price') and not own_sp:
+        P=f['price']; PL=x.get('priceLabels') or []
+        sale=[p for l,p in PL if l.lower()=='sale price' and p]
+        tot=[p for l,p in PL if l.lower() in('price','our price','your price') and p]
+        if sale and sale[0]<P<=sale[0]*1.12 and P in tot:
+            f['price_total_with_fees']=P; f['price']=sale[0]
+            q['price']=f'stated "Sale Price" {sale[0]} (page total incl. fees {P} not used)'
+    # MSRP only from the unit's own price block (Interact unit element). Page-wide MSRP labels can belong to
+    # "similar units" lists, so they are never used as this unit's MSRP.
+    if ia:
+        ms=money(ia.get('msrp'))
+        if ms and ms>=1000 and (not f.get('price') or ms>f['price']): f['msrp']=ms; q['msrp']='unit element data-msrp'
     for o in ld:
         if o.get('vin'): f['ldVin']=str(o['vin']).upper().strip(); break
     for o in ld:

@@ -30,6 +30,9 @@ for l in open(f"{D}/extracted.ndjson"):
     elif stock and len(stock)>=3 and re.search(r'(?<![A-Za-z0-9])'+re.escape(stock)+r'(?![A-Za-z0-9])',t,re.I): same=True; how="stock_on_page"
     if not same: rej("unit_not_on_page"); continue
     if f.get("avail") in GONE_AV or x.get("soldText"): rej("sold_or_unavailable"); continue
+    _tags=[t_.lower() for t_ in (x.get("unitTags") or [])]
+    if x.get("factoryOrderText") or any(t_ in ("on order","available to order","factory order","special order","build to order") for t_ in _tags): rej("factory_order"); continue
+    if any(t_ in ("sale pending","sold","pending sale") for t_ in _tags): rej("sold_or_unavailable_unit_tag"); continue
     m=dict(r["_meta"]); n=dict(r); n.pop("_pa_key",None)
     isMc=m["harvest_method"].startswith("marketcheck")
     if f.get("type"):
@@ -45,7 +48,18 @@ for l in open(f"{D}/extracted.ndjson"):
         n["price"]=f["price"]; m["price_basis"]="harvested_price_matches_page_2026_10_31" if oldv and abs(oldv-f["price"])<1 else "page_price_2026_10_31"; m["price_quote"]=q["price"]
     elif oldv and f.get("msrp") and abs(oldv-f["msrp"])<1:
         n["price"]=None; m["price_basis"]=None; c["mc_price_was_page_msrp_blanked"]+=1
-    if f.get("msrp") and not n.get("msrp"): n["msrp"]=f["msrp"]
+    # MSRP: only the unit's own price block on the page. A carried MSRP is kept only when the page's own block
+    # states it, or it is the one and only MSRP value printed on the page (no similar-unit MSRPs to confuse it).
+    try: oldm=float(n.get("msrp")) if n.get("msrp") not in (None,"") else None
+    except Exception: oldm=None
+    if f.get("msrp"):
+        if oldm and abs(oldm-f["msrp"])>=1: c["msrp_replaced_by_own_block"]+=1
+        n["msrp"]=f["msrp"]; m["msrp_source"]=q.get("msrp")
+    elif oldm:
+        pm=f.get("pageMsrps") or []
+        if len(pm)==1 and abs(pm[0]-oldm)<1: m["msrp_source"]="carried msrp is the only MSRP on the page"
+        else: n["msrp"]=None; m["msrp_source"]=None; c["msrp_blanked_not_own_block"]+=1
+    if f.get("price_total_with_fees"): m["price_total_with_fees"]=f["price_total_with_fees"]; c["price_prefee_sale_price"]+=1
     if x.get("iaLot") and x["iaLot"][0] and len(x["iaLot"][1] or "")==2:
         if (m["dealer"].get("city"),m["dealer"].get("state"))!=tuple(x["iaLot"]): c["lot_from_page"]+=1
         same_city=(m["dealer"].get("city") or "").strip().lower()==x["iaLot"][0].lower() and (m["dealer"].get("state") or "").upper()==x["iaLot"][1].upper()

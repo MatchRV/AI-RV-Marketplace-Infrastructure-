@@ -162,7 +162,7 @@ function inferTypeFromTitle(title: unknown): string | null {
   if (t.includes("motorhome") || t.includes("motor home")) return "class_a";
   if (t.includes("popup") || t.includes("pop-up") || t.includes("tent trailer")) return "popup_camper";
   if (t.includes("truck camper")) return "truck_camper";
-  if (t.includes("destination")) return "fifth_wheel";
+  if (t.includes("destination")) return "travel_trailer"; // destination trailers are travel trailers, not fifth wheels
   if (t.includes("diesel pusher")) return "class_a";
   return null;
 }

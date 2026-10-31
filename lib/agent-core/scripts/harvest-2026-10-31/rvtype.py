@@ -7,8 +7,8 @@ def norm_type(t,title=""):
         if not x or x in("unknown","other","rv","park model"): continue
         if x in CANON: return x
         if "toy hauler" in x: return "toy_hauler"
-        if "fifth wheel" in x or "5th wheel" in x or "destination trailer" in x: return "fifth_wheel"
-        if "travel trailer" in x or x=="destination": return "travel_trailer"
+        if "fifth wheel" in x or "5th wheel" in x: return "fifth_wheel"
+        if "travel trailer" in x or "destination trailer" in x or x=="destination": return "travel_trailer"
         if "class a" in x or "diesel pusher" in x: return "class_a"
         if "class b" in x: return "class_b"
         if "class c" in x or "super c" in x: return "class_c"

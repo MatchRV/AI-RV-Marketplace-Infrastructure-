@@ -15,7 +15,9 @@ git show fe15241:lib/agent-core/data/inventory.snapshot.json.gz > data/inventory
 cmp data/inventory.snapshot.json.gz $H/base_v3.3.snapshot.json.gz
 KEEP_BASE=1 NODE_OPTIONS=--max-old-space-size=8000 npx tsx scripts/build-harvest-snapshot.ts $H/raw/$T.ndjson $H/out_$T/build_stats.json > $H/logs/build_$T.txt 2>&1
 cp data/inventory.snapshot.json.gz $H/out_$T/inventory.prefix.snapshot.json.gz
-python3 $H/tools/postfix.py $H/out_$T/inventory.prefix.snapshot.json.gz $H/out_$T/inventory.snapshot.json.gz $H/out_$T > $H/out_$T/postfix.json
+(cd $H && python3 tools/loc_parse.py loc loc2 > logs/loc_parse_$T.txt)
+python3 $H/tools/fix5.py $H/out_$T/inventory.prefix.snapshot.json.gz $H/out_$T/inventory.fix5.snapshot.json.gz $H/out_$T > $H/out_$T/fix5_summary.json
+python3 $H/tools/postfix.py $H/out_$T/inventory.fix5.snapshot.json.gz $H/out_$T/inventory.snapshot.json.gz $H/out_$T > $H/out_$T/postfix.json
 cp $H/out_$T/inventory.snapshot.json.gz data/inventory.snapshot.json.gz
 npx tsx scripts/build-dealer-city-coords.ts /workspace/gaz/2023_Gaz_place_national.txt /workspace/gaz/2023_Gaz_cousubs_national.txt > $H/logs/coords_$T.txt 2>&1
 cp src/dealer-city-coords.ts $H/out_$T/dealer-city-coords.ts
@@ -23,4 +25,5 @@ cd $H
 python3 /workspace/harvest-2026-10-30/windows.py out_$T/inventory.snapshot.json.gz out_$T/windows.json > /dev/null
 python3 tools/report.py out_$T/inventory.snapshot.json.gz base_v3.3.snapshot.json.gz out_$T > out_$T/report.json
 python3 tools/qa_sample.py out_$T/inventory.snapshot.json.gz base_v3.3.snapshot.json.gz out_$T > out_$T/qa_sample.txt
+python3 tools/qa_sample5.py out_$T/inventory.snapshot.json.gz base_v3.3.snapshot.json.gz out_$T > out_$T/qa_sample5.txt
 echo "$(date +%T) done $T"; touch out_$T/DONE

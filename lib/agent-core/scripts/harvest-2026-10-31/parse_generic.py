@@ -105,6 +105,10 @@ def parse(t,rec):
     # sold/pending wording visible to the shopper only: drop scripts/styles, and nav links like "View Our Sold - Sale Pending Inventory" / "Sold Inventory"
     vis=txt(strip_blocks(t[:600000]))
     vis=re.sub(r'(?i)view our\s+sold\s*-\s*sale pending\s+inventory|sold\s*-\s*sale pending\s+inventory','',vis)
+    # Interact unit tag on the unit's own detail block (image alt just before "detail-share"), e.g. "On Order"
+    e["unitTags"]=[H.unescape(m.group(1)).strip() for m in re.finditer(r'unit_tag/[^"]*"\s*alt="([^"]{2,40})"(?=[\s\S]{0,600}?detail-share)',t[:600000])][:3]
+    fo=re.search(r'(?i)\b(accepting factory orders|(?:this|unit) is (?:a )?factory order|factory order unit|customer must pick up[^.]{0,60}|must be picked up at the factory|build to order|special order unit|FOB (?:Indiana|Elkhart|the factory|factory)[^.]{0,40})',vis)
+    e["factoryOrderText"]=fo.group(0)[:120] if fo else None
     e["soldText"]=bool(re.search(r'\b(this unit (has been|is) sold|unit (has been )?sold|sale pending|pending sale|no longer available|has been sold)\b',vis,re.I))
     e["bodyLen"]=len(body)
     # price labels visible on the page (label + amount), for review; MSRP kept apart

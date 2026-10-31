@@ -119,6 +119,10 @@ export interface CanonicalUnit {
   /** Manufacturer floorplan code parsed from the model/title, e.g. "26BH". */
   floorplanCode: string | null;
   rvType: RvType;
+  /** True when the dealer lists the unit as a destination trailer. MatchRV has no separate destination type: a
+   *  destination trailer is filed as travel_trailer (or fifth_wheel when the dealer also says fifth wheel) and
+   *  carries this flag. Absent = not stated. */
+  destinationTrailer?: true;
   condition: Condition;
   status: "available" | "pending" | "removed" | "unknown";
 

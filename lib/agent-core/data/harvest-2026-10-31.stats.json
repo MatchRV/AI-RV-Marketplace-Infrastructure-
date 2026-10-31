@@ -470,6 +470,15 @@
   "southland_lot_from_stock_prefix_confirmed": 66
  },
  "fix7_2026_10_31": {
+  "carry_by:bluecompassrv.com": 2,
+  "carry_by:giantrv.com": 96,
+  "carry_by:lerchrv.com": 37,
+  "carry_by:rockyridgerv.com": 3,
+  "carry_by:specialtyrvsales.com": 34,
+  "carry_candidates": 192,
+  "carry_done": 172,
+  "carry_msrp_changed": 1,
+  "carry_skipped:spec_conflict": 20,
   "dedupe:apachecamping.com": 61,
   "dedupe:bishs.com": 4,
   "dedupe:bluecompassrv.com": 5,
@@ -785,32 +794,32 @@
  },
  "windows": {
   "builtAt": "2026-10-31T19:39:27.326Z",
-  "loaded": 139776,
-  "passing_non_stale_rules": 139733,
+  "loaded": 139761,
+  "passing_non_stale_rules": 139718,
   "windows": {
    "14": {
-    "eligible": 76419,
+    "eligible": 76590,
     "domains": 506,
     "locations": 989,
     "states": 49,
     "cutoff_PT": "2026-10-17 12:39 PDT"
    },
    "21": {
-    "eligible": 113615,
+    "eligible": 113784,
     "domains": 511,
     "locations": 1201,
     "states": 49,
     "cutoff_PT": "2026-10-10 12:39 PDT"
    },
    "30": {
-    "eligible": 136932,
+    "eligible": 136931,
     "domains": 648,
     "locations": 1354,
     "states": 49,
     "cutoff_PT": "2026-10-01 12:39 PDT"
    },
    "45": {
-    "eligible": 139733,
+    "eligible": 139718,
     "domains": 712,
     "locations": 1425,
     "states": 49,

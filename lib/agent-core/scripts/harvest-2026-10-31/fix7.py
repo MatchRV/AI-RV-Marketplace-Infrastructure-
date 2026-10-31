@@ -124,7 +124,7 @@ G=collections.defaultdict(list)
 for u in U:
     p=(u.get('priceUsd') or {}).get('value')
     if p and u.get('title') and u.get('year'): G[(dom(u),u['year'],p,nt(u['title']))].append(u)
-drop=set(); dd=[]
+drop=set(); dd=[]; pairs=[]
 for k,us in G.items():
     if len(us)<2: continue
     # keep a record with a valid VIN first, then the freshest
@@ -140,8 +140,44 @@ for k,us in G.items():
         if tgt is None: kept.append(u); continue
         how='same VIN' if realvin(u) and realvin(u)==realvin(tgt) else ('same stock number' if stocks(u)&stocks(tgt) else ('stock number differs only by a letter suffix' if stocks(u) and stocks(tgt) else 'year, price and title match; no conflicting VIN or stock'))
         if ((u.get('provenance') or {}).get('lastSeenAt') or '')>((tgt.get('provenance') or {}).get('lastSeenAt') or ''): C['dedupe_kept_valid_vin_over_fresher']+=1
+        pairs.append((tgt,u,how))
         drop.add(id(u)); C['dedupe_removed']+=1; C[f'dedupe:{k[0]}']+=1; C[f'dedupe_by:{how}']+=1
         dd.append([k[0],u['id'],tgt['id'],u.get('title'),k[2],(u.get('provenance') or {}).get('lastSeenAt'),(tgt.get('provenance') or {}).get('lastSeenAt'),u.get('vin'),tgt.get('vin'),u.get('stockNumber'),tgt.get('stockNumber'),how])
+# ---- 2b) trial8b carry-over: when the kept (valid-VIN) record is older than a removed duplicate, keep its VIN and id but
+# take the fresher record's price block (priceUsd incl. pre-fee fields + msrpUsd), lastSeen and listing URL -- only on an
+# identifier match (same VIN, removed VIN tail = kept VIN, same stock number) and no year/make/model conflict. No specs.
+def ls(u): return (u.get('provenance') or {}).get('lastSeenAt') or ''
+def nv(x): return re.sub(r'[^a-z0-9]','',str(x or '').lower())
+def basis(kp,u):
+    if realvin(u) and realvin(u)==realvin(kp): return 'same VIN'
+    if rawid(u) and realvin(kp) and realvin(kp).endswith(rawid(u)): return 'removed record VIN tail matches kept VIN'
+    sk,su=(kp.get('stockNumber') or '').upper().strip(),(u.get('stockNumber') or '').upper().strip()
+    if sk and sk==su: return 'same stock number'
+    if su and rawid(kp)==su or sk and rawid(u)==sk: return 'same stock number (one record stores it in the VIN field)'
+    return ''
+best={}
+for kp,u,how in pairs:
+    if ls(u)>ls(kp) and (id(kp) not in best or ls(u)>ls(best[id(kp)][1])): best[id(kp)]=(kp,u)
+co=[]
+if os.environ.get('CARRY')=='1':
+  for kp,u in best.values():
+    C['carry_candidates']+=1; dm=dom(kp); pv,pu=kp.setdefault('provenance',{}),(u.get('provenance') or {})
+    row=[kp['id'],u['id'],dm,kp.get('title'),(kp.get('priceUsd') or {}).get('value'),(u.get('priceUsd') or {}).get('value'),(kp.get('msrpUsd') or {}).get('value'),(u.get('msrpUsd') or {}).get('value'),pv.get('lastSeenAt'),pu.get('lastSeenAt'),pv.get('listingUrl') or '',pu.get('listingUrl') or '']
+    b=basis(kp,u)
+    conf=[f for f in ('year','make','model') if kp.get(f) and u.get(f) and nv(kp[f])!=nv(u[f])]
+    if conf: C['carry_skipped:spec_conflict']+=1; co.append(row+['','skipped: '+'/'.join(conf)+' conflict']); continue
+    if not b: C['carry_skipped:no_identifier_match']+=1; co.append(row+['','skipped: no VIN or stock-number match']); continue
+    old=(kp.get('priceUsd') or {}).get('value')
+    kp['priceUsd']=json.loads(json.dumps(u.get('priceUsd'))); kp['msrpUsd']=json.loads(json.dumps(u.get('msrpUsd')))
+    for f in ('lastSeenAt','listingUrl','harvestMethod','lastSeenBasis'):
+        if pu.get(f): pv[f]=pu[f]
+    pv['carriedFromDuplicate']=u['id']
+    C['carry_done']+=1; C[f'carry_by:{dm}']+=1
+    if old!=(kp.get('priceUsd') or {}).get('value'): C['carry_price_changed']+=1; C[f'carry_price_changed:{dm}']+=1
+    if row[6]!=row[7]: C['carry_msrp_changed']+=1
+    co.append(row+[b,'carried'])
+  with open(f'{out}/dedupe_carryover.csv','w',newline='') as f:
+    w=csv.writer(f); w.writerow(['kept_id','removed_id','domain','title','old_price','new_price','old_msrp','new_msrp','old_last_seen','new_last_seen','old_listing_url','new_listing_url','match_basis','result']); w.writerows(co)
 U=[u for u in U if id(u) not in drop]
 for u in U: u.pop('_rawvin',None); u.pop('_drop',None)
 S['units']=U

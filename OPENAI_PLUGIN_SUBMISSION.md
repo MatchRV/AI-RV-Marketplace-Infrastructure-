@@ -1,6 +1,6 @@
-# MatchRV — OpenAI / Meta App Submission Package (v2.2.6)
+# MatchRV — OpenAI / Meta App Submission Package (v2.2.7)
 
-Status: **Submission candidate v2.2.6 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.6`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Submission candidate v2.2.7 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.7`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)
@@ -34,7 +34,7 @@ After the domain move, `https://matchrv.com/mcp` points at this same service and
 
 **Domain verification:** `/.well-known/openai-apps-challenge` returns the value of the `OPENAI_APPS_CHALLENGE` env var (404 until it is set). Set it to the portal token on the production service, verify the URL returns only the token, then verify in the portal.
 
-## MCP tools and annotations (as advertised by v2.2.6)
+## MCP tools and annotations (as advertised by v2.2.7; unchanged since v2.2.6)
 
 | Tool | Purpose | readOnlyHint | destructiveHint | idempotentHint | openWorldHint |
 |---|---|:-:|:-:|:-:|:-:|
@@ -103,6 +103,12 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 4. **No relaxed limits** without explicit approval.
 5. **No cross-shopper leakage:** a fact taught by one shopper is not visible to another (different `openai/subject`), and inquiry status requires that inquiry's token.
 6. **No fabricated dealer reply:** status shows `dealerReply: null` unless MatchRV recorded one.
+
+## Release notes (v2.2.7)
+
+- **No tool, input schema, title, description or annotation changes.** Still the same 11 tools. A test (`artifacts/api-server/test/mcp-refine-walkthrough.test.ts`) compares `tools/list` against the v2.2.6 surface saved in `test/fixtures/mcp-tools-v2.2.6.json`. Only new optional output fields were added.
+- **Refining results.** `search_rvs` responses now include `refine` (`suggested`, `reason`, `ask`, `options`, `rule`). When results are thin (no local matches, no results, no fully verified match, or fewer than requested) `suggested` is true. The server instructions, `outfitterGuidance`, `nextStep` and the `road_to_sale` guide tell the assistant to ask what the shopper would change (price, length, floorplan, distance, RV type, new vs used), change one thing at a time, and never loosen a hard limit without the shopper's OK.
+- **Walkthrough videos.** Each `search_rvs` row and the `get_rv` response include `walkthrough`. If the unit's stored dealer listing (images or description) contains a YouTube link, it is returned as `kind: "dealer_video"` with a note that it isn't verified to show this exact unit. Otherwise it is `kind: "model_search"`: a YouTube search URL for year + make + model + floorplan + "walkthrough", labeled "Same model — this unit may differ". Nothing is fetched and no YouTube API or key is used.
 
 ## Release notes (v2.2.6)
 
@@ -178,7 +184,7 @@ HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `c
 
 - Confirm the OpenAI organization has Apps Management Write permission and MatchRV Inc. business verification.
 - Verify the Support, Terms and Privacy URLs render and match this document's data handling.
-- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (11 tools, version 2.2.6).
+- Scan Tools against the production URL; compare names, schemas, descriptions and annotations to the table above (11 tools, version 2.2.7).
 - Run all positive/negative tests. Use `dry_run: true` for inquiry sends.
 - Confirm tool responses contain no secrets or other shoppers' data.
 - Complete domain verification, select United States, complete attestations, then submit. **Founder approval required before submitting to OpenAI or Meta.**

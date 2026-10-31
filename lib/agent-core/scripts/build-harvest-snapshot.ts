@@ -209,6 +209,8 @@ for (const r of rows) {
       page_schema_offer_price: "Dealer's current asking price from the listing page's offer price (read 2026-10-30); not MSRP.",
       page_sale_price_label: "Dealer's current sale/our price as labeled on the listing page (read 2026-10-30); not MSRP.",
       marketcheck_price_below_msrp: "Dealer's asking price as crawled by MarketCheck (below MSRP); listing page not re-read.",
+      page_price_2026_10_31: "Dealer's current asking price from the listing page (read 2026-10-31); not MSRP.",
+      harvested_price_matches_page_2026_10_31: "Dealer's current asking price; matches the price on the listing page (read 2026-10-31).",
     };
     if (m.price_basis && PRICE_NOTE[m.price_basis]) u.priceUsd.note = PRICE_NOTE[m.price_basis];
   }
@@ -272,6 +274,11 @@ if (!INCLUDE_NO_PRICE) for (const [k, u] of [...freshBy]) if (u.priceUsd.value =
 
 // ── Merge with committed units ──────────────────────────────────────────────
 const out = new Map<string, CanonicalUnit>();
+// KEEP_BASE=1 (2026-10-31 append build): the committed snapshot already passed the v3.3 QA (template prices,
+// year from title, stitched records, VIN/type, lot city). Its units are carried as they are; the QA passes below
+// run only on fresh units (re-running the base-record passes on an already-fixed snapshot is not idempotent).
+const KEEP_BASE = process.env.KEEP_BASE === "1";
+const baseKept = new Set<CanonicalUnit>();
 let refreshed = 0, sep17Seen = 0, oldDupes = 0;
 const SPEC = ["lengthFt", "dryWeightLbs", "gvwrLbs", "hitchWeightLbs", "sleeps", "slideouts", "freshWaterGal", "greyWaterGal", "blackWaterGal"] as const;
 let goneDropped = 0, refreshOtherDomainSkipped = 0;
@@ -291,8 +298,10 @@ for (const u of oldUnits) {
     f.provenance.firstSeenAt = [u.provenance.firstSeenAt, f.provenance.firstSeenAt].sort()[0];
     freshBy.delete(k); out.set(k, f); continue;
   }
-  if (out.has(k)) { oldDupes++; continue; }
-  out.set(k, u);
+  if (out.has(k) && !KEEP_BASE) { oldDupes++; continue; }
+  // KEEP_BASE: committed records sharing a key (Camping World copies of one listing, handled by the page-pass
+  // branch) are carried unchanged under their own id.
+  out.set(out.has(k) ? `${k}#${u.id}` : k, u); if (KEEP_BASE) baseKept.add(u);
 }
 const newDomainUnits = REFRESH_ONLY ? [] : [...freshBy.values()];
 const notAddedRefreshOnly = REFRESH_ONLY ? freshBy.size : 0;
@@ -310,7 +319,7 @@ for (const [k, u] of [...out]) { const dd = bare(u.provenance.dealerDomain); if 
 // PRICE_TEMPLATE_HOLDBACK=0 disables this.
 const priceTemplateHeld = new Map<string, number>(); const priceTemplateValues: Record<string, number[]> = {};
 if (process.env.PRICE_TEMPLATE_HOLDBACK !== "0") {
-  const base = [...out].filter(([, u]) => !u.provenance.harvestMethod);
+  const base = [...out].filter(([, u]) => !u.provenance.harvestMethod && !baseKept.has(u));
   const perDom = new Map<string, number>(); const perPrice = new Map<string, number>();
   for (const [, u] of base) { const dd = bare(u.provenance.dealerDomain); inc(perDom, dd); if (u.priceUsd.value !== null) inc(perPrice, `${dd}|${u.priceUsd.value}`); }
   const tmpl = new Set<string>();
@@ -332,6 +341,7 @@ const vinYear = (v: string | null) => { if (!v || v.length !== 17) return null; 
 const YEAR_RANGE = /\b(?:19|20)\d{2}\s*[-\u2013\u2014\/]\s*(?:(?:19|20)\d{2}|\d{2})\b/;
 let yearRangeSkipped = 0;
 for (const u of out.values()) {
+  if (baseKept.has(u)) continue;
   const ty = titleModelYear(u.title);
   if (ty === null || ty === u.year) continue;
   if (YEAR_RANGE.test(u.title)) { yearRangeSkipped++; continue; }
@@ -389,7 +399,7 @@ const stitch = { records: 0, heldUnconfirmable: 0, titleNotUnit: 0, chassisMakeF
   fieldChangedByDomain: new Map<string, Record<string, number>>(), examples: [] as string[] };
 const CW_IMG = /images\.rvs\.com\/[^/]+\/([^/]+)\//;
 for (const [k, u] of [...out]) {
-  if (u.provenance.harvestMethod) continue; // page-verified harvest records are not stitched
+  if (u.provenance.harvestMethod || baseKept.has(u)) continue; // page-verified harvest records are not stitched
   const dd = bare(u.provenance.dealerDomain);
   const isCw = dd === "rv.campingworld.com";
   if (!isCw && !STITCHED_DOMAINS.has(dd)) {
@@ -442,6 +452,7 @@ const NON_RV_MAKES = new Set(["u.s. rack", "us rack", "curt", "roadmaster", "baj
 const NON_RV_TEXT = /\b(continental cargo|cargo trailers?|enclosed (?:cargo )?trailers?|utility trailers?|car hauler|dump trailer|equipment trailer|landscape trailer|sway bar kit|(?:5th|fifth) wheel hitch|over-cab rack|truck rack|a-pillar kit|tow bar|base ?plate kit)\b/i;
 const nonRvDropped = new Map<string, number>(); const nonRvExamples: string[] = [];
 for (const [k, u] of [...out]) {
+  if (baseKept.has(u)) continue;
   const mk = u.make.trim().toLowerCase();
   if (NON_RV_MAKES.has(mk) || NON_RV_TEXT.test(`${u.title} ${u.model}`)) {
     inc(nonRvDropped, u.make); if (nonRvExamples.length < 12) nonRvExamples.push(`${u.id} | ${u.make} | ${u.title}`); out.delete(k);
@@ -453,6 +464,7 @@ for (const [k, u] of [...out]) {
 const MOTORIZED = new Set(["class_a", "class_b", "class_c", "super_c", "motorhome"]);
 const lowPriceHeld = new Map<string, number>(); const lowPriceExamples: string[] = []; let lowPriceKept = 0; const lowPriceKeptByMake = new Map<string, number>();
 for (const [k, u] of [...out]) {
+  if (baseKept.has(u)) continue;
   const p = u.priceUsd.value; if (p === null || p >= 5000) continue;
   if (process.env.LOW_PRICE_HOLDBACK !== "0" && (u.year >= 2020 || (MOTORIZED.has(u.rvType) && u.year >= 2010 && p < 3000) || (Math.round(p) === u.year && u.year >= 2010))) {
     inc(lowPriceHeld, u.make); if (lowPriceExamples.length < 12) lowPriceExamples.push(`${u.id} | ${u.year} ${u.make} | $${p} | ${u.title}`); out.delete(k);
@@ -463,7 +475,7 @@ for (const [k, u] of [...out]) {
 // such a (domain, stock) pair. Ids are left as they are (already unique; checked below).
 const normTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const byStock = new Map<string, CanonicalUnit[]>();
-for (const u of out.values()) if (u.stockNumber) { const sk = `${bare(u.provenance.dealerDomain)}|${u.stockNumber.toLowerCase()}`; const a = byStock.get(sk) ?? []; a.push(u); byStock.set(sk, a); }
+for (const u of out.values()) if (u.stockNumber && !baseKept.has(u)) { const sk = `${bare(u.provenance.dealerDomain)}|${u.stockNumber.toLowerCase()}`; const a = byStock.get(sk) ?? []; a.push(u); byStock.set(sk, a); }
 let dupStockPairs = 0, dupStockUnitsBlanked = 0; const dupStockByDomain = new Map<string, number>(); const dupStockExamples: string[] = [];
 for (const [sk, us] of byStock) {
   if (us.length < 2) continue;
@@ -481,6 +493,7 @@ const STATE_CODES = STATES;
 const DEALER_LOC: Record<string, { city?: string | null; state?: string | null }> = process.env.DEALER_LOCATIONS ? JSON.parse(readFileSync(process.env.DEALER_LOCATIONS, "utf-8")) : {};
 let cityFilled = 0, cityBlanked = 0; const cityBlankedByDomain = new Map<string, number>(); const cityFilledByDomain = new Map<string, number>();
 for (const u of out.values()) {
+  if (baseKept.has(u)) continue;
   const c = (u.dealer.city ?? "").trim();
   if (c && !STATE_CODES.has(c.toUpperCase())) continue;
   const dd = bare(u.provenance.dealerDomain); const loc = DEALER_LOC[dd];
@@ -498,7 +511,7 @@ const UNSTATED_LOT_DOMAINS = new Set((process.env.UNSTATED_LOT_DOMAINS ?? "meyer
 let lotCityBlanked = 0; const lotCityBlankedByDomain = new Map<string, number>(); const lotCityBefore = new Map<string, number>();
 for (const u of out.values()) {
   const dd = bare(u.provenance.dealerDomain);
-  if (u.provenance.harvestMethod || !UNSTATED_LOT_DOMAINS.has(dd) || !(u.dealer.city ?? "").trim()) continue;
+  if (u.provenance.harvestMethod || baseKept.has(u) || !UNSTATED_LOT_DOMAINS.has(dd) || !(u.dealer.city ?? "").trim()) continue;
   inc(lotCityBefore, `${dd}|${u.dealer.city}`);
   u.dealer = { ...u.dealer, id: `${dd}:${u.dealer.state.toLowerCase()}`, city: "", lat: null, lng: null };
   lotCityBlanked++; inc(lotCityBlankedByDomain, dd);
@@ -522,7 +535,7 @@ const clearSide = (vin: string): "mot" | "tow" | null => {
 let rvTypeVinHeld = 0; const rvTypeVinHeldByDomain = new Map<string, number>(); const rvTypeVinExamples: string[] = [];
 for (const [k, u] of [...out]) {
   const dd = bare(u.provenance.dealerDomain);
-  if (u.provenance.harvestMethod || !(dd === "rv.campingworld.com" || STITCHED_DOMAINS.has(dd)) || !u.vin || u.vin.length !== 17) continue;
+  if (u.provenance.harvestMethod || baseKept.has(u) || !(dd === "rv.campingworld.com" || STITCHED_DOMAINS.has(dd)) || !u.vin || u.vin.length !== 17) continue;
   const side = clearSide(u.vin); if (!side || side === (MOT_TYPES.has(u.rvType) ? "mot" : "tow")) continue;
   rvTypeVinHeld++; inc(rvTypeVinHeldByDomain, dd);
   if (rvTypeVinExamples.length < 10) rvTypeVinExamples.push(`${u.vin} | ${u.title} | typed ${u.rvType}, VIN says ${side === "mot" ? "motorized" : "towable"}`);
@@ -546,10 +559,10 @@ const known = (k: keyof CanonicalUnit) => units.filter(u => (u[k] as any)?.value
 // unit's lastSeenAt against it. Never copied from the base snapshot. BUILT_AT (ISO) pins it for reproducible builds.
 const builtAt = process.env.BUILT_AT ? new Date(process.env.BUILT_AT).toISOString() : new Date().toISOString();
 const lastSeenTimes = units.map(u => Date.parse(u.provenance.lastSeenAt)).filter(Number.isFinite);
-const lastSeenRange = { oldest: new Date(Math.min(...lastSeenTimes)).toISOString(), newest: new Date(Math.max(...lastSeenTimes)).toISOString() };
+const lastSeenRange = { oldest: new Date(lastSeenTimes.reduce((a, b) => (b < a ? b : a), Infinity)).toISOString(), newest: new Date(lastSeenTimes.reduce((a, b) => (b > a ? b : a), -Infinity)).toISOString() };
 const staleWindows = Object.fromEntries([14, 21, 30, 45].map(d => [`${d}d`, units.filter(u => Date.parse(builtAt) - Date.parse(u.provenance.lastSeenAt) <= d * 864e5).length]));
 const stats = {
-  builtAt, oldUnits: oldUnits.length, freshRows: rows.length, freshByOrigin: Object.fromEntries(byOrigin),
+  builtAt, keepBase: KEEP_BASE, baseKeptUnits: baseKept.size, oldUnits: oldUnits.length, freshRows: rows.length, freshByOrigin: Object.fromEntries(byOrigin),
   freshAdmitted: fresh.length, freshDupes, freshUnique: fresh.length - freshDupes, rejects: Object.fromEntries(rejects), typeVia: Object.fromEntries(typeVia),
   mode: REFRESH_ONLY ? "refresh_only_existing_units" : "refresh_and_add", typeStrict: TYPE_STRICT,
   oldUnitsDroppedGoneOrSold: goneDropped, refreshOtherDomainSkipped, freshUnitsNotAddedRefreshOnly: notAddedRefreshOnly,
@@ -578,7 +591,7 @@ const stats = {
 console.log(JSON.stringify(stats, null, 1));
 const payload = JSON.stringify({
   schemaVersion: 1, builtAt,
-  datasetNote: "MatchRV nationwide dealer inventory snapshot: the Oct 14 dealer-website snapshot, refreshed and extended with a 2026-10-25..30 harvest (MarketCheck active RV listings + dealer websites). Each harvested unit has a VIN or stock number and a listing URL; specs are copied from the listing or left blank. Units not seen again keep their earlier lastSeenAt.",
+  datasetNote: "MatchRV nationwide dealer inventory snapshot: the Oct 14 dealer-website snapshot, refreshed and extended with a 2026-10-25..31 harvest (MarketCheck active RV listings + dealer websites). Each harvested unit has a VIN or stock number and a listing URL; specs are copied from the listing or left blank. Units not seen again keep their earlier lastSeenAt.",
   stats: { rawRecords: oldUnits.length + rows.length, units: units.length, dealers: dealers.size,
     rejections: Object.fromEntries(rejects), uniqueVins: units.filter(u => u.vin).length, withLength: known("lengthFt"), withSleeps: known("sleeps"),
     lastSeenRange, seenWithinDaysOfBuiltAt: staleWindows },

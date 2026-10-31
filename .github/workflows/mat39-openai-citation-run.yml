@@ -58,13 +58,20 @@ jobs:
         working-directory: tools/ai-visibility-audit
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Inputs go through env (not inline ${{ }} in the script) so quotes
+          # like "Porter's RV" can't break the workflow or the shell.
+          MAT39_DEALER: ${{ inputs.dealer || 'Porter''s RV' }}
+          MAT39_CITY: ${{ inputs.city || 'Coos Bay' }}
+          MAT39_STATE: ${{ inputs.state || 'OR' }}
+          MAT39_DOMAIN: ${{ inputs.domain || 'portersrv.com' }}
+          MAT39_MODEL: ${{ inputs.model || 'gpt-5.6' }}
         run: |
           python openai_citation_runner.py \
-            --dealer "${{ inputs.dealer || 'Porter\'s RV' }}" \
-            --city "${{ inputs.city || 'Coos Bay' }}" \
-            --state "${{ inputs.state || 'OR' }}" \
-            --domain "${{ inputs.domain || 'portersrv.com' }}" \
-            --model "${{ inputs.model || 'gpt-5.6' }}" \
+            --dealer "$MAT39_DEALER" \
+            --city "$MAT39_CITY" \
+            --state "$MAT39_STATE" \
+            --domain "$MAT39_DOMAIN" \
+            --model "$MAT39_MODEL" \
             --outdir citation-runs
 
       - name: Upload immutable citation evidence

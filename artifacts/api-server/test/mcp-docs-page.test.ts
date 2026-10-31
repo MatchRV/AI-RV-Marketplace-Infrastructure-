@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import app from '../src/app';
 import { MCP_TOOL_DOCS, MCP_DOCS_ORDER } from '../src/lib/mcp-docs';
+import { MCP_VERSION } from '../src/mcp';
 
 const TOOLS = ['teach_outfitter', 'outfitter_memory', 'outfitter_discovery', 'outfitter_guide', 'search_rvs', 'get_rv', 'compare_rvs', 'evaluate_tow_fit', 'prepare_dealer_inquiry', 'send_dealer_inquiry', 'get_dealer_inquiry_status'];
 let server: Server; let base = '';
@@ -60,7 +61,7 @@ describe('public MCP docs page (/mcp-docs)', () => {
     const init = await mcp('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'docs-test', version: '1' } });
     expect(init.status).toBe(200);
     const body = parse(await init.text());
-    expect(body.result.serverInfo).toMatchObject({ name: 'matchrv', version: '2.2.5' });
+    expect(body.result.serverInfo).toMatchObject({ name: 'matchrv', version: MCP_VERSION });
     const list = parse(await (await mcp('tools/list')).text());
     expect(list.result.tools).toHaveLength(11);
     const get = await fetch(`${base}/mcp`, { headers: { Accept: 'text/html' } });

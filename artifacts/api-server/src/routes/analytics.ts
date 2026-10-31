@@ -11,6 +11,9 @@ const VALID_EVENT_TYPES = [
   "outfitter_message", "swipe_like", "swipe_pass",
   "quiz_start", "quiz_complete", "match_report_generated",
   "return_visit", "hero_cta_click", "listing_saved", "listing_skipped",
+  // Conversion outcomes sent by trackLead() on the web client
+  "dealer_contact_form", "snapshot_request", "snapshot_pdf_email",
+  "buyer_dealer_inquiry", "buyer_email_capture", "book_demo_click",
 ];
 
 router.post("/analytics/event", async (req, res) => {

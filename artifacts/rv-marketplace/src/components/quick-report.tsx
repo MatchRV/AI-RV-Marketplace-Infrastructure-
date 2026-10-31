@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { SnapshotProgress } from "@/components/snapshot-progress";
+import { trackLead } from "@/lib/analytics";
 
 type QuickReportResult = {
   reportId: string;
@@ -62,7 +63,9 @@ export function QuickReport() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "The check could not finish. Please try again.");
-      setResult(payload as QuickReportResult);
+      const report = payload as QuickReportResult;
+      trackLead("snapshot_request", { formId: "visibility_snapshot", dedupeKey: report.reportId, metadata: { report_id: report.reportId } });
+      setResult(report);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The check could not finish. Please try again.");
     } finally {
@@ -81,6 +84,7 @@ export function QuickReport() {
         body: JSON.stringify({ reportId: result.reportId }),
       });
       const payload = await response.json();
+      if (response.ok) trackLead("snapshot_pdf_email", { dedupeKey: result.reportId, metadata: { report_id: result.reportId } });
       setEmailStatus(response.ok ? "Your PDF has been sent. Check your inbox." : payload.message || "We could not send the PDF right now.");
     } catch { setEmailStatus("We could not send the PDF right now. Please try again later."); }
     finally { setEmailBusy(false); }
@@ -90,7 +94,7 @@ export function QuickReport() {
     <p className="brand-eyebrow">Free Visibility Snapshot</p>
     <h2>Get your free Visibility Snapshot.</h2>
     <p>Enter your dealership website, location, name, and email. We’ll check public pages and ask Gemini one RV shopper question near your dealership. You’ll get a one-page snapshot with a readiness score, three findings and shopper-question results, plus a PDF to download. No account or card required.</p>
-    <form onSubmit={run} className="quick-report-form" aria-busy={busy}>
+    <form id="visibility_snapshot" onSubmit={run} className="quick-report-form" aria-busy={busy}>
       <label>Dealership website<input type="text" value={website} onChange={event => setWebsite(event.target.value)} placeholder="tacomarv.com" autoComplete="url" maxLength={300} required disabled={busy} /></label>
       <label>Dealership name<input value={dealership} onChange={event => setDealership(event.target.value)} placeholder="Tacoma RV Center" autoComplete="organization" maxLength={120} disabled={busy} /></label>
       <label>City<input value={city} onChange={event => setCity(event.target.value)} placeholder="Tacoma" autoComplete="address-level2" maxLength={80} required disabled={busy} /></label>

@@ -1,74 +1,78 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { trackPageView, detectReturnVisit } from "@/lib/analytics";
 import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
-import { BookReportCall } from "@/pages/book";
 import { DealerHome, VisibilityReport } from "@/pages/dealer-home";
-import { Browse } from "@/pages/browse";
-import { McpSetup } from "@/pages/mcp-setup";
-import { DealerAdvertising } from "@/pages/dealer-advertising";
-import { Shop } from "@/pages/shop";
 import { registerMatchrvTools } from "@/agent/webmcp";
 import { registerNavigate } from "@/agent/session";
-import { ListingDetail } from "@/pages/listing-detail";
-import { Outfitter } from "@/pages/outfitter";
-import { Match } from "@/pages/match";
-import { MatchReport } from "@/pages/match-report";
-import { Admin } from "@/pages/admin";
-import { Account } from "@/pages/account";
-import { Saved } from "@/pages/saved";
-import { Searches } from "@/pages/searches";
-import { Alerts } from "@/pages/alerts";
-import { Messages } from "@/pages/messages";
-import { Finance } from "@/pages/finance";
-import { Sell } from "@/pages/sell";
-import { TowGuide } from "@/pages/tow-guide";
-import { About } from "@/pages/about";
-import { Terms } from "@/pages/terms";
-import { Privacy } from "@/pages/privacy";
-import { DealerLogin } from "@/pages/dealer-login";
-import { ForDealers } from "@/pages/for-dealers";
-import { ChatGPTAdvertising } from "@/pages/chatgpt-advertising";
-import { AnswerEngine } from "@/pages/answer-engine";
-import { DealerAeoToolkit } from "@/pages/dealer-aeo-toolkit";
-import { DealerVisibilityDashboard } from "@/pages/dealer-visibility-dashboard";
-import { Dealers } from "@/pages/dealers";
-import { Discover } from "@/pages/discover";
-import { Contact } from "@/pages/contact";
-import { Campgrounds } from "@/pages/campgrounds";
-import { Trips } from "@/pages/trips";
-import { TripDetail } from "@/pages/trip-detail";
-import { ARDriveway } from "@/pages/ar-driveway";
-import { RvsForSale } from "@/pages/rvs-for-sale";
-import { TravelTrailersForSale } from "@/pages/travel-trailers-for-sale";
-import { FifthWheelsForSale } from "@/pages/fifth-wheels-for-sale";
-import { ClassARvsForSale } from "@/pages/class-a-rvs-for-sale";
-import { ClassBRvsForSale } from "@/pages/class-b-rvs-for-sale";
-import { ClassCRvsForSale } from "@/pages/class-c-rvs-for-sale";
-import { ToyHaulersForSale } from "@/pages/toy-haulers-for-sale";
-import { RvDealers } from "@/pages/rv-dealers";
-import { FindTheRightRvForYourTowVehicle } from "@/pages/find-the-right-rv-for-your-tow-vehicle";
-import { GuidesIndex } from "@/pages/guides/index";
-import { HowToBuyAUsedRv } from "@/pages/guides/how-to-buy-a-used-rv";
-import { BestRvsForFamilies } from "@/pages/guides/best-rvs-for-families";
-import { BestRvsForFullTimeLiving } from "@/pages/guides/best-rvs-for-full-time-living";
-import { MotorhomeVsTravelTrailer } from "@/pages/guides/motorhome-vs-travel-trailer";
-import { RvFinancingGuide } from "@/pages/guides/rv-financing-guide";
-import { TowingGuide } from "@/pages/guides/towing-guide";
-import { TowVehicleGuide } from "@/pages/guides/tow-vehicle-guide";
-import { TravelTrailerVsFifthWheel } from "@/pages/guides/travel-trailer-vs-fifth-wheel";
-import { RvCostGuide } from "@/pages/guides/rv-cost-guide";
-import { RvFinancing } from "@/pages/rv-financing/index";
-import { CreditScoreToBuyRv } from "@/pages/rv-financing/what-credit-score-do-you-need-to-buy-an-rv";
-import { BadCreditRvFinancing } from "@/pages/rv-financing/bad-credit-rv-financing";
-import { RvLoanCalculator } from "@/pages/rv-financing/rv-loan-calculator";
-import { FindRvsByMonthlyPayment } from "@/pages/rv-financing/find-rvs-by-monthly-payment";
-import { RvPreApproval } from "@/pages/rv-financing/rv-pre-approval-before-shopping";
-import { UsedRvFinancing } from "@/pages/rv-financing/used-rv-financing";
-import NotFound from "@/pages/not-found";
+
+// Route-level code splitting: the dealer homepage stays in the entry chunk
+// (it is the main landing page); every other page loads on demand so the
+// first mobile paint is not blocked by the whole app's JavaScript.
+const BookReportCall = lazy(() => import("@/pages/book").then(m => ({ default: m.BookReportCall })));
+const Browse = lazy(() => import("@/pages/browse").then(m => ({ default: m.Browse })));
+const McpSetup = lazy(() => import("@/pages/mcp-setup").then(m => ({ default: m.McpSetup })));
+const DealerAdvertising = lazy(() => import("@/pages/dealer-advertising").then(m => ({ default: m.DealerAdvertising })));
+const Shop = lazy(() => import("@/pages/shop").then(m => ({ default: m.Shop })));
+const ListingDetail = lazy(() => import("@/pages/listing-detail").then(m => ({ default: m.ListingDetail })));
+const Outfitter = lazy(() => import("@/pages/outfitter").then(m => ({ default: m.Outfitter })));
+const Match = lazy(() => import("@/pages/match").then(m => ({ default: m.Match })));
+const MatchReport = lazy(() => import("@/pages/match-report").then(m => ({ default: m.MatchReport })));
+const Admin = lazy(() => import("@/pages/admin").then(m => ({ default: m.Admin })));
+const Account = lazy(() => import("@/pages/account").then(m => ({ default: m.Account })));
+const Saved = lazy(() => import("@/pages/saved").then(m => ({ default: m.Saved })));
+const Searches = lazy(() => import("@/pages/searches").then(m => ({ default: m.Searches })));
+const Alerts = lazy(() => import("@/pages/alerts").then(m => ({ default: m.Alerts })));
+const Messages = lazy(() => import("@/pages/messages").then(m => ({ default: m.Messages })));
+const Finance = lazy(() => import("@/pages/finance").then(m => ({ default: m.Finance })));
+const Sell = lazy(() => import("@/pages/sell").then(m => ({ default: m.Sell })));
+const TowGuide = lazy(() => import("@/pages/tow-guide").then(m => ({ default: m.TowGuide })));
+const About = lazy(() => import("@/pages/about").then(m => ({ default: m.About })));
+const Terms = lazy(() => import("@/pages/terms").then(m => ({ default: m.Terms })));
+const Privacy = lazy(() => import("@/pages/privacy").then(m => ({ default: m.Privacy })));
+const DealerLogin = lazy(() => import("@/pages/dealer-login").then(m => ({ default: m.DealerLogin })));
+const ForDealers = lazy(() => import("@/pages/for-dealers").then(m => ({ default: m.ForDealers })));
+const ChatGPTAdvertising = lazy(() => import("@/pages/chatgpt-advertising").then(m => ({ default: m.ChatGPTAdvertising })));
+const AnswerEngine = lazy(() => import("@/pages/answer-engine").then(m => ({ default: m.AnswerEngine })));
+const DealerAeoToolkit = lazy(() => import("@/pages/dealer-aeo-toolkit").then(m => ({ default: m.DealerAeoToolkit })));
+const DealerVisibilityDashboard = lazy(() => import("@/pages/dealer-visibility-dashboard").then(m => ({ default: m.DealerVisibilityDashboard })));
+const Dealers = lazy(() => import("@/pages/dealers").then(m => ({ default: m.Dealers })));
+const Discover = lazy(() => import("@/pages/discover").then(m => ({ default: m.Discover })));
+const Contact = lazy(() => import("@/pages/contact").then(m => ({ default: m.Contact })));
+const Campgrounds = lazy(() => import("@/pages/campgrounds").then(m => ({ default: m.Campgrounds })));
+const Trips = lazy(() => import("@/pages/trips").then(m => ({ default: m.Trips })));
+const TripDetail = lazy(() => import("@/pages/trip-detail").then(m => ({ default: m.TripDetail })));
+const ARDriveway = lazy(() => import("@/pages/ar-driveway").then(m => ({ default: m.ARDriveway })));
+const RvsForSale = lazy(() => import("@/pages/rvs-for-sale").then(m => ({ default: m.RvsForSale })));
+const TravelTrailersForSale = lazy(() => import("@/pages/travel-trailers-for-sale").then(m => ({ default: m.TravelTrailersForSale })));
+const FifthWheelsForSale = lazy(() => import("@/pages/fifth-wheels-for-sale").then(m => ({ default: m.FifthWheelsForSale })));
+const ClassARvsForSale = lazy(() => import("@/pages/class-a-rvs-for-sale").then(m => ({ default: m.ClassARvsForSale })));
+const ClassBRvsForSale = lazy(() => import("@/pages/class-b-rvs-for-sale").then(m => ({ default: m.ClassBRvsForSale })));
+const ClassCRvsForSale = lazy(() => import("@/pages/class-c-rvs-for-sale").then(m => ({ default: m.ClassCRvsForSale })));
+const ToyHaulersForSale = lazy(() => import("@/pages/toy-haulers-for-sale").then(m => ({ default: m.ToyHaulersForSale })));
+const RvDealers = lazy(() => import("@/pages/rv-dealers").then(m => ({ default: m.RvDealers })));
+const FindTheRightRvForYourTowVehicle = lazy(() => import("@/pages/find-the-right-rv-for-your-tow-vehicle").then(m => ({ default: m.FindTheRightRvForYourTowVehicle })));
+const GuidesIndex = lazy(() => import("@/pages/guides/index").then(m => ({ default: m.GuidesIndex })));
+const HowToBuyAUsedRv = lazy(() => import("@/pages/guides/how-to-buy-a-used-rv").then(m => ({ default: m.HowToBuyAUsedRv })));
+const BestRvsForFamilies = lazy(() => import("@/pages/guides/best-rvs-for-families").then(m => ({ default: m.BestRvsForFamilies })));
+const BestRvsForFullTimeLiving = lazy(() => import("@/pages/guides/best-rvs-for-full-time-living").then(m => ({ default: m.BestRvsForFullTimeLiving })));
+const MotorhomeVsTravelTrailer = lazy(() => import("@/pages/guides/motorhome-vs-travel-trailer").then(m => ({ default: m.MotorhomeVsTravelTrailer })));
+const RvFinancingGuide = lazy(() => import("@/pages/guides/rv-financing-guide").then(m => ({ default: m.RvFinancingGuide })));
+const TowingGuide = lazy(() => import("@/pages/guides/towing-guide").then(m => ({ default: m.TowingGuide })));
+const TowVehicleGuide = lazy(() => import("@/pages/guides/tow-vehicle-guide").then(m => ({ default: m.TowVehicleGuide })));
+const TravelTrailerVsFifthWheel = lazy(() => import("@/pages/guides/travel-trailer-vs-fifth-wheel").then(m => ({ default: m.TravelTrailerVsFifthWheel })));
+const RvCostGuide = lazy(() => import("@/pages/guides/rv-cost-guide").then(m => ({ default: m.RvCostGuide })));
+const RvFinancing = lazy(() => import("@/pages/rv-financing/index").then(m => ({ default: m.RvFinancing })));
+const CreditScoreToBuyRv = lazy(() => import("@/pages/rv-financing/what-credit-score-do-you-need-to-buy-an-rv").then(m => ({ default: m.CreditScoreToBuyRv })));
+const BadCreditRvFinancing = lazy(() => import("@/pages/rv-financing/bad-credit-rv-financing").then(m => ({ default: m.BadCreditRvFinancing })));
+const RvLoanCalculator = lazy(() => import("@/pages/rv-financing/rv-loan-calculator").then(m => ({ default: m.RvLoanCalculator })));
+const FindRvsByMonthlyPayment = lazy(() => import("@/pages/rv-financing/find-rvs-by-monthly-payment").then(m => ({ default: m.FindRvsByMonthlyPayment })));
+const RvPreApproval = lazy(() => import("@/pages/rv-financing/rv-pre-approval-before-shopping").then(m => ({ default: m.RvPreApproval })));
+const UsedRvFinancing = lazy(() => import("@/pages/rv-financing/used-rv-financing").then(m => ({ default: m.UsedRvFinancing })));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -179,6 +183,7 @@ function AppRouter() {
       <PageViewTracker />
       <ReturnVisitDetector />
       <AgentBridge />
+      <Suspense fallback={<div className="min-h-screen" aria-busy="true" />}>
       <Switch>
       <Route path="/" component={DealerHome} />
       <Route path="/visibility-report" component={VisibilityReport} />
@@ -270,6 +275,7 @@ function AppRouter() {
 
       <Route component={NotFound} />
     </Switch>
+      </Suspense>
     </>
   );
 }

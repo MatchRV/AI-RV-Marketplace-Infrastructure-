@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackLead } from "@/lib/analytics";
 import { trackClarity } from "@/lib/clarity";
 import { useAppAuth } from "@/contexts/auth-context";
 import {
@@ -167,6 +167,7 @@ function ContactDealerModal({ pick, onClose }: { pick: Pick; onClose: () => void
       trackEvent("dealer_contact_submitted", {
         metadata: { listingId: l.id, source: "match_report", tier: pick.tier },
       });
+      trackLead("buyer_dealer_inquiry", { dedupeKey: l.id, listingId: l.id, metadata: { source: "match_report", tier: pick.tier } });
       trackClarity("dealer_contacted");
       setSent(true);
     } catch {
@@ -365,6 +366,7 @@ export function MatchReport() {
       }
       try { localStorage.setItem("matchrv_email", clean); } catch { /* ignore */ }
       trackEvent("match_report_email_capture", { metadata: { reportId: report?.reportId ?? null } });
+      trackLead("buyer_email_capture", { dedupeKey: report?.reportId ?? null, metadata: { source: "match_report" } });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your email. Please try again.");

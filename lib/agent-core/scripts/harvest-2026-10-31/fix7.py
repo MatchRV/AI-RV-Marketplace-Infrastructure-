@@ -34,11 +34,46 @@ for u in U:
     if raw is None or raw=='': continue
     v=str(raw).upper().strip()
     k=vin_ok(v)
+    if k and not re.search(r'\d',v): k=None; why8c='no_digit'          # trial8c: a word, not a VIN
+    elif k and (u.get('year') or 0)>=1981 and not v[-4:].isdigit(): k=None; why8c='last4_not_numeric_1981plus'
+    else: why8c=''
     if k: u['vin']=v; C[f'vin_valid:{k}']+=1; continue
     u['_rawvin']=str(raw); u['vin']=None
-    kind='non_alphanumeric' if re.search(r'[^A-Za-z0-9 -]',str(raw)) else ('contains_I_O_Q' if len(v)==17 else f'length_{"short" if len(v)<17 else "long"}')
+    kind=why8c or ('non_alphanumeric' if re.search(r'[^A-Za-z0-9 -]',str(raw)) else ('contains_I_O_Q' if len(v)==17 else f'length_{"short" if len(v)<17 else "long"}'))
     C['vin_invalid_blanked']+=1; C[f'vin_invalid_blanked:{kind}']+=1; C[f'vin_invalid_by_domain:{dom(u)}']+=1
     chg.append([u['id'],lu(u),'vin',str(raw),'',f'not a VIN ({kind}); blanked'])
+# ---- 0b) trial8c: make field holding raw JSON / a schema.org Brand list -> the brand named in the unit's own title,
+# else the brand of the VIN's maker code; several or none -> hold (make_unresolved_brand_list)
+# VIN maker code -> the manufacturer (Forest River Inc. builds Coachmen/Prime Time etc. under its own codes)
+WMI={'4X4':'Forest River','5ZT':'Forest River','5NH':'Forest River','4YD':'Keystone RV','1UJ':'Jayco','573':'Grand Design','47C':'Heartland'}
+def nb(x): return re.sub(r'[^a-z0-9]','',re.sub(r'(?i)\brv\b','',x or '').lower())
+def brands(m):
+    try: j=json.loads(m)
+    except Exception: j=None
+    if j is not None:
+        j=j if isinstance(j,list) else [j]
+        return [str(x.get('name') if isinstance(x,dict) else x).strip() for x in j if (x.get('name') if isinstance(x,dict) else x)]
+    return re.findall(r'"name"\s*:\s*"([^"]+)"',m)
+mkrows=[]
+for u in list(U):
+    m=u.get('make') or ''
+    if not (m.strip().startswith(('[','{')) or '@type' in m): continue
+    bs=list(dict.fromkeys(brands(m))); t=nb(u.get('title')); dm_=dom(u)
+    pick=[b for b in bs if nb(b) and nb(b) in t]
+    basis='brand named in own title'
+    if not pick:   # title names none of the listed brands -> the VIN maker code, if it is one of them
+        v=(u.get('vin') or '').upper(); w=WMI.get(v[:3]) if len(v)==17 else None
+        pv=[b for b in bs if w and nb(b)==nb(w)]
+        pick,basis=(pv,f'VIN maker code {v[:3]}') if len(pv)==1 else ([],'')
+    if len(bs)==1 and not pick: pick,basis=bs,'only brand in the field'
+    if len(pick)==1:
+        u['make']=pick[0]; C['make_json_extracted']+=1; C[f'make_json_extracted:{dm_}']+=1
+        chg.append([u['id'],lu(u),'make',m[:200],pick[0],f'make field held a brand list; {basis}']); mkrows.append([dm_,u['id'],u.get('title'),m[:200],pick[0],basis])
+    else:
+        U.remove(u); held.append(u); C['held_make_unresolved_brand_list']+=1; C[f'held_make_unresolved_brand_list:{dm_}']+=1
+        holds.append([u['id'],lu(u),u.get('title'),'make_unresolved_brand_list',dm_,f'make field {m[:150]}; brands {bs}; none or several match title/VIN'])
+        mkrows.append([dm_,u['id'],u.get('title'),m[:200],'','held: no single brand matches title or VIN maker'])
+with open(f'{out}/make_json_fixes.csv','w',newline='') as f: w=csv.writer(f); w.writerow(['domain','id','title','old_make','new_make','basis']); w.writerows(mkrows)
 # ---- 1) order holds
 keep=[]
 for u in U:
@@ -163,21 +198,26 @@ if os.environ.get('CARRY')=='1':
   for kp,u in best.values():
     C['carry_candidates']+=1; dm=dom(kp); pv,pu=kp.setdefault('provenance',{}),(u.get('provenance') or {})
     row=[kp['id'],u['id'],dm,kp.get('title'),(kp.get('priceUsd') or {}).get('value'),(u.get('priceUsd') or {}).get('value'),(kp.get('msrpUsd') or {}).get('value'),(u.get('msrpUsd') or {}).get('value'),pv.get('lastSeenAt'),pu.get('lastSeenAt'),pv.get('listingUrl') or '',pu.get('listingUrl') or '']
+    kd,ud=(kp.get('dealer') or {}),(u.get('dealer') or {})
+    locrow=[kd.get('name'),kd.get('city'),kd.get('state'),ud.get('name'),ud.get('city'),ud.get('state')]
     b=basis(kp,u)
     conf=[f for f in ('year','make','model') if kp.get(f) and u.get(f) and nv(kp[f])!=nv(u[f])]
-    if conf: C['carry_skipped:spec_conflict']+=1; co.append(row+['','skipped: '+'/'.join(conf)+' conflict']); continue
-    if not b: C['carry_skipped:no_identifier_match']+=1; co.append(row+['','skipped: no VIN or stock-number match']); continue
+    if conf: C['carry_skipped:spec_conflict']+=1; co.append(row+['','skipped: '+'/'.join(conf)+' conflict']+locrow); continue
+    if not b: C['carry_skipped:no_identifier_match']+=1; co.append(row+['','skipped: no VIN or stock-number match']+locrow); continue
     old=(kp.get('priceUsd') or {}).get('value')
     kp['priceUsd']=json.loads(json.dumps(u.get('priceUsd'))); kp['msrpUsd']=json.loads(json.dumps(u.get('msrpUsd')))
     for f in ('lastSeenAt','listingUrl','harvestMethod','lastSeenBasis'):
         if pu.get(f): pv[f]=pu[f]
     pv['carriedFromDuplicate']=u['id']
+    if u.get('dealer') and json.dumps(kd,sort_keys=True)!=json.dumps(ud,sort_keys=True):   # whole location: lot/store, city, state, coordinates
+        kp['dealer']=json.loads(json.dumps(ud)); C['carry_location_changed']+=1; C[f'carry_location_changed:{dm}']+=1
+        if (kd.get('city'),kd.get('state'))!=(ud.get('city'),ud.get('state')): C['carry_city_changed']+=1; C[f'carry_city_changed:{dm}']+=1
     C['carry_done']+=1; C[f'carry_by:{dm}']+=1
     if old!=(kp.get('priceUsd') or {}).get('value'): C['carry_price_changed']+=1; C[f'carry_price_changed:{dm}']+=1
     if row[6]!=row[7]: C['carry_msrp_changed']+=1
-    co.append(row+[b,'carried'])
+    co.append(row+[b,'carried']+locrow)
   with open(f'{out}/dedupe_carryover.csv','w',newline='') as f:
-    w=csv.writer(f); w.writerow(['kept_id','removed_id','domain','title','old_price','new_price','old_msrp','new_msrp','old_last_seen','new_last_seen','old_listing_url','new_listing_url','match_basis','result']); w.writerows(co)
+    w=csv.writer(f); w.writerow(['kept_id','removed_id','domain','title','old_price','new_price','old_msrp','new_msrp','old_last_seen','new_last_seen','old_listing_url','new_listing_url','match_basis','result','old_lot','old_city','old_state','new_lot','new_city','new_state']); w.writerows(co)
 U=[u for u in U if id(u) not in drop]
 for u in U: u.pop('_rawvin',None); u.pop('_drop',None)
 S['units']=U

@@ -25,7 +25,7 @@ M=[(r'airstream',r'^(interstate|rangeline)\b','class_b'),
    (r'grech',r'.','class_b'),(r'midwest',r'^(passage|weekender)\b','class_b'),
    (r'entegra',r'^launch\b','class_b'),(r'entegra',r'^(accolade|esteem|odyssey|qwest)\b','class_c'),
    (r'entegra',r'^(aspire|anthem|cornerstone|insignia|reatta|vision|emblem)\b','class_a'),
-   (r'jayco',r'^(terrain|swift)\b','class_b'),(r'jayco',r'^(redhawk|greyhawk|melbourne|seneca|granite ridge|alante|precept|embark)\b','class_c' ),
+   (r'jayco',r'^(terrain|swift)\b','class_b'),(r'jayco',r'^(redhawk|greyhawk|melbourne|seneca|granite ridge)\b','class_c' ),(r'jayco',r'^(precept|alante|embark)\b','class_a'),   # Precept/Prestige: Class A on the Ford F53
    (r'regency',r'^(ultra brougham|ultra-brougham)\b','class_b'),
    (r'renegade',r'^(xl|xls|veracruz|verona|vienna|valencia|classic|explorer|ikon|villagio)\b','class_c'),
    (r'fleetwood',r'^pulse\b','class_c'),(r'tiffin',r'^wayfarer\b','class_c'),(r'tiffin',r'^(allegro|phaeton|zephyr|open road)\b','class_a'),
@@ -64,6 +64,58 @@ for u in U:
         u['rvType']=cls; keep.append(u); continue
     held.append(u); holds.append([u['id'],lu(u),dm(u),u.get('title'),make,model,p,t,'rv_type_unresolved_motorized',f'{why}; model class not in the manufacturer table'+(f'; VIN chassis {ch}' if ch else '')])
     C['held']+=1; C[f'held:{dm(u)}']+=1
+# ---- trial8c: hold (never retype) units whose stored type contradicts the manufacturer's model line
+# (motorhome lines stored as towables, towable lines stored as motorhomes), whole build incl. v3.3 base units.
+MOTOR_LINES=[(r'fleetwood',r'bounder|flair|discovery|pace arrow|southwind|fortis|frontier|jamboree|tioga|icon|expedition|excursion|providence|storm|terra|pulse|irok|revolution'),
+ (r'holiday rambler',r'vacationer|admiral|navigator|endeavor|nautica|armada|invicta|ambassador|neptune|scepter'),
+ (r'coachmen',r'mirada|pursuit|sportscoach|encore|leprechaun|freelander|prism|concord|cross trail|galleria|beyond|nova|cross country|santara'),   # not Spirit: Coachmen Spirit / Northern Spirit are travel trailers
+ (r'forest river',r'fr3|georgetown|berkshire|charleston|legacy|sunseeker|forester|solera|isata|sunway|tribute'),
+ (r'thor',r'aspect|a\.?c\.?e\.?|axis|vegas|hurricane|windsport|miramar|palazzo|tuscany|aria|venetian|challenger|luminate|inception|daybreak|four winds|chateau|compass|quantum|freedom elite|delano|gemini|omni|magnitude|tiburon|synergy|siesta|citation|sequence|tellaro|sanctuary|tranquility|rize|scope|talavera|dazzle|twist'),
+ (r'winnebago|itasca',r'view|navion|ekko|travato|solis|revel|boldt|journey|forza|adventurer|vista|sunstar|intent|horizon|minnie winnie|era|outlook|brave|sightseer|sunova|tour|meridian|ellipse|suncruiser|reyo|trend|fuse|porto'),
+ (r'jayco',r'redhawk|greyhawk|melbourne|seneca|precept|alante|embark|terrain|granite ridge'),
+ (r'newmar',r'bay star|canyon star|dutch star|ventana|essex|london aire|mountain aire|king aire|new aire|supreme aire|northern star'),
+ (r'tiffin',r'allegro|phaeton|zephyr|open road|wayfarer'),
+ (r'monaco',r'diplomat|dynasty|knight|camelot|windsor|signature|executive|cayman|monarch|la palma'),
+ (r'airstream',r'interstate|atlas|rangeline'),(r'national rv',r'dolphin|tropi-?cal|sea breeze|tradewinds|pacifica'),
+ (r'entegra|renegade|foretravel|newell|prevost|american coach|roadtrek|pleasure[- ]?way|leisure travel|nexus|phoenix cruiser',r'.'),
+ (r'dynamax',r'^(?!.*trilogy)')]
+TOW_LINES=[(r'keystone',r'montana|cougar|avalanche|alpine|raptor|fuzion|sprinter|hideout|passport|bullet|springdale|outback|laredo|residence|arcadia|premier|impact|retreat|copper canyon'),
+ (r'grand design',r'solitude|reflection|momentum|imagine|transcend|influence'),
+ (r'heartland',r'bighorn|landmark|cyclone|mallard|torque|road warrior|pioneer|sundance|elkridge|prowler|north trail|trail runner|milestone|gateway|wilderness|mpg'),
+ (r'drv',r'mobile suites|full house|elite suites'),
+ (r'forest river|prime ?time|coachmen|palomino|shasta',r'cedar creek|cardinal|wildcat|sandpiper|salem|wildwood|cherokee|rockwood|flagstaff|r-?pod|r pod|riverstone|sierra|puma|xlr|vengeance|columbus|impression|no boundaries|surveyor|arctic wolf|grey wolf|wolf pup|alpha wolf|catalina|chaparral|apex|freedom express|clipper|viking|brookstone|blue ridge|ibex|avenger|tracer|crusader|sanibel|lacrosse|vibe|work and play|stealth|ozark'),
+ (r'jayco',r'eagle|pinnacle|north point|jay flight|jay feather|white hawk|talon|seismic|octane|hummingbird|jay sport'),
+ (r'dutchmen',r'kodiak|aspen trail|voltage|atlas|coleman|denali|infinity'),
+ (r'alliance',r'paradigm|valor|avenue'),(r'brinkley',r'model [zg]'),
+ (r'airstream',r'flying cloud|classic|international|globetrotter|bambi|caravel|basecamp|trade wind|pottery barn'),
+ (r'winnebago',r'micro minnie|voyage|hike|minnie(?! winnie)|m-series'),
+ (r'crossroads',r'volante|zinger|hampton|sunset trail|rezerve'),(r'kz|k-z',r'connect|escape|sportsmen|durango|venom|spree'),
+ (r'gulf stream',r'kingsport|vintage cruiser|ameri-?lite|innsbruck|track & trail'),(r'cruiser rv',r'twilight|shadow cruiser|mpg|fun finder|radiance|stryker'),
+ (r'venture',r'sporttrek|stratus|sonic'),(r'outdoors rv',r'titanium|timber ridge|creekside|black stone|back country|trail series'),
+ (r'east to west',r'alta|della terra|tandara|ahara|silver lake|blackthorn'),(r'vanleigh',r'beacon|vilano|ambleside'),
+ (r'highland ridge',r'open range|mesa ridge|silverstar|roamer'),(r'nucamp|nu camp',r't@b|tag|avia'),(r'a-? ?liner|opus',r'.')]
+def comp(L): return [(re.compile(a,re.I),re.compile(r'^(?:'+b+r')\b' if b not in('.',) and not b.startswith('^') else b,re.I)) for a,b in L]   # line must START the model
+MOTOR_LINES,TOW_LINES=comp(MOTOR_LINES),comp(TOW_LINES)
+MOT={'class_a','class_b','class_c'}
+MKW=re.compile(r'^(?:(?:forest river|coachmen|prime ?time|rv|thor motor coach|thor|keystone|jayco|heartland|grand design|winnebago|fleetwood|newmar|tiffin|dutchmen|gulf stream|kz|crossroads|airstream|alliance|venture|cruiser|outdoors)\s+)+',re.I)
+def line_text(u):
+    m=clean(u.get('model'))
+    m=re.sub(r'^\d+\s+(?:19|20)\d\d\s+','',m)          # pplmotorhomes style "39' 2013 Thor Redwood 36RE"
+    return MKW.sub('',m).strip() or m
+k2=[]
+for u in keep:
+    t=u.get('rvType'); make=(u.get('make') or ''); mt=line_text(u); both=f"{make} {mt}"
+    hit=None
+    if t in TOW and re.search(r'(?i)\b(riverstone|catalina)\b',u.get('title') or ''): hit=None   # RiverStone/Catalina Legacy are towables
+    elif t in TOW:
+        hit=next((('motorhome line stored as '+t,a.pattern,b.search(mt).group(0) if b.pattern!='.' and not b.pattern.startswith('^') else mt.split(' ')[0] if mt else make) for a,b in MOTOR_LINES if a.search(both) and b.search(mt)),None)
+    elif t in MOT:
+        hit=next((('towable line stored as '+t,a.pattern,b.search(mt).group(0) if b.pattern!='.' else make) for a,b in TOW_LINES if a.search(both) and b.search(mt)),None)
+    if not hit: k2.append(u); continue
+    line=f"{make} {hit[2]}".strip()
+    held.append(u); holds.append([u['id'],lu(u),dm(u),u.get('title'),make,mt,(u.get('priceUsd') or {}).get('value'),t,'type_conflicts_model_line',f'{hit[0]}: {line}'])
+    C['held_type_conflicts_model_line']+=1; C['held_type_conflicts:'+hit[0].split(' stored')[0]]+=1; C[f'held_type_conflicts_by_dealer:{dm(u)}']+=1; C[f'held_type_conflicts_by_line:{line.lower()}|{t}']+=1
+keep=k2
 S['units']=keep
 st=S.get('stats') or {}; st['units']=len(keep); st['typefix_2026_10_31']={k:v for k,v in C.items() if k.count(':')==0}; S['stats']=st
 with gzip.open(dst,'wb',compresslevel=9) as f: f.write(json.dumps(S,separators=(',',':'),ensure_ascii=True).encode('latin1'))

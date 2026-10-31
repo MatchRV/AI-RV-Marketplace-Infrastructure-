@@ -119,8 +119,14 @@ const QUICK_MESSAGES = [
 
 export function ListingDetail() {
   const [, params] = useRoute("/listing/:id");
-  const listingId = parseInt(params?.id || "0");
-  const { data: listing, isLoading } = useGetListing(listingId, { query: { enabled: !!listingId, queryKey: ["/api/listing", listingId] } });
+  // Live inventory IDs are strings (e.g. "stk:dealer.com:id-…"); parseInt turned
+  // every one into NaN, so every listing page showed "Listing Not Found".
+  // The generated client still types the id as a number, hence the cast.
+  const rawListingId = (() => {
+    try { return decodeURIComponent(params?.id ?? ""); } catch { return params?.id ?? ""; }
+  })();
+  const listingPathId = encodeURIComponent(rawListingId) as unknown as number;
+  const { data: listing, isLoading } = useGetListing(listingPathId, { query: { enabled: rawListingId.length > 0, queryKey: ["/api/listing", rawListingId] } });
   const towMutation = useTowMatch();
   const [towForm, setTowForm] = useState({ make: "", model: "", year: "" });
   const [towResult, setTowResult] = useState<TowMatchResponse | null>(null);

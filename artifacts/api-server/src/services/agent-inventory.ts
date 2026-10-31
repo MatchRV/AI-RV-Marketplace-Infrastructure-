@@ -61,8 +61,15 @@ export function internStrings(root: unknown): number {
   return pool.size;
 }
 
+let warnedDbMode = false;
+
 export function getInventory(): InventoryIndex {
   if (!index) {
+    if (process.env.INVENTORY_SOURCE?.trim().toLowerCase() === "supabase" && !warnedDbMode) {
+      // Every serving path goes through inventory-access in this mode; reaching here is a leak worth knowing about.
+      warnedDbMode = true;
+      console.warn("[agent] INVENTORY_SOURCE=supabase but a code path is loading the in-memory snapshot:", new Error().stack?.split("\n").slice(2, 6).join(" | "));
+    }
     const path = findSnapshot();
     const t0 = performance.now();
     // Memory: keep only one copy of the JSON text alive and drop it before indexing, so the

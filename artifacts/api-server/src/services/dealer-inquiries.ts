@@ -267,7 +267,7 @@ export type SendResult =
 export async function sendInquiry(args: {
   confirmationToken: string; confirmed: boolean; dryRun?: boolean;
   requesterKey: string; scope: string | null;
-  lookupUnit: (id: string) => CanonicalUnit | undefined;
+  lookupUnit: (id: string) => CanonicalUnit | undefined | Promise<CanonicalUnit | undefined>;
 }): Promise<SendResult> {
   load(); purge();
   if (args.confirmed !== true) return { ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." };
@@ -279,7 +279,7 @@ export async function sendInquiry(args: {
     const existing = inquiries.get(existingId)!;
     return { ok: false, code: "invalid_token", guidance: `This preview was already sent (inquiry ${existing.id}, status ${existing.status}). It is not sent twice; use the status tool with the status token from the first send.` };
   }
-  const unit = args.lookupUnit(p.u);
+  const unit = await args.lookupUnit(p.u);
   if (!unit || unit.status === "removed") return { ok: false, code: "unit_unavailable", guidance: "This RV is no longer in MatchRV's inventory snapshot. Nothing was sent." };
   const dryRun = Boolean(args.dryRun) || forceDryRun();
   const contactKey = (p.e ?? p.p ?? "").toLowerCase();

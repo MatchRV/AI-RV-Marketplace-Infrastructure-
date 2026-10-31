@@ -43,10 +43,8 @@ import {
   type CanonicalUnit,
   type UnitMatch,
 } from "@workspace/agent-core";
-import { getInventory as getOriginalInventory } from "./services/agent-inventory";
-import { screenMcpInventory } from "./services/mcp-inventory-quality";
-let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
-function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
+import { datasetInfo, lookupMcpUnit, lookupMcpUnits, mcpInventoryQuality, searchMcpInventory } from "./services/inventory-access";
+import type { MemoryScope } from "./services/learned-store";
 
 import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
 import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";
@@ -259,9 +257,12 @@ function discoveryProfile(input: Record<string, any>): BuyerProfile {
 }
 
 /** How many of the named make/model exist in the area (shown before any listing). */
-function makeModelCount(corpus: CanonicalUnit[], c: Constraints) {
+/** search_rvs's corpus for a memory scope (screened inventory with memory applied), from the configured source. */
+const corpusSearch = (scope: MemoryScope) => async (c: Constraints) => (await searchMcpInventory(c, null, scope)).outcome;
+
+async function makeModelCount(search: (c: Constraints) => Promise<ReturnType<typeof runEngineSearch>>, c: Constraints) {
   const scoped: Constraints = { makes: c.makes, models: c.models, excludeMakes: c.excludeMakes, excludeModels: c.excludeModels, rvTypes: c.rvTypes, ...(c.condition ? { condition: c.condition } : {}), ...(c.location ? { location: c.location } : {}) };
-  const out = runEngineSearch(corpus, scoped);
+  const out = await search(scoped);
   const bySeries: Record<string, number> = {};
   const byDealer: Record<string, number> = {};
   for (const m of out.results) {
@@ -276,7 +277,7 @@ function makeModelCount(corpus: CanonicalUnit[], c: Constraints) {
   // matches the shopper can ask the dealer about, never listed as matches.
   let seriesNotStated = 0;
   if (c.models?.length && c.makes?.length) {
-    const brandOnly = runEngineSearch(corpus, { makes: c.makes, rvTypes: c.rvTypes, ...(c.location ? { location: c.location } : {}) });
+    const brandOnly = await search({ makes: c.makes, rvTypes: c.rvTypes, ...(c.location ? { location: c.location } : {}) });
     for (const m of brandOnly.results) if (unitMakeModel(m.unit).series == null) seriesNotStated += 1 + (m.identicalUnitIds?.length ?? 0);
   }
   const top = (r: Record<string, number>, k: number) => Object.entries(r).sort((a, b) => b[1] - a[1]).slice(0, k).map(([name, count]) => ({ name, count }));
@@ -427,8 +428,6 @@ function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | u
   return out as Constraints;
 }
 
-/** All searches start with the nationwide corpus; the engine applies location filters. */
-function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { return getInventory().units; }
 
 function textResult(payload: unknown, isError = false, meta?: Record<string, unknown>) {
   return {
@@ -731,7 +730,7 @@ function buildMatchRvServer(): McpServer {
         const gated = !road.readyForProducts || !discovery.readyToSearch;
         if (gated) {
           const questions = road.nextQuestions.length ? road.nextQuestions : discovery.nextQuestion ? [{ ...discovery.nextQuestion, goal: "goal_1_want_and_use", blocking: true }] : [];
-          const modelCount = wantsMakeModel ? makeModelCount(applyMemory(scope, candidateUnits(baseConstraints.location?.place)), baseConstraints) : null;
+          const modelCount = wantsMakeModel ? await makeModelCount(corpusSearch(scope), baseConstraints) : null;
           return textResult({
             status: "needs_discovery",
             results: [],
@@ -762,17 +761,19 @@ function buildMatchRvServer(): McpServer {
         const learnedTow = learnedVehicle?.towRatingLbs != null && profile.truckTowRatingLbs == null
           ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source }
           : null;
-        const place = constraints.location?.place;
-        const corpus = applyMemory(scope, candidateUnits(place));
-        const outcome = runSearch(corpus, constraints, learnedTow);
+        // All searches start with the nationwide corpus; the engine applies location filters.
+        const run = await searchMcpInventory(constraints, learnedTow, scope);
+        const { outcome } = run;
         const shortlistSize = Math.min(10, Math.max(1, input.limit ?? SHORTLIST_DEFAULT));
-        const ranked = diversifyShortlist(shortlistOrder(outcome.results), shortlistSize);
+        const ordered = diversifyShortlist(shortlistOrder(outcome.results), shortlistSize);
+        // Only the shown rows need full records (a database search keeps ranking fields on the rest).
+        const ranked = [...(await run.hydrate(ordered.slice(0, shortlistSize))), ...ordered.slice(shortlistSize)];
         const compact = compactSearchResult({ ...outcome, results: ranked }, shortlistSize);
         const towable = isTowableSearch(profile) || Boolean(profile.rvTypes?.some((t) => (TOWED_RV_TYPES as readonly string[]).includes(t)));
         const shortlist = (compact.results as Record<string, unknown>[]).map((row, i) => ({ ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }) }));
         const { funnel, coverage, note: _note, results: _r, ...rest } = compact as Record<string, any>;
-        const makeModelSummary = wantsMakeModel ? makeModelCount(corpus, constraints) : null;
-        const inventoryQuality = getInventory().inventoryQuality;
+        const makeModelSummary = wantsMakeModel ? await makeModelCount(corpusSearch(scope), constraints) : null;
+        const inventoryQuality = await mcpInventoryQuality();
         const ms = Math.round(performance.now() - t0);
         // Totals stay out of the shopper-facing payload (the model sees
         // content + structuredContent). They ride in _meta for the widget/logs.
@@ -836,12 +837,13 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_id, session_key }, ctx) => {
-      const inv = getInventory();
-      const raw = inv.byId.get(unit_id);
+      const found = await lookupMcpUnit(unit_id);
+      const raw = found.unit;
       const unit = raw ? applyMemoryToUnit(resolveScope(ctx, session_key), raw) : raw;
-      if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
+      if (!unit) return textResult({ error: found.quarantine ? "unit_quarantined" : "unit_not_found", issues: found.quarantine, guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
-      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      const info = await datasetInfo();
+      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), dataset: { builtAt: info.builtAt, note: info.datasetNote } });
     },
   );
 
@@ -856,9 +858,8 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_ids, constraints, session_key }, ctx) => {
-      const inv = getInventory();
       const scope = resolveScope(ctx, session_key);
-      const units = unit_ids.map((id) => { const u = inv.byId.get(id); return u ? applyMemoryToUnit(scope, u) : u; });
+      const units = (await lookupMcpUnits(unit_ids)).map((u) => (u ? applyMemoryToUnit(scope, u) : u));
       const missing = unit_ids.filter((_id, index) => !units[index]);
       if (missing.length) return textResult({ error: "unit_not_found", unit_ids: missing }, true);
       try {
@@ -881,7 +882,9 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs, session_key }, ctx) => {
-      const inv = getInventory();
+      const byId = new Map(unit_ids.map((id, i) => [id, i]));
+      const looked = await lookupMcpUnits(unit_ids);
+      const inv = { byId: { get: (id: string) => { const i = byId.get(id); return i === undefined ? undefined : looked[i]; } } };
       // READ-ONLY: a rating stated here is used for this answer only, never stored.
       const scope = resolveScope(ctx, session_key);
       const explicitResolution = vehicle ? resolveTowVehicle(vehicle) : null;
@@ -928,7 +931,7 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async (input) => {
-      const unit = getInventory().byId.get(input.unit_id);
+      const unit = (await lookupMcpUnit(input.unit_id)).unit;
       if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
       const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message });
       if (!prepared.ok) return textResult({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
@@ -963,7 +966,7 @@ function buildMatchRvServer(): McpServer {
         dryRun: input.dry_run,
         requesterKey: scope.id ? `scope:${scope.id}` : `ip:${(ctx as { http?: { req?: Request } }).http?.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"}`,
         scope: scope.id,
-        lookupUnit: (id) => getInventory().byId.get(id),
+        lookupUnit: async (id) => (await lookupMcpUnit(id)).unit,
       });
       if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false }, true);
       return textResult({

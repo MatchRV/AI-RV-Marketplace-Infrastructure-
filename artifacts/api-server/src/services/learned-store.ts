@@ -145,6 +145,11 @@ export function applyMemory(scope: MemoryScope, units: CanonicalUnit[]): Canonic
   const withCurated = getCuratedStore().applyToCorpus(units);
   return own ? own.applyToCorpus(withCurated) : withCurated;
 }
+/** Units whose facts memory can change for this scope (curated + the shopper's own). */
+export function memoryTouchedUnitIds(scope: MemoryScope): string[] {
+  const own = peekScope(scope);
+  return [...new Set([...getCuratedStore().touchedUnitIds(), ...(own ? own.touchedUnitIds() : [])])];
+}
 export function applyMemoryToUnit(scope: MemoryScope, unit: CanonicalUnit): CanonicalUnit {
   return applyMemory(scope, [unit])[0];
 }

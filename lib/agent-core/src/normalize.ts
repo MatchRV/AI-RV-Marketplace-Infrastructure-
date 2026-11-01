@@ -105,6 +105,15 @@ const CANONICAL_TYPES = new Set<RvType>([
   "truck_camper",
 ]);
 
+/** True when the dealer's category or title states "destination trailer" (or the bare category "destination"). */
+export function isDestinationTrailer(t: unknown, title: string): boolean {
+  for (const raw of [t ? String(t) : "", title]) {
+    const x = raw.toLowerCase().trim();
+    if (x.includes("destination trailer") || x === "destination") return true;
+  }
+  return false;
+}
+
 export function normalizeRvType(t: unknown, title: string): RvType | null {
   const candidates = [t ? String(t) : "", title];
   for (const raw of candidates) {
@@ -112,8 +121,10 @@ export function normalizeRvType(t: unknown, title: string): RvType | null {
     if (!x || x === "unknown" || x === "other" || x === "rv" || x === "park model") continue;
     if (CANONICAL_TYPES.has(x as RvType)) return x as RvType;
     if (x.includes("toy hauler")) return "toy_hauler";
-    if (x.includes("fifth wheel") || x.includes("5th wheel") || x.includes("destination trailer")) return "fifth_wheel";
-    if (x.includes("travel trailer") || x === "destination") return "travel_trailer";
+    if (x.includes("fifth wheel") || x.includes("5th wheel")) return "fifth_wheel";
+    // A destination trailer is a (large, park-it) travel trailer, not a fifth wheel. There is no separate
+    // destination type in the schema; the unit is flagged with `destinationTrailer` (see isDestinationTrailer).
+    if (x.includes("travel trailer") || x.includes("destination trailer") || x === "destination") return "travel_trailer";
     if (x.includes("class a") || x.includes("diesel pusher")) return "class_a";
     if (x.includes("class b")) return "class_b";
     if (x.includes("class c") || x.includes("super c")) return "class_c";
@@ -293,6 +304,7 @@ export function normalizeRecord(
     trim: toStr(rec.trim),
     floorplanCode,
     rvType,
+    ...(isDestinationTrailer(rec.rv_type, title) && (rvType === "travel_trailer" || rvType === "fifth_wheel") ? { destinationTrailer: true as const } : {}),
     condition,
     status,
 

@@ -80,9 +80,10 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
     expect(d.walkthrough.label).toBe('Same model — this unit may differ');
     expect(d.walkthrough.query).toContain(String(d.unit.year));
     // A unit whose dealer description links its own YouTube tour (stored in the snapshot).
-    const tour = await rpc('tools/call', { name: 'get_rv', arguments: { unit_id: 'vin:4EZFV4226T6043081' } });
+    // (trial6: the earlier fixture unit, a Camp EZ RV unit with no listing URL, is held: that dealer prints three lots.)
+    const tour = await rpc('tools/call', { name: 'get_rv', arguments: { unit_id: 'stk:campervalleyrv.com:unknown:42872' } });
     expect(tour.isError).not.toBe(true);
-    expect(body(tour).walkthrough).toMatchObject({ kind: 'dealer_video', url: 'https://www.youtube.com/watch?v=lXPHoDmBkcU', source: 'dealer_listing_description' });
+    expect(body(tour).walkthrough).toMatchObject({ kind: 'dealer_video', url: 'https://www.youtube.com/watch?v=5XTElQYspbA', source: 'dealer_listing_description' });
     expect(body(tour).walkthrough.note).toMatch(/hasn't verified it shows this exact unit/);
   }, 60000);
 });

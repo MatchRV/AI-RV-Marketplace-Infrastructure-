@@ -11,8 +11,9 @@ export function normalizeType(t: unknown): string | null {
   // Pass through values that are already in canonical underscore form.
   if (CANONICAL_TYPES.has(x)) return x;
   if (x.includes("toy hauler")) return "toy_hauler";
-  if (x.includes("fifth wheel") || x.includes("destination trailer")) return "fifth_wheel";
-  if (x.includes("travel trailer") || x === "destination") return "travel_trailer";
+  if (x.includes("fifth wheel")) return "fifth_wheel";
+  // destination trailers are travel trailers (no separate type in the schema), never fifth wheels
+  if (x.includes("travel trailer") || x.includes("destination trailer") || x === "destination") return "travel_trailer";
   if (x.includes("class a") || x.includes("motor home class a")) return "class_a";
   if (x.includes("class b") || x.includes("motor home class b")) return "class_b";
   if (x.includes("class c") || x.includes("super c") || x.includes("motor home class c")) return "class_c";

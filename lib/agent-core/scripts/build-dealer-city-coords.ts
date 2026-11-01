@@ -48,7 +48,27 @@ load(placesPath, 0);
 if (cousubPath) load(cousubPath, 10);
 
 const snapPath = resolve(import.meta.dirname, "../data/inventory.snapshot.json.gz");
-const snap = JSON.parse(gunzipSync(readFileSync(snapPath)).toString("utf8"));
+// Units are parsed one at a time from the bytes: a large snapshot's text can exceed V8's maximum string length.
+function readUnits(buf: Buffer): any[] {
+  const key = buf.indexOf('"units":[');
+  if (key < 0) return JSON.parse(buf.toString("utf8")).units;
+  const out: any[] = []; let i = key + 9; const n = buf.length;
+  for (;;) {
+    while (i < n && (buf[i] === 0x2c || buf[i] <= 0x20)) i++;
+    if (i >= n || buf[i] === 0x5d) break;
+    const s = i; let d = 0;
+    while (i < n) {
+      const b = buf[i];
+      if (b === 0x22) { i++; while (i < n && buf[i] !== 0x22) i += buf[i] === 0x5c ? 2 : 1; i++; continue; }
+      if (b === 0x7b || b === 0x5b) d++;
+      else if (b === 0x7d || b === 0x5d) { d--; if (d === 0) { i++; break; } }
+      i++;
+    }
+    out.push(JSON.parse(buf.toString("utf8", s, i)));
+  }
+  return out;
+}
+const snap = { units: readUnits(gunzipSync(readFileSync(snapPath))) };
 const wanted = new Set<string>();
 for (const u of snap.units) {
   const st = String(u.dealer?.state ?? "").toUpperCase();

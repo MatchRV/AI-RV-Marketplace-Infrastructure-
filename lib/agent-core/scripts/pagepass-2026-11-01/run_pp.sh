@@ -1,0 +1,18 @@
+#!/bin/bash
+# Detached, checkpointed page-pass apply on top of main e1a3cb4 (each step writes $O/steps/<n>.ok; rerun skips done steps).
+H=/workspace/harvest-2026-10-30; P=$H/pp2; O=$H/out_pagepass; W=/workspace/wt-pp; S=$O/steps; mkdir -p $S; cd $H
+export BUILT_AT=2026-11-01T00:32:20.000Z   # latest page read applied (Oct 31 5:32 PM PDT)
+log(){ echo "$(date +%T) $*"; }
+ck(){ echo "- $(date '+%Y-%m-%d %H:%M') PDT pagepass-2026-11-01: $*" >> $H/summary.md; }
+step(){ [ -f $S/$1.ok ] && { log "skip $1"; return 0; }; log "start $1"; if eval "$2"; then touch $S/$1.ok; log "ok $1"; else log "FAIL $1"; ck "step $1 FAILED (see $O/run.log)"; exit 1; fi; }
+step 00_base 'git -C $W show e1a3cb4:lib/agent-core/data/inventory.snapshot.json.gz > $O/base_main_e1a3cb4.snapshot.json.gz && python3 /workspace/harvest-2026-10-30/windows.py $O/base_main_e1a3cb4.snapshot.json.gz $O/windows_base.json > /dev/null && BUILT=$BUILT_AT python3 $P/tools/windows_at.py $O/base_main_e1a3cb4.snapshot.json.gz $O/windows_base_at_new_builtAt.json'
+step 01_apply 'python3 $P/tools/apply_pp2.py $O/base_main_e1a3cb4.snapshot.json.gz $O/inventory.snapshot.json.gz $O > $O/apply_stdout.json && ck "apply done: $(python3 -c "import json;d=json.load(open(\"$O/pagepass_apply_summary.json\"));print(d[\"in\"],\"->\",d[\"out\"],d[\"categories\"])")"'
+step 02_windows 'python3 /workspace/harvest-2026-10-30/windows.py $O/inventory.snapshot.json.gz $O/windows.json > /dev/null && ck "windows: $(python3 -c "import json;d=json.load(open(\"$O/windows.json\"));print(\"loaded\",d[\"loaded\"],\"14d\",d[\"windows\"][\"14\"][\"eligible\"],\"30d\",d[\"windows\"][\"30\"][\"eligible\"])")"'
+step 03_qa 'python3 $P/tools/qa_pp.py $O/base_main_e1a3cb4.snapshot.json.gz $O/inventory.snapshot.json.gz $O > $O/qa.txt'
+step 04_commit 'cd $W && mkdir -p lib/agent-core/scripts/pagepass-2026-11-01 && cp $P/tools/{apply_pp2.py,qa_pp.py,run_pp.sh,windows_at.py,bundle_pp.py} lib/agent-core/scripts/pagepass-2026-11-01/ && cp /workspace/wt-harvest/lib/agent-core/scripts/harvest-2026-10-30/pagepass/{fetch.py,parse.py,targets.py,run_pagepass.sh} lib/agent-core/scripts/pagepass-2026-11-01/ && python3 -c "import json;d=json.load(open(\"$O/pagepass_apply_summary.json\"));d[\"windows\"]=json.load(open(\"$O/windows.json\"));json.dump(d,open(\"lib/agent-core/data/pagepass-2026-11-01.stats.json\",\"w\"),indent=1)" && cp $O/inventory.snapshot.json.gz lib/agent-core/data/inventory.snapshot.json.gz && git add lib/agent-core/data/inventory.snapshot.json.gz lib/agent-core/data/pagepass-2026-11-01.stats.json lib/agent-core/scripts/pagepass-2026-11-01 && git commit -q -F $O/commit_msg.txt && git rev-parse --short HEAD > $O/commit.txt && cd $H && ck "local commit $(cat $O/commit.txt) on data/pagepass-2026-11-01 (not pushed)"'
+step 05_test_core 'cd $W/lib/agent-core && timeout 1500 npx vitest run --maxWorkers=2 --minWorkers=1 > $O/test_agent_core.txt 2>&1; cd $H; tail -6 $O/test_agent_core.txt; true'
+step 06_test_api 'cd $W/artifacts/api-server && timeout 2400 npx vitest run --maxWorkers=2 --minWorkers=1 > $O/test_api.txt 2>&1; cd $H; tail -6 $O/test_api.txt; true'
+step 07_test_web 'cd $W/artifacts/rv-marketplace && timeout 1200 npx vitest run --maxWorkers=2 --minWorkers=1 > $O/test_web.txt 2>&1; cd $H; tail -6 $O/test_web.txt; true'
+step 08_mem 'cp /workspace/harvest-2026-10-31/mem/_mem_new.ts $W/artifacts/api-server/_mem_new.ts && cd $W/artifacts/api-server && (NODE_OPTIONS=--expose-gc npx tsx _mem_new.ts > $O/mem.json 2>&1; rm -f _mem_new.ts) && cd $H && tail -1 $O/mem.json'
+step 09_bundle 'python3 $P/tools/bundle_pp.py && ck "tests/mem/bundle done: $(cat $O/result_line.txt)"'
+log "ALL DONE"; touch $O/PIPELINE_DONE

@@ -9,5 +9,6 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["src", "scripts", "test"]
+  "include": ["src", "scripts", "test"],
+  "exclude": ["scripts/harvest-*/**"]
 }

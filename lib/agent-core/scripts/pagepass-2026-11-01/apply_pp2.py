@@ -75,19 +75,28 @@ STORES=C.defaultdict(C.Counter); SREC={}
 for u in units:
     d=u["dealer"]; k=(u["provenance"]["dealerDomain"],(d["city"] or "").strip().lower(),(d["state"] or "").upper())
     STORES[k][d["id"]]+=1; SREC[(k,d["id"])]=d
-def set_loc(u,city,state,url,ts,dom):
+def slug(x): return re.sub(r"[^a-z0-9]+","-",x.lower()).strip("-")
+created=[]
+def set_loc(u,city,state,url,ts,dom,seller=None):
     d=u["dealer"]; state=state.upper()
     if (d["city"] or "").strip().lower()==city.strip().lower() and (d["state"] or "").upper()==state: return "same"
     k=(dom,city.strip().lower(),state)
     if not STORES.get(k):
-        return "unknown_store"
-    sid=STORES[k].most_common(1)[0][0]; nd=dict(SREC[(k,sid)])
+        # fix1 (CSO QA): the unit's own page names a store this build has no record for. The page is the fact, so a
+        # store record is created from it (id <domain>:<city slug>, seller name from the page when it states one,
+        # coordinates resolved at load from the page-stated city) instead of hiding a live unit.
+        sid=f"{dom}:{slug(city)}"
+        if any(i==sid for (kk,i) in SREC if kk!=k): sid=f"{dom}:{slug(city)}-{state.lower()}"
+        nd={**d,"id":sid,"name":seller or d["name"],"city":city.strip(),"state":state,"lat":None,"lng":None}
+        STORES[k][sid]+=1; SREC[(k,sid)]=nd; per[dom]["store_created_from_own_page"]+=1; created.append({"store_id":sid,"name":nd["name"],"city":nd["city"],"state":state,"unit_id":u["id"],"source_url":url})
+    else:
+        sid=STORES[k].most_common(1)[0][0]; nd=dict(SREC[(k,sid)])
     old=f'{d["id"]} | {d["city"]}, {d["state"]}'
     u["dealer"]=nd
     change(u,"dealer",old,f'{nd["id"]} | {nd["city"]}, {nd["state"]}',url,ts,"store/lot stated on the unit's own page")
     per[dom]["lot_moved"]+=1; return "moved"
-def apply_loc(u,city,state,url,ts,dom,fields):
-    r=set_loc(u,city,state,url,ts,dom)
+def apply_loc(u,city,state,url,ts,dom,fields,seller=None):
+    r=set_loc(u,city,state,url,ts,dom,seller)
     if r=="moved": fields.append("dealer"); return True
     if r=="unknown_store":
         hold(u,"lot_conflict_own_page_store_unknown",url,ts,f"page lot {city}, {state}; ours {u['dealer']['city']}, {u['dealer']['state']}"); return False
@@ -150,7 +159,7 @@ for uid,outcome in OUT.items():
     fields=[]
     c,s=x.get("h1City"),x.get("h1State")
     if c and s and re.fullmatch(r'[A-Z]{2}',s):
-        if not apply_loc(u,c,s,url,ts,dom,fields): st["cw_lot_unknown_store_held"]+=1; continue
+        if not apply_loc(u,c,s,url,ts,dom,fields,x.get("ldSeller")): st["cw_lot_unknown_store_held"]+=1; continue
     hc,lc=x.get("h1Condition"),x.get("ldCondition")
     if fill_condition(u,hc if hc and lc in (None,hc) else None,url,ts,dom): fields.append("condition")
     cand=[v for v in (x.get("ldPrice"),x.get("visiblePrice"),x.get("cpSale")) if v is not None]
@@ -300,6 +309,7 @@ def wcsv(p,rows,fn=None):
         w=csv.DictWriter(f,fieldnames=fn or list(rows[0].keys())); w.writeheader(); w.writerows(rows)
 wcsv(f"{rep}/pagepass_field_changes.csv",[d for d in diff if d["unit_id"] not in heldids])
 wcsv(f"{rep}/pagepass_removed_units.csv",held)
+wcsv(f"{rep}/pagepass_stores_created.csv",created,["store_id","name","city","state","unit_id","source_url"])
 wcsv(f"{rep}/pagepass_conflicts_not_applied.csv",conflicts,["unit_id","dealer_domain","field","ours","page","source_url","fetched_at"])
 json.dump({"touched":{k:v for k,v in touched.items() if k not in heldids},"changed":{k:sorted(v) for k,v in units_changed.items()}},open(f"{rep}/pagepass_touched.json","w"))
 print(json.dumps({k:v for k,v in summary.items() if k!="perDomain"},indent=1))

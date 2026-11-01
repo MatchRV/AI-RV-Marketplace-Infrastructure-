@@ -26,8 +26,8 @@ import {
   toInputSchema,
   type Constraints,
 } from "@workspace/agent-core";
-import { getInventory } from "../services/agent-inventory";
-import { readyUnits, searchReadyInventory } from "../services/search-ready";
+import { searchReadyInventory } from "../services/search-ready";
+import { datasetInfo, lookupUnit } from "../services/inventory-access";
 import { agentMetricsSnapshot, timedAgentOp } from "../services/agent-metrics";
 import {
   createPreview,
@@ -63,15 +63,15 @@ const searchBody = z.object({
 
 // ── Meta / observability ───────────────────────────────────────────────────
 
-router.get("/agent/meta", (_req: Request, res: Response) => {
-  const inv = getInventory();
+router.get("/agent/meta", async (_req: Request, res: Response) => {
+  const info = await datasetInfo();
   res.json({
     dataset: {
-      units: inv.units.length,
-      searchableUnits: readyUnits().length,
-      dealers: inv.snapshot.stats.dealers,
-      builtAt: inv.snapshot.builtAt,
-      note: inv.snapshot.datasetNote,
+      units: info.units,
+      searchableUnits: info.searchableUnits,
+      dealers: info.dealers,
+      builtAt: info.builtAt,
+      note: info.datasetNote,
     },
     tools: TOOL_CONTRACTS.map((t) => ({
       name: t.name,
@@ -129,7 +129,7 @@ const unitIdParam = z.string().min(3).max(120);
 router.get("/agent/units/:id", async (req: Request, res: Response) => {
   const id = unitIdParam.safeParse(req.params.id);
   if (!id.success) return badRequest(res, id.error);
-  const unit = getInventory().byId.get(id.data);
+  const unit = await lookupUnit(id.data);
   if (!unit) {
     return void res.status(404).json({
       error: "unit_not_found",
@@ -143,13 +143,12 @@ router.get("/agent/units/:id", async (req: Request, res: Response) => {
 router.get("/agent/units/:id/availability", async (req: Request, res: Response) => {
   const id = unitIdParam.safeParse(req.params.id);
   if (!id.success) return badRequest(res, id.error);
-  const inv = getInventory();
-  const unit = inv.byId.get(id.data);
+  const unit = await lookupUnit(id.data);
   if (!unit) {
     return void res.status(404).json({ error: "unit_not_found", guidance: "Use a unit id from search results." });
   }
   await timedAgentOp("availability", () => undefined);
-  res.json({ availability: availabilitySummary(unit, inv.snapshot.datasetNote) });
+  res.json({ availability: availabilitySummary(unit, (await datasetInfo()).datasetNote) });
 });
 
 const explainBody = z.object({ unit_id: unitIdParam, constraints: constraintsSchema });
@@ -157,7 +156,7 @@ const explainBody = z.object({ unit_id: unitIdParam, constraints: constraintsSch
 router.post("/agent/explain", async (req: Request, res: Response) => {
   const parsed = explainBody.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
-  const unit = getInventory().byId.get(parsed.data.unit_id);
+  const unit = await lookupUnit(parsed.data.unit_id);
   if (!unit) {
     return void res.status(404).json({ error: "unit_not_found", guidance: "Use a unit id from search results." });
   }
@@ -178,10 +177,9 @@ const compareBody = compareUnitsInput.extend({ constraints: constraintsSchema })
 router.post("/agent/compare", async (req: Request, res: Response) => {
   const parsed = compareBody.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
-  const inv = getInventory();
   const units: import("@workspace/agent-core").CanonicalUnit[] = [];
   for (const id of parsed.data.unit_ids) {
-    const u = inv.byId.get(id);
+    const u = await lookupUnit(id);
     if (!u) {
       return void res.status(404).json({ error: "unit_not_found", detail: id, guidance: "All unit_ids must come from search results." });
     }
@@ -207,11 +205,10 @@ const towBody = z.object({
 router.post("/agent/tow-fit", async (req: Request, res: Response) => {
   const parsed = towBody.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
-  const inv = getInventory();
   const resolution = resolveTowVehicle(parsed.data.vehicle);
   const fits = [];
   for (const id of parsed.data.unit_ids) {
-    const u = inv.byId.get(id);
+    const u = await lookupUnit(id);
     if (!u) {
       return void res.status(404).json({ error: "unit_not_found", detail: id, guidance: "All unit_ids must come from search results." });
     }
@@ -255,7 +252,7 @@ router.post("/agent/leads/preview", async (req: Request, res: Response) => {
   if (!leadRateLimit(req, res)) return;
   const parsed = previewBody.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
-  const unit = getInventory().byId.get(parsed.data.unit_id);
+  const unit = await lookupUnit(parsed.data.unit_id);
   if (!unit) {
     return void res.status(404).json({ error: "unit_not_found", guidance: "Use a unit id from search results." });
   }

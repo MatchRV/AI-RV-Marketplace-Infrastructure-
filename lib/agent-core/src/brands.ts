@@ -227,9 +227,12 @@ export function unitMakeModel(u: CanonicalUnit): UnitMakeModel {
 
 /** Same brand? Compares canonical names (falls back to normalized raw text). */
 export function brandMatches(unitBrand: string, wanted: string): boolean {
-  const a = canonicalBrand(unitBrand) ?? norm(unitBrand);
-  const b = canonicalBrand(wanted) ?? norm(wanted);
-  return a === b;
+  return brandKey(unitBrand) === brandKey(wanted);
+}
+
+/** The value brandMatches compares: canonical brand, else normalized text. Equal keys ⇔ brandMatches. */
+export function brandKey(brand: string): string {
+  return canonicalBrand(brand) ?? norm(brand);
 }
 
 export type ModelMatch = "pass" | "fail" | "unknown";

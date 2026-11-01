@@ -26,7 +26,7 @@ export type ListingRow = Record<string, unknown>;
 
 let rows: ListingRow[] | null = null;
 
-function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
+export function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
   return {
     // Canonical snapshot id (a string) rather than a serial — this deployment
     // has no listings table for a numeric id to refer to.

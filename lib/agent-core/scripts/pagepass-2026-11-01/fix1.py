@@ -53,7 +53,7 @@ res={}
 for l in open(f"{F}/results.ndjson"):
     j=json.loads(l); res[j["key"]]=j   # last line per key wins (retries)
 latest=None
-TH_LINE=r'xlr nitro|brinkley model g|\bmodel g\b|momentum|fuzion|raptor|carbon|vengeance|rogue|seismic|voltage|valor|torque|gravity|road warrior|toy hauler'
+TH_LINE=r'xlr nitro|brinkley model gx?\b|\bmodel gx?\b|momentum|fuzion|raptor|carbon|vengeance|rogue|seismic|voltage|valor|torque|gravity|road warrior|toy hauler'
 # Records of the same listing (same listing URL, same stock, no two different valid VINs) at these dealers: the
 # Oct 14 base record and the Oct 31 harvest record of one unit. The page confirms ONE unit: keep the valid-VIN record
 # (else the freshest), hold the copy as duplicate_record_of_same_listing (never merged across a VIN/stock conflict).
@@ -102,6 +102,8 @@ for key,t in tg.items():
         u["priceUsd"]=nf
     elif ms and ms>=500:
         if old is None or abs(old-ms)>=0.5: hold(u,"price_unverified",url,ts,f"page shows only MSRP {ms:.0f} (sale price {e.get('saleprice')}); stored price {old}"); st[f"{dom}:price_unverified"]+=1; continue
+        if os.environ.get("HOLD_MSRP_ONLY_EQUAL","1")=="1":  # fix2 (CSO ruling Nov 1): an MSRP is never the price, even when ours equals it
+            hold(u,"price_unverified",url,ts,f"page shows only MSRP {ms:.0f} (sale price {e.get('saleprice')}); stored price {old} equals that MSRP"); st[f"{dom}:price_unverified_equals_only_msrp"]+=1; continue
         st[f"{dom}:price_equals_only_msrp_shown"]+=1
     else: st[f"{dom}:no_price_on_page_kept"]+=1
     pt=norm_type(e.get("type") or e.get("typeLabel"))
@@ -120,15 +122,21 @@ for key,t in tg.items():
 # ── 2: build-wide fifth-wheel VIN body code on travel_trailer units ─────────────
 FW={"4X4F":r"forest river|palomino|rockwood|xlr|cedar creek|sandpiper|riverstone|vilano|cardinal|salem|wildwood|flagstaff|cherokee|vengeance|impression|columbus|r-pod",
     "7T0F":r"brinkley","4YDF":r"keystone|dutchmen|coleman","573F":r"grand design","7M5F":r"alliance","1UJC":r"jayco"}
+WEAK={"573F":r"reflection\s*(?:150|100)|fifth\s*wheel|5th\s*wheel|solitude|momentum","7T0F":r"model\s*(?:z|gx?)\b|fifth\s*wheel|5th\s*wheel"}
 for u in list(byid.values()):
     if u["rvType"]!="travel_trailer": continue
     v=(u["vin"] or "").upper()
     if not VINOK(v) or v[:4] not in FW or not re.search(FW[v[:4]],(u["make"] or "").lower()): continue
     txt=f'{u["title"]} {u["model"] or ""} {u.get("trim") or ""}'.lower()
     url=u["provenance"].get("listingUrl","")
+    if v[:4] in WEAK:
+        # fix2 (CSO QA fix1): Grand Design 573F and Brinkley 7T0F also appear on travel trailers (Reflection 317RSTS,
+        # Transcend Xplor, Imagine, Brinkley Model I), so the VIN code alone never retypes: the model line must confirm.
+        if not re.search(WEAK[v[:4]],txt) or (v[:4]=="573F" and re.search(r'\bmav\b|imagine|transcend|\d{3}[a-z]*ts\b',txt)):
+            st[f"vin_{v[:4]}_not_confirmed_by_model_line_left_as_is"]+=1; continue
     if re.search(r'travel\s*trailer|\btt\b',txt) or u.get("_pageType")=="travel_trailer":
         hold(u,"type_conflicts_model_line",url,"",f"VIN {v[:4]} = manufacturer fifth-wheel body code, dealer text says travel trailer"); st["vin_fw_code_dealer_says_tt_held"]+=1; continue
-    nt="toy_hauler" if re.search(TH_LINE,txt) else "fifth_wheel"
+    nt="toy_hauler" if re.search(TH_LINE,txt) or re.search(r'\b\d{2,4}th[a-z]{0,3}\b(?!\s*anniv)',txt) else "fifth_wheel"  # fix2: floorplan "TH" (e.g. Puma 351THSS) = toy hauler
     typerows.append({"unit_id":u["id"],"dealer_domain":u["provenance"]["dealerDomain"],"title":u["title"],"vin":v,"old":"travel_trailer","new":nt,"basis":f"VIN body code {v[:4]} (manufacturer fifth wheel)"+(" + toy hauler line/text" if nt=="toy_hauler" else ""),"source_url":url})
     change(u,"rvType","travel_trailer",nt,url,"","manufacturer class from VIN fifth-wheel body code"); u["rvType"]=nt; u["rvTypeSource"]="manufacturer_vin_body_code"; st["type_from_vin_fw_code_"+nt]+=1
 for u in byid.values(): u.pop("_pageType",None)

@@ -101,11 +101,11 @@
  "fix1": {
   "builtAt": "2026-11-01T19:03:54.000Z",
   "in": 137605,
-  "out": 137505,
+  "out": 137317,
   "removedOrHeldByReason": {
    "duplicate_record_of_same_listing": 4,
+   "price_unverified": 203,
    "dead_sold": 24,
-   "price_unverified": 15,
    "sale_pending": 42,
    "dead_page_gone": 3,
    "on_order": 1,
@@ -113,10 +113,12 @@
   },
   "removedByDomain": {
    "apachecamping.com|duplicate_record_of_same_listing": 4,
+   "meyersrvsuperstores.com|price_unverified": 67,
+   "mcclainsrv.com|price_unverified": 132,
    "mcclainsrv.com|dead_sold": 23,
-   "meyersrvsuperstores.com|price_unverified": 15,
    "meyersrvsuperstores.com|sale_pending": 13,
    "apachecamping.com|sale_pending": 29,
+   "apachecamping.com|price_unverified": 4,
    "apachecamping.com|dead_page_gone": 3,
    "mcclainsrv.com|on_order": 1,
    "apachecamping.com|dead_sold": 1,
@@ -124,15 +126,14 @@
    "meyersrvsuperstores.com|type_conflicts_model_line": 1
   },
   "fieldChangesByField": {
-   "provenance.lastSeenAt": 2537,
+   "provenance.lastSeenAt": 2349,
    "priceUsd": 39,
-   "rvType": 258,
-   "dealer": 2
+   "dealer": 2,
+   "rvType": 203
   },
   "typeChanges": {
-   "travel_trailer->fifth_wheel": 218,
-   "travel_trailer->toy_hauler": 37,
-   "fifth_wheel->toy_hauler": 3
+   "travel_trailer->toy_hauler": 34,
+   "travel_trailer->fifth_wheel": 169
   },
   "storesCreated": 0,
   "steps": {
@@ -142,55 +143,57 @@
    "apachecamping.com:price_changed": 1,
    "meyersrvsuperstores.com:own_page_read": 1476,
    "meyersrvsuperstores.com:price_confirmed": 1363,
-   "meyersrvsuperstores.com:price_equals_only_msrp_shown": 52,
+   "meyersrvsuperstores.com:price_unverified_equals_only_msrp": 52,
    "mcclainsrv.com:own_page_read": 741,
    "mcclainsrv.com:price_confirmed": 580,
-   "mcclainsrv.com:price_equals_only_msrp_shown": 132,
+   "mcclainsrv.com:price_unverified_equals_only_msrp": 132,
    "mcclainsrv.com:sold": 23,
    "meyersrvsuperstores.com:price_unverified": 15,
    "mcclainsrv.com:price_changed": 5,
    "meyersrvsuperstores.com:sale_pending": 13,
    "apachecamping.com:sale_pending": 29,
-   "apachecamping.com:price_equals_only_msrp_shown": 4,
+   "apachecamping.com:price_unverified_equals_only_msrp": 4,
    "meyersrvsuperstores.com:price_changed": 33,
-   "type_from_own_page": 41,
    "apachecamping.com:gone_http_410": 3,
    "lot_moved": 2,
+   "type_from_own_page": 2,
    "mcclainsrv.com:on_order": 1,
    "apachecamping.com:sold": 1,
-   "type_from_vin_fw_code_fifth_wheel": 186,
-   "type_from_vin_fw_code_toy_hauler": 31,
-   "vin_fw_code_dealer_says_tt_held": 11
+   "type_from_vin_fw_code_fifth_wheel": 169,
+   "type_from_vin_fw_code_toy_hauler": 32,
+   "vin_fw_code_dealer_says_tt_held": 11,
+   "vin_573F_not_confirmed_by_model_line_left_as_is": 15,
+   "vin_7T0F_not_confirmed_by_model_line_left_as_is": 1
   }
  },
  "windows": {
   "builtAt": "2026-11-01T19:03:54.000Z",
-  "loaded": 137505,
-  "passing_non_stale_rules": 137467,
+  "loaded": 137317,
+  "passing_non_stale_rules": 137279,
   "windows": {
    "14": {
-    "eligible": 93524,
+    "eligible": 93336,
     "domains": 507,
     "locations": 1171,
     "states": 49,
     "cutoff_PT": "2026-10-18 12:03 PDT"
    },
    "21": {
-    "eligible": 106914,
+    "eligible": 106726,
     "domains": 507,
     "locations": 1203,
     "states": 49,
     "cutoff_PT": "2026-10-11 12:03 PDT"
    },
    "30": {
-    "eligible": 134800,
+    "eligible": 134612,
     "domains": 646,
     "locations": 1361,
     "states": 49,
     "cutoff_PT": "2026-10-02 12:03 PDT"
    },
    "45": {
-    "eligible": 137467,
+    "eligible": 137279,
     "domains": 710,
     "locations": 1431,
     "states": 49,

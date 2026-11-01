@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, DB_MODE, analyticsEventsTable } from "@workspace/db";
 import { sql, eq, gte, and, desc } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
+import { idRef, toIntegerId } from "../lib/record-ids.js";
 
 const router: IRouter = Router();
 
@@ -30,9 +31,13 @@ router.post("/analytics/event", async (req, res) => {
     await db.insert(analyticsEventsTable).values({
       eventType,
       sessionId: sessionId ?? null,
-      listingId: listingId ?? null,
-      dealerId: dealerId ?? null,
-      metadata: metadata ?? {},
+      listingId: toIntegerId(listingId),
+      dealerId: toIntegerId(dealerId),
+      metadata: {
+        ...(metadata ?? {}),
+        ...(idRef(listingId) ? { listingRef: idRef(listingId) } : {}),
+        ...(idRef(dealerId) ? { dealerRef: idRef(dealerId) } : {}),
+      },
     });
 
     res.json({ ok: true, stored: true });

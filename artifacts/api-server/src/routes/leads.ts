@@ -3,6 +3,7 @@ import { db, analyticsEventsTable, buyerLeadsTable, scraperLeadsTable } from "@w
 import { sql, desc, eq } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
 import { notifyLead, postToCrm } from "../lib/notify-lead.js";
+import { idRef, toIntegerId } from "../lib/record-ids.js";
 
 const ADMIN_KEY_VALUE = process.env.ADMIN_KEY;
 
@@ -167,11 +168,17 @@ router.post("/leads", async (req, res) => {
     const leadSessionId = getLeadSessionId(sessionId, buyerProfile);
     const enrichedBuyerProfile = await enrichBuyerProfileWithAnalytics(buyerProfile, leadSessionId);
 
+    const snapshotWithRefs = {
+      ...(listingSnapshot ?? {}),
+      ...(idRef(listingId) ? { listingRef: idRef(listingId) } : {}),
+      ...(idRef(dealerId) ? { dealerRef: idRef(dealerId) } : {}),
+    };
+
     const [lead] = await db.insert(buyerLeadsTable).values({
       sessionId: leadSessionId,
-      listingId: listingId ?? null,
-      dealerId: dealerId ?? null,
-      listingSnapshot: listingSnapshot ?? {},
+      listingId: toIntegerId(listingId),
+      dealerId: toIntegerId(dealerId),
+      listingSnapshot: snapshotWithRefs,
       buyerProfile: enrichedBuyerProfile,
       conversation: conversation ?? [],
       contactName: contactName ?? null,
@@ -192,7 +199,7 @@ router.post("/leads", async (req, res) => {
       contactEmail: contactEmail ?? null,
       contactPhone: contactPhone ?? null,
       message: message ?? null,
-      listingSnapshot: listingSnapshot ?? {},
+      listingSnapshot: snapshotWithRefs,
       buyerProfile: enrichedBuyerProfile,
     }).catch(console.error);
 

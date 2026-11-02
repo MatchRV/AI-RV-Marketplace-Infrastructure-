@@ -5,6 +5,7 @@ import { useGetListing, useTowMatch } from "@workspace/api-client-react";
 import type { TowMatchResponse } from "@workspace/api-client-react";
 import { Input } from "@/components/ui-elements";
 import { formatCurrency, formatNumber, getDealScoreInfo, formatRvType } from "@/lib/utils";
+import { cleanDescription, daysOnMarketLabel, featureLabel, hasPriceAnalysis } from "@/lib/listing-claims";
 import {
   MapPin, Check, AlertTriangle, ShieldCheck, Truck, ArrowLeft,
   Heart, Bell, Send, Car, ChevronLeft, ChevronRight, Maximize2,
@@ -21,7 +22,6 @@ import { trackEvent, trackLead } from "@/lib/analytics";
 import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
-import { cleanDescription, daysOnMarketLabel, featureLabel, hasPriceAnalysis } from "@/lib/listing-claims";
 
 const DEAL_CHIP: Record<string, { bg: string; text: string }> = {
   great_deal: { bg: "bg-emerald-100", text: "text-emerald-900" },

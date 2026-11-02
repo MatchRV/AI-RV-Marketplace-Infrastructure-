@@ -3,6 +3,7 @@
  * Same HTML for humans and bots — no UA sniffing / cloaking.
  */
 import type { CanonicalUnit } from "@workspace/agent-core";
+import { isBoilerplateDescription } from "./description-boilerplate";
 
 const SITE = "https://matchrv.com";
 
@@ -107,7 +108,7 @@ export function buildUnitJsonLd(unit: CanonicalUnit): Record<string, unknown> {
   };
   if (image) ld.image = image;
   if (isRealVin(unit.vin)) ld.vehicleIdentificationNumber = unit.vin.trim().toUpperCase();
-  if (unit.description) ld.description = unit.description.slice(0, 500);
+  if (unit.description && !isBoilerplateDescription(unit.description)) ld.description = unit.description.slice(0, 500);
   return ld;
 }
 

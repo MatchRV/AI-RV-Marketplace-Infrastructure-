@@ -5,6 +5,7 @@ import { useGetListing, useTowMatch } from "@workspace/api-client-react";
 import type { TowMatchResponse } from "@workspace/api-client-react";
 import { Input } from "@/components/ui-elements";
 import { formatCurrency, formatNumber, getDealScoreInfo, formatRvType } from "@/lib/utils";
+import { cleanDescription, daysOnMarketLabel, featureLabel, hasPriceAnalysis } from "@/lib/listing-claims";
 import {
   MapPin, Check, AlertTriangle, ShieldCheck, Truck, ArrowLeft,
   Heart, Bell, Send, Car, ChevronLeft, ChevronRight, Maximize2,
@@ -314,6 +315,11 @@ export function ListingDetail() {
   }
 
   const dealInfo = getDealScoreInfo(listing.dealScore);
+  // Only claim what the data backs (see lib/listing-claims.ts).
+  const priceAnalysis = hasPriceAnalysis(listing);
+  const domLabel = daysOnMarketLabel(listing as { firstSeenAt?: string | null });
+  const aboutText = cleanDescription(listing.description);
+  const facts = listing as unknown as { generator?: boolean | null; solar?: boolean | null };
   const chip = DEAL_CHIP[listing.dealScore] ?? DEAL_CHIP.fair_deal;
   const photos = cleanListingImages(listing.images);
   const safePhoto = photos.length ? Math.min(activePhoto, photos.length - 1) : 0;
@@ -335,7 +341,7 @@ export function ListingDetail() {
     "@context": "https://schema.org",
     "@type": "Vehicle",
     "name": listing.title,
-    "description": listing.description || `${listing.year} ${listing.make} ${listing.model}, a ${formatRvType(listing.type)} for sale on MatchRV.`,
+    "description": aboutText || `${listing.year} ${listing.make} ${listing.model}, a ${formatRvType(listing.type)} for sale on MatchRV.`,
     "image": photos[0],
     "brand": {
       "@type": "Brand",
@@ -414,7 +420,7 @@ export function ListingDetail() {
     ? Math.round((listing.dealSavings / listing.marketValue) * 100)
     : 0;
 
-  const listingDescription = `${listing.condition === "new" ? "New" : "Used"} ${listing.year} ${listing.make} ${listing.model} ${formatRvType(listing.type)} for sale${listing.location ? ` in ${listing.location}` : ""}. ${listing.price ? `Priced at $${listing.price.toLocaleString()}.` : ""} ${listing.description ? listing.description.slice(0, 100) + "…" : "View photos, specs, and deal score on MatchRV."}`.slice(0, 160);
+  const listingDescription = `${listing.condition === "new" ? "New" : "Used"} ${listing.year} ${listing.make} ${listing.model} ${formatRvType(listing.type)} for sale${listing.location ? ` in ${listing.location}` : ""}. ${listing.price ? `Priced at $${listing.price.toLocaleString()}.` : ""} ${aboutText ? aboutText.slice(0, 100) + "…" : "View photos and specs on MatchRV."}`.slice(0, 160);
 
   return (
     <Layout>
@@ -448,7 +454,7 @@ export function ListingDetail() {
             </h1>
             <div className="flex items-center gap-1.5 text-sm text-[#3b4949] mt-2">
               <MapPin className="w-4 h-4 text-[#00696b]" />
-              {listing.location} · {listing.daysOnMarket} days on market
+              {listing.location}{domLabel ? ` · ${domLabel}` : ""}
             </div>
           </div>
 
@@ -456,31 +462,28 @@ export function ListingDetail() {
             <div className="font-display font-black text-4xl text-[#0B1117] tracking-tight">
               {formatCurrency(listing.price)}
             </div>
-            <div className="flex items-center md:justify-end gap-2 mt-1">
-              <span className="text-sm text-[#3b4949] line-through">{formatCurrency(listing.marketValue)} Est.</span>
-              <span className={`text-xs font-black px-3 py-1 rounded ${chip.bg} ${chip.text}`}>
-                {dealInfo.label}
-              </span>
-            </div>
+            {priceAnalysis && (
+              <div className="flex items-center md:justify-end gap-2 mt-1">
+                <span className="text-sm text-[#3b4949] line-through">{formatCurrency(listing.marketValue)} Est.</span>
+                <span className={`text-xs font-black px-3 py-1 rounded ${chip.bg} ${chip.text}`}>
+                  {dealInfo.label}
+                </span>
+              </div>
+            )}
 
-            {/* Trust badges row */}
+            {/* Trust badges row: only claims the data backs */}
             <div className="flex flex-wrap items-center md:justify-end gap-2 mt-3">
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded">
-                <Zap className="w-3 h-3" /> Live Listing
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded">
-                <Star className="w-3 h-3" /> Deal Scored
-              </span>
+              {priceAnalysis && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded">
+                  <Star className="w-3 h-3" /> Deal Scored
+                </span>
+              )}
               <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1 rounded">
                 <BadgeCheck className="w-3 h-3" /> AI Matched
               </span>
-              {savingsPercent > 0 ? (
+              {priceAnalysis && savingsPercent > 0 && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded">
                   <Tag className="w-3 h-3" /> {savingsPercent}% Below Market
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide bg-slate-50 text-slate-600 border border-slate-200 px-2 py-1 rounded">
-                  <ShieldCheck className="w-3 h-3" /> No Hidden Fees
                 </span>
               )}
             </div>
@@ -560,9 +563,12 @@ export function ListingDetail() {
               <SpecItem label="Sleeps" value={listing.sleeps ?? "Not listed"} />
               <SpecItem label="Slides" value={listing.slides ?? 0} />
               <SpecItem label="Dry Weight" value={listing.dryWeight ? `${formatNumber(listing.dryWeight)} lbs` : "Not listed"} />
+              <SpecItem label="Generator" value={featureLabel(facts.generator)} />
+              <SpecItem label="Solar" value={featureLabel(facts.solar)} />
             </div>
 
-            {/* Price analysis */}
+            {/* Price analysis: only with an independent market value */}
+            {priceAnalysis && (
             <div className="bg-white rounded-[2rem] border border-[#E2E8F0] p-8">
               <div className="flex items-start justify-between mb-6">
                 <div>
@@ -604,12 +610,13 @@ export function ListingDetail() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Description */}
-            {listing.description && (
+            {aboutText && (
               <div className="bg-white rounded-[2rem] border border-[#E2E8F0] p-8">
                 <h3 className="font-display font-black text-xl text-[#161d1d] mb-4 cursor-default select-none">About This RV</h3>
-                <p className="text-[#3b4949] leading-relaxed whitespace-pre-line">{listing.description}</p>
+                <p className="text-[#3b4949] leading-relaxed whitespace-pre-line">{aboutText}</p>
               </div>
             )}
 
@@ -855,8 +862,8 @@ export function ListingDetail() {
                     <div className="mb-4 p-4 bg-[#eef5f4] rounded-2xl border border-[#E2E8F0]">
                       <div className="text-[10px] font-black uppercase tracking-widest text-[#924c00] mb-1.5">Why MatchRV?</div>
                       <p className="text-xs text-[#3b4949] leading-relaxed">
-                        We verify every listing is active before it's shown. No bait-and-switch, no stale photos.
-                        Dealers on MatchRV respond within hours, not days.
+                        Details come from {listing.dealer.name}'s own listing. Ask the dealer to confirm it's still
+                        available and the current price before you visit.
                       </p>
                     </div>
 

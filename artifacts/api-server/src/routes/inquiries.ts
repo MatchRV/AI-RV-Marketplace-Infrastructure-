@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { getInventory } from "../services/agent-inventory";
+import { lookupUnit } from "../services/inventory-access";
 import {
   getInquiryStatus, opsGet, opsKeyValid, opsList, opsUpdate, prepareInquiry, rateLimit, sendInquiry,
 } from "../services/dealer-inquiries";
@@ -27,7 +27,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
       dryRun: body.dry_run === true,
       requesterKey: requester(req),
       scope: null,
-      lookupUnit: (id) => getInventory().byId.get(id),
+      lookupUnit: (id) => lookupUnit(id),
     });
     if (!result.ok) {
       res.status(result.code === "rate_limited" ? 429 : result.code === "not_confirmed" ? 400 : result.code === "unit_unavailable" ? 404 : 400).json({ error: result.code, guidance: result.guidance });
@@ -37,7 +37,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
     return;
   }
   if (!rateLimit("preview", requester(req))) { res.status(429).json({ error: "rate_limited" }); return; }
-  const unit = typeof body.unit_id === "string" ? getInventory().byId.get(body.unit_id) : undefined;
+  const unit = typeof body.unit_id === "string" ? await lookupUnit(body.unit_id) : undefined;
   if (!unit) { res.status(404).json({ error: "unit_not_found" }); return; }
   const prepared = prepareInquiry(unit, {
     name: typeof body.name === "string" ? body.name : undefined,

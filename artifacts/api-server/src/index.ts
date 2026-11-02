@@ -8,6 +8,8 @@ import { autoImportIfEmpty } from "./lib/auto-import";
 import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { shouldStartEnrichmentCron, startEnrichmentCron } from "./services/listing-enrichment";
 import { warmInventory } from "./services/agent-inventory";
+import { usingInventoryDb } from "./services/inventory-source";
+import { warmInventoryDb } from "./services/inventory-db";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
 // Default the port in development so `pnpm dev` works on a fresh clone.
@@ -117,10 +119,15 @@ async function start() {
   }
 
   // Preload MCP inventory before accepting traffic (avoids 60–120s first-search cold start).
-  try {
-    warmInventory();
-  } catch (err) {
-    console.warn("[startup] inventory warm failed (agent tools will lazy-load):", err);
+  // INVENTORY_SOURCE=supabase never parses the snapshot; it checks the database instead.
+  if (usingInventoryDb()) {
+    await warmInventoryDb();
+  } else {
+    try {
+      warmInventory();
+    } catch (err) {
+      console.warn("[startup] inventory warm failed (agent tools will lazy-load):", err);
+    }
   }
 
   app.listen(port, () => {

@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { anthropic, isAnthropicConfigured } from "@workspace/integrations-anthropic-ai";
 import { db, DB_MODE } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { getListingRows } from "../services/outfitter-inventory";
+import { firstListingRows } from "../services/inventory-access";
 
 const router: IRouter = Router();
 
@@ -854,9 +854,7 @@ async function getMatchedListings(
   if (DB_MODE === "none") {
     // No database on this deployment — match against the same inventory
     // snapshot the listings table would have been seeded from.
-    candidates = getListingRows()
-      .filter((row) => matchesSpec(spec, row))
-      .slice(0, 50);
+    candidates = await firstListingRows((row) => matchesSpec(spec, row), 50);
   } else {
     const conditions = specToSql(spec);
     // Never recommend a no-photo unit.

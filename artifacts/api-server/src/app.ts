@@ -9,12 +9,12 @@ import { matchRvMcpNodeHandler } from "./mcp";
 import { getMcpDocsHtml } from "./lib/mcp-docs";
 import opsLeadsPage from "./routes/ops-leads-page";
 import { DB_MODE } from "@workspace/db";
-import { getInventory } from "./services/agent-inventory";
+import { lookupUnit } from "./services/inventory-access";
 import { injectListingIntoShell } from "./lib/listing-seo";
 import {
   renderSitemapIndex,
   renderCoreSitemap,
-  renderUnitSitemapPage,
+  renderUnitSitemapPageFromSource,
 } from "./lib/sitemap";
 
 const app: Express = express();
@@ -163,10 +163,10 @@ app.get("/sitemap.xml", (_req: Request, res: Response) => {
 app.get("/sitemaps/core.xml", (_req: Request, res: Response) => {
   res.type("application/xml").send(renderCoreSitemap());
 });
-app.get("/sitemaps/units-:page.xml", (req: Request, res: Response) => {
+app.get("/sitemaps/units-:page.xml", async (req: Request, res: Response) => {
   const page = Number(req.params.page);
   try {
-    const xml = renderUnitSitemapPage(page);
+    const xml = await renderUnitSitemapPageFromSource(page);
     if (!xml) {
       res.status(404).type("text/plain").send("sitemap page not found");
       return;
@@ -200,7 +200,7 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
   // The dealer visibility homepage works with both database and snapshot deployments.
   app.use(express.static(webDist, { maxAge: "1h", index: false }));
 
-  app.get(/^\/(?!api\/).*/, (req: Request, res: Response) => {
+  app.get(/^\/(?!api\/).*/, async (req: Request, res: Response) => {
     const prerenderedPages: Record<string, string> = {
       "/": "home",
       "/for-dealers": "for-dealers",
@@ -233,7 +233,7 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       }
       let unit = null;
       try {
-        unit = getInventory().byId.get(unitId) ?? null;
+        unit = (await lookupUnit(unitId)) ?? null;
       } catch (err) {
         console.warn("[listing-seo] inventory unavailable:", err);
       }

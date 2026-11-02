@@ -3,6 +3,8 @@
  */
 import { CORE_SITEMAP_URLS } from "./sitemap-core-urls";
 import { getInventory } from "../services/agent-inventory";
+import { datasetInfo, sitemapEntries } from "../services/inventory-access";
+import { usingInventoryDb } from "../services/inventory-source";
 
 const SITE = "https://matchrv.com";
 /** Sitemap protocol soft limit is 50k; stay under for safety. */
@@ -73,6 +75,33 @@ export function renderUnitSitemapPage(page: number): string | null {
 ${urls.join("\n")}
 </urlset>
 `;
+}
+
+function unitUrlset(entries: { id: string; lastSeenAt: string }[]): string {
+  const urls = entries.map((u) => {
+    const lastmod = (u.lastSeenAt || "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const loc = `${SITE}/listing/${encodeURI(u.id)}`;
+    return `  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${escapeXml(lastmod)}</lastmod>
+    <changefreq>daily</changefreq>
+  </url>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join("\n")}
+</urlset>
+`;
+}
+
+/** Same output as renderUnitSitemapPage, from whichever inventory source is configured. */
+export async function renderUnitSitemapPageFromSource(page: number): Promise<string | null> {
+  if (!usingInventoryDb()) return renderUnitSitemapPage(page);
+  if (!Number.isInteger(page) || page < 1) return null;
+  const n = (await datasetInfo()).units;
+  const pages = Math.max(1, Math.ceil(n / UNITS_PER_SITEMAP));
+  if (page > pages) return null;
+  return unitUrlset(await sitemapEntries((page - 1) * UNITS_PER_SITEMAP, UNITS_PER_SITEMAP));
 }
 
 export function countUrlsInXml(xml: string): number {

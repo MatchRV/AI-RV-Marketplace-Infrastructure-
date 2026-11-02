@@ -128,6 +128,11 @@ export class LearnedStore {
     return out;
   }
 
+  /** Ids of units this store overlays facts onto (a DB-backed search always fetches these). */
+  touchedUnitIds(): string[] {
+    return [...new Set([...this.unitFacts.values()].map((f) => f.unitId))];
+  }
+
   applyToCorpus(units: CanonicalUnit[]): CanonicalUnit[] {
     if (!this.unitFacts.size) return units;
     const touched = new Set([...this.unitFacts.values()].map((f) => f.unitId));

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, listingsTable, dealersTable, DB_MODE } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, sql, inArray } from "drizzle-orm";
-import { getSnapshotListingById, querySnapshotListings } from "../services/snapshot-listings";
+import { getListingById, queryListings } from "../services/snapshot-listings";
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
@@ -77,7 +77,7 @@ router.get("/listings", async (req, res) => {
     const q = req.query as Record<string, string>;
 
     if (DB_MODE === "none") {
-      const { rows, total, offset, limit } = querySnapshotListings(q);
+      const { rows, total, offset, limit } = await queryListings(q);
       return void res.json({
         listings: rows.map(formatListing),
         total,
@@ -250,7 +250,7 @@ router.get("/listings", async (req, res) => {
 router.get("/listings/:id", async (req, res) => {
   try {
     if (DB_MODE === "none") {
-      const row = getSnapshotListingById(String(req.params.id));
+      const row = await getListingById(String(req.params.id));
       if (!row) return void res.status(404).json({ message: "Listing not found" });
       const base = formatListing(row);
       const detail = {

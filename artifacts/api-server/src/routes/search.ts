@@ -1,14 +1,14 @@
 import { Router, type IRouter } from "express";
 import { db, listingsTable, DB_MODE } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { snapshotSearchFilters } from "../services/snapshot-listings";
+import { searchFilters } from "../services/snapshot-listings";
 
 const router: IRouter = Router();
 
 router.get("/search/filters", async (_req, res) => {
   try {
     if (DB_MODE === "none") {
-      return void res.json(snapshotSearchFilters());
+      return void res.json(await searchFilters());
     }
 
     const [types, makes, states, priceRange, yearRange] = await Promise.all([

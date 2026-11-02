@@ -586,20 +586,75 @@ function firstFailReason(m: UnitMatch): string {
 }
 
 export function runSearch(units: CanonicalUnit[], constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchOutcome {
-  const ctx = buildContext(constraints, learnedTow ?? null);
+  const acc = createSearchAccumulator(buildContext(constraints, learnedTow ?? null));
+  acc.add(units);
+  return acc.finish();
+}
 
-  const evaluated = units.map((u) => evaluateUnit(u, ctx));
+/** Corpus-wide totals a database-backed search supplies because it only evaluates a prefiltered candidate set. */
+export interface SearchTotals {
+  /** Every unit in the searched corpus (not just the candidates evaluated). */
+  totalUnits: number;
+  /** Units in the requested area across the whole corpus (same rule as the in-memory path). */
+  unitsInArea: number;
+  /** Units the database excluded before evaluation; each certainly fails at least one hard constraint. */
+  prefilteredOut: number;
+}
 
-  const passed = evaluated.filter((m) => m.hardStatus === "pass");
-  const unverified = evaluated.filter((m) => m.hardStatus === "unverified");
-  const failed = evaluated.filter((m) => m.hardStatus === "fail");
+export const PREFILTER_EXCLUDED_REASON = "excluded by database prefilter (fails type, condition, price, size, weight, sleeps, features or area)";
 
+/**
+ * Incremental form of runSearch: feed the corpus in order (in batches), then
+ * finish(). Only hard-pass and unverified matches are retained, so a caller
+ * streaming rows from a database never holds the whole corpus. Feeding every
+ * unit and calling finish() with no totals is exactly runSearch. `retain`
+ * may shrink a kept match (e.g. swap its unit for slimUnitForRanking) as long
+ * as every field ranking, collapsing and shortlisting read is preserved.
+ */
+export function createSearchAccumulator(ctx: SearchContext, opts: { retain?: (m: UnitMatch) => UnitMatch } = {}) {
+  const retain = opts.retain ?? ((m: UnitMatch) => m);
+  const constraints = ctx.constraints;
+  const passed: UnitMatch[] = [];
+  const unverified: UnitMatch[] = [];
   const buckets = new Map<string, number>();
-  for (const m of failed) {
-    const r = firstFailReason(m);
-    buckets.set(r, (buckets.get(r) ?? 0) + 1);
-  }
+  let seen = 0;
+  let inArea = 0;
+  const isInArea = (m: UnitMatch) =>
+    ctx.location?.state ? m.unit.dealer.state?.toUpperCase() === ctx.location.state : m.distanceMiles !== null && ctx.location !== null && m.distanceMiles <= ctx.location.radiusMiles;
 
+  return {
+    context: ctx,
+    add(units: Iterable<CanonicalUnit>): void {
+      for (const u of units) {
+        const m = evaluateUnit(u, ctx);
+        seen++;
+        if (isInArea(m)) inArea++;
+        if (m.hardStatus === "pass") passed.push(retain(m));
+        else if (m.hardStatus === "unverified") unverified.push(retain(m));
+        else {
+          const r = firstFailReason(m);
+          buckets.set(r, (buckets.get(r) ?? 0) + 1);
+        }
+      }
+    },
+    finish(totals?: SearchTotals): SearchOutcome {
+      if (totals && totals.prefilteredOut > 0) buckets.set(PREFILTER_EXCLUDED_REASON, (buckets.get(PREFILTER_EXCLUDED_REASON) ?? 0) + totals.prefilteredOut);
+      const totalUnits = totals?.totalUnits ?? seen;
+      const unitsInArea = totals?.unitsInArea ?? inArea;
+      return finishSearch(ctx, constraints, passed, unverified, buckets, totalUnits, unitsInArea);
+    },
+  };
+}
+
+function finishSearch(
+  ctx: SearchContext,
+  constraints: Constraints,
+  passed: UnitMatch[],
+  unverified: UnitMatch[],
+  buckets: Map<string, number>,
+  totalUnits: number,
+  inArea: number,
+): SearchOutcome {
   // Prefer distance ranking for local demos unless the caller overrides.
   const sortKey = constraints.sort ?? (ctx.location ? "distance" : "best_match");
   const unknownHard = (m: UnitMatch) => m.hardChecks.filter((h) => h.status === "unknown").length;
@@ -646,10 +701,6 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
     return out;
   };
 
-  const inArea = evaluated.filter(
-    (m) => ctx.location?.state ? m.unit.dealer.state?.toUpperCase() === ctx.location.state : m.distanceMiles !== null && ctx.location !== null && m.distanceMiles <= ctx.location.radiusMiles,
-  ).length;
-
   // Area guarantee: when location is set, never append out-of-area unverified
   // rows after the local passes. Only return matches that survived hard filters
   // (passed) plus in-area unverified (e.g. unknown sleeps) — not national spill.
@@ -661,7 +712,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
 
   return {
     funnel: {
-      totalUnits: units.length,
+      totalUnits,
       passedHard: passed.length,
       unverified: localUnverified.length,
       excluded: [...buckets.entries()]
@@ -684,7 +735,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
       requestedArea: ctx.location?.place ?? null,
       radiusMiles: ctx.location?.radiusMiles ?? null,
       unitsInArea: inArea,
-      nationwideTotal: units.length,
+      nationwideTotal: totalUnits,
       noLocalMatches: Boolean(ctx.location) && results.length === 0,
     },
   };

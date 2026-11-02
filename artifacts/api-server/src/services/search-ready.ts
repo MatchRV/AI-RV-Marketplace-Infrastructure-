@@ -1,5 +1,6 @@
-import { runSearch, type CanonicalUnit, type Constraints, type Fact } from "@workspace/agent-core";
+import { runSearch, type CanonicalUnit, type Constraints, type Fact, type UnitMatch } from "@workspace/agent-core";
 import { getInventory } from "./agent-inventory";
+import { searchReadyCorpus } from "./inventory-access";
 
 const published = (fact: Fact<number>) => fact.value !== null && fact.value > 0 && (fact.source === "dealer_listing" || fact.source === "derived_text");
 export function usablePhotoUrl(value: string): boolean {
@@ -40,10 +41,27 @@ export async function checkPhoto(url: string): Promise<boolean> {
   return ok;
 }
 
-export async function searchReadyInventory(constraints: Constraints, limit = 12, corpus = readyUnits(), photoCheck = checkPhoto) {
-  const outcome = runSearch(corpus.filter(isSearchReady), constraints);
+export async function searchReadyInventory(constraints: Constraints, limit = 12, corpus?: CanonicalUnit[], photoCheck = checkPhoto) {
+  // An explicit corpus (tests) is searched in memory; otherwise the configured inventory source.
+  let outcome;
+  let hydrate: (m: UnitMatch[]) => Promise<UnitMatch[]> = async (m) => m;
+  let totalInventory: number;
+  let eligibleInventory: number;
+  if (corpus) {
+    outcome = runSearch(corpus.filter(isSearchReady), constraints);
+    totalInventory = getInventory().units.length;
+    eligibleInventory = corpus.filter(isSearchReady).length;
+  } else {
+    const run = await searchReadyCorpus(constraints);
+    outcome = run.outcome;
+    hydrate = run.hydrate;
+    totalInventory = run.totalInventory;
+    eligibleInventory = run.eligibleInventory;
+  }
   // Unknown hard requirements must not become recommendations.
-  const ranked = outcome.results.filter(match => match.hardStatus === "pass");
+  const passing = outcome.results.filter(match => match.hardStatus === "pass");
+  // Photo checks read at most the first 36 (database search keeps ranking fields only on the rest).
+  const ranked = [...(await hydrate(passing.slice(0, 36))), ...passing.slice(36)];
   const selected: typeof ranked = [];
   let inspected = 0;
   for (let i = 0; i < Math.min(ranked.length, 36) && selected.length < limit; i += 6) {
@@ -62,8 +80,8 @@ export async function searchReadyInventory(constraints: Constraints, limit = 12,
     ...outcome.coverage,
     noLocalMatches: Boolean(constraints.location) && selected.length === 0,
   }, readiness: {
-    totalInventory: getInventory().units.length,
-    eligibleInventory: corpus.filter(isSearchReady).length,
+    totalInventory,
+    eligibleInventory,
     matchedBeforePhotoCheck: ranked.length,
     inspected,
     photoCheckLimited: inspected < ranked.length && selected.length < limit,

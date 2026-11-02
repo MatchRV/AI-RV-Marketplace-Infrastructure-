@@ -19,6 +19,18 @@ export function dealerDomainFromReport(report: { website?: string; inventory_url
   }
 }
 
+/**
+ * Display-name overrides for this card only, keyed by dealer host. The report JSON is left untouched;
+ * these match the name the rest of the site uses (e.g. the report-examples section).
+ */
+export const DEALER_DISPLAY_NAME_OVERRIDES: Readonly<Record<string, string>> = {
+  "tacomarv.com": "Tacoma RV Center",
+};
+
+export function dealerDisplayName(dealer: string, domain?: string | null): string {
+  return (domain && DEALER_DISPLAY_NAME_OVERRIDES[domain]) || dealer;
+}
+
 export function inventoryUpdatingCopy(dealer: string): { title: string; body: string } {
   const name = dealer.trim() || "This dealership";
   return {
@@ -27,9 +39,9 @@ export function inventoryUpdatingCopy(dealer: string): { title: string; body: st
   };
 }
 
-export function DealerInventoryNotice({ dealer, status }: { dealer: string; status: DealerInventoryStatus | null }) {
+export function DealerInventoryNotice({ dealer, domain, status }: { dealer: string; domain?: string | null; status: DealerInventoryStatus | null }) {
   if (status !== "updating") return null;
-  const copy = inventoryUpdatingCopy(dealer);
+  const copy = inventoryUpdatingCopy(dealerDisplayName(dealer, domain));
   return (
     <div
       role="status"

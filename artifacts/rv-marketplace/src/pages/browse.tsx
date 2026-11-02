@@ -840,7 +840,7 @@ export function Browse() {
           <div className="mb-6 text-sm text-muted-foreground">Loading visibility report…</div>
         )}
 
-        {report && !isDemo && <DealerInventoryNotice dealer={report.dealer} status={inventoryStatus} />}
+        {report && !isDemo && <DealerInventoryNotice dealer={report.dealer} domain={dealerDomainFromReport(report)} status={inventoryStatus} />}
 
         {report && (isTeaser ? <TeaserView report={report} /> : <FullReportView report={report} isDemo={isDemo} />)}
       </div>

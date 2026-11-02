@@ -21,6 +21,7 @@ import { trackEvent, trackLead } from "@/lib/analytics";
 import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
+import { sendDealerInquiry } from "@/lib/dealer-inquiry";
 
 const DEAL_CHIP: Record<string, { bg: string; text: string }> = {
   great_deal: { bg: "bg-emerald-100", text: "text-emerald-900" },
@@ -861,7 +862,7 @@ export function ListingDetail() {
 
                     {contactSent ? (
                       <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm flex items-center gap-2">
-                        <Check className="w-4 h-4" /> Message sent to {listing.dealer.name}
+                        <Check className="w-4 h-4" /> Message received. MatchRV is passing it to {listing.dealer.name}, and they’ll reply to you directly.
                       </div>
                     ) : (
                       <>
@@ -942,17 +943,31 @@ export function ListingDetail() {
                             setContactError(null);
                             try {
                               if (!isAuthenticated) {
-                                const { ok, error } = await submitLead({
-                                  listing,
-                                  message: contactMsg,
-                                  leadSource: "contact_dealer",
-                                  outfitterSession: getOutfitterSession(),
-                                  BASE,
-                                  contactName: guestName.trim(),
-                                  contactEmail: guestEmail.trim(),
-                                  contactPhone: guestPhone.trim() || undefined,
-                                  smsOptIn: guestPhone.trim() ? smsOptIn : false,
-                                });
+                                // Same inquiry system as the MatchRV MCP: works without the
+                                // database and lands in the MatchRV lead inbox (/ops/leads).
+                                const sent = await sendDealerInquiry({
+                                  unitId: String(listing.id),
+                                  name: guestName.trim(),
+                                  email: guestEmail.trim(),
+                                  phone: guestPhone.trim() || null,
+                                  message: contactMsg.trim(),
+                                }, BASE);
+                                const ok = sent.ok;
+                                const error = sent.ok ? undefined : sent.error;
+                                if (ok) {
+                                  // Keep the buyer-profile lead for DB deployments; never blocks the inquiry.
+                                  void submitLead({
+                                    listing,
+                                    message: contactMsg,
+                                    leadSource: "contact_dealer",
+                                    outfitterSession: getOutfitterSession(),
+                                    BASE,
+                                    contactName: guestName.trim(),
+                                    contactEmail: guestEmail.trim(),
+                                    contactPhone: guestPhone.trim() || undefined,
+                                    smsOptIn: guestPhone.trim() ? smsOptIn : false,
+                                  });
+                                }
                                 if (ok) {
                                   recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
@@ -966,31 +981,39 @@ export function ListingDetail() {
                                 }
                                 return;
                               }
-                              const r = await fetch(`${BASE}api/user/messages`, {
-                                method: "POST", credentials: "include",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ dealerId: listing.dealerId, listingId: listing.id, body: contactMsg }),
-                              });
-                              if (!r.ok) {
-                                setContactError("Unable to send message. Please try again.");
-                                return;
+                              const signedInName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : "";
+                              const sent = await sendDealerInquiry({
+                                unitId: String(listing.id),
+                                name: signedInName || "MatchRV shopper",
+                                email: user?.email ?? null,
+                                message: contactMsg.trim(),
+                              }, BASE);
+                              const ok = sent.ok;
+                              const error = sent.ok ? undefined : sent.error;
+                              if (ok) {
+                                // Best effort on DB deployments: in-app message thread + buyer-profile lead.
+                                void fetch(`${BASE}api/user/messages`, {
+                                  method: "POST", credentials: "include",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ dealerId: listing.dealerId, listingId: listing.id, body: contactMsg }),
+                                }).catch(() => {});
+                                void submitLead({
+                                  listing,
+                                  message: contactMsg,
+                                  leadSource: "contact_dealer",
+                                  outfitterSession: getOutfitterSession(),
+                                  BASE,
+                                  contactName: signedInName || undefined,
+                                  contactEmail: user?.email ?? undefined,
+                                });
                               }
-                              const { ok, error } = await submitLead({
-                                listing,
-                                message: contactMsg,
-                                leadSource: "contact_dealer",
-                                outfitterSession: getOutfitterSession(),
-                                BASE,
-                                contactName: user ? [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined : undefined,
-                                contactEmail: user?.email ?? undefined,
-                              });
                               if (ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
                                 setContactSent(true);
                                 setContactMsg("");
                               } else {
-                                setContactError(error ?? "Lead saved, but dealer notification failed. Please try again.");
+                                setContactError(error ?? "Unable to send message. Please try again.");
                               }
                             } finally {
                               setIsContactSubmitting(false);

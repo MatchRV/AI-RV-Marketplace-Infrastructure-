@@ -61,6 +61,8 @@ export interface DealerInquiry {
   preview: InquiryPreview;
   delivery: { channel: "dealer_email" | "matchrv_forward" | "none"; attemptedAt: string; dealerEmailAccepted: boolean; opsNotified: { ntfy: boolean; email: boolean }; error: string | null };
   dealerReply: { text: string; receivedAt: string; recordedBy: "matchrv_ops" } | null;
+  /** Set by MatchRV ops for internal test inquiries: shown as TEST in the lead inbox, never forwarded. */
+  test?: boolean;
 }
 
 export interface InquiryTransport {
@@ -402,11 +404,12 @@ export function opsKeyValid(header: string | undefined): boolean {
 }
 export function opsGet(id: string): DealerInquiry | null { load(); return inquiries.get(id) ?? null; }
 export function opsList(): DealerInquiry[] { load(); purge(); return [...inquiries.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200); }
-export function opsUpdate(id: string, update: { status?: "delivered" | "queued_for_matchrv" | "failed"; statusDetail?: string; dealerReply?: string }): DealerInquiry | null {
+export function opsUpdate(id: string, update: { status?: "delivered" | "queued_for_matchrv" | "failed"; statusDetail?: string; dealerReply?: string; test?: boolean }): DealerInquiry | null {
   load();
   const i = inquiries.get(id);
   if (!i || i.dryRun) return null;
   if (update.status) i.status = update.status;
+  if (typeof update.test === "boolean") i.test = update.test;
   if (update.statusDetail) i.statusDetail = clean(update.statusDetail).slice(0, 500);
   if (update.dealerReply) i.dealerReply = { text: clean(update.dealerReply).slice(0, 4000), receivedAt: new Date().toISOString(), recordedBy: "matchrv_ops" };
   persistSoon();

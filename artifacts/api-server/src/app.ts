@@ -7,6 +7,7 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxy
 import router from "./routes";
 import { matchRvMcpNodeHandler } from "./mcp";
 import { getMcpDocsHtml } from "./lib/mcp-docs";
+import opsLeadsPage from "./routes/ops-leads-page";
 import { DB_MODE } from "@workspace/db";
 import { getInventory } from "./services/agent-inventory";
 import { injectListingIntoShell } from "./lib/listing-seo";
@@ -37,6 +38,9 @@ app.get(["/mcp-docs", "/mcp-docs/"], async (_req: Request, res: Response) => {
     res.status(503).type("text/plain").send("MCP docs temporarily unavailable");
   }
 });
+
+// Private MatchRV lead inbox (noindex; data comes from /api/inquiries/ops with the ops key).
+app.use(opsLeadsPage);
 
 // Preserve old links with real HTTP redirects before serving the SPA shell.
 app.get("/terms-and-conditions", (_req: Request, res: Response) => res.redirect(301, "/terms"));

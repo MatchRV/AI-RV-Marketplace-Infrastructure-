@@ -160,42 +160,42 @@
   "out_units": 137838
  },
  "windows": {
-  "builtAt": "2026-11-02T03:03:56.358Z",
-  "loaded": 137838,
-  "passing_non_stale_rules": 137800,
+  "builtAt": "2026-11-02T16:24:09.693Z",
+  "loaded": 137480,
+  "passing_non_stale_rules": 137442,
   "windows": {
    "14": {
-    "eligible": 93857,
+    "eligible": 93842,
     "domains": 512,
     "locations": 1178,
     "states": 49,
-    "cutoff_PT": "2026-10-18 20:03 PDT"
+    "cutoff_PT": "2026-10-19 09:24 PDT"
    },
    "21": {
-    "eligible": 107247,
+    "eligible": 106159,
     "domains": 512,
-    "locations": 1210,
+    "locations": 1178,
     "states": 49,
-    "cutoff_PT": "2026-10-11 20:03 PDT"
+    "cutoff_PT": "2026-10-12 09:24 PDT"
    },
    "30": {
-    "eligible": 135133,
-    "domains": 650,
-    "locations": 1366,
+    "eligible": 134775,
+    "domains": 649,
+    "locations": 1365,
     "states": 49,
-    "cutoff_PT": "2026-10-02 20:03 PDT"
+    "cutoff_PT": "2026-10-03 09:24 PDT"
    },
    "45": {
-    "eligible": 135133,
-    "domains": 650,
-    "locations": 1366,
+    "eligible": 134775,
+    "domains": 649,
+    "locations": 1365,
     "states": 49,
-    "cutoff_PT": "2026-09-17 20:03 PDT"
+    "cutoff_PT": "2026-09-18 09:24 PDT"
    }
   }
  },
  "windowsBaseAtNewBuiltAt": {
-  "builtAt": "2026-11-02T03:03:56.358Z",
+  "builtAt": "2026-11-02T16:24:09.693Z",
   "loaded": 137317,
   "passing_non_stale_rules": 137279,
   "windows": {
@@ -204,39 +204,40 @@
     "domains": 507,
     "locations": 1171,
     "states": 49,
-    "cutoff_PT": "2026-10-18 20:03 PDT"
+    "cutoff_PT": "2026-10-19 09:24 PDT"
    },
    "21": {
-    "eligible": 106726,
+    "eligible": 105653,
     "domains": 507,
-    "locations": 1203,
+    "locations": 1171,
     "states": 49,
-    "cutoff_PT": "2026-10-11 20:03 PDT"
+    "cutoff_PT": "2026-10-12 09:24 PDT"
    },
    "30": {
     "eligible": 134612,
     "domains": 646,
     "locations": 1361,
     "states": 49,
-    "cutoff_PT": "2026-10-02 20:03 PDT"
+    "cutoff_PT": "2026-10-03 09:24 PDT"
    },
    "45": {
     "eligible": 134612,
     "domains": 646,
     "locations": 1361,
     "states": 49,
-    "cutoff_PT": "2026-09-17 20:03 PDT"
+    "cutoff_PT": "2026-09-18 09:24 PDT"
    }
   }
  },
  "waUniverse": {
   "known": 119,
   "status": {
-   "covered_before": 36,
-   "uncovered": 79,
+   "covered_before": 35,
+   "uncovered": 80,
    "added_now": 4
   },
   "uncovered_reasons": {
+   "price_not_on_page": 1,
    "tls_invalid": 1,
    "wa_lots_none": 1,
    "not_rv_dealer": 1,
@@ -271,7 +272,7 @@
    ],
    [
     "camperschoicerv.com",
-    67
+    46
    ],
    [
     "scottsrvvancouver.com",
@@ -285,5 +286,19 @@
   "on_order": 18,
   "dup_of_base_vin": 13,
   "dup_of_base_dealer_stock": 3
+ },
+ "csoFix_2026_11_02": {
+  "bretz16_refreshed": 13,
+  "bretz16_no_page_left_to_age_out": 3,
+  "tacoma_no_price_on_page_held": 298,
+  "tacoma_not_in_sitemap_held": 32,
+  "fife_make_split": 5,
+  "cc_available_kept": 46,
+  "interact_listonly_held": 7,
+  "cc_on_order_held": 2,
+  "cc_sold_removed": 19,
+  "builtAt": "2026-11-02T16:24:09.693Z",
+  "units_in": 137838,
+  "units_out": 137480
  }
 }

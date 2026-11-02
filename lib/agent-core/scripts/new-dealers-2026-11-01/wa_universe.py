@@ -37,6 +37,7 @@ R={ # reason, detail
  'broker':('no_structured_listing_data','consignment broker for private-party RVs (kept at owners\' homes); listings have no VIN, stock # or stated type'),
  'tlsdrop':('site_unreachable','site edge drops our TLS connection (all requests); not routed through third-party crawlers'),
  'tlsfail':('site_unreachable','TLS handshake fails / server errors from every fetcher tried'),
+ 'noprice':('price_not_on_page','covered before, but the units\' own pages state no sale price (client-rendered; price only via robots-disallowed /api/); held price_unverified under the MAP/unlock rule'),
  'under':('under_covered','covered but snapshot holds far fewer WA units than the dealer lists (MC count shown)'),
 }
 X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','mikiysrv.com':'nx','standalrv.com':'nx','nwtruckandrv.com':'nx',
@@ -50,7 +51,7 @@ X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','m
  'valleyrvsupercenter.com':'cso','wilderrvs.com':'cso','trailerboss.com':'notrv','aubreysrv.com':'noinv','westgatehomes.com':'noinv','pnwautosales.net':'noinv',
  'goodguysrv.com':'noinv','wheatlandrv.com':'noinv','bigbearrvs.com':'noinv','warnerautorv.rocks':'noinv','fivecornersrv.com':'noinv','wilderaffordablehomes.com':'noinv',
  'rrvsales.com':'noinv','rvstacoma.com':'noinv','lowpricerv.com':'noinv','vanberry.us':'noinv','scallywagon.com':'noinv','bluedogrvpasco.com':'redir',
- 'selkirkrv.com':'oos','truckcityrv.com':'cfwall','discountrvwa.com':'cl','freedomrvusa.com':'merged','olympiaautomall.net':'merged',
+ 'selkirkrv.com':'oos','tacomarv.com':'noprice','truckcityrv.com':'cfwall','discountrvwa.com':'cl','freedomrvusa.com':'merged','olympiaautomall.net':'merged',
  'globalrvinc.com':'notwa','automatchsales.com':'fb','uneekrv.com':'parked','dlsrv.com':'parked','cleangreencars.com':'parked','sellmyrvwa.com':'broker',
  'airwayrv.com':'tlsdrop','airwayheightsrv.com':'tlsdrop','asrvparts.com':'tlsdrop','rvtown.com':'tlsfail','rebornrv.com':'tlsfail','campstarsrv.com':'conn',
  'haltermansrv.com':'oob','royrobinsonrv.com':'merged','thecarstars.com':'lot','camperschoicerv.com':'zero','scottsrvvancouver.com':'zero','qualityrvllc.com':'notype','basinrvmoseslake.com':'notype',
@@ -71,7 +72,8 @@ grab(MC)
 rows=[];st=collections.Counter()
 for name,city,dom,src in D:
     b=B.get(dom,0); a=A.get(dom,0)
-    if b>0 and not (dom=='awesomerv.com'): status='covered_before'
+    if b>0 and a==0 and dom=='tacomarv.com': status='uncovered'
+    elif b>0 and not (dom=='awesomerv.com'): status='covered_before'
     elif a>b: status='added_now'
     elif dom=='awesomerv.com': status='uncovered'
     else: status='uncovered'

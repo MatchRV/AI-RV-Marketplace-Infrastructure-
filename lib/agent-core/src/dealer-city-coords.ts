@@ -748,6 +748,7 @@ export const DEALER_CITY_COORDS: Record<string, readonly [number, number]> = {
   "ponchatoula|LA": [30.4406, -90.4428],
   "pontiac|IL": [40.8893, -88.6414],
   "pooler|GA": [32.1056, -81.256],
+  "port orchard|WA": [47.5384, -122.6324],
   "port st lucie|FL": [27.2806, -80.3883],
   "portland|OR": [45.537, -122.65],
   "portsmouth|VA": [36.8593, -76.357],

@@ -1,0 +1,5 @@
+{
+ "note": "Dealer domains whose every harvested unit is held out of search (e.g. price_unverified), so the snapshot carries none of their units. Used only to show an 'inventory updating' state instead of an empty dealer page. Facts: WA batch CSO ruling 2026-11-02 (Tacoma RV Center: no sale price on its own unit pages; price only via robots-disallowed /api/).",
+ "updatedAt": "2026-11-02",
+ "domains": ["tacomarv.com"]
+}

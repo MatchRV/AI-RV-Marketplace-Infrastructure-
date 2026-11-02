@@ -160,37 +160,37 @@
   "out_units": 137838
  },
  "windows": {
-  "builtAt": "2026-11-02T16:24:09.693Z",
-  "loaded": 137480,
-  "passing_non_stale_rules": 137442,
+  "builtAt": "2026-11-02T16:31:39.258Z",
+  "loaded": 137477,
+  "passing_non_stale_rules": 137439,
   "windows": {
    "14": {
     "eligible": 93842,
     "domains": 512,
     "locations": 1178,
     "states": 49,
-    "cutoff_PT": "2026-10-19 09:24 PDT"
+    "cutoff_PT": "2026-10-19 09:31 PDT"
    },
    "21": {
     "eligible": 106159,
     "domains": 512,
     "locations": 1178,
     "states": 49,
-    "cutoff_PT": "2026-10-12 09:24 PDT"
+    "cutoff_PT": "2026-10-12 09:31 PDT"
    },
    "30": {
-    "eligible": 134775,
+    "eligible": 134772,
     "domains": 649,
     "locations": 1365,
     "states": 49,
-    "cutoff_PT": "2026-10-03 09:24 PDT"
+    "cutoff_PT": "2026-10-03 09:31 PDT"
    },
    "45": {
-    "eligible": 134775,
+    "eligible": 134772,
     "domains": 649,
     "locations": 1365,
     "states": 49,
-    "cutoff_PT": "2026-09-18 09:24 PDT"
+    "cutoff_PT": "2026-09-18 09:31 PDT"
    }
   }
  },
@@ -289,7 +289,6 @@
  },
  "csoFix_2026_11_02": {
   "bretz16_refreshed": 13,
-  "bretz16_no_page_left_to_age_out": 3,
   "tacoma_no_price_on_page_held": 298,
   "tacoma_not_in_sitemap_held": 32,
   "fife_make_split": 5,
@@ -297,8 +296,9 @@
   "interact_listonly_held": 7,
   "cc_on_order_held": 2,
   "cc_sold_removed": 19,
-  "builtAt": "2026-11-02T16:24:09.693Z",
+  "builtAt": "2026-11-02T16:31:39.258Z",
   "units_in": 137838,
-  "units_out": 137480
+  "units_out": 137477,
+  "bretz_not_in_sitemap_removed": 3
  }
 }

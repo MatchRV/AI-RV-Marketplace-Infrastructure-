@@ -59,8 +59,9 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
     fresh_water: u.freshWaterGal.value,
     grey_water: u.greyWaterGal.value,
     black_water: u.blackWaterGal.value,
-    generator: u.generator.value === true,
-    solar: u.solar.value === "installed",
+    // Tri-state: unknown stays null (never shown as "no generator").
+    generator: u.generator.value ?? null,
+    solar: u.solar.value === null ? null : u.solar.value === "installed",
     solar_installed: u.solar.value === null ? null : u.solar.value === "installed",
     solar_ready: u.solar.value === null ? null : u.solar.value !== "none",
     four_season: u.fourSeason.value,
@@ -72,8 +73,9 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
     deal_score: "fair_deal",
     days_on_market: 0,
     is_featured: false,
-    awning: true,
-    washer_dryer: false,
+    // Not in the snapshot: unknown, not assumed.
+    awning: null,
+    washer_dryer: null,
   };
 }
 

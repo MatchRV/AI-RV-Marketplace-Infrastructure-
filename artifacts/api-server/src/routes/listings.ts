@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { isBoilerplateDescription } from "../lib/description-boilerplate";
 import { db, listingsTable, dealersTable, DB_MODE } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, sql, inArray } from "drizzle-orm";
 import { getSnapshotListingById, querySnapshotListings } from "../services/snapshot-listings";
@@ -255,7 +256,7 @@ router.get("/listings/:id", async (req, res) => {
       const base = formatListing(row);
       const detail = {
         ...base,
-        description: row.description,
+        description: isBoilerplateDescription(row.description as string | null) ? null : row.description,
         features: (row.features as string[]) ?? [],
         dryWeight: row.dry_weight,
         gvwr: row.gvwr,

@@ -27,6 +27,16 @@ R={ # reason, detail
  'redir':('merged_into_covered','domain redirects to an already-covered dealer'),
  'notype':('no_dealer_stated_rv_type','listing pages state no RV type/class anywhere; facts-only rule forbids inferring it'),
  'lot':('lot_not_stated','dealer has 2 lots (Aberdeen/Olympia) and unit pages do not say which lot holds the unit'),
+ 'cfwall':('bot_wall','homepage, /inventory and sitemap return a Cloudflare JS challenge (cf-mitigated: challenge); not bypassed'),
+ 'cl':('no_website','no dealer website (domain NXDOMAIN); inventory only on Craigslist, which we do not scrape'),
+ 'oob':('out_of_business','business closed (BBB/out of business or domain now points to an unrelated business)'),
+ 'merged':('merged_into_covered','location/business now operated by an already-covered dealer'),
+ 'notwa':('not_wa_dealer','domain belongs to an out-of-state business, not the WA dealer'),
+ 'fb':('no_website','no website; sells via Facebook Marketplace only'),
+ 'parked':('no_website','domain is parked or lapsed (parking page / unrelated site)'),
+ 'broker':('no_structured_listing_data','consignment broker for private-party RVs (kept at owners\' homes); listings have no VIN, stock # or stated type'),
+ 'tlsdrop':('site_unreachable','site edge drops our TLS connection (all requests); not routed through third-party crawlers'),
+ 'tlsfail':('site_unreachable','TLS handshake fails / server errors from every fetcher tried'),
  'under':('under_covered','covered but snapshot holds far fewer WA units than the dealer lists (MC count shown)'),
 }
 X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','mikiysrv.com':'nx','standalrv.com':'nx','nwtruckandrv.com':'nx',
@@ -40,8 +50,12 @@ X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','m
  'valleyrvsupercenter.com':'cso','wilderrvs.com':'cso','trailerboss.com':'notrv','aubreysrv.com':'noinv','westgatehomes.com':'noinv','pnwautosales.net':'noinv',
  'goodguysrv.com':'noinv','wheatlandrv.com':'noinv','bigbearrvs.com':'noinv','warnerautorv.rocks':'noinv','fivecornersrv.com':'noinv','wilderaffordablehomes.com':'noinv',
  'rrvsales.com':'noinv','rvstacoma.com':'noinv','lowpricerv.com':'noinv','vanberry.us':'noinv','scallywagon.com':'noinv','bluedogrvpasco.com':'redir',
- 'selkirkrv.com':'oos','thecarstars.com':'lot','camperschoicerv.com':'zero','scottsrvvancouver.com':'zero','qualityrvllc.com':'notype','basinrvmoseslake.com':'notype',
+ 'selkirkrv.com':'oos','truckcityrv.com':'cfwall','discountrvwa.com':'cl','freedomrvusa.com':'merged','olympiaautomall.net':'merged',
+ 'globalrvinc.com':'notwa','automatchsales.com':'fb','uneekrv.com':'parked','dlsrv.com':'parked','cleangreencars.com':'parked','sellmyrvwa.com':'broker',
+ 'airwayrv.com':'tlsdrop','airwayheightsrv.com':'tlsdrop','asrvparts.com':'tlsdrop','rvtown.com':'tlsfail','rebornrv.com':'tlsfail','campstarsrv.com':'conn',
+ 'haltermansrv.com':'oob','royrobinsonrv.com':'merged','thecarstars.com':'lot','camperschoicerv.com':'zero','scottsrvvancouver.com':'zero','qualityrvllc.com':'notype','basinrvmoseslake.com':'notype',
  'fifervcenter.com':'zero','rnrrv.com':'zero','bretzrv.com':'zero'}
+XN={'High Country RV & Auto Sales':'oob'}
 MC=json.load(open('mc/wa_facets.json')) if True else {}
 mcc={}
 def grab(o):
@@ -63,7 +77,7 @@ for name,city,dom,src in D:
     else: status='uncovered'
     reason,detail='',''
     if status=='uncovered':
-        k=X.get(dom,'nosite' if not dom else 'noinv'); reason,detail=R[k]
+        k=X.get(dom) or XN.get(name) or ('nosite' if not dom else 'noinv'); reason,detail=R[k]
     rows.append(dict(name=name,city=city,domain=dom,sources=src,status=status,wa_units_before=b,wa_units_after=a,mc_wa_listings=mcc.get(dom,''),reason=reason,detail=detail))
     st[status]+=1
 # under-covered covered dealers (big MC gap)

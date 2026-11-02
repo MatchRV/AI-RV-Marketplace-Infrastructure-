@@ -230,10 +230,10 @@
   }
  },
  "waUniverse": {
-  "known": 116,
+  "known": 119,
   "status": {
    "covered_before": 36,
-   "uncovered": 76,
+   "uncovered": 79,
    "added_now": 4
   },
   "uncovered_reasons": {
@@ -241,15 +241,17 @@
    "wa_lots_none": 1,
    "not_rv_dealer": 1,
    "cso_holdback": 2,
-   "no_website": 24,
+   "no_website": 20,
    "lot_not_stated": 1,
    "robots_disallow": 6,
-   "no_online_inventory": 15,
-   "no_structured_listing_data": 10,
+   "no_online_inventory": 14,
+   "no_structured_listing_data": 11,
    "site_unreachable": 6,
    "no_dealer_stated_rv_type": 2,
-   "bot_wall": 6,
-   "merged_into_covered": 1
+   "bot_wall": 7,
+   "merged_into_covered": 4,
+   "not_wa_dealer": 1,
+   "out_of_business": 2
   },
   "under_covered": [
    [

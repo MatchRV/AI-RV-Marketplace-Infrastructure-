@@ -13,7 +13,7 @@ import {
  *                                       (X-Inquiry-Token header or ?token=)
  *   GET  /api/inquiries/ops             ops list        (Authorization: Bearer INQUIRY_OPS_KEY)
  *   GET  /api/inquiries/ops/:id         ops detail
- *   POST /api/inquiries/ops/:id         ops update: { status?, statusDetail?, dealerReply? }
+ *   POST /api/inquiries/ops/:id         ops update: { status?, statusDetail?, dealerReply?, test? }
  */
 const router: IRouter = Router();
 const requester = (req: Request) => `ip:${req.ip ?? "unknown"}`;
@@ -65,7 +65,7 @@ router.post("/inquiries/ops/:id", (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
   const b = (req.body ?? {}) as Record<string, unknown>;
   const status = b.status === "delivered" || b.status === "queued_for_matchrv" || b.status === "failed" ? b.status : undefined;
-  const i = opsUpdate(String(req.params.id), { status, statusDetail: typeof b.statusDetail === "string" ? b.statusDetail : undefined, dealerReply: typeof b.dealerReply === "string" ? b.dealerReply : undefined });
+  const i = opsUpdate(String(req.params.id), { status, statusDetail: typeof b.statusDetail === "string" ? b.statusDetail : undefined, dealerReply: typeof b.dealerReply === "string" ? b.dealerReply : undefined, test: typeof b.test === "boolean" ? b.test : undefined });
   if (!i) { res.status(404).json({ error: "not_found" }); return; }
   res.json({ inquiry: i });
 });

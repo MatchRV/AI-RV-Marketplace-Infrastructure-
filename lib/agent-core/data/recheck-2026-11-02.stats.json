@@ -295,5 +295,67 @@
    "domains": 650
   },
   "WA_loaded": 5778
+ },
+ "vehicleQuarantine": {
+  "removed": 20,
+  "held": 2,
+  "byReason": {
+   "car_dealer_non_rv": 7,
+   "placeholder_vin_non_rv": 1,
+   "tow_vehicle_non_rv": 12,
+   "data_unverified": 2
+  },
+  "units_after": 131726,
+  "dealers_after": 1474
+ },
+ "windowsAfterVehicleQuarantine": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 131726,
+  "passing_non_stale_rules": 131690,
+  "windows": {
+   "14": {
+    "eligible": 106856,
+    "domains": 621,
+    "locations": 1327,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 116393,
+    "domains": 621,
+    "locations": 1327,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 129265,
+    "domains": 645,
+    "locations": 1413,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 129265,
+    "domains": 645,
+    "locations": 1413,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waAfterVehicleQuarantine": {
+  "14": {
+   "total": 106856,
+   "WA": 4705,
+   "WA_domains": 40,
+   "domains": 621
+  },
+  "30": {
+   "total": 129265,
+   "WA": 5777,
+   "WA_domains": 42,
+   "domains": 645
+  },
+  "WA_loaded": 5778
  }
 }

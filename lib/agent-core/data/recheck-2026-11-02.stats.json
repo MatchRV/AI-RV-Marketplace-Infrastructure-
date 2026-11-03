@@ -1,0 +1,163 @@
+{
+ "final": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "base_units": 137477,
+  "out_units": 132608,
+  "removed_or_held": 4869,
+  "added": 0,
+  "lastSeen_refreshed": 65315,
+  "price_changed": 7111,
+  "other_field_changes": {
+   "dealer": 713,
+   "rvType": 3,
+   "condition": 694
+  },
+  "tacoma_held": 0
+ },
+ "windowsAfter": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 132608,
+  "passing_non_stale_rules": 132572,
+  "windows": {
+   "14": {
+    "eligible": 102112,
+    "domains": 623,
+    "locations": 1293,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 114415,
+    "domains": 623,
+    "locations": 1293,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 130144,
+    "domains": 651,
+    "locations": 1369,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 130144,
+    "domains": 651,
+    "locations": 1369,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "windowsBaseAtBuiltAt": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 137477,
+  "passing_non_stale_rules": 137439,
+  "windows": {
+   "14": {
+    "eligible": 93842,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 106159,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waBefore": {
+  "14": {
+   "total": 93842,
+   "WA": 3449,
+   "WA_domains": 25,
+   "domains": 512
+  },
+  "30": {
+   "total": 134772,
+   "WA": 5885,
+   "WA_domains": 42,
+   "domains": 649
+  },
+  "WA_loaded": 5886
+ },
+ "waAfter": {
+  "14": {
+   "total": 102112,
+   "WA": 4707,
+   "WA_domains": 40,
+   "domains": 623
+  },
+  "30": {
+   "total": 130144,
+   "WA": 5779,
+   "WA_domains": 42,
+   "domains": 651
+  },
+  "WA_loaded": 5780
+ },
+ "failedDealers": {
+  "dealers": 713,
+  "dealers_with_pages_read": 578,
+  "with_problem": 166,
+  "units_at_problem_dealers": 81108,
+  "no_sitemap_urls": 82,
+  "bot_walled": 16,
+  "no_unit_like": 17
+ },
+ "interact": {
+  "price_unverified": 2586,
+  "sale_pending": 804,
+  "on_order": 115,
+  "dead_sold": 59,
+  "price_conflict_large": 8
+ },
+ "otherDealers": {
+  "heldByReason": {
+   "sold_or_sale_pending": 365,
+   "price_unverified": 669,
+   "price_conflict_large": 9,
+   "on_order": 1
+  },
+  "steps": {
+   "page_not_matched": 8560,
+   "fetch_bot_wall_403": 3,
+   "fetch_bot_wall_429": 1,
+   "fetch_bot_wall_200": 3,
+   "fetch_error_None": 12,
+   "refreshed": 15877,
+   "no_price_on_page_price_left": 102,
+   "unit_claimed_by_several_pages": 97,
+   "identity_unconfirmed_no_change": 691,
+   "several_sale_labelled_prices_price_left": 89,
+   "vin_conflict_no_change": 8
+  }
+ },
+ "campingWorld": {
+  "lastSeen_only": 1041,
+  "lastSeen_refreshed_any": 1993,
+  "price_changed": 486,
+  "condition_filled": 677,
+  "lot_moved": 1,
+  "removed_total": 253,
+  "removed_dead_page_gone": 253
+ }
+}

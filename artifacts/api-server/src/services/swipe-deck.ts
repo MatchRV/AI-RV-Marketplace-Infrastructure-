@@ -8,9 +8,10 @@
  * dealer's name — the detail view (unitDetail) reveals it.
  */
 import { createHash } from "node:crypto";
-import { runSearch, unitMakeModel, type CanonicalUnit, type Constraints, type Fact, type RvType, type UnitMatch } from "@workspace/agent-core";
+import { dealerVideoUrl, youtubeVideoId, runSearch, unitMakeModel, type CanonicalUnit, type Constraints, type Fact, type RvType, type UnitMatch } from "@workspace/agent-core";
 import { getScreenedInventory } from "./screened-inventory";
 import { checkPhoto, usablePhotoUrl } from "./search-ready";
+import { isBoilerplateDescription } from "../lib/description-boilerplate";
 
 export const DECK_POOL_SIZE = 60;
 export const DECK_PER_DEALER_CAP = 6;
@@ -95,12 +96,13 @@ export function toCard(u: CanonicalUnit, distanceMiles: number | null, photo?: s
   return card;
 }
 
-export interface DeckQuery { rvTypes?: RvType[]; priceMaxUsd?: number; zip?: string; radiusMiles?: number }
+export interface DeckQuery { rvTypes?: RvType[]; priceMaxUsd?: number; zip?: string; radiusMiles?: number; sleepsMin?: number }
 
 export function deckConstraints(q: DeckQuery): Constraints {
   const c: Constraints = { sort: "best_match" };
   if (q.rvTypes?.length) c.rvTypes = q.rvTypes;
   if (q.priceMaxUsd && q.priceMaxUsd > 0) c.priceMaxUsd = q.priceMaxUsd;
+  if (q.sleepsMin && q.sleepsMin > 0) c.sleepsMin = q.sleepsMin;
   c.location = { place: q.zip || DEFAULT_DECK_ZIP, radiusMiles: q.radiusMiles || DEFAULT_DECK_RADIUS_MILES };
   return c;
 }
@@ -111,8 +113,8 @@ export function deckConstraints(q: DeckQuery): Constraints {
  * DECK_PER_DEALER_CAP units per dealer enter the pool so a large lot can't flood it; the client spreads
  * the first cards further (max 2 per dealer in the first 10).
  */
-export async function buildDeckPool(q: DeckQuery, opts: { corpus?: CanonicalUnit[]; photoCheck?: (url: string) => Promise<boolean>; poolSize?: number; perDealerCap?: number } = {}) {
-  const corpus = (opts.corpus ?? getScreenedInventory().units).filter(deckEligible);
+export async function buildDeckPool(q: DeckQuery, opts: { corpus?: CanonicalUnit[]; photoCheck?: (url: string) => Promise<boolean>; poolSize?: number; perDealerCap?: number; exclude?: Set<string> } = {}) {
+  const corpus = (opts.corpus ?? getScreenedInventory().units).filter((u) => deckEligible(u) && !opts.exclude?.has(u.id));
   const poolSize = opts.poolSize ?? DECK_POOL_SIZE;
   const cap = opts.perDealerCap ?? DECK_PER_DEALER_CAP;
   const photoCheck = opts.photoCheck ?? checkPhoto;
@@ -148,7 +150,88 @@ export async function buildDeckPool(q: DeckQuery, opts: { corpus?: CanonicalUnit
   };
 }
 
-export interface UnitDetail { card: SwipeCard; dealer: { name: string; city: string; state: string }; hasDealerPage: boolean }
+export interface SpecFact { label: string; value: string; source: "dealer_listing" | "derived_text" | "manufacturer_spec" }
+export interface UnitDetail {
+  card: SwipeCard;
+  dealer: { name: string; city: string; state: string };
+  hasDealerPage: boolean;
+  /** The dealer's description exactly as stored (cookie banners/site boilerplate dropped). Null = none stored. */
+  description: string | null;
+  /** True when the stored text ends in an ellipsis: the dealer page has more. */
+  descriptionShortened: boolean;
+  /** Options/features as listed by the dealer, minus page navigation and share buttons the harvest picked up. */
+  features: string[];
+  /** Spec facts we have, each with its source. Unknowns are left out. */
+  specs: SpecFact[];
+  /** The dealer's own YouTube link from this unit's listing data, if any. */
+  video: { youtubeId: string; url: string; source: "dealer_listing_images" | "dealer_listing_description"; note: string } | null;
+}
+
+/** Page chrome that dealer-site harvests sometimes stored as "features" (tabs, share buttons). Not options. */
+const FEATURE_CHROME = new Set([
+  "description", "overview", "similar rvs", "similar units", "share this rv", "share this unit", "share", "tweet", "pin it", "pin",
+  "send to a friend", "email a friend", "copy link", "print", "print this page", "specifications", "specs", "floorplan", "floor plan",
+  "features", "reviews", "photos", "videos", "video", "virtual tour", "get directions", "contact us", "apply for financing",
+  "value your trade", "get a quote", "request info", "more info", "details", "options", "facebook", "twitter", "pinterest", "email",
+  "contact sales", "contact us today", "call now", "text us", "schedule a test drive", "schedule a visit", "make an offer", "apply now",
+  "get pre-approved", "unlock lower price", "unlock price", "get e-price", "get today's price", "trade-in", "calculate payment", "payment calculator", "compare", "save", "favorite", "back to results", "view all",
+]);
+export function cleanFeatures(list: string[] | null | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list ?? []) {
+    if (typeof raw !== "string") continue;
+    const f = raw.replace(/\s+/g, " ").trim();
+    const key = f.toLowerCase().replace(/[:\s]+$/, "");
+    if (f.length < 3 || f.length > 200 || FEATURE_CHROME.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(f);
+  }
+  return out;
+}
+/**
+ * Some dealer-site harvests stored a customer testimonial widget as the unit's description
+ * ("My salesman was Mike…"). That isn't the dealer describing this RV, so it is withheld rather
+ * than shown as "Dealer's description". Conservative: a real description that trips this is hidden
+ * (the shopper still gets specs and the dealer link), never mislabeled.
+ */
+const CUSTOMER_REVIEW = /\b(salesperson|sales person|salesman|highly recommend|would recommend|we (bought|purchased)|our (new )?(truck|camper|trailer|rv)\b|great experience|5 stars|five stars|thank you .* team|walk-?through, he)/i;
+const REVIEW_PHRASES = /\b(recommend(ed)? (them|this dealer|working with|to anyone|.{0,20}dealership)|helped (me|us)|helping (me|us)|(purchase|purchasing|buying|shopping) experience|(was|were) (amazing|excellent|wonderful|fantastic|so helpful|very helpful|great to work with)|excellent staff|service dep(t|artment)|treated (me|us)|answered all (my|our) questions|(fantastic|great|wonderful|amazing|excellent|awesome) experience|we (have )?purchased|we love how|thank you to)\b/i;
+export function looksLikeCustomerReview(text: string): boolean {
+  if (CUSTOMER_REVIEW.test(text) || REVIEW_PHRASES.test(text)) return true;
+  // Dealer copy is written as "we"/"you"; a shopper writes "I"/"my".
+  return (text.match(/\b(I|me|my|I'm|I've|I'd|I\u2019m|I\u2019ve)\b/g) ?? []).length >= 2;
+}
+export function cleanDescriptionText(text: string | null | undefined): string | null {
+  const t = (text ?? "").trim();
+  return !t || isBoilerplateDescription(t) || looksLikeCustomerReview(t) ? null : t;
+}
+
+const fmtN = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 1 });
+const SPEC_FIELDS: { key: keyof CanonicalUnit; label: string; unit: string }[] = [
+  { key: "lengthFt", label: "Length", unit: "ft" }, { key: "sleeps", label: "Sleeps", unit: "" },
+  { key: "slideouts", label: "Slide-outs", unit: "" }, { key: "dryWeightLbs", label: "Dry weight", unit: "lbs" },
+  { key: "gvwrLbs", label: "GVWR", unit: "lbs" }, { key: "hitchWeightLbs", label: "Hitch weight", unit: "lbs" },
+  { key: "freshWaterGal", label: "Fresh water", unit: "gal" }, { key: "greyWaterGal", label: "Grey water", unit: "gal" },
+  { key: "blackWaterGal", label: "Black water", unit: "gal" },
+];
+export function specFacts(u: CanonicalUnit): SpecFact[] {
+  const out: SpecFact[] = [];
+  for (const f of SPEC_FIELDS) {
+    const fact = u[f.key] as Fact<number> | undefined;
+    const v = knownSpec(fact);
+    if (v === undefined || !fact?.source) continue;
+    out.push({ label: f.label, value: f.unit ? `${fmtN(v)} ${f.unit}` : fmtN(v), source: fact.source as SpecFact["source"] });
+  }
+  return out;
+}
+
+export function dealerVideo(u: CanonicalUnit): UnitDetail["video"] {
+  const v = dealerVideoUrl(u);
+  const id = v ? youtubeVideoId(v.url) : null;
+  if (!v || !id) return null;
+  return { youtubeId: id, url: v.url, source: v.source, note: "The dealer linked this video in the listing. MatchRV hasn't checked that it shows this exact unit." };
+}
 
 export function outboundTarget(u: CanonicalUnit): string | null {
   for (const raw of [u.provenance?.listingUrl, u.dealer.website]) {
@@ -164,7 +247,12 @@ export function outboundTarget(u: CanonicalUnit): string | null {
 export function unitDetail(id: string, corpus = getScreenedInventory()): UnitDetail | null {
   const u = corpus.byId.get(id);
   if (!u || !deckEligible(u)) return null;
-  return { card: toCard(u, null), dealer: { name: u.dealer.name, city: u.dealer.city, state: u.dealer.state }, hasDealerPage: outboundTarget(u) !== null };
+  const description = cleanDescriptionText(u.description);
+  return {
+    card: toCard(u, null), dealer: { name: u.dealer.name, city: u.dealer.city, state: u.dealer.state }, hasDealerPage: outboundTarget(u) !== null,
+    description, descriptionShortened: !!description && /(\u2026|\.\.\.)$/.test(description),
+    features: cleanFeatures(u.features), specs: specFacts(u), video: dealerVideo(u),
+  };
 }
 
 /** Adds utm_source=matchrv (plus medium/campaign) without dropping the dealer's own query string. */

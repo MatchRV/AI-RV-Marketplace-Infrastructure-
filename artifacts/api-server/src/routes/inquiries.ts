@@ -44,6 +44,8 @@ router.post("/inquiries", async (req: Request, res: Response) => {
     email: typeof body.email === "string" ? body.email : null,
     phone: typeof body.phone === "string" ? body.phone : null,
     message: typeof body.message === "string" ? body.message : undefined,
+    // Website calculator numbers, sent only when the shopper ticked the share box.
+    paymentEstimate: body.payment_estimate,
   });
   if (!prepared.ok) { res.status(400).json({ error: "invalid_contact", errors: prepared.errors }); return; }
   res.json({ preview: prepared.preview, confirmationToken: prepared.confirmationToken, expiresAt: prepared.expiresAt, next: "Nothing has been sent. POST again with { confirmation_token, confirmed: true } only after the shopper approves this exact preview." });

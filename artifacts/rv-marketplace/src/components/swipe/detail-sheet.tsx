@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
-import { ArrowUpRight, Building2, CheckCircle2, MapPin, X } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ArrowUpRight, Building2, CheckCircle2, MapPin, PlayCircle, X } from "lucide-react";
+import { creditLabel, loadPaymentPrefs, paymentEstimatePayload, type PaymentPrefs } from "@/lib/payment-calc";
+import { PaymentCalculator } from "./payment-calculator";
 import { sendDealerInquiry } from "@/lib/dealer-inquiry";
 import { trackLead } from "@/lib/analytics";
 import { trackSwipe } from "@/lib/swipe-analytics";
@@ -8,7 +10,69 @@ import { NAVY, TEAL, TEAL_DARK, LINE } from "./tokens";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
-interface Detail { dealer: { name: string; city: string; state: string }; hasDealerPage: boolean }
+interface Detail {
+  dealer: { name: string; city: string; state: string };
+  hasDealerPage: boolean;
+  description: string | null;
+  descriptionShortened: boolean;
+  features: string[];
+  specs: { label: string; value: string; source: string }[];
+  video: { youtubeId: string; url: string; note: string } | null;
+}
+
+const outHref = (id: string) => `${BASE}api/out?unit=${encodeURIComponent(id)}&from=swipe`;
+
+/** Description, options and specs exactly as the dealer listed them. Nothing here is written by MatchRV. */
+function ListingDetails({ d, unitId }: { d: Detail; unitId: string }) {
+  const [open, setOpen] = useState(false);
+  const long = (d.description?.length ?? 0) > 420;
+  const dealerLink = d.hasDealerPage ? (label: string) => (
+    <a href={outHref(unitId)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-bold underline underline-offset-4" style={{ color: NAVY }}>{label} <ArrowUpRight size={14} /></a>
+  ) : null;
+  return (
+    <>
+      {d.video && (
+        <section className="mt-5" aria-label="Dealer video" data-testid="detail-video">
+          <h3 className="flex items-center gap-2 text-base font-extrabold" style={{ color: NAVY }}><PlayCircle size={18} color={TEAL_DARK} /> Dealer's video</h3>
+          <div className="mt-2 rounded-2xl overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+            <iframe className="w-full h-full" src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(d.video.youtubeId)}`} title={`${d.dealer.name} video`} loading="lazy"
+              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+          </div>
+          <p className="mt-1 text-[0.7rem] text-slate-500">{d.video.note}</p>
+        </section>
+      )}
+      <section className="mt-5" aria-label="Description" data-testid="detail-description">
+        <h3 className="text-base font-extrabold" style={{ color: NAVY }}>Dealer's description</h3>
+        {d.description ? (
+          <>
+            <p className={`mt-1 text-sm leading-relaxed text-slate-700 whitespace-pre-line ${long && !open ? "line-clamp-6" : ""}`}>{d.description}</p>
+            {long && <button type="button" onClick={() => setOpen(!open)} className="mt-1 text-sm font-bold underline underline-offset-4" style={{ color: NAVY }}>{open ? "Show less" : "Read full description"}</button>}
+            {d.descriptionShortened && dealerLink && <p className="mt-1 text-sm">{dealerLink("The rest is on the dealer's page")}</p>}
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-slate-600">The dealer didn't include a description in the listing we have. {dealerLink ? dealerLink("See the dealer's page") : null}</p>
+        )}
+      </section>
+      {d.features.length > 0 && (
+        <section className="mt-5" aria-label="Options and features" data-testid="detail-features">
+          <h3 className="text-base font-extrabold" style={{ color: NAVY }}>Options &amp; features <span className="text-xs font-semibold text-slate-500">as listed by the dealer</span></h3>
+          <ul className="mt-2 grid grid-cols-1 gap-1 text-sm text-slate-700">
+            {d.features.map((f) => <li key={f} className="flex gap-2"><span style={{ color: TEAL_DARK }}>•</span>{f}</li>)}
+          </ul>
+        </section>
+      )}
+      {d.specs.length > 0 && (
+        <section className="mt-5" aria-label="Specs" data-testid="detail-specs">
+          <h3 className="text-base font-extrabold" style={{ color: NAVY }}>Specs we have</h3>
+          <dl className="mt-2 grid grid-cols-2 gap-y-1 text-sm" style={{ color: NAVY }}>
+            {d.specs.map((s) => <Fragment key={s.label}><dt className="text-slate-600">{s.label}</dt><dd className="text-right font-semibold">{s.value}</dd></Fragment>)}
+          </dl>
+          <p className="mt-1 text-[0.7rem] text-slate-500">From the dealer's listing or the manufacturer's published specs. Confirm with the dealer.</p>
+        </section>
+      )}
+    </>
+  );
+}
 
 /** Detail view: reveals the dealer and lot next to the primary "See it in person" action. */
 export function DetailSheet({ card, onClose, initialForm = false }: { card: SwipeCard; onClose: () => void; initialForm?: boolean }) {
@@ -19,6 +83,13 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ status: string } | null>(null);
+  const [payPrefs, setPayPrefs] = useState<PaymentPrefs>(() => loadPaymentPrefs());
+  const [calcPrice, setCalcPrice] = useState<number | null>(card.priceUsd);
+  // Off by default: the shopper's numbers are only shared if they tick the box.
+  const [sharePayment, setSharePayment] = useState(false);
+  const estimate = paymentEstimatePayload(calcPrice, payPrefs);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  useEffect(() => { if (showForm && detail && !initialForm) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [showForm, detail, initialForm]);
 
   useEffect(() => {
     let live = true;
@@ -37,10 +108,10 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
     if (!inquiryFormValid(form) || sending) return;
     setSending(true); setError(null);
     try {
-      const r = await sendDealerInquiry(inquiryPayload(card.id, form), BASE);
+      const r = await sendDealerInquiry(inquiryPayload(card.id, form, { sharePayment, estimate }), BASE);
       if (!r.ok) { setError(r.error); return; }
       setSent({ status: r.status });
-      trackSwipe("inquiry_submitted", { unitId: card.id, status: r.status });
+      trackSwipe("inquiry_submitted", { unitId: card.id, status: r.status, sharedPayment: sharePayment && Boolean(estimate) });
       if (r.status !== "dry_run") trackLead("buyer_dealer_inquiry", { formId: "swipe_see_in_person", dedupeKey: card.id, metadata: { source: "swipe_deck", unitId: card.id } });
     } finally { setSending(false); }
   };
@@ -70,14 +141,17 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
               <button type="button" disabled={!detail} onClick={() => setShowForm(true)} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: NAVY, color: TEAL }}>See it in person</button>
             )}
             {detail?.hasDealerPage && (
-              <a href={`${BASE}api/out?unit=${encodeURIComponent(card.id)}&from=swipe`} target="_blank" rel="noopener" className="mt-3 flex items-center justify-center gap-1 text-sm font-bold underline underline-offset-4" style={{ color: NAVY }}>
+              <a href={outHref(card.id)} target="_blank" rel="noopener" className="mt-3 flex items-center justify-center gap-1 text-sm font-bold underline underline-offset-4" style={{ color: NAVY }}>
                 View on dealer site <ArrowUpRight size={15} />
               </a>
             )}
           </section>
 
+          {detail && <ListingDetails d={detail} unitId={card.id} />}
+          <PaymentCalculator listedPriceUsd={card.priceUsd} prefs={payPrefs} onPrefs={setPayPrefs} onPrice={setCalcPrice} />
+
           {showForm && !sent && detail && (
-            <form className="mt-4" onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label="See it in person">
+            <form ref={formRef} className="mt-4" onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label="See it in person">
               <h3 className="text-base font-extrabold" style={{ color: NAVY }}>See it in person</h3>
               <p className="mt-1 mb-3 text-sm text-slate-600" data-testid="inquiry-recipient">
                 Your name, contact info and message go to <strong style={{ color: NAVY }}>{dealerName}</strong> ({lot}) through MatchRV, so they can reply about this RV. Nothing is sent until you tap Send.
@@ -90,6 +164,26 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
               <input id="inq-phone" type="tel" autoComplete="tel" className={input} style={{ border: `1px solid ${LINE}` }} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <label className="block text-xs font-bold mt-3 mb-1" style={{ color: NAVY }} htmlFor="inq-msg">Message</label>
               <textarea id="inq-msg" rows={3} className={`${input} resize-none`} style={{ border: `1px solid ${LINE}` }} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+              <div className="mt-3 rounded-xl p-3" style={{ background: "#F2F6FA", border: `1px solid ${LINE}` }}>
+                <label className="flex items-start gap-2 text-sm font-semibold" style={{ color: NAVY }} htmlFor="inq-share">
+                  <input id="inq-share" type="checkbox" className="mt-1 w-4 h-4" checked={sharePayment} disabled={!estimate} onChange={(e) => setSharePayment(e.target.checked)} />
+                  <span>Share my payment numbers with the dealer</span>
+                </label>
+                {estimate ? (
+                  <p className="mt-1 text-xs text-slate-600" data-testid="share-summary">
+                    {sharePayment ? "Will include" : "Not included unless you tick the box"}: price ${estimate.priceUsd?.toLocaleString("en-US") ?? "-"}
+                    {estimate.downUsd !== null ? `, down $${estimate.downUsd.toLocaleString("en-US")}` : ""}
+                    {estimate.tradeUsd !== null ? `, trade-in $${estimate.tradeUsd.toLocaleString("en-US")}` : ""}
+                    {estimate.aprPct !== null ? `, APR ${estimate.aprPct}%` : ""}
+                    {estimate.termMonths !== null ? `, ${estimate.termMonths} months` : ""}
+                    {estimate.taxPct !== null ? `, tax ${estimate.taxPct}%` : ""}
+                    {estimate.estMonthlyUsd !== null ? `, est. $${estimate.estMonthlyUsd.toLocaleString("en-US", { minimumFractionDigits: 2 })}/mo` : ""}
+                    {estimate.creditRange ? `, credit ${creditLabel(estimate.creditRange)} (your estimate - no credit check)` : ""}. Shared as your own estimate, not a credit application.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Use the payment calculator above to add numbers you can share.</p>
+                )}
+              </div>
               {error && <p className="mt-2 text-sm text-rose-700" role="alert">{error}</p>}
               <button type="submit" disabled={!inquiryFormValid(form) || sending} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: TEAL, color: NAVY }}>
                 {sending ? "Sending…" : `Send to ${dealerName}`}

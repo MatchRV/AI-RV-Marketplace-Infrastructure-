@@ -26,7 +26,10 @@ router.post("/swipe/deck", async (req: Request, res: Response) => {
     if (!zip) { res.status(422).json({ error: "location_outside_coverage", guidance: "Enter a US ZIP code instead." }); return; }
   }
   try {
-    const pool = await buildDeckPool({ rvTypes: rvType ? [rvType] : undefined, priceMaxUsd: price, zip });
+    const radius = typeof b.radiusMiles === "number" && [25, 50, 100, 150, 250, 500].includes(b.radiusMiles) ? b.radiusMiles : undefined;
+    const sleeps = typeof b.sleepsMin === "number" && Number.isInteger(b.sleepsMin) && b.sleepsMin >= 1 && b.sleepsMin <= 12 ? b.sleepsMin : undefined;
+    const exclude = new Set(Array.isArray(b.excludeIds) ? b.excludeIds.filter((x): x is string => typeof x === "string").slice(0, 100) : []);
+    const pool = await buildDeckPool({ rvTypes: rvType ? [rvType] : undefined, priceMaxUsd: price, zip, radiusMiles: radius, sleepsMin: sleeps }, { exclude });
     res.setHeader("Cache-Control", "no-store");
     res.json({ cards: pool.cards, zip: pool.appliedConstraints.location?.place ?? null, radiusMiles: pool.appliedConstraints.location?.radiusMiles ?? null, matched: pool.stats.matched });
   } catch (err) {

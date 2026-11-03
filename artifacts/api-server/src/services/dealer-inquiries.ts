@@ -40,11 +40,62 @@ import type { CanonicalUnit } from "@workspace/agent-core";
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed";
 
 export interface InquiryContact { name: string; email: string | null; phone: string | null }
+
+/**
+ * Optional numbers the shopper typed into the website payment calculator and chose to share
+ * ("Share my payment numbers with the dealer", off by default). Shopper-entered estimates only:
+ * not a financing offer, a rate quote or a credit check.
+ */
+export const CREDIT_RANGES = ["excellent_720_plus", "good_680_719", "fair_620_679", "rebuilding_below_620", "not_sure"] as const;
+export type CreditRange = typeof CREDIT_RANGES[number];
+export const CREDIT_RANGE_LABELS: Record<CreditRange, string> = {
+  excellent_720_plus: "Excellent (720+)", good_680_719: "Good (680-719)", fair_620_679: "Fair (620-679)",
+  rebuilding_below_620: "Rebuilding (below 620)", not_sure: "Not sure",
+};
+export interface PaymentEstimate {
+  priceUsd: number | null; downUsd: number | null; tradeUsd: number | null; aprPct: number | null;
+  termMonths: number | null; taxPct: number | null; estMonthlyUsd: number | null;
+  /** Shopper's own estimate of their credit; no credit check. */
+  creditRange: CreditRange | null;
+  note: string;
+}
+const PAYMENT_NOTE = "Numbers the shopper entered in MatchRV's payment calculator. Shopper's own estimate, not a financing offer, rate quote or credit check.";
+
+/** Validates the optional shared calculator numbers. Anything out of range is dropped (null), never guessed. */
+export function cleanPaymentEstimate(raw: unknown): PaymentEstimate | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v * 100) / 100 : null);
+  const pe: PaymentEstimate = {
+    priceUsd: num(r.priceUsd, 1, 10_000_000), downUsd: num(r.downUsd, 0, 10_000_000), tradeUsd: num(r.tradeUsd, 0, 10_000_000),
+    aprPct: num(r.aprPct, 0, 40), termMonths: num(r.termMonths, 1, 360), taxPct: num(r.taxPct, 0, 20),
+    estMonthlyUsd: num(r.estMonthlyUsd, 0, 1_000_000),
+    creditRange: typeof r.creditRange === "string" && (CREDIT_RANGES as readonly string[]).includes(r.creditRange) ? (r.creditRange as CreditRange) : null,
+    note: PAYMENT_NOTE,
+  };
+  if (pe.termMonths !== null) pe.termMonths = Math.round(pe.termMonths);
+  const any = [pe.priceUsd, pe.downUsd, pe.tradeUsd, pe.aprPct, pe.termMonths, pe.taxPct, pe.estMonthlyUsd, pe.creditRange].some((v) => v !== null);
+  return any ? pe : null;
+}
+
+export function paymentEstimateLines(pe: PaymentEstimate | null | undefined): string[] {
+  if (!pe) return [];
+  const usd = (v: number | null) => (v === null ? "-" : `$${v.toLocaleString("en-US", Number.isInteger(v) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  return [
+    "Payment numbers the shopper chose to share (their own estimate, not a financing offer or credit check):",
+    `  Price used: ${usd(pe.priceUsd)}   Down: ${usd(pe.downUsd)}   Trade-in: ${usd(pe.tradeUsd)}`,
+    `  APR entered: ${pe.aprPct === null ? "-" : `${pe.aprPct}%`}   Term: ${pe.termMonths === null ? "-" : `${pe.termMonths} months`}   Sales tax: ${pe.taxPct === null ? "-" : `${pe.taxPct}%`}`,
+    `  Estimated monthly payment: ${usd(pe.estMonthlyUsd)}`,
+    `  Credit (shopper's estimate, no credit check): ${pe.creditRange ? CREDIT_RANGE_LABELS[pe.creditRange] : "-"}`,
+  ];
+}
 export interface InquiryPreview {
   unit: { id: string; title: string; vin: string | null; stockNumber: string | null; priceUsd: number | null; condition: string; stockUrl: string | null; stockUrlNote: string | null };
   dealer: { id: string; name: string; city: string; state: string; website: string | null };
   shopper: InquiryContact;
   message: string;
+  /** Present only when the shopper ticked "Share my payment numbers with the dealer". */
+  paymentEstimate?: PaymentEstimate | null;
   delivery: { channel: "dealer_email" | "matchrv_forward"; explanation: string };
   sendsNothingYet: true;
 }
@@ -127,11 +178,11 @@ export function validateContact(input: { name?: string; email?: string | null; p
 
 // ── Preview + confirmation token (stateless) ───────────────────────────────
 
-interface TokenPayload { u: string; n: string; e: string | null; p: string | null; m: string; exp: number; nonce: string }
+interface TokenPayload { u: string; n: string; e: string | null; p: string | null; m: string; pe?: PaymentEstimate | null; exp: number; nonce: string }
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const sign = (body: string) => createHmac("sha256", signingSecret).update(body).digest("base64url");
 
-export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, message: string): InquiryPreview {
+export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, message: string, paymentEstimate: PaymentEstimate | null = null): InquiryPreview {
   const route = dealerRoute(unit.dealer.id);
   return {
     unit: {
@@ -142,6 +193,7 @@ export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, messa
     dealer: { id: unit.dealer.id, name: unit.dealer.name, city: unit.dealer.city, state: unit.dealer.state, website: unit.dealer.website },
     shopper: contact,
     message,
+    ...(paymentEstimate ? { paymentEstimate } : {}),
     delivery: route
       ? { channel: "dealer_email", explanation: `${unit.dealer.name} accepts MatchRV inquiries by email. After you confirm, MatchRV emails this exact message and your contact details to the dealership.` }
       : { channel: "matchrv_forward", explanation: `MatchRV does not have a direct inquiry connection with ${unit.dealer.name}. After you confirm, MatchRV stores the inquiry and its team forwards it to the dealership; the status will say queued until then.` },
@@ -149,14 +201,15 @@ export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, messa
   };
 }
 
-export function prepareInquiry(unit: CanonicalUnit, input: { name?: string; email?: string | null; phone?: string | null; message?: string }, now = Date.now()):
+export function prepareInquiry(unit: CanonicalUnit, input: { name?: string; email?: string | null; phone?: string | null; message?: string; paymentEstimate?: unknown }, now = Date.now()):
   | { ok: true; preview: InquiryPreview; confirmationToken: string; expiresAt: string }
   | { ok: false; errors: ValidationError[] } {
   const v = validateContact(input);
   if (!v.ok) return v;
-  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url") };
+  const pe = cleanPaymentEstimate(input.paymentEstimate);
+  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, ...(pe ? { pe } : {}), exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url") };
   const body = b64(JSON.stringify(payload));
-  return { ok: true, preview: buildPreview(unit, v.contact, v.message), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString() };
+  return { ok: true, preview: buildPreview(unit, v.contact, v.message, pe), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString() };
 }
 
 function verifyToken(token: string, now = Date.now()): { ok: true; payload: TokenPayload } | { ok: false; code: "invalid_token" | "expired_token" } {
@@ -290,7 +343,7 @@ export async function sendInquiry(args: {
   }
 
   const contact: InquiryContact = { name: p.n, email: p.e, phone: p.p };
-  const preview = buildPreview(unit, contact, p.m);
+  const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.pe) : null);
   const statusToken = `ist_${randomBytes(18).toString("base64url")}`;
   const inquiry: DealerInquiry = {
     id: `inq_${randomBytes(9).toString("base64url")}`,
@@ -324,6 +377,7 @@ function dealerEmailText(i: DealerInquiry): string {
     `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`, "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`, "",
     "Message:", i.preview.message, "",
+    ...(i.preview.paymentEstimate ? [...paymentEstimateLines(i.preview.paymentEstimate), ""] : []),
     "The shopper reviewed this exact message and asked MatchRV to send it. Reply directly to the shopper. To share your reply with MatchRV, reply-all or forward it to " + OPS_EMAIL + ".",
   ].join("\n");
 }

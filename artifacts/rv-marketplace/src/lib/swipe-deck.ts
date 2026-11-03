@@ -2,6 +2,8 @@
  * /swipe deck logic (pure, unit-tested): card facts, the in-session preference model, re-ranking by
  * fit + distance, dealer spreading, and the 20-card stop. No dealer size or volume is ever an input.
  */
+import type { PaymentEstimatePayload } from "./payment-calc";
+
 export type RvType = "travel_trailer" | "fifth_wheel" | "toy_hauler" | "class_a" | "class_b" | "class_c" | "popup_camper" | "truck_camper";
 
 /** Mirrors the server's SwipeCard (api-server/src/services/swipe-deck.ts). Optional = unknown, omitted. */
@@ -149,14 +151,20 @@ export function pickNext(remaining: SwipeCard[], shown: SwipeCard[], prefs: Pref
   return order.find((c) => c.dealerKey !== last?.dealerKey) ?? order[0];
 }
 
-export interface DeckState { pool: SwipeCard[]; shown: SwipeCard[]; liked: SwipeCard[]; prefs: Prefs; current: SwipeCard | null; radiusMiles: number }
+export interface DeckState {
+  pool: SwipeCard[]; shown: SwipeCard[]; liked: SwipeCard[]; prefs: Prefs; current: SwipeCard | null; radiusMiles: number;
+  /** Passes in a row (reset by a like). */
+  passStreak: number;
+  /** RV Outfitter check-ins shown in this deck. */
+  checkIns: number;
+}
 
 export function startDeck(pool: SwipeCard[], radiusMiles: number): DeckState {
   const seen = new Set<string>();
   const unique = pool.filter((c) => c.photo && !seen.has(c.id) && seen.add(c.id));
   const prefs = emptyPrefs();
   const current = pickNext(unique, [], prefs, radiusMiles);
-  return { pool: unique, shown: current ? [current] : [], liked: [], prefs, current, radiusMiles };
+  return { pool: unique, shown: current ? [current] : [], liked: [], prefs, current, radiusMiles, passStreak: 0, checkIns: 0 };
 }
 
 export function isComplete(s: DeckState): boolean {
@@ -169,11 +177,11 @@ export function swipe(s: DeckState, liked: boolean): DeckState {
   const card = s.current;
   const prefs = updatePrefs(s.prefs, card, liked);
   const likedList = liked ? [...s.liked, card] : s.liked;
-  if (s.shown.length >= DECK_LIMIT) return { ...s, prefs, liked: likedList, current: null };
+  if (s.shown.length >= DECK_LIMIT) return { ...s, prefs, liked: likedList, current: null, passStreak: liked ? 0 : s.passStreak + 1 };
   const shownIds = new Set(s.shown.map((c) => c.id));
   const remaining = s.pool.filter((c) => !shownIds.has(c.id));
   const next = pickNext(remaining, s.shown, prefs, s.radiusMiles);
-  return { ...s, prefs, liked: likedList, current: next, shown: next ? [...s.shown, next] : s.shown };
+  return { ...s, prefs, liked: likedList, current: next, shown: next ? [...s.shown, next] : s.shown, passStreak: liked ? 0 : s.passStreak + 1 };
 }
 
 /** Drop a card whose photo failed to load (not a pass: no preference signal) and pick another. */
@@ -196,16 +204,77 @@ export function defaultInquiryMessage(c: Pick<SwipeCard, "year" | "make" | "mode
 }
 
 /** Payload for sendDealerInquiry → POST /api/inquiries (same system as the listing page's Contact Dealer). */
-export function inquiryPayload(unitId: string, form: InquiryForm) {
+export function inquiryPayload(unitId: string, form: InquiryForm, share?: { sharePayment: boolean; estimate: PaymentEstimatePayload | null }) {
   return {
     unitId,
     name: form.name.trim(),
     email: form.email.trim() || null,
     phone: form.phone.trim() || null,
     message: form.message.trim(),
+    // Off by default: the shopper's numbers leave the device only when they tick the share box.
+    ...(share?.sharePayment && share.estimate ? { paymentEstimate: share.estimate } : {}),
   };
 }
 
 export function inquiryFormValid(form: InquiryForm): boolean {
   return form.name.trim().length > 0 && (form.email.trim().length > 0 || form.phone.trim().length > 0) && form.message.trim().length > 0;
+}
+
+// ── RV Outfitter check-in ────────────────────────────────────────────────
+
+export const CHECKIN_MAX_PER_DECK = 2;
+export const CHECKIN_PASS_STREAK = 6;
+export const CHECKIN_AT_CARD = 8;
+/** Never on cards 1-3: the shopper hasn't told us anything yet. */
+export const CHECKIN_EARLIEST_CARD = 4;
+
+/**
+ * Rule (no randomness, so it's testable and predictable): before the card at `position` (1-based) is
+ * shown, ask "Want to change anything?" when the shopper has passed CHECKIN_PASS_STREAK in a row, or
+ * once when they reach card CHECKIN_AT_CARD without a check-in yet. At most CHECKIN_MAX_PER_DECK per deck.
+ */
+export function shouldCheckIn(s: Pick<DeckState, "shown" | "passStreak" | "checkIns" | "current">): boolean {
+  if (!s.current) return false;
+  const position = s.shown.length;
+  if (position < CHECKIN_EARLIEST_CARD || s.checkIns >= CHECKIN_MAX_PER_DECK) return false;
+  if (s.passStreak >= CHECKIN_PASS_STREAK) return true;
+  return position === CHECKIN_AT_CARD && s.checkIns === 0;
+}
+
+/** Mark a check-in as handled (dismissed or changed). Resets the pass streak so it can't re-fire on the next card. */
+export function markCheckIn(s: DeckState): DeckState {
+  return { ...s, checkIns: s.checkIns + 1, passStreak: 0 };
+}
+
+export interface CheckInEdits { rvType?: RvType | null; priceMaxUsd?: number | null; radiusMiles?: number | null; sleepsMin?: number | null }
+
+/** Does a card satisfy the shopper's edited filters? Unknown sleeps fails a sleeps filter (never guessed). */
+export function matchesEdits(c: SwipeCard, e: CheckInEdits): boolean {
+  if (e.rvType && c.rvType !== e.rvType) return false;
+  if (e.priceMaxUsd && c.priceUsd > e.priceMaxUsd) return false;
+  if (e.radiusMiles && typeof c.distanceMiles === "number" && c.distanceMiles > e.radiusMiles) return false;
+  if (e.sleepsMin && !(typeof c.sleeps === "number" && c.sleeps >= e.sleepsMin)) return false;
+  return true;
+}
+
+/**
+ * Apply check-in edits: keep the cards already shown and the likes, drop remaining cards that no longer
+ * fit, merge in fresh cards from the server (already-shown ids excluded), and pick the next card with
+ * the shopper's existing preferences. The 20-card limit still counts from the start of the deck.
+ */
+export function applyCheckIn(s: DeckState, edits: CheckInEdits, fresh: SwipeCard[]): DeckState {
+  const shownIds = new Set(s.shown.map((c) => c.id));
+  const current = s.current;
+  const prior = current ? s.shown.filter((c) => c.id !== current.id) : s.shown;
+  const priorIds = new Set(prior.map((c) => c.id));
+  const kept = s.pool.filter((c) => !shownIds.has(c.id) && matchesEdits(c, edits));
+  const seen = new Set<string>([...s.pool.map((c) => c.id)]);
+  const added = fresh.filter((c) => c.photo && !priorIds.has(c.id) && !seen.has(c.id) && matchesEdits(c, edits) && seen.add(c.id));
+  // The card on screen when the check-in appeared hasn't been swiped yet: it goes back in the running.
+  const back = current && matchesEdits(current, edits) ? [current] : [];
+  const remaining = [...back, ...kept, ...added];
+  const radiusMiles = edits.radiusMiles ?? s.radiusMiles;
+  const next = pickNext(remaining, prior, s.prefs, radiusMiles);
+  const pool = [...prior, ...remaining];
+  return { ...markCheckIn({ ...s, pool, radiusMiles }), shown: next ? [...prior, next] : prior, current: next };
 }

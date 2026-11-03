@@ -110,3 +110,57 @@ describe("see it in person inquiry", () => {
     expect(calls[1].body).toEqual({ confirmation_token: "dic_x.sig", confirmed: true });
   });
 });
+
+import { applyCheckIn, CHECKIN_MAX_PER_DECK, markCheckIn, matchesEdits, shouldCheckIn } from "@/lib/swipe-deck";
+
+describe("RV Outfitter check-in", () => {
+  const pool = (k: number, over: (i: number) => Partial<SwipeCard> = () => ({})) => Array.from({ length: k }, (_, i) => card({ dealerKey: `d${i}`, ...over(i) }));
+  const run = (s: ReturnType<typeof startDeck>, moves: boolean[]) => {
+    const fired: number[] = [];
+    for (const m of moves) { s = swipe(s, m); if (shouldCheckIn(s)) { fired.push(s.shown.length); s = markCheckIn(s); } }
+    return { s, fired };
+  };
+  it("never fires on the first 3 cards, even after passes", () => {
+    let s = startDeck(pool(30), 150);
+    for (let i = 0; i < 2; i++) { s = swipe(s, false); expect(shouldCheckIn(s)).toBe(false); }
+    expect(shouldCheckIn({ ...s, passStreak: 10 })).toBe(false);
+  });
+  it("fires after 6 passes in a row", () => {
+    const { fired } = run(startDeck(pool(30), 150), [false, false, false, false, false, false]);
+    expect(fired).toEqual([7]);
+  });
+  it("fires once at card 8 when the shopper is liking things", () => {
+    const { fired } = run(startDeck(pool(30), 150), Array(12).fill(true));
+    expect(fired).toEqual([8]);
+  });
+  it("at most twice per deck", () => {
+    const { fired } = run(startDeck(pool(30), 150), Array(19).fill(false));
+    expect(fired.length).toBe(CHECKIN_MAX_PER_DECK);
+    expect(fired).toEqual([7, 13]);
+  });
+  it("a like resets the pass streak", () => {
+    const { fired } = run(startDeck(pool(30), 150), [false, false, false, false, false, true, false, true]);
+    expect(fired).toEqual([8]);
+  });
+  it("edits re-rank the rest: shown cards and likes stay, non-matching cards drop, fresh cards merge in", () => {
+    let s = startDeck(pool(12, (i) => ({ rvType: i % 2 ? "fifth_wheel" : "travel_trailer", sleeps: 4 })), 150);
+    for (let i = 0; i < 6; i++) s = swipe(s, i === 0);
+    const before = s.shown.slice(0, -1).map((c) => c.id);
+    const fresh = pool(5, () => ({ rvType: "class_c", sleeps: 6, priceUsd: 60000 }));
+    const next = applyCheckIn(s, { rvType: "class_c", sleepsMin: 6 }, fresh);
+    expect(next.shown.slice(0, -1).map((c) => c.id)).toEqual(before);
+    expect(next.liked).toEqual(s.liked);
+    expect(next.current!.rvType).toBe("class_c");
+    expect(next.checkIns).toBe(1);
+    expect(next.passStreak).toBe(0);
+    const rest = next.pool.filter((c) => !next.shown.some((x) => x.id === c.id));
+    expect(rest.every((c) => c.rvType === "class_c")).toBe(true);
+    expect(next.shown.length).toBe(s.shown.length);
+  });
+  it("matchesEdits: unknown sleeps fails a sleeps filter; budget and distance apply", () => {
+    expect(matchesEdits(card(), { sleepsMin: 4 })).toBe(false);
+    expect(matchesEdits(card({ sleeps: 6 }), { sleepsMin: 4 })).toBe(true);
+    expect(matchesEdits(card({ priceUsd: 80000 }), { priceMaxUsd: 50000 })).toBe(false);
+    expect(matchesEdits(card({ distanceMiles: 120 }), { radiusMiles: 50 })).toBe(false);
+  });
+});

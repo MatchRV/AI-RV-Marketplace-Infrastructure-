@@ -9,7 +9,7 @@ import { trackEvent } from "@/lib/analytics";
  * is needed for the events to arrive. To send them somewhere else as well, set window.matchrvSwipeHook.
  * Every call soft-fails: analytics can never break the deck.
  */
-export type SwipeEvent = "swipe_like" | "swipe_pass" | "deck_complete" | "inquiry_submitted";
+export type SwipeEvent = "swipe_like" | "swipe_pass" | "deck_complete" | "inquiry_submitted" | "outfitter_checkin";
 
 declare global {
   interface Window { matchrvSwipeHook?: (event: SwipeEvent, params: Record<string, unknown>) => void }

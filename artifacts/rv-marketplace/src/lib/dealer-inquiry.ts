@@ -13,6 +13,8 @@ export interface DealerInquiryInput {
   email?: string | null;
   phone?: string | null;
   message: string;
+  /** Only when the shopper ticked "Share my payment numbers with the dealer" (off by default). */
+  paymentEstimate?: import("./payment-calc").PaymentEstimatePayload | null;
 }
 export type DealerInquiryResult =
   | { ok: true; inquiryId: string; status: string; statusDetail: string }
@@ -49,6 +51,7 @@ export async function sendDealerInquiry(input: DealerInquiryInput, base = "/", f
         email: input.email || null,
         phone: input.phone || null,
         message: input.message,
+        ...(input.paymentEstimate ? { payment_estimate: input.paymentEstimate } : {}),
       }),
     });
     if (!prep.ok) return { ok: false, error: await readError(prep, "Unable to send message. Please try again.") };

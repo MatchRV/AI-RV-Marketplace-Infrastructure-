@@ -131,3 +131,54 @@ describe("near me and outbound redirect", () => {
     expect(typeof d.hasDealerPage).toBe("boolean");
   });
 });
+
+describe("detail view: description, options, specs, video (only what our data has)", () => {
+  const all = () => inv().units.filter(deckEligible);
+  it("returns the stored description as-is and flags a shortened one", () => {
+    const u = all().find((x) => x.description && x.description.trim().length > 80)!;
+    const d = unitDetail(u.id)!;
+    expect(d.description).not.toBeNull();
+    expect(u.description!.replace(/\s+/g, " ")).toContain(d.description!.replace(/\s+/g, " ").slice(0, 60));
+    const s = all().find((x) => x.description && /(\u2026|\.\.\.)\s*$/.test(x.description))!;
+    expect(unitDetail(s.id)!.descriptionShortened).toBe(true);
+  });
+  it("no description → null (never filled from the title), still a dealer link and spec facts", () => {
+    const u = all().find((x) => !x.description && x.provenance.listingUrl)!;
+    const d = unitDetail(u.id)!;
+    expect(d.description).toBeNull();
+    expect(d.hasDealerPage).toBe(true);
+    for (const s of d.specs) expect(["dealer_listing", "derived_text", "manufacturer_spec"]).toContain(s.source);
+  });
+  it("a customer testimonial stored as the description is withheld, not shown as the dealer's description", async () => {
+    const { cleanDescriptionText } = await import("../src/services/swipe-deck");
+    expect(cleanDescriptionText("I had such an awesome experience with my purchase. My salesman was Mike, he brought us to the rv.")).toBeNull();
+    expect(cleanDescriptionText("We purchased a new Jayco a week ago and the team was great.")).toBeNull();
+    const real = "2023 Grand Design Imagine 2500RL with rear living, theater seating and a 15K BTU A/C.";
+    expect(cleanDescriptionText(real)).toBe(real);
+  });
+  it("features drop page chrome (tabs, share buttons) and keep the dealer's own options", async () => {
+    const { cleanFeatures } = await import("../src/services/swipe-deck");
+    expect(cleanFeatures(["Description", "Similar RVs", "Share", "Pin It", "Power Awning w/ LED lights", "power awning w/ led lights", "  15K BTU AC "])).toEqual(["Power Awning w/ LED lights", "15K BTU AC"]);
+    expect(cleanFeatures(null)).toEqual([]);
+    expect(cleanFeatures(["Contact Sales", "Black Tank Flush"])).toEqual(["Black Tank Flush"]);
+  });
+  it("video only from the dealer's own listing data (YouTube), else null", () => {
+    const withVid = all().filter((x) => unitDetail(x.id)!.video);
+    for (const x of withVid) {
+      const v = unitDetail(x.id)!.video!;
+      expect(v.youtubeId).toMatch(/^[A-Za-z0-9_-]{11}$/);
+      expect(v.url).toMatch(/youtu/);
+    }
+    expect(unitDetail(sample().id)!.video === null || typeof unitDetail(sample().id)!.video!.youtubeId === "string").toBe(true);
+  });
+});
+
+describe("deck refetch for check-in edits", () => {
+  it("excludes already-shown ids and applies sleepsMin", async () => {
+    const first = await buildDeckPool({ zip: "98444" }, { photoCheck: ok });
+    const exclude = new Set(first.cards.slice(0, 10).map((c) => c.id));
+    const again = await buildDeckPool({ zip: "98444", sleepsMin: 6 }, { photoCheck: ok, exclude });
+    expect(again.cards.length).toBeGreaterThan(0);
+    for (const c of again.cards) { expect(exclude.has(c.id)).toBe(false); expect(c.sleeps ?? 0).toBeGreaterThanOrEqual(6); }
+  });
+});

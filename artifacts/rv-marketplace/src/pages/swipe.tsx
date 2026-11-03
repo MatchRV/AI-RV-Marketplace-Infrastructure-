@@ -7,9 +7,10 @@ import { OnboardingHint } from "@/components/swipe/onboarding-hint";
 import { PreFilter, defaultFilter, type DeckFilter } from "@/components/swipe/pre-filter";
 import { DetailSheet } from "@/components/swipe/detail-sheet";
 import { Shortlist } from "@/components/swipe/shortlist";
+import { OutfitterCheckIn } from "@/components/swipe/outfitter-checkin";
 import { NAVY, TEAL } from "@/components/swipe/tokens";
 import { trackSwipe } from "@/lib/swipe-analytics";
-import { DECK_LIMIT, isComplete, skipBroken, startDeck, swipe, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
+import { DECK_LIMIT, applyCheckIn, isComplete, markCheckIn, shouldCheckIn, skipBroken, startDeck, swipe, type CheckInEdits, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
@@ -23,14 +24,22 @@ export function Swipe() {
   const [detail, setDetail] = useState<SwipeCard | null>(null);
   const [zipUsed, setZipUsed] = useState<string | null>(null);
   const completed = useRef(false);
+  const [checkIn, setCheckIn] = useState(false);
+  const [checkInBusy, setCheckInBusy] = useState(false);
+  const [sleepsMin, setSleepsMin] = useState<number | null>(null);
+
+  const deckBody = (f: DeckFilter, extra: Record<string, unknown> = {}) => {
+    const body: Record<string, unknown> = { ...extra };
+    if (f.rvType) body.rvType = f.rvType;
+    if (f.priceMaxUsd) body.priceMaxUsd = f.priceMaxUsd;
+    if (f.coords) { body.lat = f.coords.lat; body.lng = f.coords.lng; } else body.zip = f.zip;
+    return body;
+  };
 
   const load = async (f: DeckFilter) => {
-    setFilter(f); setError(null); setPhase("loading"); completed.current = false;
+    setFilter(f); setError(null); setPhase("loading"); completed.current = false; setCheckIn(false); setSleepsMin(null);
     try {
-      const body: Record<string, unknown> = {};
-      if (f.rvType) body.rvType = f.rvType;
-      if (f.priceMaxUsd) body.priceMaxUsd = f.priceMaxUsd;
-      if (f.coords) { body.lat = f.coords.lat; body.lng = f.coords.lng; } else body.zip = f.zip;
+      const body = deckBody(f);
       const r = await fetch(`${BASE}api/swipe/deck`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = (await r.json().catch(() => ({}))) as { cards?: SwipeCard[]; radiusMiles?: number; zip?: string; guidance?: string };
       if (!r.ok) { setError(data.guidance ?? "We couldn't load RVs right now. Please try again."); setPhase("filter"); return; }
@@ -55,7 +64,36 @@ export function Swipe() {
     if (!deck?.current) return;
     const c = deck.current;
     trackSwipe(liked ? "swipe_like" : "swipe_pass", { unitId: c.id, position: deck.shown.length, rvType: c.rvType, priceUsd: c.priceUsd });
-    setDeck(swipe(deck, liked));
+    const next = swipe(deck, liked);
+    setDeck(next);
+    if (shouldCheckIn(next)) {
+      setCheckIn(true);
+      trackSwipe("outfitter_checkin", { action: "shown", position: next.shown.length, passStreak: next.passStreak, checkIn: next.checkIns + 1 });
+    }
+  };
+
+  const dismissCheckIn = () => {
+    if (!deck) return;
+    trackSwipe("outfitter_checkin", { action: "dismissed", position: deck.shown.length });
+    setDeck(markCheckIn(deck)); setCheckIn(false);
+  };
+
+  const applyEdits = async (e: CheckInEdits) => {
+    if (!deck) return;
+    setCheckInBusy(true);
+    const f: DeckFilter = { ...filter, rvType: e.rvType ?? "", priceMaxUsd: e.priceMaxUsd ?? null };
+    let fresh: SwipeCard[] = [];
+    try {
+      const extra: Record<string, unknown> = { excludeIds: deck.shown.filter((c) => c.id !== deck.current?.id).map((c) => c.id) };
+      if (e.radiusMiles) extra.radiusMiles = e.radiusMiles;
+      if (e.sleepsMin) extra.sleepsMin = e.sleepsMin;
+      const r = await fetch(`${BASE}api/swipe/deck`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(deckBody(f, extra)) });
+      if (r.ok) fresh = ((await r.json()) as { cards?: SwipeCard[] }).cards ?? [];
+    } catch { /* fall back to re-ranking what we already have */ }
+    const next = applyCheckIn(deck, e, fresh);
+    trackSwipe("outfitter_checkin", { action: "changed", position: deck.shown.length, rvType: e.rvType ?? null, priceMaxUsd: e.priceMaxUsd ?? null, radiusMiles: e.radiusMiles ?? null, sleepsMin: e.sleepsMin ?? null, added: fresh.length });
+    setFilter(f); setSleepsMin(e.sleepsMin ?? null);
+    setDeck(next); setCheckIn(false); setCheckInBusy(false);
   };
 
   const position = deck ? Math.min(deck.shown.length, DECK_LIMIT) : 0;
@@ -94,7 +132,12 @@ export function Swipe() {
           </div>
         )}
 
-        {phase === "deck" && deck?.current && (
+        {phase === "deck" && deck?.current && checkIn && (
+          <OutfitterCheckIn busy={checkInBusy} onApply={(e) => void applyEdits(e)} onDismiss={dismissCheckIn}
+            initial={{ rvType: filter.rvType || null, priceMaxUsd: filter.priceMaxUsd, radiusMiles: deck.radiusMiles, sleepsMin }} />
+        )}
+
+        {phase === "deck" && deck?.current && !checkIn && (
           <div className="relative">
             <OnboardingHint />
             <SwipeCardView key={deck.current.id} card={deck.current} onSwipe={onSwipe} onDetails={() => setDetail(deck.current)} onPhotoError={() => setDeck(skipBroken(deck))} />

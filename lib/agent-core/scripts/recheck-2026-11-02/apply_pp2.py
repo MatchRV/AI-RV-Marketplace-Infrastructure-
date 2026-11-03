@@ -154,8 +154,10 @@ for uid,outcome in OUT.items():
         else: st["cw_unconfirmed_"+"+".join(sorted(kinds))]+=1
         continue
     _,stock,j,x=m; ts=j["fetchedAt"]; url=(x.get("ldUrl") or j["finalUrl"]); st["cw_page_matched"]+=1
-    if x.get("ldAvailability") in SOLD or x.get("salePendingText"):
-        hold(u,"dead_sold",url,ts,f"availability {x.get('ldAvailability')} salePending {x.get('salePendingText')}"); st["cw_dead_sold"]+=1; continue
+    if x.get("salePendingText"):  # CSO t4: Sale Pending is held, not removed
+        hold(u,"sale_pending",url,ts,f"availability {x.get('ldAvailability')} salePending {x.get('salePendingText')}"); st["cw_sale_pending"]+=1; continue
+    if x.get("ldAvailability") in SOLD:
+        hold(u,"dead_sold",url,ts,f"availability {x.get('ldAvailability')}"); st["cw_dead_sold"]+=1; continue
     fields=[]
     c,s=x.get("h1City"),x.get("h1State")
     if c and s and re.fullmatch(r'[A-Z]{2}',s):

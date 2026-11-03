@@ -233,6 +233,26 @@
     "recnationresale.com": 1,
     "coltonrv.com": 1
    }
+  },
+  "unknown": {
+   "stage": "unknown",
+   "steps": {
+    "unknown_city": 2360,
+    "no_page_left_unknown": 1670,
+    "page_states_no_lot": 171,
+    "filled": 366,
+    "filled_by_page title": 35,
+    "filled_by_schema.org PostalAddress": 331,
+    "state_conflict_left_unknown": 153
+   },
+   "changes": 366,
+   "storesCreated": 13,
+   "byDomain": {
+    "threewaycampers.com": 168,
+    "kunesrv.com": 97,
+    "rvcountry.com": 66,
+    "coachlightrv.com": 35
+   }
   }
  }
 }

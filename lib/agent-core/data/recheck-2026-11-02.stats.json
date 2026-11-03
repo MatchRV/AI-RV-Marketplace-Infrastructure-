@@ -176,5 +176,25 @@
    "total": 4342
   },
   "note": "2026-11-02 split: other-dealer sold_or_sale_pending (365) -> dead_sold 215 (schema SoldOut/OutOfStock 199 or own-page sold text 16) removed; Sale Pending text 150 held. Snapshot unchanged (both are out of search)."
+ },
+ "csoFixes_t4": {
+  "cond": {
+   "stage": "cond",
+   "steps": {
+    "confirmed_new": 3034,
+    "no_heading_no_url_unchanged": 761,
+    "confirmed_used": 797,
+    "used->new": 1859
+   },
+   "changes": 1859,
+   "storesCreated": 0,
+   "byDomain": {
+    "ronhooverrvs.com": 965,
+    "wilkinsrv.com": 362,
+    "windishrv.com": 302,
+    "campersinn.com": 168,
+    "raycitte.com": 62
+   }
+  }
  }
 }

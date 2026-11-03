@@ -38,6 +38,7 @@ R={ # reason, detail
  'tlsdrop':('site_unreachable','site edge drops our TLS connection (all requests); not routed through third-party crawlers'),
  'tlsfail':('site_unreachable','TLS handshake fails / server errors from every fetcher tried'),
  'noprice':('price_not_on_page','covered before, but the units\' own pages state no sale price (client-rendered; price only via robots-disallowed /api/); held price_unverified under the MAP/unlock rule'),
+ 'cfp':('price_not_on_page','harvested 2026-11-02: every RV unit page says "Please Call For Price" (listing shows only a NADA book value, never the price); all held price_unverified'),
  'under':('under_covered','covered but snapshot holds far fewer WA units than the dealer lists (MC count shown)'),
 }
 X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','mikiysrv.com':'nx','standalrv.com':'nx','nwtruckandrv.com':'nx',
@@ -55,7 +56,7 @@ X={'discountrvwa.com':'nx','automatchsales.com':'nx','countrywestrv.com':'nx','m
  'globalrvinc.com':'notwa','automatchsales.com':'fb','uneekrv.com':'parked','dlsrv.com':'parked','cleangreencars.com':'parked','sellmyrvwa.com':'broker',
  'airwayrv.com':'tlsdrop','airwayheightsrv.com':'tlsdrop','asrvparts.com':'tlsdrop','rvtown.com':'tlsfail','rebornrv.com':'tlsfail','campstarsrv.com':'conn',
  'haltermansrv.com':'oob','royrobinsonrv.com':'merged','thecarstars.com':'lot','camperschoicerv.com':'zero','scottsrvvancouver.com':'zero','qualityrvllc.com':'notype','basinrvmoseslake.com':'notype',
- 'fifervcenter.com':'zero','rnrrv.com':'zero','bretzrv.com':'zero'}
+ 'danderv.com':'cfp','fifervcenter.com':'zero','rnrrv.com':'zero','bretzrv.com':'zero'}
 XN={'High Country RV & Auto Sales':'oob'}
 MC=json.load(open('mc/wa_facets.json')) if True else {}
 mcc={}

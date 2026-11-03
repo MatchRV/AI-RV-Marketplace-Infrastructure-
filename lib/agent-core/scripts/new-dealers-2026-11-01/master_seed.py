@@ -1,6 +1,7 @@
 # Curated WA RV dealer universe (2026-11-01). One row per dealer business (website domain); multi-store groups counted once per domain
 # but WA store count noted. Sources: MC=MarketCheck WA facet (1 call), PL=Exa Places (Google-maps-like) city searches, RR=rvresources.com WA directory,
-# CT=wa-rv-dealer-contacts.txt (Jonathan's list), EX=Exa web search, SN=already in snapshot (#69) with WA units.
+# CT=wa-rv-dealer-contacts.txt (Jonathan's list), EX=Exa web search, SN=already in snapshot (#69) with WA units,
+# JK=Jonathan in person on the lot 2026-11-02.
 D=[
 # name, city, domain, sources
 ("Lazydays RV of Vancouver","Vancouver","lazydays.com","SN"),
@@ -116,6 +117,7 @@ D=[
 ("Hudson / Kean Auto & RV Center","Bremerton","hudsonautocenter.com","PL"),
 ("J & V Autos & RVs","Yakima","","PL"),
 ("Darrell's RV","Tacoma","","CT"),
+("DandE RV Sales","Tacoma","danderv.com","JK"),
 ("High Country RV & Auto Sales","WA","","CT"),
 ("Tonasket RV Supercenter","Tonasket","","CT"),
 ("D & L's RV Center","Wenatchee","dlsrv.com","RR EX2"),

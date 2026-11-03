@@ -1,0 +1,38 @@
+{
+ "stage": "lots",
+ "steps": {
+  "lot_moved": 3355,
+  "interstate": 874,
+  "same_state": 2481,
+  "bad_page_lot": 15
+ },
+ "changes": 3355,
+ "storesCreated": 37,
+ "byDomain": {
+  "ronhooverrvs.com": 1058,
+  "campersinn.com": 590,
+  "wilkinsrv.com": 418,
+  "windishrv.com": 201,
+  "tsrvs.com": 131,
+  "sr1rv.com": 130,
+  "thervcentral.com": 102,
+  "rvasap.com": 97,
+  "southernluxurysales.com": 91,
+  "laketawakonirvcenter.com": 84,
+  "petesrvindy.com": 77,
+  "camperliquidators.com": 60,
+  "sevenos.com": 57,
+  "funtownrv.com": 47,
+  "greenlawnrv.com": 42,
+  "petesrv.com": 41,
+  "bluecompassrv.com": 33,
+  "galpinrv.com": 29,
+  "worldwiderv.com": 23,
+  "petesrvmidatlantic.com": 23,
+  "texasrvguys.com": 11,
+  "leisurervcenter.com": 2,
+  "bishs.com": 2,
+  "recnationresale.com": 1,
+  "coltonrv.com": 1
+ }
+}

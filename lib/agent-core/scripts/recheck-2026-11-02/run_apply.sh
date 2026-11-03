@@ -27,6 +27,11 @@ PP_DIR=$W/cw_apply python3 tools/apply_pp2.py $BASE $O/s1.snapshot.json.gz $O/cw
 FETCH_DIR=$W/ia_apply python3 tools/fix1_rc.py $O/s1.snapshot.json.gz $O/s2.snapshot.json.gz $O/ia > $O/ia_stdout.json 2> $O/ia_err.log; log ia $(python3 -c "import json;d=json.load(open('$O/ia/fix1_summary.json'));print(d['in'],d['out'],d['removedOrHeldByReason'])")
 python3 tools/apply_gen.py $O/s2.snapshot.json.gz $O/s3.snapshot.json.gz $O/gen > $O/gen_stdout.json 2> $O/gen_err.log; log gen $(python3 -c "import json;d=json.load(open('$O/gen/gen_summary.json'));print(d['in'],d['out'],d['heldByReason'],d['steps'])")
 python3 tools/final.py $BASE $O/s3.snapshot.json.gz $O/inventory.snapshot.json.gz $O > $O/final.log 2>&1; log final $(tail -1 $O/final.log)
+# CSO t4 fixes (condition from own heading/URL; own-page lots incl. LOTDIFF; Unknown lot cities from own page)
+mv $O/inventory.snapshot.json.gz $O/final_pre_cso.snapshot.json.gz
+python3 tools/cso_t4.py cond $O/final_pre_cso.snapshot.json.gz $O/c1.snapshot.json.gz $O > $O/cso_cond.log 2>&1
+LOTDIFF=$O/ia/fix1_lot_differs_not_applied.csv python3 tools/cso_t4.py lots $O/c1.snapshot.json.gz $O/c2.snapshot.json.gz $O > $O/cso_lots.log 2>&1
+python3 tools/cso_t4.py unknown $O/c2.snapshot.json.gz $O/inventory.snapshot.json.gz $O > $O/cso_unknown.log 2>&1; log cso $(tail -c 300 $O/cso_cond.log) $(tail -c 200 $O/cso_lots.log) $(tail -c 200 $O/cso_unknown.log)
 python3 /workspace/harvest-2026-10-30/windows.py $O/inventory.snapshot.json.gz $O/windows.json > /dev/null
 BUILT=$BUILT_AT python3 /workspace/wt-rc2/lib/agent-core/scripts/pagepass-2026-11-01/windows_at.py $BASE $O/windows_base_at_builtAt.json > /dev/null
 log windows $(python3 -c "

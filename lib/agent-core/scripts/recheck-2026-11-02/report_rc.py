@@ -3,7 +3,8 @@ import csv,json,gzip,sys,collections as C,datetime as D
 O=sys.argv[1]; c=C.Counter()
 for f in ('cw/pagepass_removed_units.csv','ia/fix1_removed_or_held.csv','gen/gen_removed_or_held.csv'):
     for r in csv.DictReader(open(f'{O}/{f}')): c[r['reason']]+=1
-REM=('dead_page_gone','dead_sold'); rem={k:v for k,v in c.items() if k in REM}; held={k:v for k,v in c.items() if k not in REM}
+REM=('dead_page_gone','dead_sold')  # sale_pending / on_order / price_* are held
+rem={k:v for k,v in c.items() if k in REM}; held={k:v for k,v in c.items() if k not in REM}
 s=json.load(gzip.open(f'{O}/inventory.snapshot.json.gz'))
 t=lambda x:D.datetime.fromisoformat(x.replace('Z','+00:00'))
 c7=t('2026-10-08T07:00:00Z'); c14=t('2026-10-15T07:00:00Z'); a7=C.Counter(); a14=C.Counter()
@@ -20,6 +21,7 @@ msg=f"""Dealer re-check 2026-11-02 t5 (on WA batch): {rep['searchable30'][1]:,} 
 
 Second tranche: all pages fetched through {fs['builtAt']} re-applied to the WA-batch base (same facts-only rules).
 lastSeen refreshed {fs['lastSeen_refreshed']:,}; prices updated {fs['price_changed']:,} (unit's own sale price, never MSRP).
+CSO t4 fixes applied (condition from own heading/URL, own-page lots, Unknown lot cities from own page; Sale Pending held).
 Removed {rep['removed_total']:,} {rem}. Held {rep['held_total']:,} {held}. Added 0.
 Loaded {fs['base_units']:,} -> {fs['out_units']:,}; 30-day searchable {rep['searchable30'][0]:,} -> {rep['searchable30'][1]:,}. Not pushed.
 """

@@ -2,48 +2,48 @@
  "final": {
   "builtAt": "2026-11-03T05:20:21.000Z",
   "base_units": 137477,
-  "out_units": 132608,
-  "removed_or_held": 4869,
+  "out_units": 131771,
+  "removed_or_held": 5706,
   "added": 0,
-  "lastSeen_refreshed": 65315,
-  "price_changed": 7111,
+  "lastSeen_refreshed": 84390,
+  "price_changed": 9008,
   "other_field_changes": {
-   "dealer": 713,
-   "rvType": 3,
-   "condition": 694
+   "dealer": 757,
+   "condition": 3445,
+   "rvType": 4
   },
   "tacoma_held": 0
  },
  "windowsAfter": {
   "builtAt": "2026-11-03T05:20:21.000Z",
-  "loaded": 132608,
-  "passing_non_stale_rules": 132572,
+  "loaded": 131771,
+  "passing_non_stale_rules": 131735,
   "windows": {
    "14": {
-    "eligible": 102112,
+    "eligible": 106880,
     "domains": 623,
-    "locations": 1293,
+    "locations": 1329,
     "states": 49,
     "cutoff_PT": "2026-10-19 22:20 PDT"
    },
    "21": {
-    "eligible": 114415,
+    "eligible": 116417,
     "domains": 623,
-    "locations": 1293,
+    "locations": 1329,
     "states": 49,
     "cutoff_PT": "2026-10-12 22:20 PDT"
    },
    "30": {
-    "eligible": 130144,
+    "eligible": 129308,
     "domains": 651,
-    "locations": 1369,
+    "locations": 1419,
     "states": 49,
     "cutoff_PT": "2026-10-03 22:20 PDT"
    },
    "45": {
-    "eligible": 130144,
+    "eligible": 129308,
     "domains": 651,
-    "locations": 1369,
+    "locations": 1419,
     "states": 49,
     "cutoff_PT": "2026-09-18 22:20 PDT"
    }
@@ -101,114 +101,60 @@
  },
  "waAfter": {
   "14": {
-   "total": 102112,
-   "WA": 4707,
+   "total": 106880,
+   "WA": 4705,
    "WA_domains": 40,
    "domains": 623
   },
   "30": {
-   "total": 130144,
-   "WA": 5779,
+   "total": 129308,
+   "WA": 5777,
    "WA_domains": 42,
    "domains": 651
   },
-  "WA_loaded": 5780
+  "WA_loaded": 5778
  },
  "failedDealers": {
   "dealers": 713,
   "dealers_with_pages_read": 578,
-  "with_problem": 166,
-  "units_at_problem_dealers": 81108,
+  "with_problem": 140,
+  "units_at_problem_dealers": 48258,
   "no_sitemap_urls": 82,
   "bot_walled": 16,
   "no_unit_like": 17
  },
- "interact": {
-  "price_unverified": 2586,
-  "sale_pending": 804,
-  "on_order": 115,
-  "dead_sold": 59,
-  "price_conflict_large": 8
- },
- "otherDealers": {
-  "heldByReason": {
-   "dead_sold": 215,
-   "price_unverified": 669,
-   "price_conflict_large": 9,
-   "sale_pending": 150,
-   "on_order": 1
-  },
-  "steps": {
-   "page_not_matched": 8560,
-   "fetch_bot_wall_403": 3,
-   "fetch_bot_wall_429": 1,
-   "fetch_bot_wall_200": 3,
-   "fetch_error_None": 12,
-   "refreshed": 15877,
-   "no_price_on_page_price_left": 102,
-   "unit_claimed_by_several_pages": 97,
-   "identity_unconfirmed_no_change": 691,
-   "several_sale_labelled_prices_price_left": 89,
-   "vin_conflict_no_change": 8
-  }
- },
- "campingWorld": {
-  "lastSeen_only": 1041,
-  "lastSeen_refreshed_any": 1993,
-  "price_changed": 486,
-  "condition_filled": 677,
-  "lot_moved": 1,
-  "removed_total": 253,
-  "removed_dead_page_gone": 253
- },
- "removedVsHeld": {
-  "removed": {
-   "campingWorld_dead_page_gone": 253,
-   "interact_dead_sold": 59,
-   "other_dead_sold": 215,
-   "total": 527
-  },
-  "held": {
-   "price_unverified": 3255,
-   "sale_pending": 954,
-   "on_order": 116,
-   "price_conflict_large": 17,
-   "total": 4342
-  },
-  "note": "2026-11-02 split: other-dealer sold_or_sale_pending (365) -> dead_sold 215 (schema SoldOut/OutOfStock 199 or own-page sold text 16) removed; Sale Pending text 150 held. Snapshot unchanged (both are out of search)."
- },
- "csoFixes_t4": {
+ "csoFixes": {
   "cond": {
    "stage": "cond",
    "steps": {
-    "confirmed_new": 3034,
-    "no_heading_no_url_unchanged": 761,
-    "confirmed_used": 797,
-    "used->new": 1859
+    "confirmed_new": 2989,
+    "no_heading_no_url_unchanged": 739,
+    "confirmed_used": 808,
+    "used->new": 1865
    },
-   "changes": 1859,
+   "changes": 1865,
    "storesCreated": 0,
    "byDomain": {
-    "ronhooverrvs.com": 965,
+    "ronhooverrvs.com": 967,
     "wilkinsrv.com": 362,
     "windishrv.com": 302,
-    "campersinn.com": 168,
+    "campersinn.com": 172,
     "raycitte.com": 62
    }
   },
   "lots": {
    "stage": "lots",
    "steps": {
-    "lot_moved": 3355,
-    "interstate": 874,
-    "same_state": 2481,
+    "lot_moved": 3373,
+    "interstate": 890,
+    "same_state": 2483,
     "bad_page_lot": 15
    },
-   "changes": 3355,
+   "changes": 3373,
    "storesCreated": 37,
    "byDomain": {
-    "ronhooverrvs.com": 1058,
-    "campersinn.com": 590,
+    "ronhooverrvs.com": 1060,
+    "campersinn.com": 606,
     "wilkinsrv.com": 418,
     "windishrv.com": 201,
     "tsrvs.com": 131,
@@ -254,5 +200,42 @@
     "coachlightrv.com": 35
    }
   }
+ },
+ "interact": {
+  "price_unverified": 2613,
+  "sale_pending": 886,
+  "on_order": 115,
+  "dead_sold": 61,
+  "price_conflict_large": 9
+ },
+ "otherDealers": {
+  "heldByReason": {
+   "dead_sold": 215,
+   "price_unverified": 669,
+   "price_conflict_large": 9,
+   "sale_pending": 150,
+   "on_order": 1
+  },
+  "steps": {
+   "page_not_matched": 9152,
+   "fetch_bot_wall_403": 3,
+   "fetch_bot_wall_429": 1,
+   "fetch_bot_wall_200": 3,
+   "refreshed": 15884,
+   "no_price_on_page_price_left": 102,
+   "unit_claimed_by_several_pages": 97,
+   "identity_unconfirmed_no_change": 692,
+   "several_sale_labelled_prices_price_left": 89,
+   "vin_conflict_no_change": 8
+  }
+ },
+ "campingWorld": {
+  "lastSeen_only": 2596,
+  "lastSeen_refreshed_any": 6851,
+  "price_changed": 1974,
+  "condition_filled": 3428,
+  "lot_moved": 40,
+  "removed_total": 978,
+  "removed_dead_page_gone": 978
  }
 }

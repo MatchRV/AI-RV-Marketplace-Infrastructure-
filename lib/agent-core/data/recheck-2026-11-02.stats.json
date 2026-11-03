@@ -237,5 +237,63 @@
   "lot_moved": 40,
   "removed_total": 978,
   "removed_dead_page_gone": 978
+ },
+ "carDealerQuarantine": {
+  "removed": 23,
+  "byDomain": {
+   "gervaiskia.com": 23
+  },
+  "units_after": 131748,
+  "dealers_after": 1479
+ },
+ "windowsAfterCarDealerQuarantine": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 131748,
+  "passing_non_stale_rules": 131712,
+  "windows": {
+   "14": {
+    "eligible": 106865,
+    "domains": 622,
+    "locations": 1328,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 116402,
+    "domains": 622,
+    "locations": 1328,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 129285,
+    "domains": 650,
+    "locations": 1418,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 129285,
+    "domains": 650,
+    "locations": 1418,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waAfterCarDealerQuarantine": {
+  "14": {
+   "total": 106865,
+   "WA": 4705,
+   "WA_domains": 40,
+   "domains": 622
+  },
+  "30": {
+   "total": 129285,
+   "WA": 5777,
+   "WA_domains": 42,
+   "domains": 650
+  },
+  "WA_loaded": 5778
  }
 }

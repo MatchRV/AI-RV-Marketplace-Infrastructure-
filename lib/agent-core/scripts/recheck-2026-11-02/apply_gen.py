@@ -89,7 +89,13 @@ for uid,cl in claims.items():
     hh=(x.get('h1') or '')[:60]; hi=vis.find(hh) if hh else -1
     win=vis[max(0,hi-400):hi+4000] if hi>=0 else ''
     soldm=re.search(r'(?i)\b(?:this (?:vehicle|unit|rv|coach|trailer|camper) (?:has been|is|was) sold\b(?!\s*[\"\u201c\u201d]?\s*as[\s-]*is)|has been sold\b|sold!|sale pending|pending sale)',win) if win else None
-    if any(o.get('avail') in ('SoldOut','OutOfStock','Discontinued') for o in ld) or soldm: hold('sold_or_sale_pending',f"avail {[o.get('avail') for o in ld][:2]} text {soldm.group(0) if soldm else None}"); continue
+    # t4b split (2026-11-02): visible Sale Pending / Pending Sale wording on the unit's own page -> held (sale_pending), unless the page
+    # also states the unit is sold; explicit sold wording or schema.org SoldOut/OutOfStock/Discontinued without pending wording -> removed (dead_sold).
+    pend=re.search(r'(?i)\b(?:sale pending|pending sale)\b',win) if win else None
+    soldx=re.search(r'(?i)\b(?:this (?:vehicle|unit|rv|coach|trailer|camper) (?:has been|is|was) sold\b(?!\s*[\"\u201c\u201d]?\s*as[\s-]*is)|has been sold\b|sold!)',win) if win else None
+    avs=[o.get('avail') for o in ld][:2]; ldgone=any(o.get('avail') in ('SoldOut','OutOfStock','Discontinued') for o in ld)
+    if pend and not soldx: hold('sale_pending',f"own page text {pend.group(0)!r}; schema avail {avs}"); continue
+    if soldx or ldgone: hold('dead_sold',f"own page text {soldx.group(0) if soldx else None!r}; schema avail {avs}"); continue
     badges=' '.join((x.get('unitTags') or [])+(x.get('photoBadges') or [])+[str(x.get('lotStatus') or '')])
     if x.get('factoryOrderText') or re.search(r'(?i)on\s*order|available\s+to\s+order|arriving\s+soon|in\s*transit|coming\s+soon|pre-?order',badges): hold('on_order',(x.get('factoryOrderText') or badges)[:100]); continue
     f,q=facts(x); old=u['priceUsd']['value']; fields=[]

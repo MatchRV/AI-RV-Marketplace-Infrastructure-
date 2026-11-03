@@ -132,9 +132,10 @@
  },
  "otherDealers": {
   "heldByReason": {
-   "sold_or_sale_pending": 365,
+   "dead_sold": 215,
    "price_unverified": 669,
    "price_conflict_large": 9,
+   "sale_pending": 150,
    "on_order": 1
   },
   "steps": {
@@ -159,5 +160,21 @@
   "lot_moved": 1,
   "removed_total": 253,
   "removed_dead_page_gone": 253
+ },
+ "removedVsHeld": {
+  "removed": {
+   "campingWorld_dead_page_gone": 253,
+   "interact_dead_sold": 59,
+   "other_dead_sold": 215,
+   "total": 527
+  },
+  "held": {
+   "price_unverified": 3255,
+   "sale_pending": 954,
+   "on_order": 116,
+   "price_conflict_large": 17,
+   "total": 4342
+  },
+  "note": "2026-11-02 split: other-dealer sold_or_sale_pending (365) -> dead_sold 215 (schema SoldOut/OutOfStock 199 or own-page sold text 16) removed; Sale Pending text 150 held. Snapshot unchanged (both are out of search)."
  }
 }

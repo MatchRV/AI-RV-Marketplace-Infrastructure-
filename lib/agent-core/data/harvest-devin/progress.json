@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "allseasonsrvsales.com",
-      "finished_at": "2026-11-05T03:28:51Z",
+      "last_dealer_finished": "aubreysrv.com",
+      "finished_at": "2026-11-05T03:28:52Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:51Z"
+  "updated_at": "2026-11-05T03:28:52Z"
 }

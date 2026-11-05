@@ -23,3 +23,4 @@ asrvparts.com,A's RV Parts & Repair,East Wenatchee,WA,error,0,"server closes the
 rvtown.com,Ryan's RV Town,Everett,WA,error,0,https: TLS handshake fails; http returns HTTP 409 with no content
 campstarsrv.com,The Campstars RV Sales,Olympia,WA,error,0,DNS resolves but connections time out (https and http)
 haltermansrv.com,Halterman's RV,Arlington,WA,error,0,domain redirects to an unrelated site (exportsaudi.co) with a broken certificate; business appears closed
+lithiarvspokane.com,Lithia RV of Spokane,Spokane,WA,bot_wall,0,homepage returns HTTP 403 to our honestly identified crawler; not bypassed

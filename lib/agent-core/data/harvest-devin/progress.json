@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "phoenixautosalesandrvs.com",
-      "finished_at": "2026-11-05T03:28:14Z",
+      "last_dealer_finished": "olympiaautomall.net",
+      "finished_at": "2026-11-05T03:28:15Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:14Z"
+  "updated_at": "2026-11-05T03:28:15Z"
 }

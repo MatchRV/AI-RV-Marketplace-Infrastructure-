@@ -2,3 +2,4 @@ dealer_domain,dealer_name,city,state,result,units,reason
 valleyrvsupercenter.com,Valley RV Supercenter,Kent,WA,ok,268,"Overfuel site; price = visible ""Our price"" (locked Manager's Special not used); 2 units ""temporarily on hold"" logged as sale_pending"
 jetsetrv.com,Jet-Set RV Center,Liberty Lake,WA,error,0,domain does not resolve (NXDOMAIN for bare and www host)
 phoenixautosalesandrvs.com,Phoenix Auto Sales & RVs,Lynnwood,WA,error,0,domain does not resolve (NXDOMAIN for bare and www host)
+olympiaautomall.net,Olympia Auto Mall RVs,Olympia,WA,error,0,domain does not resolve (NXDOMAIN for bare and www host)

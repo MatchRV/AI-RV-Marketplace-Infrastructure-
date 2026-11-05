@@ -1,0 +1,2 @@
+dealer_domain,dealer_name,city,state,result,units,reason
+valleyrvsupercenter.com,Valley RV Supercenter,Kent,WA,ok,268,"Overfuel site; price = visible ""Our price"" (locked Manager's Special not used); 2 units ""temporarily on hold"" logged as sale_pending"

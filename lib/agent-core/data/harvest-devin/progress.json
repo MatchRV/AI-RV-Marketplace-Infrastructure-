@@ -1,0 +1,29 @@
+{
+  "queue": [
+    "WA",
+    "OR",
+    "ID",
+    "AZ",
+    "FL",
+    "TX",
+    "CA",
+    "NV",
+    "NM",
+    "GA",
+    "SC",
+    "AL",
+    "LA",
+    "MS",
+    "<remaining states>"
+  ],
+  "states": {
+    "WA": {
+      "status": "in_progress",
+      "last_dealer_finished": "valleyrvsupercenter.com",
+      "finished_at": "2026-11-05T03:23:39Z",
+      "part": 1
+    }
+  },
+  "current_state": "WA",
+  "updated_at": "2026-11-05T03:23:39Z"
+}

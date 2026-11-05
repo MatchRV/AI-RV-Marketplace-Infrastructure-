@@ -1,0 +1,17 @@
+name,city,domain,sources,status,ne_units_before,ne_units_after,mc_ne_listings,reason,detail
+The Registry Llc,Omaha,theregistryllc.com,MC SN,covered_before,0,0,384,under_covered,MC 384 listings in NE vs 0 snapshot units in NE; nationally MC 384 vs ours 16 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+AC Nelsen RV World,,acnrv.com,MC,uncovered,0,0,228,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,jerrystrailers.com,MC,uncovered,0,0,108,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+Quality Used Cars Best Prices & Financing,Plattsmouth,henryhobmotors.com,MC,uncovered,0,0,80,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Precision RV & Auto,Columbus,precisionunibody.com,MC,uncovered,0,0,39,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Mason RV,,masonrv.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Branched Oak RV,,branchedoakrv.com,MC,uncovered,0,0,15,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,jacobsrvs.com,MC,uncovered,0,0,15,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+,,mountainhomerv.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_523 2026-11-04"
+Kaufman Trailers,,kaufmantrailers.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Kohle's Campers,,kohlescampers.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Car Dealer in Sidney, NE",,maddoxmotor.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,larrysrvsales.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+,,schustersoutdoor.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Eichner's Sales & Service,,eichners.net,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Immense Sales,,immensesales.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

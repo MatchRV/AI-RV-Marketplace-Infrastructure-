@@ -1,0 +1,34 @@
+name,city,domain,sources,status,az_units_before,az_units_after,mc_az_listings,reason,detail
+Sporttruckrv,Chandler,sporttruckrv.com,MC SN,covered_before,159,159,650,under_covered,MC 650 listings in AZ vs 159 snapshot units in AZ; nationally MC 657 vs ours 162 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Little Dealer Little Prices,Prescott Valley,littledealer.com,MC SN,covered_before,151,151,402,under_covered,MC 402 listings in AZ vs 151 snapshot units in AZ; nationally MC 402 vs ours 151; harvest full inventory
+,,landonsrv.com,MC,uncovered,0,0,144,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Rv World Yuma,Yuma,rvworldyuma.com,MC SN,covered_before,58,58,180,under_covered,MC 180 listings in AZ vs 58 snapshot units in AZ; nationally MC 180 vs ours 58; harvest full inventory
+RV Arizona,,rvarizona.com,MC,uncovered,0,0,116,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+We Are Airstream Superstore,Scottsdale,weareairstreamsuperstore.com,MC SN,covered_before,1,1,87,under_covered,MC 87 listings in AZ vs 1 snapshot units in AZ; nationally MC 87 vs ours 1; harvest full inventory
+Rv Wheelator,Tucson,rvwheelator1.com,MC SN,covered_before,1,1,85,under_covered,MC 85 listings in AZ vs 1 snapshot units in AZ; nationally MC 85 vs ours 1; harvest full inventory
+Jr Motors,Lake Havasu City,jrmotorsales.com,MC SN,covered_before,19,19,100,under_covered,MC 100 listings in AZ vs 19 snapshot units in AZ; nationally MC 100 vs ours 19; harvest full inventory
+,,rvaz.com,MC,uncovered,0,0,63,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Hava Style Recreation,Lake Havasu City,havastylerec.com,MC SN,covered_before,1,1,58,under_covered,MC 58 listings in AZ vs 1 snapshot units in AZ; nationally MC 58 vs ours 1; harvest full inventory
+Pinnacle Motor Coach,,pinnaclemotorcoach.com,MC,uncovered,0,0,37,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Sunland Sales,Glendale,sunlandsalesrv.com,MC,uncovered,0,0,34,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+FREE 2 U Consignments,Yuma,free2uyuma.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+The Boat Brokers,,theboatbroker.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+cousinterrysrv,,cousinterrysrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+New and Used RVs for Sale Gilbert AZ 85233 Spartan RV LLC,,spartanrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Action Line Sales,,actionlinesales.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Park Model Traders,,rvpmt.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Car Dealer in Kingman, AZ",,easyrvsales.net,MC,uncovered,0,0,15,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Nelson RV,Tucson,nelsonrv.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Garvins RV And Adventures,,garvinsrv.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Cassone's RV,,cassonesrv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Pinnacle Marine Center,,pinnaclemarinecenter.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Yuma Auto and RV Sales Center,,yumaautocenter.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,fhrv47.wixsite.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_404 2026-11-04"
+Tommy Camper Vans,,tommycampervans.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Hudgins Motorsports & RVs,,hudginsrv.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,oasisrv.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Mesa Best Used RV Dealer,,networkautomotiverv.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Car Dealer in Payson, AZ",,choiceautopayson.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Yard,,rvyard.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Desert Life RV,,desertliferv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+CAMEL MOTORS,,camelmotors.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

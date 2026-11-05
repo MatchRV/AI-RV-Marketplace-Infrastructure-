@@ -1,0 +1,11 @@
+name,city,domain,sources,status,me_units_before,me_units_after,mc_me_listings,reason,detail
+,,webbsrv.com,MC,uncovered,0,0,201,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Airstream of Maine,Lebanon,airstreammaine.com,MC,uncovered,0,0,117,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Powersports,Houlton,ridenorthrecreation.com,MC SN,covered_before,10,10,94,under_covered,MC 94 listings in ME vs 10 snapshot units in ME; nationally MC 94 vs ours 10; harvest full inventory; name from site homepage title
+"J&M Camper & Marine, Maine",Augusta,jmcamper.com,MC,uncovered,0,0,40,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Cog s Auto Sales,Roxbury,cogsautosales.com,MC,uncovered,0,0,38,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Presque Isle,mccluskeys.com,MC,uncovered,0,0,27,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Rod,Madison,rodscycleandrv.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Outpost Outfitters,,outpostoutfitters.me,MC,uncovered,0,0,18,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"RG & Son Sales, LLC",,rgandsonsales.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Reynolds Motorsports,,reynoldsmotorsports.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

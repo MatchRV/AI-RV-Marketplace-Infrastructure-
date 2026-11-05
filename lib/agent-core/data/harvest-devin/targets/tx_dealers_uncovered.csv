@@ -1,0 +1,87 @@
+name,city,domain,sources,status,tx_units_before,tx_units_after,mc_tx_listings,reason,detail
+,Decatur,nationaltrailersource.com,MC,uncovered,0,0,946,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04; check RV share (trailer dealer)"
+Rv Wholesalers Llc,Honey Grove,rvwholesalers.com,MC SN,covered_before,44,44,948,under_covered,MC 948 listings in TX vs 44 snapshot units in TX; nationally MC 948 vs ours 44; harvest full inventory
+Crestview RV Superstore,Selma,buyrv.net,MC SN,covered_before,1,1,740,under_covered,MC 740 listings in TX vs 1 snapshot units in TX; nationally MC 740 vs ours 1; harvest full inventory
+mhsrv.com,Alvarado,mhsrv.com,MC SN,covered_before,463,463,1130,under_covered,MC 1130 listings in TX vs 463 snapshot units in TX; nationally MC 1130 vs ours 463; harvest full inventory
+Ppl Motor Homes - Summerfield,,pplmotorhomes.com,MC SN,covered_before,0,0,571,under_covered,MC 571 listings in TX vs 0 snapshot units in TX; nationally MC 882 vs ours 163 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Airstream of Austin,Buda,airstreamofaustin.com,MC SN,covered_before,1,1,465,under_covered,MC 465 listings in TX vs 1 snapshot units in TX; nationally MC 465 vs ours 3 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory; name from site homepage title
+AmericaGoRV,Seguin,americagorv.com,MC,uncovered,0,0,261,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+DeMontrond RV,Houston,demontrondrv.com,MC SN,covered_before,219,219,477,under_covered,MC 477 listings in TX vs 219 snapshot units in TX; nationally MC 477 vs ours 219; harvest full inventory; name from site homepage title
+Rv Depot,Cleburne,rvdepottx.com,MC SN,covered_before,48,48,295,under_covered,MC 295 listings in TX vs 48 snapshot units in TX; nationally MC 295 vs ours 48; harvest full inventory
+Family Rv Center Sweetwater,Sweetwater,familyrvonline.com,MC SN,covered_before,23,23,259,under_covered,MC 259 listings in TX vs 23 snapshot units in TX; nationally MC 259 vs ours 23; harvest full inventory
+ROGERS RV,,rogersrv.com,MC,uncovered,0,0,183,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Liberty Trail RV,,libertytrailrv.com,MC,uncovered,0,0,164,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Empire RV,N Main StLiberty,empirervmarine.com,MC SN,covered_before,9,9,152,under_covered,MC 152 listings in TX vs 9 snapshot units in TX; nationally MC 152 vs ours 9; harvest full inventory; name from site homepage title
+Leisure RV Center of Greater Houston,Willis,leisurervcenter.com,MC SN,covered_before,4,4,133,under_covered,MC 133 listings in TX vs 4 snapshot units in TX; nationally MC 133 vs ours 4; harvest full inventory
+Texas Custom Trailers,Decatur,txcustomtrailers.com,MC,uncovered,0,0,121,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Camp EZ RV,,campezrv.com,MC,uncovered,0,0,118,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Airstream of DFW,,airstreamdfw.com,MC,uncovered,0,0,118,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Clear Creek Rvs,Abilene,clearcreekrvs.com,MC SN,covered_before,1,1,112,under_covered,MC 112 listings in TX vs 1 snapshot units in TX; nationally MC 112 vs ours 1; harvest full inventory
+Cliff Jones Rv,Sealy,cliffjonesrv.com,MC SN,covered_before,8,8,111,under_covered,MC 111 listings in TX vs 8 snapshot units in TX; nationally MC 111 vs ours 8; harvest full inventory
+RV Station,College Station,rvstationbryan.com,MC,uncovered,0,0,89,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Mount Pleasant,longhorntrailersales.com,MC,uncovered,0,0,86,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04; check RV share (trailer dealer)"
+,Weatherford,durhamtrailers.com,MC,uncovered,0,0,71,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+Airstream of Houston,Katy,airstreamofhouston.com,MC SN,covered_before,2,2,66,under_covered,MC 66 listings in TX vs 2 snapshot units in TX; nationally MC 66 vs ours 2; harvest full inventory; name from site homepage title
+TX RV,Kennedale,txrv.com,MC,uncovered,0,0,63,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,yourrvbroker.com,MC,uncovered,0,0,56,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+Marshalls Rv,Helotes,traveltowntexas.com,MC SN,covered_before,1,1,56,under_covered,MC 56 listings in TX vs 1 snapshot units in TX; nationally MC 56 vs ours 1; harvest full inventory
+Seguin RV,Seguin,seguinrv.com,MC SN,covered_before,13,13,67,under_covered,MC 67 listings in TX vs 13 snapshot units in TX; nationally MC 67 vs ours 13; harvest full inventory; name from site homepage title
+Home Page: Patriot Autosports 1210 S US Hwy 385 Andrews TX 79714 432-631-5436,,patriotautosportstx.com,MC,uncovered,0,0,53,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Texas Rv Outlet,Willow Park,txrvoutlet.com,MC SN,covered_before,15,15,65,under_covered,MC 65 listings in TX vs 15 snapshot units in TX; nationally MC 65 vs ours 15; harvest full inventory
+Franklin Mountain RV Sales,Canutillo,franklinmountainrvsales.com,MC,uncovered,0,0,43,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Coolhorse,,coolhorse.com,MC,uncovered,0,0,40,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Denton,outbackrvtx.com,MC,uncovered,0,0,28,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Platinum Cottages,,platinumcottages.com,MC,uncovered,0,0,25,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Howdy RV,,howdyrv.com,MC,uncovered,0,0,24,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV WORLD OF TEXAS,,rvworldoftx.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,legacyrvsales.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+,,hoppers-rv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+,,pittsburgrv.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Freedom RV Sales & Service,,freedomrvsalesandservice.com,MC,uncovered,0,0,18,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Humble,vhtrvs.com,MC,uncovered,0,0,17,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Bailey's RV Sales,,baileysrv.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,starlightmotors.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Convenience RV,,conveniencerv.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+rvslabanzat,,rvslabanzat.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,cypressrvs.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+RV's & Motorhomes For Sale,Spring,topchoicerv.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Legacy Coach,,legacycoach.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+The Orange Rv,,theorangerv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Hawkes Outdoors,,hawkesoutdoors.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Marathon Coach: Luxury RV Manufacturer and Dealer,,marathoncoach.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Texas,,nsarv.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,archerrvs.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Lonestar RV Liquidators,,lonestarrvliquidators.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Heart of Texas RV Pros,,hotrvpros.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Langdon Polaris & RV & Trailer,,langdonpolaris.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Camper City,,camper-city.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,ridgelinerv.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Ezrv Finance,,ezrvfinance.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Bean Trailer,,beantrailer.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+,,texascountryrv.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+De la Garza RV Center,,delagarzarv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Angelina Manufactured Housing, Inc. & RV Travel Center",,angelinarv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,platinumrvcenter.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+,,cripplecreekrvs.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Jayco coachmen Heartland Springdale,,atascocitarvsales.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Trawick Luxury Coaches,,trawickluxurycoaches.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+South Point Auto Sales,,southpointih35.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Foretravel Of Texas,,foretraveloftexas.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Griffin Motors Cars For Sale in Lockhart TX,,griffinmotorstx.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Texas Cheap RVs,,texascheaprvs.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Texas Reliable RV's & Motor Sports: RV Sales Class A, Travel Trailers, 5th Wheel",,texasreliablervs.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"CMC Truck and RV, Inc.: Home",,cmctruckandrv.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Boats, RVs & ATVs in Texas",,bigdmarine.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Gatesville RV and Motorsports,,gatesvillerv.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,traylormotorhomes.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+BuyAnyRV,,buyanyrv.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Southern Country RVS,,southerncountryrvs.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Complete Trailer Sales Texas,Keller,completetrailerstx.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+M&J,,mjsrvsales.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Consign A Camper,,consignacamper.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Daisy RV,Marble Falls,daisyrv.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Fast Lane Direct,,fastlanedirect.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Sales,,bigstatervandboat.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+True Deal TX,,truedealtx.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,mackscampersales.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Jeff England Motor Company,,jeffenglandmotorcompany.net,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

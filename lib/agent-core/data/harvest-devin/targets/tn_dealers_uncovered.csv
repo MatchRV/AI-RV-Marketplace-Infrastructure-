@@ -1,0 +1,16 @@
+name,city,domain,sources,status,tn_units_before,tn_units_after,mc_tn_listings,reason,detail
+A L Rv Sales,Johnson City,alrvsales.com,MC SN,covered_before,3,3,909,under_covered,MC 909 listings in TN vs 3 snapshot units in TN; nationally MC 912 vs ours 3 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+,,bjtrailers.com,MC,uncovered,0,0,311,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+Cedar City RV,Lebanon,cedarcityrv.com,MC SN,covered_before,2,2,130,under_covered,MC 130 listings in TN vs 2 snapshot units in TN; nationally MC 130 vs ours 2; harvest full inventory
+Olympia Luxury Coaches,,olympialuxurycoaches.com,MC,uncovered,0,0,126,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Travel Trailer & Camper Sales in Tennessee,Clinton,weekendrvcenter.com,MC,uncovered,0,0,41,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Hixson,chattanoogafishnfun.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+Newby's RV Sales LLC,,newbysrvsales.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Tiny House South,,tinyhousesouth.com,MC,uncovered,0,0,21,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Staley Bus Sales / Staley Coach,,staleycoach.com,MC,uncovered,0,0,17,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+DRV & Premium RVs,,rvsforless.net,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Middle Tennessee RV & Marine Repair Experts,,nationsrvtn.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Campers and More,,campersandmore.net,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Site Seven Campers,,sitesevencampers.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Skyway RV TN,,skywayrvstn.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Moxie Van Co,,moxievanco.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

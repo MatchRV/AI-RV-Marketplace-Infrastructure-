@@ -1,0 +1,414 @@
+{
+ "order": [
+  "WA",
+  "OR",
+  "ID",
+  "AZ",
+  "FL",
+  "TX",
+  "CA-south",
+  "NV",
+  "NM",
+  "GA",
+  "SC",
+  "AL",
+  "LA",
+  "MS",
+  "MT",
+  "WI",
+  "IN",
+  "CA-north",
+  "UT",
+  "NH",
+  "MI",
+  "MN",
+  "OH",
+  "ND",
+  "PA",
+  "NC",
+  "KY",
+  "TN",
+  "NJ",
+  "VA",
+  "CO",
+  "MO",
+  "OK",
+  "NY",
+  "NE",
+  "IL",
+  "MD",
+  "SD",
+  "VT",
+  "AR",
+  "IA",
+  "ME",
+  "WV",
+  "MA",
+  "KS",
+  "WY",
+  "AK",
+  "DE",
+  "CT",
+  "RI",
+  "HI"
+ ],
+ "regions": {
+  "WA": {
+   "rows": 77,
+   "uncovered": 76,
+   "under_covered": 1,
+   "actionable": 1,
+   "est_gain": 819
+  },
+  "OR": {
+   "rows": 36,
+   "uncovered": 35,
+   "under_covered": 1,
+   "actionable": 36,
+   "est_gain": 1889
+  },
+  "ID": {
+   "rows": 22,
+   "uncovered": 20,
+   "under_covered": 2,
+   "actionable": 22,
+   "est_gain": 1930
+  },
+  "AZ": {
+   "rows": 33,
+   "uncovered": 26,
+   "under_covered": 7,
+   "actionable": 33,
+   "est_gain": 1806
+  },
+  "FL": {
+   "rows": 63,
+   "uncovered": 55,
+   "under_covered": 8,
+   "actionable": 63,
+   "est_gain": 9547
+  },
+  "TX": {
+   "rows": 86,
+   "uncovered": 70,
+   "under_covered": 16,
+   "actionable": 86,
+   "est_gain": 7744
+  },
+  "CA-south": {
+   "rows": 52,
+   "uncovered": 51,
+   "under_covered": 1,
+   "actionable": 52,
+   "est_gain": 2260
+  },
+  "NV": {
+   "rows": 10,
+   "uncovered": 9,
+   "under_covered": 1,
+   "actionable": 10,
+   "est_gain": 622
+  },
+  "NM": {
+   "rows": 14,
+   "uncovered": 13,
+   "under_covered": 1,
+   "actionable": 14,
+   "est_gain": 611
+  },
+  "GA": {
+   "rows": 25,
+   "uncovered": 22,
+   "under_covered": 3,
+   "actionable": 25,
+   "est_gain": 1492
+  },
+  "SC": {
+   "rows": 20,
+   "uncovered": 19,
+   "under_covered": 1,
+   "actionable": 20,
+   "est_gain": 1081
+  },
+  "AL": {
+   "rows": 18,
+   "uncovered": 16,
+   "under_covered": 2,
+   "actionable": 18,
+   "est_gain": 5194
+  },
+  "LA": {
+   "rows": 7,
+   "uncovered": 4,
+   "under_covered": 3,
+   "actionable": 7,
+   "est_gain": 753
+  },
+  "MS": {
+   "rows": 9,
+   "uncovered": 9,
+   "under_covered": 0,
+   "actionable": 9,
+   "est_gain": 315
+  },
+  "MT": {
+   "rows": 8,
+   "uncovered": 6,
+   "under_covered": 2,
+   "actionable": 8,
+   "est_gain": 10301
+  },
+  "WI": {
+   "rows": 26,
+   "uncovered": 20,
+   "under_covered": 6,
+   "actionable": 26,
+   "est_gain": 5036
+  },
+  "IN": {
+   "rows": 35,
+   "uncovered": 31,
+   "under_covered": 4,
+   "actionable": 35,
+   "est_gain": 3768
+  },
+  "CA-north": {
+   "rows": 45,
+   "uncovered": 40,
+   "under_covered": 5,
+   "actionable": 45,
+   "est_gain": 3660
+  },
+  "UT": {
+   "rows": 27,
+   "uncovered": 26,
+   "under_covered": 1,
+   "actionable": 27,
+   "est_gain": 2968
+  },
+  "NH": {
+   "rows": 6,
+   "uncovered": 4,
+   "under_covered": 2,
+   "actionable": 6,
+   "est_gain": 2903
+  },
+  "MI": {
+   "rows": 44,
+   "uncovered": 38,
+   "under_covered": 6,
+   "actionable": 44,
+   "est_gain": 2743
+  },
+  "MN": {
+   "rows": 28,
+   "uncovered": 23,
+   "under_covered": 5,
+   "actionable": 28,
+   "est_gain": 2513
+  },
+  "OH": {
+   "rows": 42,
+   "uncovered": 38,
+   "under_covered": 4,
+   "actionable": 42,
+   "est_gain": 2484
+  },
+  "ND": {
+   "rows": 15,
+   "uncovered": 11,
+   "under_covered": 4,
+   "actionable": 15,
+   "est_gain": 1944
+  },
+  "PA": {
+   "rows": 36,
+   "uncovered": 32,
+   "under_covered": 4,
+   "actionable": 36,
+   "est_gain": 1848
+  },
+  "NC": {
+   "rows": 30,
+   "uncovered": 28,
+   "under_covered": 2,
+   "actionable": 30,
+   "est_gain": 1730
+  },
+  "KY": {
+   "rows": 14,
+   "uncovered": 11,
+   "under_covered": 3,
+   "actionable": 14,
+   "est_gain": 1680
+  },
+  "TN": {
+   "rows": 15,
+   "uncovered": 13,
+   "under_covered": 2,
+   "actionable": 15,
+   "est_gain": 1641
+  },
+  "NJ": {
+   "rows": 8,
+   "uncovered": 5,
+   "under_covered": 3,
+   "actionable": 8,
+   "est_gain": 1453
+  },
+  "VA": {
+   "rows": 19,
+   "uncovered": 17,
+   "under_covered": 2,
+   "actionable": 19,
+   "est_gain": 1396
+  },
+  "CO": {
+   "rows": 32,
+   "uncovered": 31,
+   "under_covered": 1,
+   "actionable": 32,
+   "est_gain": 1272
+  },
+  "MO": {
+   "rows": 31,
+   "uncovered": 28,
+   "under_covered": 3,
+   "actionable": 31,
+   "est_gain": 1198
+  },
+  "OK": {
+   "rows": 22,
+   "uncovered": 19,
+   "under_covered": 3,
+   "actionable": 22,
+   "est_gain": 1101
+  },
+  "NY": {
+   "rows": 25,
+   "uncovered": 23,
+   "under_covered": 2,
+   "actionable": 25,
+   "est_gain": 968
+  },
+  "NE": {
+   "rows": 16,
+   "uncovered": 15,
+   "under_covered": 1,
+   "actionable": 16,
+   "est_gain": 927
+  },
+  "IL": {
+   "rows": 14,
+   "uncovered": 14,
+   "under_covered": 0,
+   "actionable": 14,
+   "est_gain": 870
+  },
+  "MD": {
+   "rows": 7,
+   "uncovered": 6,
+   "under_covered": 1,
+   "actionable": 7,
+   "est_gain": 807
+  },
+  "SD": {
+   "rows": 9,
+   "uncovered": 7,
+   "under_covered": 2,
+   "actionable": 9,
+   "est_gain": 807
+  },
+  "VT": {
+   "rows": 6,
+   "uncovered": 5,
+   "under_covered": 1,
+   "actionable": 6,
+   "est_gain": 749
+  },
+  "AR": {
+   "rows": 10,
+   "uncovered": 9,
+   "under_covered": 1,
+   "actionable": 10,
+   "est_gain": 711
+  },
+  "IA": {
+   "rows": 23,
+   "uncovered": 22,
+   "under_covered": 1,
+   "actionable": 23,
+   "est_gain": 618
+  },
+  "ME": {
+   "rows": 10,
+   "uncovered": 9,
+   "under_covered": 1,
+   "actionable": 10,
+   "est_gain": 555
+  },
+  "WV": {
+   "rows": 9,
+   "uncovered": 7,
+   "under_covered": 2,
+   "actionable": 9,
+   "est_gain": 416
+  },
+  "MA": {
+   "rows": 7,
+   "uncovered": 6,
+   "under_covered": 1,
+   "actionable": 7,
+   "est_gain": 198
+  },
+  "KS": {
+   "rows": 8,
+   "uncovered": 7,
+   "under_covered": 1,
+   "actionable": 8,
+   "est_gain": 184
+  },
+  "WY": {
+   "rows": 5,
+   "uncovered": 5,
+   "under_covered": 0,
+   "actionable": 5,
+   "est_gain": 179
+  },
+  "AK": {
+   "rows": 4,
+   "uncovered": 3,
+   "under_covered": 1,
+   "actionable": 4,
+   "est_gain": 178
+  },
+  "DE": {
+   "rows": 3,
+   "uncovered": 3,
+   "under_covered": 0,
+   "actionable": 3,
+   "est_gain": 62
+  },
+  "CT": {
+   "rows": 4,
+   "uncovered": 4,
+   "under_covered": 0,
+   "actionable": 4,
+   "est_gain": 33
+  },
+  "RI": {
+   "rows": 2,
+   "uncovered": 2,
+   "under_covered": 0,
+   "actionable": 2,
+   "est_gain": 12
+  },
+  "HI": {
+   "rows": 1,
+   "uncovered": 1,
+   "under_covered": 0,
+   "actionable": 1,
+   "est_gain": 9
+  }
+ }
+}

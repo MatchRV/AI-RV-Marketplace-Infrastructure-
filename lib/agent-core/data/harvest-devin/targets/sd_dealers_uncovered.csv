@@ -1,0 +1,10 @@
+name,city,domain,sources,status,sd_units_before,sd_units_after,mc_sd_listings,reason,detail
+Gavins Point Recreational Center,Yankton,midwestcampers.com,MC,uncovered,0,0,384,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Gavins Point Recreational Center,Yankton,gavinspointrec.com,MC SN,covered_before,136,136,384,under_covered,MC 384 listings in SD vs 136 snapshot units in SD; nationally MC 384 vs ours 241 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Advantage RV’s & Trailers,,advantagervs.com,MC,uncovered,0,0,129,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Noteboom RV,Harrisburg,noteboomrv.com,MC SN,covered_before,67,67,170,under_covered,MC 170 listings in SD vs 67 snapshot units in SD; nationally MC 170 vs ours 67; harvest full inventory
+Venture Motor,,venture-motor.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+AUTO SALES & SERVICE,,anytimeanytime.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Yankton Motorsports, LLC is located in Yankton, SD. Shop our large online invent",,yanktonmotorsports.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+The Hitch and Buggy Trailer Sales,,hitchandbuggytrailers.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+South Dakota Trailer Dealer,,custom-outfitters.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

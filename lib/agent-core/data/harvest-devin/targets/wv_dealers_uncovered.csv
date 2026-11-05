@@ -1,0 +1,10 @@
+name,city,domain,sources,status,wv_units_before,wv_units_after,mc_wv_listings,reason,detail
+"Mountaineer Rv & Outdoor Center, Llc",Jane Lew,mymountaineerrv.com,MC SN,covered_before,20,20,245,under_covered,MC 245 listings in WV vs 20 snapshot units in WV; nationally MC 245 vs ours 20; harvest full inventory
+,Parkersburg,pkbrvs.com,MC,uncovered,0,0,86,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+American Campers,Mount Hope,americancampers.com,MC SN,covered_before,6,6,61,under_covered,MC 61 listings in WV vs 6 snapshot units in WV; nationally MC 61 vs ours 6; harvest full inventory
+"Used Cars, Trucks & RV's In Summersville",Summersville,whitesautosalesandrvs.com,MC,uncovered,0,0,30,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Jennings RV Sales,,jenningsrvsales.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Blue Ridge Auto Sales & RV Center LLC,,blueridgervs.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,tomsfamilyfunrv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+LITTLE BIRCH PRE-OWNED AUTO & RV SALES,,littlebirchauto.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Kevin's Auto Sales,,kevinsautosalesandrv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

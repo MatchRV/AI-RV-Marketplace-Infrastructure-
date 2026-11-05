@@ -1,0 +1,8 @@
+name,city,domain,sources,status,md_units_before,md_units_after,mc_md_listings,reason,detail
+Beckleys Rvs,Thurmont,beckleysrvs.com,MC SN,covered_before,132,132,520,under_covered,MC 520 listings in MD vs 132 snapshot units in MD; nationally MC 520 vs ours 163 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Chesaco RV,,chesacorv.com,MC,uncovered,0,0,362,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Motorhomes and RV's For Sale,Salisbury,rvclassified.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,twptrailers.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+BOE RV Sales & Service,Stevensville,boerv.com,MC,uncovered,0,0,21,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Trailer Depot in Hagerstown, MD",,trailer-depot.net,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Capitol Custom Trailers & Coaches,,capitolrenegade.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

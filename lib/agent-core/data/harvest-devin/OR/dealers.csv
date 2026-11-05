@@ -14,3 +14,4 @@ rv-consign.com,,Central Point,OR,error,0,"site unreachable: ConnectionError ('Co
 frontier-trailersales.com,Frontier Trailer Sales,Klamath Falls,OR,error,0,"site unreachable: ConnectionError HTTPConnectionPool(host='www.frontier-trailersales.com', port=80): Max retries exceeded with url: / (Caused by NameResol"
 p-rv.com,Portland RV Wholesale,Portland,OR,no_inventory,0,dealer inventory served from covered domain portlandrvwholesale.com (in covered_domains.csv)
 rallyautomart.com,Rally Auto Mart,Portland,OR,error,0,domain parked: Dynadot registration landing page
+i5rv.com,I-5 RV,Sutherlin,OR,error,0,site unreachable: Cloudflare DNS resolution error / SSL failure on all schemes

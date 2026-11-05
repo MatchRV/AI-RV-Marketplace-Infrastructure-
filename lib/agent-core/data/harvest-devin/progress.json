@@ -19,11 +19,11 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "adventuretradingrv.com",
-      "finished_at": "2026-11-05T10:03:29Z",
+      "last_dealer_finished": "ryansrvs.com",
+      "finished_at": "2026-11-05T10:03:32Z",
       "part": 1
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T10:03:29Z"
+  "updated_at": "2026-11-05T10:03:32Z"
 }

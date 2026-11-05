@@ -10,3 +10,4 @@ countryroadsrecreation.com,Country Roads Recreation,Florence,OR,bot_wall,0,bot w
 gibsrvsuperstore.com,Gib's RV Superstore,Coos Bay,OR,bot_wall,0,bot wall / blocked: 429 https://gibsrvsuperstore.com/
 rv-center.net,Kamper Korner,Roseburg,OR,bot_wall,0,bot wall / blocked: 403 https://www.rv-center.net/
 wagersrvs.com,Wagers Trailer Sales,Salem,OR,bot_wall,0,bot wall / blocked: 403 https://www.wagersrvs.com/
+rv-consign.com,,Central Point,OR,error,0,"site unreachable: ConnectionError ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"

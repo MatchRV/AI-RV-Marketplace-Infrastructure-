@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "emeraldtownwa.com",
-      "finished_at": "2026-11-05T03:28:49Z",
+      "last_dealer_finished": "drivegrand.com",
+      "finished_at": "2026-11-05T03:28:50Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:49Z"
+  "updated_at": "2026-11-05T03:28:50Z"
 }

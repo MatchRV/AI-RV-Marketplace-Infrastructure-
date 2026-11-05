@@ -19,11 +19,11 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "rv-consign.com",
-      "finished_at": "2026-11-05T10:04:08Z",
+      "last_dealer_finished": "frontier-trailersales.com",
+      "finished_at": "2026-11-05T10:04:17Z",
       "part": 1
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T10:04:08Z"
+  "updated_at": "2026-11-05T10:04:17Z"
 }

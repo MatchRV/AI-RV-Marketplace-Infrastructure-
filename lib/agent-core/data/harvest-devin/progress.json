@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "truckcityrv.com",
-      "finished_at": "2026-11-05T03:28:44Z",
+      "last_dealer_finished": "boykomotors.com",
+      "finished_at": "2026-11-05T03:28:45Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:44Z"
+  "updated_at": "2026-11-05T03:28:45Z"
 }

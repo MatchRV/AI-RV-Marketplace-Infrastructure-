@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "budgetrv.com",
-      "finished_at": "2026-11-05T14:05:44Z",
+      "last_dealer_finished": "adventurewagon.com",
+      "finished_at": "2026-11-05T14:06:14Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T14:05:44Z"
+  "updated_at": "2026-11-05T14:06:14Z"
 }

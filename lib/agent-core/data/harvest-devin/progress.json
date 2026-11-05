@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "standalrv.com",
-      "finished_at": "2026-11-05T03:28:27Z",
+      "last_dealer_finished": "globalrvinc.com",
+      "finished_at": "2026-11-05T03:28:28Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:27Z"
+  "updated_at": "2026-11-05T03:28:28Z"
 }

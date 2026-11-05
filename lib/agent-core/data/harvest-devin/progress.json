@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "rivercityrv.com",
-      "finished_at": "2026-11-05T14:03:30Z",
+      "last_dealer_finished": "comrierv.com",
+      "finished_at": "2026-11-05T14:04:21Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T14:03:30Z"
+  "updated_at": "2026-11-05T14:04:21Z"
 }

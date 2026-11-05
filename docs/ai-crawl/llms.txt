@@ -53,8 +53,8 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 
 ## Data
 
-- Dealer network: 128,174 RVs across the dealer network (517 dealers, 841 stores, 49 states), as of October 19, 2026. This is the total listed across the network before de-duplication and quality cleaning.
-- Searchable inventory: about 84,000 cleaned, de-duplicated units are searchable through the MCP server, with dealer, price, length, weights, sleeps, slides, tanks and features in one canonical schema. Expect MCP counts near 84,000, not 128,174; records that fail quality checks (unclear RV type, implausible price, duplicates) are held back rather than shown.
+- Dealer network: 150,000 RVs across the dealer network (517 dealers, 841 stores, 49 states), as of October 19, 2026. This is the total listed across the network before de-duplication and quality cleaning.
+- Searchable inventory: about 84,000 cleaned, de-duplicated units are searchable through the MCP server, with dealer, price, length, weights, sleeps, slides, tanks and features in one canonical schema. Expect MCP counts near 84,000, not 150,000; records that fail quality checks (unclear RV type, implausible price, duplicates) are held back rather than shown.
 - Provenance: every critical spec is a fact with a source and a confidence. Sources are `dealer_listing` (structured field in the dealer's listing), `derived_text` (parsed from the dealer's description), `derived_model_code` (decoded from the manufacturer floorplan code, e.g. "26BH"), `reference_table` (MatchRV-curated reference data such as tow ratings), `computed` (deterministic math over known facts) and `learned` (confirmed by a shopper or dealer).
 - Unknown stays unknown: a spec MatchRV cannot source is returned as null with no source, never estimated. Agents should say "the dealer doesn't publish this" rather than guess.
 - Freshness: each record carries when MatchRV first and last saw it on the dealer's website; `check_availability` reports staleness. Always confirm availability and price with the dealership.

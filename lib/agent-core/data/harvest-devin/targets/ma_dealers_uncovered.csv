@@ -1,0 +1,8 @@
+name,city,domain,sources,status,ma_units_before,ma_units_after,mc_ma_listings,reason,detail
+Orchard Trailers,Whately,orchardtrailers.com,MC SN,covered_before,39,39,107,under_covered,MC 107 listings in MA vs 39 snapshot units in MA; nationally MC 107 vs ours 39; harvest full inventory; name from site homepage title; check RV share (trailer dealer)
+,Boylston,fullerrv.com,MC,uncovered,0,0,51,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+,Erving,timsrvinc.com,MC,uncovered,0,0,38,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Rousseau's RV Center,,rousseausrv.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Worthington Air Automotive Inc,,worthingtonairautomotive.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Gabriel Racing,,gabrielracing.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV and Collision Repair,,route44rvcollision.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

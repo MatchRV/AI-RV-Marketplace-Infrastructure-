@@ -1,0 +1,7 @@
+name,city,domain,sources,status,nh_units_before,nh_units_after,mc_nh_listings,reason,detail
+Campers Inn,,campersinn.com,MC SN,covered_before,349,349,2959,under_covered,MC 2959 listings in NH vs 349 snapshot units in NH; nationally MC 7151 vs ours 3919 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+,Loudon,sr1trailers.com,MC,uncovered,0,0,115,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+Airstream of New Hampshire,Nashua,airstreamofnewhampshire.com,MC SN,covered_before,2,2,94,under_covered,MC 94 listings in NH vs 2 snapshot units in NH; nationally MC 94 vs ours 2; harvest full inventory; name from site homepage title
+Polar RV Sales,Salem,polarrvsales.com,MC,uncovered,0,0,37,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Polar RV Sales,Salem,polarrv-auto.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ocean Breeze RV Center,,oceanbreezervnh.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

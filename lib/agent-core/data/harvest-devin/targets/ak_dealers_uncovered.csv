@@ -1,0 +1,5 @@
+name,city,domain,sources,status,ak_units_before,ak_units_after,mc_ak_listings,reason,detail
+Camper Valley RV,Unknown,campervalleyrv.com,MC SN,covered_before,16,16,150,under_covered,MC 150 listings in AK vs 16 snapshot units in AK; nationally MC 150 vs ours 16; harvest full inventory; name from site homepage title
+Dependable RV,,dependableakrv.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Valley RV Center,,valleyrvcenter.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Great Alaskan Holidays,,greatalaskanholidays.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

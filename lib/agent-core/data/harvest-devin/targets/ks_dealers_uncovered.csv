@@ -1,0 +1,9 @@
+name,city,domain,sources,status,ks_units_before,ks_units_after,mc_ks_listings,reason,detail
+,Augusta,trailersandhitches.com,MC SN,covered_before,18,18,98,under_covered,MC 98 listings in KS vs 18 snapshot units in KS; nationally MC 98 vs ours 18; harvest full inventory; homepage http_500 2026-11-04; check RV share (trailer dealer)
+Anderson RV Center,Topeka,topekarv.com,MC,uncovered,0,0,28,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Harper RV,,harperrvks.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Lazy H Auto,Glen Elder,lazyhauto.com,MC,uncovered,0,0,17,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+A-Z Mobile RV Repair,,azmobilerv.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Sales,,1stchoicetrailers.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Ottawa RV LLC,,ottawarvllc.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"K4 Trailer, RV and Truck Accessories",,k4trailersales.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"

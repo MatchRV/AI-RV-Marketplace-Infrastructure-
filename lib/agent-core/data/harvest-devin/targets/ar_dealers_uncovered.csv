@@ -1,0 +1,11 @@
+name,city,domain,sources,status,ar_units_before,ar_units_after,mc_ar_listings,reason,detail
+"John Gibson Auto Sales, Inc.",Hot Springs,johngibsonautosales.com,MC,uncovered,0,0,379,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Wheels RV,Springdale,wheelsrv.net,MC SN,covered_before,46,46,168,under_covered,MC 168 listings in AR vs 46 snapshot units in AR; nationally MC 168 vs ours 46; harvest full inventory; name from site homepage title
+"Car Dealer in Hot Springs Village, AR",Hot Springs Village,mccannsautomart.com,MC,uncovered,0,0,37,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Luxury Motorcoach Specialists,,qualitywheelz.com,MC,uncovered,0,0,32,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Airstream of Arkansas,Conway,airstreamofarkansas.com,MC,uncovered,0,0,29,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Dale's Camping Center,,dalescampingcenter.com,MC,uncovered,0,0,28,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,drautorv.com,MC,uncovered,0,0,27,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+"Thomas RV & Auto Sales in Searcy, AR",,thomasvaughanmotors.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Gregg Orr Marine & RV,,greggorrmarineandrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Happy Days RV Sales,,happydaysrvsales.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

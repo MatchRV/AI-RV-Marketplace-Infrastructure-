@@ -1,0 +1,10 @@
+name,city,domain,sources,status,ms_units_before,ms_units_after,mc_ms_listings,reason,detail
+Great American RV SuperStores,,greatamericanrv.com,MC,uncovered,0,0,90,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Jackson,ssapache.com,MC,uncovered,0,0,43,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+,Mccomb,bussupply.com,MC,uncovered,0,0,41,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+,Meridian,backcountryrvcenter.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Corinth RV Center,,corinthrv.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Adventure Campers USA,,adventurecampersusa.com,MC,uncovered,0,0,29,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Carpe Aluminum RV,Hattiesburg,carpealuminumrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Van.Life LLC,,van.life,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"MICHAEL'S RV CENTER, INC",,michaelsrvcenter.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

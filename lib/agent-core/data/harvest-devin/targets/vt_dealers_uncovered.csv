@@ -1,0 +1,7 @@
+name,city,domain,sources,status,vt_units_before,vt_units_after,mc_vt_listings,reason,detail
+Pete's Rv Vermont,South Burlington,petesrv.com,MC SN,covered_before,208,208,1123,under_covered,MC 1123 listings in VT vs 208 snapshot units in VT; nationally MC 1186 vs ours 518 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+,Rutland,dankearneysrvcenter.com,MC,uncovered,0,0,45,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Airstream of Vermont,,airstreamvermont.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"ATVs, Snowmobiles, Mowers & Trailers",,allaroundpower.com,MC,uncovered,0,0,15,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Moore's Auto,,mooresautovt.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+OD AUTO SALES,,odauto88.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

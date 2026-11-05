@@ -1,0 +1,4 @@
+name,city,domain,sources,status,de_units_before,de_units_after,mc_de_listings,reason,detail
+,,callaway-outdoors.com,MC,uncovered,0,0,32,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Alexander RV Center,Clayton,alexanderrv.com,MC,uncovered,0,0,27,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+birds-rule,,buybyebluebird.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

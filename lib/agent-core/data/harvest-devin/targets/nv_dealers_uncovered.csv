@@ -1,0 +1,11 @@
+name,city,domain,sources,status,nv_units_before,nv_units_after,mc_nv_listings,reason,detail
+Reno Airstream Adventures,Reno,renoairstream.com,MC SN,covered_before,13,13,445,under_covered,MC 445 listings in NV vs 13 snapshot units in NV; nationally MC 445 vs ours 69 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Custom Truck Accessories,,customtruckaccessories.com,MC,uncovered,0,0,79,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Keith's Kars,Reno,keithskars.com,MC,uncovered,0,0,66,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Boulder City,bouldercityrv.com,MC,uncovered,0,0,37,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+,Pahrump,nevadarvonline.com,MC,uncovered,0,0,29,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+"Paramount Auto Body & RV Collision Repair, RV Service, RV Ren ...",,paramountautobody.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,vegasparkandsell.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+AEONrv,,aeonrv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Hunter RMV,,hunterrmv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Nevada RV,,nevadarv.net,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

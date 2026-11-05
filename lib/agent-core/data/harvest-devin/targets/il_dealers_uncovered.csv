@@ -1,0 +1,15 @@
+name,city,domain,sources,status,il_units_before,il_units_after,mc_il_listings,reason,detail
+Collier RV,Rockford,collierrv.com,MC,uncovered,0,0,292,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Rides Unlimited Chicago Inc,Crest Hill,ridesunlimitedchicago.com,MC,uncovered,0,0,150,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Rick's RV Center Inc,,ricksrv.com,MC,uncovered,0,0,113,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Jeff Bright RV,Rock Falls,jeffbrightrv.com,MC,uncovered,0,0,92,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Active and Sold Inventory of RV's and campers at Shabbona Creek RV,Atkinson,shabbonacreekrv.com,MC,uncovered,0,0,70,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+J & J Campers,East Mole,jjcamper.com,MC,uncovered,0,0,39,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Winnebago Motor Homes,,winnebagomotorhomes.com,MC,uncovered,0,0,36,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+S & S RVs,,sandsrvs.com,MC,uncovered,0,0,24,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Ingraham,kuhlstrailers.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04; check RV share (trailer dealer)"
+Hometown RV,,hometownrv.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Barrington Motor Sales,,bmsrv.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Zoomers Rv,,zoomersrv.com,MC,uncovered,0,0,9,not_harvested,MC 2026-11-04 source facet; not in snapshot
+mysite-1,De Soto,adventuretimerv.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Bird Connection LLC,,birdconnection.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

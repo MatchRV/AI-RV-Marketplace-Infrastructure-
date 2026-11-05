@@ -12,3 +12,4 @@ rv-center.net,Kamper Korner,Roseburg,OR,bot_wall,0,bot wall / blocked: 403 https
 wagersrvs.com,Wagers Trailer Sales,Salem,OR,bot_wall,0,bot wall / blocked: 403 https://www.wagersrvs.com/
 rv-consign.com,,Central Point,OR,error,0,"site unreachable: ConnectionError ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
 frontier-trailersales.com,Frontier Trailer Sales,Klamath Falls,OR,error,0,"site unreachable: ConnectionError HTTPConnectionPool(host='www.frontier-trailersales.com', port=80): Max retries exceeded with url: / (Caused by NameResol"
+p-rv.com,Portland RV Wholesale,Portland,OR,no_inventory,0,dealer inventory served from covered domain portlandrvwholesale.com (in covered_domains.csv)

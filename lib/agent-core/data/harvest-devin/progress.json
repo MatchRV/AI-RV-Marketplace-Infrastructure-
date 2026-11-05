@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "thecarstars.com",
-      "finished_at": "2026-11-05T08:57:50Z",
+      "last_dealer_finished": "wilderrvs.com",
+      "finished_at": "2026-11-05T13:20:58Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T08:57:50Z"
+  "updated_at": "2026-11-05T13:20:58Z"
 }

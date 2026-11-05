@@ -37,3 +37,4 @@ westgatehomes.com,Westgate Homes and RV Center,WA,WA,robots_blocked,0,robots.txt
 uneekrv.com,U-Neek RV Center,Kelso,WA,robots_blocked,0,robots.txt returns HTTP 502 (treated as disallow all)
 dlsrv.com,D & L's RV Center,Wenatchee,WA,robots_blocked,0,robots.txt disallows the site root
 thecarstars.com,Carstars Auto & RV Sales,Olympia,WA,ok,10,"sitemap + RV/trailer category pages; 2 lots (Olympia, Aberdeen) no per-unit lot"
+wilderrvs.com,Wilder RV,Port Angeles,WA,ok,64,ridecdn site; price = visible Our Price; units tagged Wilder Auto are at the sister Wilder Auto lot also in Port Angeles

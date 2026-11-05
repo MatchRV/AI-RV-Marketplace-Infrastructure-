@@ -26,9 +26,18 @@ import { haversineMiles, knownPlaces, parseZip, resolveSearchPlace, zipCentroids
 import { coordsMatchState } from "./enrich-snapshot.js";
 import { qualifiesAsNew } from "./listing-reconcile.js";
 import { evaluateTowFit, resolveTowVehicle } from "./tow.js";
-import { evaluateMotorhomeTow, isMotorized, powertrainOf, type MotorhomeTowResult } from "./motorhome.js";
+import { evaluateMotorhomeTow, isMotorized, powertrainOf, towingOf, type MotorhomeTowResult } from "./motorhome.js";
 import { evaluatePayloadFit, lifestyleFit } from "./discovery.js";
 import { brandMatches, modelMatches, unitMakeModel } from "./brands.js";
+import {
+  budgetBandPoints,
+  diversifyMatches,
+  hasFitSignals,
+  hitchFailsHeavyTow,
+  isBrowseMode,
+  isWrongClassForHeavyTow,
+  nextExpandedRadius,
+} from "./fit-rules.js";
 
 export class ConstraintError extends Error {
   constructor(
@@ -202,6 +211,8 @@ function cmpMax(
 
 export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch {
   const c = ctx.constraints;
+  // Explicit heavy-tow intent, or a loaded trailer weight that needs real hitch capacity.
+  const heavyTow = Boolean(c.heavyTowRequired) || (c.trailerWeightLbs != null && c.trailerWeightLbs >= 5_000);
   const hardChecks: ConstraintCheck[] = [];
   const softChecks: SoftCheck[] = [];
   const unknowns: string[] = [];
@@ -420,6 +431,32 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  // — hard: heavy tow veto (race / enclosed / heavy trailer behind a motorhome)
+  // Unpublished or zero hitch never makes the shortlist; Class B / camper vans are out.
+  if (heavyTow) {
+    if (isWrongClassForHeavyTow(unit)) {
+      hardChecks.push(check(
+        "fit for heavy tow / full-time coach",
+        "fail",
+        `${unit.rvType} / camper-van class is not a fit for heavy tow behind a full-size coach`,
+        "dealer_listing",
+      ));
+    } else if (!isMotorized(unit)) {
+      hardChecks.push(check("fit for heavy tow behind a motorhome", "fail", "not a motorhome", "dealer_listing"));
+    } else if (hitchFailsHeavyTow(unit)) {
+      const hitch = towingOf(unit).hitchTowRatingLbs.value;
+      hardChecks.push(check(
+        "published hitch rating for heavy tow",
+        "fail",
+        hitch === null ? "hitch tow rating not published — excluded when heavy tow is required" : `hitch tow rating ${hitch} lbs — excluded when heavy tow is required`,
+        hitch === null ? null : "dealer_listing",
+      ));
+    } else {
+      const hitch = towingOf(unit).hitchTowRatingLbs.value!;
+      hardChecks.push(check("published hitch rating for heavy tow", "pass", `${hitch.toLocaleString()} lbs hitch`, "dealer_listing"));
+    }
+  }
+
   // — hard: distance (area guarantee)
   // When the shopper names a place, unresolved dealer coords are a FAIL — never
   // surface FL/AZ inventory as a "local" match for Fife (MAT-34 / MAT-37).
@@ -500,11 +537,12 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  // Budget is a shopping BAND (mid-to-upper of the ceiling), not a race to the cheapest.
   if (c.priceMaxUsd != null && price !== null && price <= c.priceMaxUsd) {
-    const pts = Math.round((1 - price / c.priceMaxUsd) * 10);
-    if (pts > 0) {
-      score += pts;
-      breakdown.push({ label: `${fmtUsd(c.priceMaxUsd - price)} under budget`, points: pts });
+    const band = budgetBandPoints(price, c.priceMaxUsd);
+    if (band.points > 0) {
+      score += band.points;
+      breakdown.push({ label: band.label, points: band.points });
     }
   }
 
@@ -585,7 +623,12 @@ function firstFailReason(m: UnitMatch): string {
   return fail ? fail.constraint : "other";
 }
 
-export function runSearch(units: CanonicalUnit[], constraints: Constraints, learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null): SearchOutcome {
+export function runSearch(
+  units: CanonicalUnit[],
+  constraints: Constraints,
+  learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null,
+  opts?: { skipRadiusExpand?: boolean },
+): SearchOutcome {
   const ctx = buildContext(constraints, learnedTow ?? null);
 
   const evaluated = units.map((u) => evaluateUnit(u, ctx));
@@ -600,8 +643,9 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
     buckets.set(r, (buckets.get(r) ?? 0) + 1);
   }
 
-  // Prefer distance ranking for local demos unless the caller overrides.
-  const sortKey = constraints.sort ?? (ctx.location ? "distance" : "best_match");
+  // Fit ranking wins when budget / tow / use-case is known. Distance-only is for
+  // location-only browse (swipe) or an explicit sort override.
+  const sortKey = constraints.sort ?? (hasFitSignals(constraints) ? "best_match" : ctx.location ? "distance" : "best_match");
   const unknownHard = (m: UnitMatch) => m.hardChecks.filter((h) => h.status === "unknown").length;
   const cmp = (a: UnitMatch, b: UnitMatch): number => {
     switch (sortKey) {
@@ -621,6 +665,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
         return (
           unknownHard(a) - unknownHard(b) ||
           b.score - a.score ||
+          (a.distanceMiles ?? Infinity) - (b.distanceMiles ?? Infinity) ||
           (a.unit.priceUsd.value ?? Infinity) - (b.unit.priceUsd.value ?? Infinity)
         );
     }
@@ -657,7 +702,47 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
     ? unverified.filter((m) => ctx.location!.state ? m.unit.dealer.state?.toUpperCase() === ctx.location!.state : m.distanceMiles !== null && m.distanceMiles <= ctx.location!.radiusMiles)
     : unverified;
 
-  const results = [...collapse(passed), ...collapse(localUnverified)];
+  let results = [...collapse(passed), ...collapse(localUnverified)];
+  if (isBrowseMode(constraints) || (ctx.location && !hasFitSignals(constraints))) {
+    results = diversifyMatches(results);
+  } else if (hasFitSignals(constraints)) {
+    // Even with fit signals, never pad a shortlist with >2 from the same dealer up front.
+    results = diversifyMatches(results, 2);
+  }
+
+  let expandedRadiusMiles: number | null = null;
+  let expandedForCoverage = false;
+  const hardPassCount = results.filter((m) => m.hardStatus === "pass").length;
+  if (!opts?.skipRadiusExpand && hasFitSignals(constraints) && ctx.location && !ctx.location.state && hardPassCount < 3 && constraints.location?.place) {
+    let radius = ctx.location.radiusMiles;
+    let best: SearchOutcome | null = null;
+    while (true) {
+      const next = nextExpandedRadius(radius);
+      if (next == null) break;
+      const widenedConstraints: Constraints = {
+        ...constraints,
+        location: { place: constraints.location.place, radiusMiles: next },
+        sort: constraints.sort ?? (hasFitSignals(constraints) ? "best_match" : "distance"),
+      };
+      const widened = runSearch(units, widenedConstraints, learnedTow ?? null, { skipRadiusExpand: true });
+      radius = next;
+      expandedRadiusMiles = next;
+      expandedForCoverage = true;
+      best = widened;
+      if (widened.results.filter((m) => m.hardStatus === "pass").length >= 3) break;
+    }
+    if (best && best.results.filter((m) => m.hardStatus === "pass").length > hardPassCount) {
+      return {
+        ...best,
+        coverage: {
+          ...best.coverage,
+          radiusMiles: constraints.location.radiusMiles,
+          expandedRadiusMiles,
+          expandedForCoverage: true,
+        },
+      };
+    }
+  }
 
   return {
     funnel: {
@@ -676,7 +761,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
           place: ctx.location.place,
           lat: ctx.location.lat,
           lng: ctx.location.lng,
-          radiusMiles: ctx.location.radiusMiles,
+          radiusMiles: expandedRadiusMiles ?? ctx.location.radiusMiles,
           ...(ctx.location.state ? { state: ctx.location.state } : {}),
         }
       : null,
@@ -686,6 +771,7 @@ export function runSearch(units: CanonicalUnit[], constraints: Constraints, lear
       unitsInArea: inArea,
       nationwideTotal: units.length,
       noLocalMatches: Boolean(ctx.location) && results.length === 0,
+      ...(expandedForCoverage ? { expandedRadiusMiles, expandedForCoverage: true } : {}),
     },
   };
 }

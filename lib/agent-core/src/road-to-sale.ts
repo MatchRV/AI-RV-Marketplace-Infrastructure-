@@ -41,6 +41,7 @@ import {
   type BuyerProfile,
   type PaymentMethod,
 } from "./discovery.js";
+import { EARLY_NONBLOCKING_STEPS, earlyProductReady, shouldOfferLengthFlex } from "./fit-rules.js";
 
 export interface RoadQuestion {
   id: string;
@@ -214,7 +215,7 @@ export const GOLDEN_TICKET_ITEMS: RoadItem[] = [
   },
   {
     id: "length_flex", label: "8. comfort length: keep the gate open +2 ft?", requiredForProducts: true, askAlone: true,
-    applies: (p) => p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null,
+    applies: (p) => shouldOfferLengthFlex(p),
     known: () => false,
     question: (p) => ({ prompt: `Is it okay if we keep it maybe 1 or 2 feet longer than ${p.lengthMaxFt}, so up to about ${(p.lengthMaxFt ?? 0) + 2}, just in case? I ask because the right one is sometimes sitting just past the line, and I'll never go further than that without your OK.`, options: discoveryQ("length_flex").options, why: discoveryQ("length_flex").why }),
   },
@@ -407,8 +408,14 @@ export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; ma
   const declined = declinedQuestionIds(p);
   const covered = coveredQuestionIds(p);
   const open = flat.filter((f) => (f.item.applies?.(p) ?? true) && !f.item.known(p) && !declined.has(f.item.id) && !covered.has(f.item.id));
-  const blocking = open.filter((f) => f.item.requiredForProducts && (presentIdx < 0 || f.stepIndex < presentIdx));
-  const nonBlocking = open.filter((f) => !blocking.includes(f));
+  const early = earlyProductReady(p);
+  const requiredOpen = open.filter((f) => f.item.requiredForProducts && (presentIdx < 0 || f.stepIndex < presentIdx));
+  // Budget + length + tow known: rapport questions stay visible but no longer block the first shortlist.
+  const blocking = early
+    ? requiredOpen.filter((f) => !EARLY_NONBLOCKING_STEPS.has(f.item.id))
+    : requiredOpen;
+  const rapportOpen = early ? requiredOpen.filter((f) => EARLY_NONBLOCKING_STEPS.has(f.item.id)) : [];
+  const nonBlocking = open.filter((f) => !requiredOpen.includes(f) || rapportOpen.includes(f));
   const waived = p.discoveryWaived === true;
   const readyForProducts = blocking.length === 0 || waived;
 
@@ -466,7 +473,7 @@ export function assessRoadToSale(p: BuyerProfile, opts: { steps?: RoadStep[]; ma
     goal: currentGoal ? { id: currentGoal.id, title: currentGoal.title } : null,
     readyForProducts,
     waived,
-    missingForProducts: blocking.map((f) => f.item.id),
+    missingForProducts: requiredOpen.map((f) => f.item.id),
     nextQuestions: next,
     resumeQuestions: resume,
     openGoals,

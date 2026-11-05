@@ -207,7 +207,10 @@ describe("covered steps (v2.2.5): rapport answers stay in the conversation", () 
         : q.id === "storage" ? { ...p, noLengthLimit: true, coveredSteps: [...(p.coveredSteps ?? []), q.step!] }
         : { ...p, coveredSteps: [...(p.coveredSteps ?? []), q.step!] };
     }
-    expect(order).toEqual(["use", "activities", "vacation", "trade", "towing", "storage", "trips"]);
+    // After towing + length are known (with budget already set), early shortlist readiness
+    // may open before rapport leftovers like trips — those remain in missingForProducts / nextQuestions.
+    expect(order.slice(0, 6)).toEqual(["use", "activities", "vacation", "trade", "towing", "storage"]);
+    expect(["trips", undefined]).toContain(order[6]);
     expect(assessRoadToSale(p).readyForProducts).toBe(true);
   });
   it("declining a step skips all of its questions (payment covers the budget follow-ups)", () => {

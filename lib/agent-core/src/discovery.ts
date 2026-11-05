@@ -14,6 +14,11 @@
  */
 
 import type { CanonicalUnit, Constraints } from "./types.js";
+import {
+  cappedEffectiveLengthMaxFt,
+  isHeavyTowIntent,
+  shouldOfferLengthFlex,
+} from "./fit-rules.js";
 
 export type FloorplanIntent = "couples" | "family_bunks" | "flexible" | "solo";
 export type CampingStyle = "full_hookup" | "boondocking" | "mixed";
@@ -260,7 +265,7 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
   // search because the answer changes which inventory even exists for them.
   // A declined clarification keeps the stated length as a firm limit.
   if (p.lengthMaxFt != null && !p.lengthReason && p.lengthFlexApproved == null) { if (!declined("length_reason")) missingEssentials.push("length_reason"); }
-  else if (p.lengthMaxFt != null && p.lengthReason === "comfort" && p.lengthFlexApproved == null) { if (!declined("length_flex")) missingEssentials.push("length_flex"); }
+  else if (shouldOfferLengthFlex(p) && !declined("length_flex")) { missingEssentials.push("length_flex"); }
 
   const nextId = missingEssentials[0] ?? missingRefinements[0] ?? null;
   let nextQuestion = nextId ? (QUESTION_ORDER.find((q) => q.id === nextId) ?? null) : null;
@@ -288,7 +293,10 @@ export function assessDiscovery(p: BuyerProfile): DiscoveryAssessment {
  */
 export function effectiveLengthMaxFt(p: BuyerProfile): number | null {
   if (p.lengthMaxFt == null) return null;
-  return p.lengthFlexApproved === true && p.lengthReason === "comfort" ? p.lengthMaxFt + 2 : p.lengthMaxFt;
+  const motorized = Boolean(p.rvTypes?.length && p.rvTypes.every((x) => ["class_a", "class_b", "class_c"].includes(x)))
+    || (!p.rvTypes?.length && p.lengthMaxFt >= 40);
+  const flexOn = p.lengthFlexApproved === true && p.lengthReason === "comfort";
+  return cappedEffectiveLengthMaxFt(p.lengthMaxFt, flexOn, motorized);
 }
 
 /** Compile a buyer profile into engine constraints (single mapping). */
@@ -312,6 +320,7 @@ export function profileToConstraints(p: BuyerProfile): Constraints {
       : p.towVehicle;
   }
   if (p.campingStyle === "boondocking") c.boondocking = true;
+  if (isHeavyTowIntent(p.towingBehind)) c.heavyTowRequired = true;
   c.sherpa = {
     sleepers: p.sleepers ?? null,
     floorplanIntent: intent,

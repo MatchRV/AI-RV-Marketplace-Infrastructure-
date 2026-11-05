@@ -19,3 +19,4 @@ thescoutrv.com,Scout RV,Tacoma,WA,error,0,domain does not resolve (NXDOMAIN for 
 rebornrv.com,Reborn RV,Everett,WA,error,0,domain does not resolve (NXDOMAIN for bare and www host)
 airwayrv.com,Airway RV,Spokane Valley,WA,error,0,"server closes the connection on every request (https and http, bare and www); not routed through other services"
 airwayheightsrv.com,Airway Heights RV (redirects to Airway RV),Airway Heights,WA,error,0,"server closes the connection on every request (https and http, bare and www); not routed through other services"
+asrvparts.com,A's RV Parts & Repair,East Wenatchee,WA,error,0,"server closes the connection on every request (https and http, bare and www); not routed through other services"

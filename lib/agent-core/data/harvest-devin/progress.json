@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "airwayheightsrv.com",
-      "finished_at": "2026-11-05T03:28:35Z",
+      "last_dealer_finished": "asrvparts.com",
+      "finished_at": "2026-11-05T03:28:37Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:35Z"
+  "updated_at": "2026-11-05T03:28:37Z"
 }

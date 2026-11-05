@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "lvc-sales.com",
-      "finished_at": "2026-11-05T13:41:14Z",
+      "last_dealer_finished": "rvoutletonline.com",
+      "finished_at": "2026-11-05T13:44:18Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T13:41:14Z"
+  "updated_at": "2026-11-05T13:44:18Z"
 }

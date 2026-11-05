@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "p-rv.com",
-      "finished_at": "2026-11-05T13:22:08Z",
+      "last_dealer_finished": "rallyautomart.com",
+      "finished_at": "2026-11-05T13:22:10Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T13:22:08Z"
+  "updated_at": "2026-11-05T13:22:10Z"
 }

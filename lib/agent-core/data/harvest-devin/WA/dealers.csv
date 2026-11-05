@@ -25,3 +25,4 @@ campstarsrv.com,The Campstars RV Sales,Olympia,WA,error,0,DNS resolves but conne
 haltermansrv.com,Halterman's RV,Arlington,WA,error,0,domain redirects to an unrelated site (exportsaudi.co) with a broken certificate; business appears closed
 lithiarvspokane.com,Lithia RV of Spokane,Spokane,WA,bot_wall,0,homepage returns HTTP 403 to our honestly identified crawler; not bypassed
 travelandrvmarine.com,Traveland RV & Marine,Kennewick,WA,bot_wall,0,homepage returns HTTP 403 to our honestly identified crawler; not bypassed
+truckcityrv.com,Truck City RV Sales,Sumner,WA,bot_wall,0,homepage returns HTTP 403 to our honestly identified crawler; not bypassed

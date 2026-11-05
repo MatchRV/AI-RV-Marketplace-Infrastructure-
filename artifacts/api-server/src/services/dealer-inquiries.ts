@@ -36,6 +36,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CanonicalUnit } from "@workspace/agent-core";
+import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
+export type { ShopperFit };
 
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed";
 
@@ -63,6 +65,8 @@ export interface DealerInquiry {
   dealerReply: { text: string; receivedAt: string; recordedBy: "matchrv_ops" } | null;
   /** Set by MatchRV ops for internal test inquiries: shown as TEST in the lead inbox, never forwarded. */
   test?: boolean;
+  /** RV-fit facts the shopper stated (budget, tow vehicle, …). Ops/dealer only; never in PublicInquiry or ntfy. */
+  fit?: ShopperFit;
 }
 
 export interface InquiryTransport {
@@ -127,7 +131,7 @@ export function validateContact(input: { name?: string; email?: string | null; p
 
 // ── Preview + confirmation token (stateless) ───────────────────────────────
 
-interface TokenPayload { u: string; n: string; e: string | null; p: string | null; m: string; exp: number; nonce: string }
+interface TokenPayload { u: string; n: string; e: string | null; p: string | null; m: string; exp: number; nonce: string; f?: ShopperFit }
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const sign = (body: string) => createHmac("sha256", signingSecret).update(body).digest("base64url");
 
@@ -149,14 +153,19 @@ export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, messa
   };
 }
 
-export function prepareInquiry(unit: CanonicalUnit, input: { name?: string; email?: string | null; phone?: string | null; message?: string }, now = Date.now()):
-  | { ok: true; preview: InquiryPreview; confirmationToken: string; expiresAt: string }
+export function prepareInquiry(
+  unit: CanonicalUnit,
+  input: { name?: string; email?: string | null; phone?: string | null; message?: string; fit?: unknown },
+  now = Date.now(),
+):
+  | { ok: true; preview: InquiryPreview; confirmationToken: string; expiresAt: string; fit?: ShopperFit }
   | { ok: false; errors: ValidationError[] } {
   const v = validateContact(input);
   if (!v.ok) return v;
-  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url") };
+  const fit = sanitizeFit(input.fit);
+  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url"), ...(fit ? { f: fit } : {}) };
   const body = b64(JSON.stringify(payload));
-  return { ok: true, preview: buildPreview(unit, v.contact, v.message), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString() };
+  return { ok: true, preview: buildPreview(unit, v.contact, v.message), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString(), ...(fit ? { fit } : {}) };
 }
 
 function verifyToken(token: string, now = Date.now()): { ok: true; payload: TokenPayload } | { ok: false; code: "invalid_token" | "expired_token" } {
@@ -269,6 +278,8 @@ export type SendResult =
 export async function sendInquiry(args: {
   confirmationToken: string; confirmed: boolean; dryRun?: boolean;
   requesterKey: string; scope: string | null;
+  /** Fit facts recalled from this shopper's interview scope (ChatGPT path). Token fit wins when present. */
+  fitHint?: ShopperFit | null;
   lookupUnit: (id: string) => CanonicalUnit | undefined;
 }): Promise<SendResult> {
   load(); purge();
@@ -291,6 +302,7 @@ export async function sendInquiry(args: {
 
   const contact: InquiryContact = { name: p.n, email: p.e, phone: p.p };
   const preview = buildPreview(unit, contact, p.m);
+  const fit = sanitizeFit(p.f) ?? sanitizeFit(args.fitHint) ?? undefined;
   const statusToken = `ist_${randomBytes(18).toString("base64url")}`;
   const inquiry: DealerInquiry = {
     id: `inq_${randomBytes(9).toString("base64url")}`,
@@ -299,6 +311,7 @@ export async function sendInquiry(args: {
     statusTokenHash: hashToken(statusToken), scope: args.scope, preview,
     delivery: { channel: "none", attemptedAt: new Date().toISOString(), dealerEmailAccepted: false, opsNotified: { ntfy: false, email: false }, error: null },
     dealerReply: null,
+    ...(fit ? { fit } : {}),
   };
   // Duplicate guard: same contact + unit within 24h returns a duplicate notice instead of resending.
   const dup = [...inquiries.values()].find((i) => !i.dryRun && !dryRun && i.preview.unit.id === unit.id && (i.preview.shopper.email ?? i.preview.shopper.phone ?? "").toLowerCase() === contactKey && Date.now() - Date.parse(i.createdAt) < 24 * 60 * 60 * 1000 && i.status !== "failed");
@@ -319,12 +332,34 @@ export async function sendInquiry(args: {
 
 function dealerEmailText(i: DealerInquiry): string {
   const s = i.preview.shopper; const u = i.preview.unit;
+  const fitLines = formatFitLines(i.fit);
   return [
     `New shopper inquiry via MatchRV (ref ${i.id})`, "",
     `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`, "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`, "",
+    ...(fitLines.length ? ["Shopper fit (stated during MatchRV interview):", ...fitLines, ""] : []),
     "Message:", i.preview.message, "",
     "The shopper reviewed this exact message and asked MatchRV to send it. Reply directly to the shopper. To share your reply with MatchRV, reply-all or forward it to " + OPS_EMAIL + ".",
+  ].join("\n");
+}
+
+/** Plain-text block used by the ops inbox "Copy forward text" button and by dealer/ops email. */
+export function formatInquiryForwardText(i: DealerInquiry): string {
+  const p = i.preview; const s = p.shopper; const u = p.unit; const d = p.dealer;
+  const price = u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a";
+  const fitLines = formatFitLines(i.fit);
+  return [
+    `To: ${d.name} (${d.city}, ${d.state})${d.website ? ` ${d.website}` : ""}`,
+    `Subject: MatchRV shopper inquiry: ${u.title} (stock ${u.stockNumber ?? "n/a"})`,
+    "",
+    `A shopper asked about this RV through MatchRV (ref ${i.id}).`,
+    `RV: ${u.title}`,
+    `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Listed price: ${price}`,
+    "",
+    `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`,
+    "",
+    ...(fitLines.length ? ["Shopper fit:", ...fitLines, ""] : []),
+    "Message:", p.message,
   ].join("\n");
 }
 

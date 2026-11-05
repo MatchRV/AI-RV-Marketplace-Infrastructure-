@@ -5,8 +5,9 @@ import { matchRvMcpHandler } from '../src/mcp';
 import { getInventory } from '../src/services/agent-inventory';
 import inquiriesRouter from '../src/routes/inquiries';
 import {
-  __inquiryCount, __resetInquiries, __setRoutes, __setTransport, getInquiryStatus, prepareInquiry, sendInquiry, validateContact, type InquiryTransport,
+  __inquiryCount, __resetInquiries, __setRoutes, __setTransport, formatInquiryForwardText, getInquiryStatus, opsGet, prepareInquiry, sendInquiry, validateContact, type InquiryTransport,
 } from '../src/services/dealer-inquiries';
+import { __resetShopperFit, rememberFit, type ShopperFit } from '../src/services/shopper-fit';
 
 type Sent = { emails: { to: string; subject: string; text: string }[]; pushes: { title: string; body: string }[] };
 function mockTransport(opts: { email?: boolean; push?: boolean; failEmail?: boolean } = {}): InquiryTransport & { sent: Sent } {
@@ -38,7 +39,7 @@ const lookupUnit = (id: string) => getInventory().byId.get(id);
 const shopper = { name: 'Pat Tester', email: 'pat@example.com', phone: '(253) 555-0142', message: 'Is this still available? Could I see it Saturday?' };
 let mock: ReturnType<typeof mockTransport>;
 
-beforeEach(() => { __resetInquiries(); __setRoutes({}); mock = mockTransport(); __setTransport(mock); });
+beforeEach(() => { __resetInquiries(); __resetShopperFit(); __setRoutes({}); mock = mockTransport(); __setTransport(mock); });
 afterAll(() => __setTransport(null));
 
 describe('validation', () => {
@@ -126,6 +127,62 @@ describe('two-step flow (service)', () => {
       if (!r.ok && r.code === 'rate_limited') limited = true;
     }
     expect(limited).toBe(true);
+  });
+});
+
+
+describe('shopper fit', () => {
+  const sampleFit: ShopperFit = {
+    rvTypes: ['travel_trailer'],
+    partySize: 4,
+    towVehicle: '2021 Ford F-150 3.5 EcoBoost',
+    location: 'Tacoma, WA',
+    paymentMethod: 'finance',
+    budgetMaxUsd: 40000,
+    downPaymentUsd: 5000,
+    monthlyPaymentUsd: 450,
+  };
+
+  it('stores fit on the inquiry when prepare includes it; PublicInquiry omits fit; ntfy still has no PII or fit', async () => {
+    const p = prepareInquiry(unit(), { ...shopper, fit: sampleFit });
+    if (!p.ok) throw new Error();
+    expect(p.fit).toMatchObject({ budgetMaxUsd: 40000, towVehicle: sampleFit.towVehicle, partySize: 4 });
+    const r = await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, requesterKey: 't-fit', scope: null, lookupUnit });
+    if (!r.ok) throw new Error(r.code);
+    // Model-facing PublicInquiry must not grow new fields (ChatGPT tool output freeze).
+    expect(r.inquiry).not.toHaveProperty('fit');
+    const stored = opsGet(r.inquiry.inquiryId)!;
+    expect(stored.fit).toMatchObject({ budgetMaxUsd: 40000, towVehicle: sampleFit.towVehicle, partySize: 4 });
+    expect(mock.sent.emails[0].text).toContain('Shopper fit');
+    expect(mock.sent.emails[0].text).toContain('2021 Ford F-150');
+    expect(mock.sent.emails[0].text).toContain('$40,000');
+    expect(mock.sent.pushes[0].body).not.toContain('pat@example.com');
+    expect(mock.sent.pushes[0].body).not.toContain('F-150');
+    expect(mock.sent.pushes[0].body).not.toContain('40000');
+    expect(mock.sent.pushes[0].body).not.toContain('Budget');
+    const fwd = formatInquiryForwardText(stored);
+    expect(fwd).toContain('Shopper fit:');
+    expect(fwd).toContain('Tow vehicle: 2021 Ford F-150 3.5 EcoBoost');
+    expect(fwd).toContain('Budget max: $40,000');
+  });
+
+  it('accepts fitHint on send when the token has no fit (ChatGPT scope path)', async () => {
+    const p = prepareInquiry(unit(), shopper); if (!p.ok) throw new Error();
+    expect(p.fit).toBeUndefined();
+    const r = await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, dryRun: true, requesterKey: 't-hint', scope: 'scope-abc', fitHint: sampleFit, lookupUnit });
+    if (!r.ok) throw new Error(r.code);
+    expect(opsGet(r.inquiry.inquiryId)!.fit).toMatchObject({ partySize: 4, budgetMaxUsd: 40000 });
+  });
+
+  it('ignores income/credit-like strings and blank fit; old leads without fit still send', async () => {
+    const p = prepareInquiry(unit(), { ...shopper, fit: { towVehicle: 'my credit score is 720 and income is $90k', partySize: 3 } });
+    if (!p.ok) throw new Error();
+    expect(p.fit?.towVehicle).toBeUndefined();
+    expect(p.fit?.partySize).toBe(3);
+    const bare = prepareInquiry(unit(), shopper); if (!bare.ok) throw new Error();
+    const r = await sendInquiry({ confirmationToken: bare.confirmationToken, confirmed: true, dryRun: true, requesterKey: 't-bare', scope: null, lookupUnit });
+    if (!r.ok) throw new Error(r.code);
+    expect(opsGet(r.inquiry.inquiryId)!.fit).toBeUndefined();
   });
 });
 

@@ -19,11 +19,11 @@
   "states": {
     "WA": {
       "status": "in_progress",
-      "last_dealer_finished": "thescoutrv.com",
-      "finished_at": "2026-11-05T03:28:31Z",
+      "last_dealer_finished": "rebornrv.com",
+      "finished_at": "2026-11-05T03:28:33Z",
       "part": 1
     }
   },
   "current_state": "WA",
-  "updated_at": "2026-11-05T03:28:31Z"
+  "updated_at": "2026-11-05T03:28:33Z"
 }

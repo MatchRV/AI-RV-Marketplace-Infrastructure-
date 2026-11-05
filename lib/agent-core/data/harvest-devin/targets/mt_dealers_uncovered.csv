@@ -1,0 +1,9 @@
+name,city,domain,sources,status,mt_units_before,mt_units_after,mc_mt_listings,reason,detail
+Blue Compass RV - Pasco,,bluecompassrv.com,MC SN,covered_before,0,0,9179,under_covered,MC 9179 listings in MT vs 0 snapshot units in MT; nationally MC 17280 vs ours 8603 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Bretz RV & Marine - Liberty Lake,Billings,bretzrv.com,MC SN,covered_before,71,71,1325,under_covered,MC 1325 listings in MT vs 71 snapshot units in MT; nationally MC 2024 vs ours 248 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Midway Auto RV,,midwayautorv.com,MC,uncovered,0,0,272,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+BergesonRV,Kalispell,bergesonrv.com,MC,uncovered,0,0,41,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+S&S Campers,,s-scampers.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+High Country RV,,hcrvconrad.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"RVs Billings MT,Used Motorhomes Billings Montana,New Boats,Used Boats,Pre-Owned ",,adventurervmt.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,ccarv.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"

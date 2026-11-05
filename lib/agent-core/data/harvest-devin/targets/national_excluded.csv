@@ -1,0 +1,91 @@
+state,domain,mc_listings,why
+AL,campingworld.com,127,blocked_source (Camping World/CL/FB/boats)
+AL,trailerworldalabama.com,1327,"not_rv_dealer (cargo/utility trailers, 10-30 analysis)"
+AR,campingworld.com,106,blocked_source (Camping World/CL/FB/boats)
+AZ,campingworld.com,145,blocked_source (Camping World/CL/FB/boats)
+AZ,suncityrv.com,192,"blocked: bot wall, not bypassed"
+CA,101rvrentals.com,6,rental
+CA,andersonrvsalesandrentals.com,9,rental
+CA,arvrental.com,23,rental
+CA,campingworld.com,391,blocked_source (Camping World/CL/FB/boats)
+CA,classicmanrvsncars.com,4,aggregator_not_dealer
+CA,elmonterv.com,92,rental
+CA,familyrvusa.com,75,aggregator_not_dealer
+CA,independentrvca.com,78,group_dup_of independentrv.interactrv.com (identical MC feed)
+CA,rvrentalfun.com,3,rental
+CO,campingworld.com,169,blocked_source (Camping World/CL/FB/boats)
+FL,campingworld.com,496,blocked_source (Camping World/CL/FB/boats)
+FL,karvrepair.com,68,repair_only
+GA,ashleysboats.com,9,blocked_source (Camping World/CL/FB/boats)
+GA,campingworld.com,204,blocked_source (Camping World/CL/FB/boats)
+GA,circlebbtrailers.com,612,"not_rv_dealer (cargo/utility trailers, 10-30 analysis)"
+GA,happytrails-rvrentals.com,7,rental
+IA,campingworld.com,70,blocked_source (Camping World/CL/FB/boats)
+IA,holidayrvusa.com,44,aggregator_not_dealer
+ID,campingworld.com,102,blocked_source (Camping World/CL/FB/boats)
+ID,ezrvservice.com,10,repair_only
+ID,wilsonsrvreair.com,0,repair_only
+ID,wilsonsrvrepair.com,0,repair_only
+IL,campingworld.com,39427,blocked_source (Camping World/CL/FB/boats)
+IN,campingworld.com,151,blocked_source (Camping World/CL/FB/boats)
+KS,campingworld.com,76,blocked_source (Camping World/CL/FB/boats)
+KY,campingworld.com,130,blocked_source (Camping World/CL/FB/boats)
+LA,campingworld.com,57,blocked_source (Camping World/CL/FB/boats)
+MA,campingworld.com,119,blocked_source (Camping World/CL/FB/boats)
+MA,campingworldofberkley.com,113,blocked_source (Camping World/CL/FB/boats)
+ME,campingworld.com,37,blocked_source (Camping World/CL/FB/boats)
+ME,coastalrvrepair.com,9,repair_only
+MI,campingworld.com,168,blocked_source (Camping World/CL/FB/boats)
+MI,petoskeyrvusa.com,41,aggregator_not_dealer
+MN,campingworld.com,158,blocked_source (Camping World/CL/FB/boats)
+MN,midwestrvrentals.com,1,rental
+MO,campingworld.com,150,blocked_source (Camping World/CL/FB/boats)
+MO,rvrepairgroup.com,6,repair_only
+MS,campingworld.com,68,blocked_source (Camping World/CL/FB/boats)
+MT,campingworld.com,12,blocked_source (Camping World/CL/FB/boats)
+NC,campingworld.com,177,blocked_source (Camping World/CL/FB/boats)
+ND,campingworld.com,38,blocked_source (Camping World/CL/FB/boats)
+NE,campingworld.com,20,blocked_source (Camping World/CL/FB/boats)
+NH,campingworld.com,61,blocked_source (Camping World/CL/FB/boats)
+NH,oldebayrv.com,16,aggregator_not_dealer
+NJ,campingworld.com,36,blocked_source (Camping World/CL/FB/boats)
+NM,campingworld.com,53,blocked_source (Camping World/CL/FB/boats)
+NV,campingworld.com,75,blocked_source (Camping World/CL/FB/boats)
+NY,campingworld.com,165,blocked_source (Camping World/CL/FB/boats)
+NY,glclassiccars.com,9,aggregator_not_dealer
+NY,jeffsrvservice.com,2,repair_only
+OH,campingworld.com,159,blocked_source (Camping World/CL/FB/boats)
+OH,leonardtrailers.com,797,"not_rv_dealer (cargo/utility trailers, 10-30 analysis)"
+OH,ohiorvwholesale.com,824,group_dup_of rvwholesalers.com
+OH,rvusaohio.com,13,aggregator_not_dealer
+OK,camper-sales-rental.com,2,rental
+OK,campingworld.com,147,blocked_source (Camping World/CL/FB/boats)
+OK,cruiseamerica.com,287,rental
+OR,bluedogrv.com,0,group_dup_of bluecompassrv.com
+OR,buyweston.worktrucksolutions.com,173,aggregator_not_dealer
+OR,campingworld.com,116,blocked_source (Camping World/CL/FB/boats)
+OR,crockerscars.com,2,aggregator_not_dealer
+OR,cruiseamerica.com,0,rental
+OR,johnsonrv.com,615,"blocked: bot wall (WA run 2026-11-01), not bypassed"
+OR,portlandairstream.com,445,group_dup_of renoairstream.com
+OR,premierrvservices.com,17,repair_only
+OR,rentrv.com,0,rental
+PA,bigbeeboats.com,3,blocked_source (Camping World/CL/FB/boats)
+PA,campingworld.com,149,blocked_source (Camping World/CL/FB/boats)
+SC,campingworld.com,148,blocked_source (Camping World/CL/FB/boats)
+SD,campingworld.com,39,blocked_source (Camping World/CL/FB/boats)
+TN,abovebeyondmobilervrepair.com,11,repair_only
+TN,campingworld.com,118,blocked_source (Camping World/CL/FB/boats)
+TX,campingworld.com,384,blocked_source (Camping World/CL/FB/boats)
+TX,classarvrepairs.com,10,repair_only
+TX,qualityrvservice.net,21,repair_only
+TX,rvdepot.us,359,group_dup_of rvdepottx.com
+TX,trailernut.com,517,"not_rv_dealer (cargo/utility trailers, 10-30 analysis)"
+UT,campingworld.com,110,blocked_source (Camping World/CL/FB/boats)
+VA,acervrentals.com,3,rental
+VA,campingworld.com,136,blocked_source (Camping World/CL/FB/boats)
+WI,campingworld.com,101,blocked_source (Camping World/CL/FB/boats)
+WI,friendshiprvinc.rvusa.com,33,aggregator_not_dealer
+WI,markquartrvappleton.com,771,group_dup_of markquartrvburlington.com (identical MC feed)
+WI,markquartrvhallie.com,771,group_dup_of markquartrvburlington.com (identical MC feed)
+WV,campingworld.com,26,blocked_source (Camping World/CL/FB/boats)

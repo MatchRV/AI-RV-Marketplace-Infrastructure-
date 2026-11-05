@@ -1,0 +1,19 @@
+name,city,domain,sources,status,al_units_before,al_units_after,mc_al_listings,reason,detail
+Dream Finders. Rvs For Sale By Owner. Motorhomes,Muscle Shoals,dreamfindersrv.com,MC,uncovered,0,0,2707,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Great American RV SuperStores,,airstreamhuntsville.com,MC,uncovered,0,0,1478,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Johnston RV Center,,johnstonrvcenter.com,MC,uncovered,0,0,260,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Roadway,Calera,rvroadway.com,MC,uncovered,0,0,206,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Great American RV SuperStores,,airstreamofcentralalabama.com,MC,uncovered,0,0,185,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Select Trailer Co.,Troy,selecttrailer.com,MC,uncovered,0,0,86,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+"Car Dealer in Evergreen, AL",Evergreen,wolffmotors.com,MC,uncovered,0,0,82,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Campers Inn,,campersinn.com,MC SN,covered_before,62,62,133,under_covered,MC 133 listings in AL vs 62 snapshot units in AL; nationally MC 7151 vs ours 3919 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Williams Family RV,Robertsdale,williamsfamilyrv.com,MC SN,covered_before,2,2,73,under_covered,MC 73 listings in AL vs 2 snapshot units in AL; nationally MC 73 vs ours 2; harvest full inventory; name from site homepage title
+Millican RV America,Hanceville,millicanrvs.com,MC,uncovered,0,0,68,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Momentum Marine & RV,,momentummarine-rv.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+LB Trailers,,lbtrailers.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Gulf Coast RV Center,,gcrvc.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"McKinney RV Sales and Service, Red Bay, Alabama",,mckinneyrv.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Woodard RV,,woodardrvs.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Clark's RV Center,,clarksrvcenter.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Discount General of Dothan,Dothan,shedsofdothan.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,countryroadsrv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"

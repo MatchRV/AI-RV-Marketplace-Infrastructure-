@@ -1,0 +1,20 @@
+name,city,domain,sources,status,va_units_before,va_units_after,mc_va_listings,reason,detail
+Pete's RV Center - Chesapeake/Norfolk,Chesapeake,petesrvmidatlantic.com,MC SN,covered_before,205,205,874,under_covered,MC 874 listings in VA vs 205 snapshot units in VA; nationally MC 874 vs ours 352 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Tg4rv,Virginia Beach,tg4rv.com,MC,uncovered,0,0,476,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Pete's Rv Center Connecticut - Salem Outlets,Salem,camperliquidators.com,MC SN,covered_before,61,61,126,under_covered,MC 126 listings in VA vs 61 snapshot units in VA; nationally MC 513 vs ours 284 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+,Broadway,traxauto2.com,MC,uncovered,0,0,46,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+,Orange,roadtripcamping.com,MC,uncovered,0,0,43,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Featherlite Coaches,,featherlitecoaches.com,MC,uncovered,0,0,37,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Mount Crawford,seemorcustoms.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+,Buchanan,mtjoyrv.com,MC,uncovered,0,0,29,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Gloucester RV,Hayes,gloucesterrv.net,MC,uncovered,0,0,28,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Commonwealth RV, Boat, & Aircraft",,commonwealthrv.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Car Dealer in Montross, VA",,magnumrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,Roanoke,toniesrv.com,MC,uncovered,0,0,21,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+"R.B. Taylor And Sons, Inc. Campers of Lynchburg, VA",,rbtaylorandsons.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Airstream of Virginia,Woodford,airstreamofva.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+dovescampersales,,dovescampersales.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Holly Acres,Woodbridge,hollyacres.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Super Bee Auto,,superbeeauto.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ace Rent All,,acerentsall.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,affordablerv.net,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"

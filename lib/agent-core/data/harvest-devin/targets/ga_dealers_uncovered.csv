@@ -1,0 +1,26 @@
+name,city,domain,sources,status,ga_units_before,ga_units_after,mc_ga_listings,reason,detail
+National Indoor Rv Centers - Sales - Atlanta,Lawrenceville,nirvc.com,MC SN,covered_before,17,17,505,under_covered,MC 505 listings in GA vs 17 snapshot units in GA; nationally MC 505 vs ours 82 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Country Boy Trailers,Cumming,countryboy-trailers.com,MC,uncovered,0,0,215,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+Southland Rv,Norcross,southlandrv.com,MC SN,covered_before,183,183,381,under_covered,MC 381 listings in GA vs 183 snapshot units in GA; nationally MC 381 vs ours 183; harvest full inventory
+Georgia RV Outlet,,georgiarvoutlet.com,MC,uncovered,0,0,116,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Byron Outdoor Superstore,Byron,byronrv.com,MC SN,covered_before,23,23,85,under_covered,MC 85 listings in GA vs 23 snapshot units in GA; nationally MC 85 vs ours 23; harvest full inventory; name from site homepage title
+Airstream of Georgia,Richmond Hill,airstreamsavannah.com,MC,uncovered,0,0,58,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Jake's RV,Warner Robins,jakesrvs.com,MC,uncovered,0,0,58,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,peachstatervs.com,MC,uncovered,0,0,44,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Mid-GA RV Sales,Byron,midgarvsales.com,MC,uncovered,0,0,43,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Goss RV,,gossrv.com,MC,uncovered,0,0,36,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+M & K Auto Sales,Hazlehurst,mandkautosales.com,MC,uncovered,0,0,31,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+R & R Camper Sales,"Jesup,",rrcampersales.com,MC,uncovered,0,0,29,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Camp Oaks,Dahlonega,campoaksrv.com,MC,uncovered,0,0,28,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Florida RVs,,floridarvsgeorgia.com,MC,uncovered,0,0,27,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Barry's Camper Sales (Barry's Auto Sales),,barryscampersales.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Southern RV and Truck Center,,southernrvandtruck.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Land,,rvlandga.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Your one-stop-shop for Cars, Trucks, SUVs, Campers, Commercial Vehicles, Boats, ",,twinstruckandrv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Country,,rvcountryga.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Sunnyside RV Sales & Service,,sunnysiderv.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Overkill Motorsports in Kingsland, Georgia",,okmotorsports.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,lexarvandboatsales.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Brown's Camping Sales,,brownscamping.com,MC,uncovered,0,0,5,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Newcastle RV,,newcastlerv.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,jcortrailers.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"

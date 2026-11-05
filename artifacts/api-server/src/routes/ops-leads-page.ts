@@ -40,6 +40,8 @@ export const OPS_LEADS_HTML = `<!doctype html>
   dd { margin: 0; word-break: break-word; }
   .msg { white-space: pre-wrap; background: #f4f7f7; border-radius: 8px; padding: 10px; margin: 8px 0; }
   .fwd { border-top: 1px dashed #cbd5e1; margin-top: 10px; padding-top: 10px; }
+  .fit { background: #eef7f7; border-radius: 8px; padding: 10px; margin: 8px 0; }
+  .fit h3 { font-size: 13px; margin: 0 0 6px; color: #004f53; text-transform: uppercase; letter-spacing: 0.04em; }
   .muted { color: #5b6b6b; font-size: 13px; }
   #error { color: #b91c1c; }
 </style>
@@ -77,6 +79,27 @@ export const OPS_LEADS_HTML = `<!doctype html>
     return i.dryRun === true || i.status === "dry_run" || i.test === true || /\\bTEST\\b/.test(name);
   }
   function fmtPrice(v) { return typeof v === "number" ? "$" + v.toLocaleString() : "n/a"; }
+  function fitLines(fit) {
+    if (!fit || typeof fit !== "object") return [];
+    var lines = [];
+    function money(n) { return typeof n === "number" ? "$" + Math.round(n).toLocaleString() : null; }
+    function nice(s) { return String(s).replace(/_/g, " "); }
+    if (fit.rvTypes && fit.rvTypes.length) lines.push("RV type: " + fit.rvTypes.map(nice).join(", "));
+    if (fit.condition && fit.condition !== "any") lines.push("Condition: " + fit.condition);
+    if (fit.useTypes && fit.useTypes.length) lines.push("Use: " + fit.useTypes.join(", "));
+    if (fit.desiredFeatures && fit.desiredFeatures.length) lines.push("Features wanted: " + fit.desiredFeatures.map(nice).join(", "));
+    if (fit.partySize != null) lines.push("Party size: " + fit.partySize);
+    if (fit.towVehicle) lines.push("Tow vehicle: " + fit.towVehicle);
+    if (fit.towedVehicle) lines.push("Towed behind: " + fit.towedVehicle);
+    if (fit.noLengthLimit) lines.push("Length: no limit stated");
+    else if (fit.lengthMaxFt != null) lines.push("Length max: " + fit.lengthMaxFt + " ft" + (fit.lengthReason ? " (" + fit.lengthReason + ")" : ""));
+    if (fit.location) lines.push("Shopping area: " + fit.location);
+    if (fit.paymentMethod) lines.push("Payment: " + fit.paymentMethod);
+    if (fit.budgetMaxUsd != null) lines.push("Budget max: " + money(fit.budgetMaxUsd));
+    if (fit.downPaymentUsd != null) lines.push("Down payment: " + money(fit.downPaymentUsd));
+    if (fit.monthlyPaymentUsd != null) lines.push("Monthly payment target: " + money(fit.monthlyPaymentUsd));
+    return lines;
+  }
   function fmtTime(s) { try { return new Date(s).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZoneName: "short" }); } catch (e) { return s; } }
   function addRow(dl, label, value, href) {
     dl.appendChild(el("dt", null, label));
@@ -88,7 +111,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
   function safeHref(u) { return typeof u === "string" && /^https?:\\/\\//i.test(u) ? u : null; }
   function forwardText(i) {
     var p = i.preview, s = p.shopper, u = p.unit, d = p.dealer;
-    return [
+    var parts = [
       "To: " + d.name + " (" + d.city + ", " + d.state + ")" + (d.website ? " " + d.website : ""),
       "Subject: MatchRV shopper inquiry: " + u.title + " (stock " + (u.stockNumber || "n/a") + ")",
       "",
@@ -97,9 +120,12 @@ export const OPS_LEADS_HTML = `<!doctype html>
       "Stock #: " + (u.stockNumber || "n/a") + "   VIN: " + (u.vin || "n/a") + "   Listed price: " + fmtPrice(u.priceUsd),
       "",
       "Shopper: " + s.name, "Email: " + (s.email || "-"), "Phone: " + (s.phone || "-"),
-      "",
-      "Message:", p.message
-    ].join("\\n");
+      ""
+    ];
+    var fl = fitLines(i.fit);
+    if (fl.length) { parts.push("Shopper fit:"); parts = parts.concat(fl); parts.push(""); }
+    parts.push("Message:", p.message);
+    return parts.join("\\n");
   }
   function render(list) {
     var root = $("list"); root.textContent = "";
@@ -128,6 +154,19 @@ export const OPS_LEADS_HTML = `<!doctype html>
       addRow(dl, "Status note", i.statusDetail);
       if (i.dealerReply) addRow(dl, "Dealer reply", i.dealerReply.text);
       card.appendChild(dl);
+      var fl = fitLines(i.fit);
+      if (fl.length) {
+        var fitBox = el("div", { class: "fit" });
+        fitBox.appendChild(el("h3", null, "Shopper fit"));
+        var fitDl = el("dl");
+        fl.forEach(function (line) {
+          var idx = line.indexOf(": ");
+          if (idx > 0) addRow(fitDl, line.slice(0, idx), line.slice(idx + 2));
+          else addRow(fitDl, "Note", line);
+        });
+        fitBox.appendChild(fitDl);
+        card.appendChild(fitBox);
+      }
       card.appendChild(el("div", { class: "msg" }, p.message || ""));
       if (!test && i.status === "queued_for_matchrv") {
         var fwd = el("div", { class: "fwd" });

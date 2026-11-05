@@ -1,0 +1,8 @@
+name,city,domain,sources,status,la_units_before,la_units_after,mc_la_listings,reason,detail
+Berryland Campers,Ponchatoula,berrylandcampers.com,MC SN,covered_before,171,171,441,under_covered,MC 441 listings in LA vs 171 snapshot units in LA; nationally MC 441 vs ours 171; harvest full inventory
+The RV Shop,,rvshoponline.com,MC SN,covered_before,34,34,233,under_covered,MC 233 listings in LA vs 34 snapshot units in LA; nationally MC 233 vs ours 44 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Bayou Outdoor,,bayououtdoor.com,MC,uncovered,0,0,182,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ultimate RV Center,Carencro,ultimatervcenter.com,MC SN,covered_before,13,13,68,under_covered,MC 68 listings in LA vs 13 snapshot units in LA; nationally MC 68 vs ours 13; harvest full inventory; name from site homepage title
+Airstream of Louisiana,,airstreamoflouisiana.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Rick's RV Sales,,ricksrvsales.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+I-49 RV,,i49rv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

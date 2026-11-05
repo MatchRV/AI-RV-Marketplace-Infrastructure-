@@ -1,0 +1,15 @@
+name,city,domain,sources,status,nm_units_before,nm_units_after,mc_nm_listings,reason,detail
+Airstream Of New Mexico,Albuquerque,airstreamofnewmexico.com,MC SN,covered_before,4,4,445,under_covered,MC 445 listings in NM vs 4 snapshot units in NM; nationally MC 445 vs ours 5 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Santa Fe RV,,santaferv.com,MC,uncovered,0,0,26,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Shaw RV Sales Inc,,shawrv.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Travel Trailers Motorhomes & 5th Wheels Albuquerque,,adventurervabq.com,MC,uncovered,0,0,21,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Farmington RV Sales,,farmingtonrvsales.com,MC,uncovered,0,0,20,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Franciscan RV,,franciscanrv.com,MC,uncovered,0,0,19,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Bison RV Center,,bisonrv.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Lowry's RV Center,,lowryrv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Kays RV,,kaysrv.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Sales New Mexico,,rvsalesnm.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ma & Pa RV,,sullysselectrvs.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ma & Pa RV,,maandparv.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Tip Top Trailer Sales,,tiptoptrailersales.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+,,smithrvandmarine.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"

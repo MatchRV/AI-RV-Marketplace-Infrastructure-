@@ -1,0 +1,15 @@
+name,city,domain,sources,status,ky_units_before,ky_units_after,mc_ky_listings,reason,detail
+A + Visone Rv,Bernstadt,rvexteriorbodypanels.visonerv.com,MC,uncovered,0,0,714,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Campers Inn,,campersinn.com,MC SN,covered_before,39,39,279,under_covered,MC 279 listings in KY vs 39 snapshot units in KY; nationally MC 7151 vs ours 3919 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+United Motorsports & RV,,unitedmotorsportsrv.com,MC,uncovered,0,0,150,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,London,daybrosrvsales.com,MC,uncovered,0,0,132,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+Sewell Motorcoach,,sewellmotorcoach.com,MC,uncovered,0,0,120,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Owensboro RV,Owensboro,owensbororv.com,MC SN,covered_before,52,52,132,under_covered,MC 132 listings in KY vs 52 snapshot units in KY; nationally MC 132 vs ours 52; harvest full inventory
+Central KY Truck and Trailer Sales,Richmond,kytruckandtrailer.com,MC SN,covered_before,16,16,77,under_covered,MC 77 listings in KY vs 16 snapshot units in KY; nationally MC 77 vs ours 16; harvest full inventory; name from site homepage title; check RV share (trailer dealer)
+,Madisonville,budsrvworld.com,MC,uncovered,0,0,59,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Elite Coach Sales,Paducah,elitecoachsales.com,MC,uncovered,0,0,44,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Camp-A-Rama,Benton,camparama.com,MC,uncovered,0,0,32,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Bluegrass Truck, Buses & RV's",,rv-bluegrasstrucks.com,MC,uncovered,0,0,18,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Open Roads RV Center in Paducah, Kentucky",,openroadsrvcenter.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,kellertrailersales.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04; check RV share (trailer dealer)"
+Martin's Auto,,martinsautoky.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

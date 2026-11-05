@@ -1,0 +1,9 @@
+name,city,domain,sources,status,nj_units_before,nj_units_after,mc_nj_listings,reason,detail
+Classic Rv Sales,Monroeville,classicrvsales.com,MC,uncovered,0,0,884,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Meyer's RV Superstores,,whitehorserv.com,MC,uncovered,0,0,205,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Campers Inn,,campersinn.com,MC SN,covered_before,82,82,241,under_covered,MC 241 listings in NJ vs 82 snapshot units in NJ; nationally MC 7151 vs ours 3919 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Crossroads Trailer Sales,Newfield,crossroadstrailers.com,MC SN,covered_before,38,38,146,under_covered,MC 146 listings in NJ vs 38 snapshot units in NJ; nationally MC 146 vs ours 38; harvest full inventory; name from site homepage title; check RV share (trailer dealer)
+Campers Inn RV Signature Collection,Sewell,campersinnsignature.com,MC SN,covered_before,49,49,103,under_covered,MC 103 listings in NJ vs 49 snapshot units in NJ; nationally MC 103 vs ours 49; harvest full inventory
+Ocean View Trailer Sales RVs & Park Models for sale in NJ,,oceanviewtrailersales.com,MC,uncovered,0,0,38,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+84 RV Rentals & Service,,84rv.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Hampton RV & Trailer Sales in Newton, NJ",,hamptonrv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

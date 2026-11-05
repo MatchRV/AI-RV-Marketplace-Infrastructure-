@@ -64,6 +64,13 @@ describe('/ops/leads page', () => {
     expect(OPS_LEADS_HTML).toContain('Forward to dealer');
     expect(OPS_LEADS_HTML).toMatch(/!test && i\.status === "queued_for_matchrv"/);
   });
+
+  it('renders a Shopper fit block from textContent only and includes fit in forward text', () => {
+    expect(OPS_LEADS_HTML).toContain('Shopper fit');
+    expect(OPS_LEADS_HTML).toContain('fitLines');
+    expect(OPS_LEADS_HTML).toMatch(/fitLines\(i\.fit\)/);
+    expect(OPS_LEADS_HTML).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+  });
 });
 
 describe('ops inbox API used by the page', () => {
@@ -80,6 +87,20 @@ describe('ops inbox API used by the page', () => {
     expect(list[0].preview.shopper).toMatchObject({ name: 'Lee Shopper', email: 'lee@example.com' });
     expect(list[0].preview.dealer.name).toBe(unit().dealer.name);
     expect(list[0].preview.unit.id).toBe(unit().id);
+  });
+
+  it('returns fit on ops list when the inquiry was prepared with fit, and omits it when absent', async () => {
+    const withFit = await (await post({
+      unit_id: unit().id, name: 'Fit Shopper', email: 'fit@example.com', message: 'Still available?',
+      fit: { party_size: 4, tow_vehicle: '2021 F-150', budget_max_usd: 40000, payment_method: 'finance', location: 'Tacoma, WA' },
+    })).json();
+    const sent = await (await post({ confirmation_token: withFit.confirmationToken, confirmed: true })).json();
+    const bare = await send('Bare Shopper', false, 'bare@example.com');
+    const list = (await (await ops()).json()).inquiries;
+    const fitLead = list.find((i: any) => i.id === sent.inquiry.inquiryId);
+    const bareLead = list.find((i: any) => i.id === bare.inquiryId);
+    expect(fitLead.fit).toMatchObject({ partySize: 4, towVehicle: '2021 F-150', budgetMaxUsd: 40000, paymentMethod: 'finance', location: 'Tacoma, WA' });
+    expect(bareLead.fit).toBeUndefined();
   });
 
   it('ops can flag a lead as a test without changing its status', async () => {

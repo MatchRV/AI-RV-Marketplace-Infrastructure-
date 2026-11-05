@@ -1,0 +1,23 @@
+name,city,domain,sources,status,id_units_before,id_units_after,mc_id_listings,reason,detail
+American_Trailer_Sales,Boise,trailersofidaho.com,MC,uncovered,0,0,394,not_harvested,MC 2026-11-04 source facet; not in snapshot; check RV share (trailer dealer)
+Boise Airstream Adventures,Caldwell,boiseairstream.com,MC,uncovered,0,0,355,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Bretz RV & Marine,Boise,bretzrv.com,MC SN DIR,covered_before,11,11,306,under_covered,MC 306 listings in ID vs 11 snapshot units in ID; nationally MC 2024 vs ours 248 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Trailer Dealer,Rathdrum,208rides.com,MC,uncovered,0,0,283,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Smith RV,,smithrvidaho.com,MC,uncovered,0,0,205,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,soidrvmarine.com,MC,uncovered,0,0,100,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+R'N'R RV - Lewiston/Clarkston,Lewiston,rnrrv.com,MC SN DIR,covered_before,0,0,73,under_covered,MC 73 listings in ID vs 0 snapshot units in ID; nationally MC 285 vs ours 185 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+"IWS Sales: Premium Motorcoaches, Adventure Vehicles, and Trailers",Mountain Home,iwssales.com,MC,uncovered,0,0,53,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Lewiston RV,Lewiston,lewistonrv.com,MC,uncovered,0,0,51,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Hanson Powersports,Orofino,orofinopowersports.com,MC,uncovered,0,0,33,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Play More RV,,playmorerv.com,MC,uncovered,0,0,25,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Teton Adventures RV,Idaho Falls,tetonadventuresrv.com,MC DIR,uncovered,0,0,14,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Terry,Mountain Home,terrystruck.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Rent For Fun Luxury RV Rentals, Repair, Parts & Sales",,rentforfun.com,MC,uncovered,0,0,11,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RV Repair,,payetterv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Travelland RV Sales,Lewiston,travelland-rv.com,MC,uncovered,0,0,7,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+RVs and Boats For Less,,rvsandboatsforless.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Offering Automobile, Marine, Powersports and RV Sales, Service, Parts",,allanmarsh.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,wandervans.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+"Drive N Buy, Inc.",,drivenbuyauto.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+United Auto Sales LLC,,unitedautosalesid.com,MC,uncovered,0,0,2,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Bretz RV & Marine,Nampa,bretzrvnampa.com,DIR,uncovered,0,0,,not_harvested,"local dealer directory only, listing count unknown; not in snapshot"

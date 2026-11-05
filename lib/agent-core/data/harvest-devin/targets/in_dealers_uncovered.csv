@@ -1,0 +1,36 @@
+name,city,domain,sources,status,in_units_before,in_units_after,mc_in_listings,reason,detail
+RV Dynasty,Bunker Hill,rvdynasty.com,MC SN,covered_before,222,222,802,under_covered,MC 802 listings in IN vs 222 snapshot units in IN; nationally MC 802 vs ours 222; harvest full inventory
+Zoomers Rv,Wabash,zoomersrv.com,MC,uncovered,0,0,404,not_harvested,MC 2026-11-04 source facet; not in snapshot
+Pete's Rv Center,Schererville,petesrvindy.com,MC SN,covered_before,114,114,499,under_covered,MC 499 listings in IN vs 114 snapshot units in IN; nationally MC 499 vs ours 114; harvest full inventory
+Walnut Ridge RV,,walnutridgerv.com,MC,uncovered,0,0,358,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Camping World RV Sales,,mountcomfortrv.com,MC,uncovered,0,0,297,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Happy Campers RV Sales & Service,,happyrvcampers.com,MC,uncovered,0,0,258,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Heartland RV,,heartlandrvs.com,MC,uncovered,0,0,198,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,rootsrv.com,MC,uncovered,0,0,187,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Cunningham Campers,,cunninghamcampers.com,MC,uncovered,0,0,184,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,funtimecampers.com,MC,uncovered,0,0,143,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04"
+Wana RV Center,Shipshewana,wanarv.com,MC SN,covered_before,26,26,148,under_covered,MC 148 listings in IN vs 26 snapshot units in IN; nationally MC 148 vs ours 26; harvest full inventory
+Ski's Truck & RV Sales,,skistruckrv.com,MC,uncovered,0,0,118,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Midwest RV,Terre Haute,midwestrvonline.com,MC,uncovered,0,0,79,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Elliott,,elliottscustomtrailers.com,MC,uncovered,0,0,75,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title; check RV share (trailer dealer)"
+,,autoelite.us,MC,uncovered,0,0,67,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+Barton Lake RV Sales,Fremont,bartonlakervsales.com,MC SN,covered_before,34,34,93,under_covered,MC 93 listings in IN vs 34 snapshot units in IN; nationally MC 93 vs ours 34; harvest full inventory; name from site homepage title
+,,admiralsanchor.com,MC,uncovered,0,0,39,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; robots.txt blocks/403 2026-11-04 (skip unless allowed)"
+Top RV Dealer,,rvspecialistgoshen.com,MC,uncovered,0,0,24,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Vintage Campers,,vintagecampers.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+62 Sales,,62sales.com,MC,uncovered,0,0,23,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Cindy RV,,cindyrv.com,MC,uncovered,0,0,21,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Evolution Automotive LLC,,evolutionautomotivein.com,MC,uncovered,0,0,17,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Sportsmobile,,sportsmobile.com,MC,uncovered,0,0,16,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Ben Davis Rv Supercenter,,bendavisrv.com,MC,uncovered,0,0,15,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+M&K Sport Coach,,mksportcoachrv.com,MC,uncovered,0,0,14,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Gerton Auto Sales,,gertonautosales.com,MC,uncovered,0,0,13,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+AUTOFARM DALEVILLE,,autofarmdaleville.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Midwest Rv Connection,Elkhart,midwestrvconnect.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Award Winning RVs,,jayco.com,MC,uncovered,0,0,8,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Team Montana Rv Sale,,teammontana.com,MC,uncovered,0,0,6,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Smitty's Auto,Angola,smittysusa.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,suncoastrvtrailersales.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass); check RV share (trailer dealer)"
+HelpSellMyRV.com,,helpsellmyrv.com,MC,uncovered,0,0,4,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Hoosier Custom Cruiser RV,,hoosiercruiserrv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Phoenix USA RV,,phoenixusarv.com,MC,uncovered,0,0,1,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

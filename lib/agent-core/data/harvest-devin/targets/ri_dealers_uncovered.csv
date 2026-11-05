@@ -1,0 +1,3 @@
+name,city,domain,sources,status,ri_units_before,ri_units_after,mc_ri_listings,reason,detail
+Happy Camper Auto and RV Sales,,happycamperri.com,MC,uncovered,0,0,9,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Certified Sales,,certifiedsales.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

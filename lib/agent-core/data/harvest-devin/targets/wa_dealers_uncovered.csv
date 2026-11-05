@@ -1,0 +1,78 @@
+name,city,domain,sources,status,wa_units_before,wa_units_after,mc_wa_listings,reason,detail
+Trailer Boss (Pasco/Spokane),Pasco,trailerboss.com,MC PL,uncovered,0,0,877,not_rv_dealer,"cargo/utility trailers, not RVs"
+Airstream Adventures Northwest,Milton/Spokane Valley,seattleairstream.com,SN MC,covered_before,18,18,454,under_covered,"re-added per CSO 2026-11-04: snapshot holds 58 units for this domain (18 WA, 24 OR, 16 NV lots) vs ~454 MC WA listings; harvest full inventory"
+Valley RV Supercenter,Kent,valleyrvsupercenter.com,MC PL RR,uncovered,0,0,233,cso_holdback,harvested but held pending CSO QA (prior parse errors)
+Car Stars,Spokane,thecarstars.com,MC,uncovered,0,0,120,lot_not_stated,dealer has 2 lots (Aberdeen/Olympia) and unit pages do not say which lot holds the unit
+Wilder RV,Port Angeles,wilderrvs.com,MC PL CT,uncovered,0,0,69,cso_holdback,harvested but held pending CSO QA (prior parse errors)
+Boyko Motors,Spokane,boykomotors.com,MC,uncovered,0,0,38,robots_disallow,robots.txt returns 403 (treated as disallow)
+Warner Auto and RV Center / Big Bear RV,Kennewick,warnerautorv.rocks,MC PL,uncovered,0,0,38,no_online_inventory,no individual unit listing pages found on site
+Mike's RV Sales,WA,mikesrvsales.com,MC EX,uncovered,0,0,35,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Wilder Affordable Homes,Port Angeles,wilderaffordablehomes.com,MC,uncovered,0,0,30,no_online_inventory,no individual unit listing pages found on site
+Airway RV,Spokane Valley,airwayrv.com,MC EX CT EX2,uncovered,0,0,25,site_unreachable,site edge drops our TLS connection (all requests); not routed through third-party crawlers
+Sundance RV Center,WA,sundance-rv-center.com,MC EX,uncovered,0,0,24,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+I-5 RVs,WA,i5rvs.com,MC,uncovered,0,0,23,robots_disallow,robots.txt returns 403 (treated as disallow)
+5 Star Truck and RV,WA,5startruckandrv.com,MC,uncovered,0,0,22,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Annie's RVs,Vancouver,anniesrvs.com,MC EX,uncovered,0,0,19,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Kent RV,Kent,kentrv.com,MC PL EX RR,uncovered,0,0,18,robots_disallow,robots.txt returns 403 (treated as disallow)
+JJ's Auto Investments & RVs,Kennewick,uzedrvs4u.com,MC PL,uncovered,0,0,17,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Quality RV LLC,WA,qualityrvllc.com,MC,uncovered,0,0,16,no_dealer_stated_rv_type,listing pages state no RV type/class anywhere; facts-only rule forbids inferring it
+Airway Heights RV (redirects to Airway RV),Airway Heights,airwayheightsrv.com,MC EX2,uncovered,0,0,15,site_unreachable,site edge drops our TLS connection (all requests); not routed through third-party crawlers
+Lithia RV of Spokane,Spokane,lithiarvspokane.com,MC EX,uncovered,0,0,13,bot_wall,"bot wall / 403 during unit fetch; stopped, not bypassed"
+Northwest Van,WA,northwestvan.com,MC,uncovered,0,0,9,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+A's RV Parts & Repair,East Wenatchee,asrvparts.com,MC PL,uncovered,0,0,7,site_unreachable,site edge drops our TLS connection (all requests); not routed through third-party crawlers
+Treeline Vans,WA,treelinevans.com,MC,uncovered,0,0,6,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Jet-Set RV Center,Liberty Lake,jetsetrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Big Bear RV,Kennewick,bigbearrvs.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Johnson RV Fife (Mike Dunaway RV),Fife,johnsonrv.com,PL CT EX,uncovered,0,0,,bot_wall,"bot wall / 403 during unit fetch; stopped, not bypassed"
+Low Price RV,Fife,lowpricerv.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+RRV Sales and Consignments,Arlington,rrvsales.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Emerald Town Auto and RV,Ephrata,emeraldtownwa.com,PL,uncovered,0,0,,robots_disallow,robots.txt returns 403 (treated as disallow)
+Pacific Northwest RVs and Trucks / Sell My RV Washington,Fife,sellmyrvwa.com,PL EX2,uncovered,0,0,,no_structured_listing_data,"consignment broker for private-party RVs (kept at owners' homes); listings have no VIN, stock # or stated type"
+Wheatland RV,Pullman,wheatlandrv.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Basin RV Sales & Service,Moses Lake,basinrvmoseslake.com,PL,uncovered,0,0,,no_dealer_stated_rv_type,listing pages state no RV type/class anywhere; facts-only rule forbids inferring it
+Grand Auto and RV Sales,Spokane,drivegrand.com,PL,uncovered,0,0,,robots_disallow,robots.txt returns 403 (treated as disallow)
+Phoenix Auto Sales & RVs,Lynnwood,phoenixautosalesandrvs.com,PL,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Traveland RV & Marine,Kennewick,travelandrvmarine.com,PL RR,uncovered,0,0,,bot_wall,homepage returns 403 to automated requests; not bypassed
+A1 RV Recycling and Sales,Centralia,a1rvrecyclingandsales.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Vanberry,Seattle,vanberry.us,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Scallywagon Adventure Vans,Fife,scallywagon.com,PL,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Ryan Sells RVs / Ryan's RV Town,Spokane,ryansellsrvs.com,EX,uncovered,0,0,,bot_wall,homepage returns 403 to automated requests; not bypassed
+Ryan's RV Town,Everett,rvtown.com,EX RR,uncovered,0,0,,site_unreachable,TLS handshake fails / server errors from every fetcher tried
+All Seasons RV,WA,allseasonsrvsales.com,EX RR,uncovered,0,0,,robots_disallow,robots.txt returns 403 (treated as disallow)
+RVs Tacoma,Tacoma,rvstacoma.com,EX,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Olympia Auto Mall RVs,Olympia,olympiaautomall.net,EX,uncovered,0,0,,merged_into_covered,location/business now operated by an already-covered dealer
+Freedom RV Sales,Liberty Lake,freedomrvusa.com,RR EX2,uncovered,0,0,,merged_into_covered,location/business now operated by an already-covered dealer
+Five Corners RV,WA,fivecornersrv.com,RR,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Aubrey's RV Center,WA,aubreysrv.com,RR,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Westgate Homes and RV Center,WA,westgatehomes.com,RR,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Discount RV,Fife,discountrvwa.com,PL CT EX2,uncovered,0,0,,no_website,"no dealer website (domain NXDOMAIN); inventory only on Craigslist, which we do not scrape"
+Lynnwood RV,Lynnwood,lynnwoodrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Quality RV Sales,Yakima,qualityrvsales.com,CT,uncovered,0,0,,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Seattle Dream RV,Woodinville,seattledreamrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+NW Truck and RV,Spokane Valley,nwtruckandrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Mikiy's RV Sales,WA,mikiysrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Interstate RV of Spokane,Spokane,interstatervofspokane.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+River Trail RV,WA,rivertrailrv.com,CT,uncovered,0,0,,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+R&R RV,Spokane,randrrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Good Guys RV,Tacoma,goodguysrv.com,CT,uncovered,0,0,,no_online_inventory,no individual unit listing pages found on site
+Gables RV,WA,gablesrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Standal RV Center,WA,standalrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Global RV Inc,WA,globalrvinc.com,CT,uncovered,0,0,,not_wa_dealer,"domain belongs to an out-of-state business, not the WA dealer"
+Auto Match Sales,WA,automatchsales.com,CT,uncovered,0,0,,no_website,no website; sells via Facebook Marketplace only
+Country West RV,Spokane,countrywestrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Pacific Travel Center,Tacoma,pacifictravelcenter.com,CT RR,uncovered,0,0,,no_structured_listing_data,unit pages lack dealer-stated structured make/type/price fields we can use facts-only
+Scout RV,Tacoma,thescoutrv.com,CT,uncovered,0,0,,no_website,domain does not resolve (NXDOMAIN via public DNS)
+Clean & Green Cars,Spokane Valley,cleangreencars.com,CT,uncovered,0,0,,no_website,domain is parked or lapsed (parking page / unrelated site)
+Truck City RV Sales,Sumner,truckcityrv.com,EX EX2,uncovered,0,0,,bot_wall,"homepage, /inventory and sitemap return a Cloudflare JS challenge (cf-mitigated: challenge); not bypassed"
+U-Neek RV Center,Kelso,uneekrv.com,EX RR EX2,uncovered,0,0,,no_website,domain is parked or lapsed (parking page / unrelated site)
+Reborn RV,Everett,rebornrv.com,PL EX2,uncovered,0,0,,site_unreachable,TLS handshake fails / server errors from every fetcher tried
+Hudson / Kean Auto & RV Center,Bremerton,hudsonautocenter.com,PL,uncovered,0,0,,bot_wall,"bot wall / 403 during unit fetch; stopped, not bypassed"
+J & V Autos & RVs,Yakima,,PL,uncovered,0,0,,no_website,no website found in public sources
+Darrell's RV,Tacoma,,CT,uncovered,0,0,,no_website,no website found in public sources
+High Country RV & Auto Sales,WA,,CT,uncovered,0,0,,out_of_business,business closed (BBB/out of business or domain now points to an unrelated business)
+Tonasket RV Supercenter,Tonasket,,CT,uncovered,0,0,,no_website,no website found in public sources
+D & L's RV Center,Wenatchee,dlsrv.com,RR EX2,uncovered,0,0,,no_website,domain is parked or lapsed (parking page / unrelated site)
+Blue Dog RV (now Blue Compass),Pasco,bluedogrvpasco.com,PL RR,uncovered,0,0,,merged_into_covered,domain redirects to an already-covered dealer
+The Campstars RV Sales,Olympia,campstarsrv.com,EX2,uncovered,0,0,,site_unreachable,DNS resolves but connection fails/times out
+Halterman's RV,Arlington,haltermansrv.com,RR EX2,uncovered,0,0,,out_of_business,business closed (BBB/out of business or domain now points to an unrelated business)
+Roy Robinson RV (now Camping World Marysville),Marysville,royrobinsonrv.com,RR EX2,uncovered,0,0,,merged_into_covered,location/business now operated by an already-covered dealer

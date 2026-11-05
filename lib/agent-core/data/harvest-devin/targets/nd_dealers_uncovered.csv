@@ -1,0 +1,16 @@
+name,city,domain,sources,status,nd_units_before,nd_units_after,mc_nd_listings,reason,detail
+Visto's Trailer Sales,Fargo,vistotrailers.com,MC,uncovered,0,0,521,not_harvested,MC 2026-11-04 source facet; not in snapshot; check RV share (trailer dealer)
+,Fargo,ultimate-trailers.com,MC,uncovered,0,0,270,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage unreachable 2026-11-04; check RV share (trailer dealer)"
+,Rugby,rugbyhomesandrvcenter.com,MC,uncovered,0,0,224,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage http_500 2026-11-04"
+Campers Inn,,campersinn.com,MC SN,covered_before,103,103,317,under_covered,MC 317 listings in ND vs 103 snapshot units in ND; nationally MC 7151 vs ours 3919 (MC appears to file multi-state lots under one state; gain capped at national gap); harvest full inventory
+Capital RV,Bismarck,capitalrv.com,MC SN,covered_before,128,128,317,under_covered,MC 317 listings in ND vs 128 snapshot units in ND; nationally MC 317 vs ours 128; harvest full inventory
+McLaughlins at Cormorant Landing,Fargo,fundealer.com,MC SN,covered_before,42,42,226,under_covered,MC 226 listings in ND vs 42 snapshot units in ND; nationally MC 226 vs ours 42; harvest full inventory
+Swenson RV & Marine,Minot,swensonrv.com,MC,uncovered,0,0,105,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Lake Region RV,Devils Lake,lakeregionrv.com,MC SN,covered_before,5,5,82,under_covered,MC 82 listings in ND vs 5 snapshot units in ND; nationally MC 82 vs ours 5; harvest full inventory; name from site homepage title
+Adventure RV Center,Fargo,adventurervsales.com,MC,uncovered,0,0,71,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Roughrider RVs,Dickinson,roughriderrvs.net,MC,uncovered,0,0,30,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+"Budget RV, Inc.",,budgetrvgf.com,MC,uncovered,0,0,22,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+Lakota RV,,lakotarv.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"
+,,countrysidervnd.com,MC,uncovered,0,0,12,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+,,pureminot.com,MC,uncovered,0,0,10,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; homepage bot wall/challenge 2026-11-04 (do not bypass)"
+5 Star Motors Inc.,,5starmotorsnd.com,MC,uncovered,0,0,3,not_harvested,"MC 2026-11-04 source facet; not in snapshot; name not in local data, confirm on site; name from site homepage title"

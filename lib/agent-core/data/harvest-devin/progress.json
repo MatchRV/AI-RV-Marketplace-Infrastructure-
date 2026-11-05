@@ -21,9 +21,12 @@
       "status": "in_progress",
       "last_dealer_finished": "frontier-trailersales.com",
       "finished_at": "2026-11-05T10:04:17Z",
-      "part": 1
+      "part": 1,
+      "skipped_covered": [
+        "thompsonrvinc.com"
+      ]
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T10:04:17Z"
+  "updated_at": "2026-11-05T10:04:44Z"
 }

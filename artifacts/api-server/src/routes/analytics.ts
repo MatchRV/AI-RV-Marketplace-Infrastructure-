@@ -9,7 +9,7 @@ const router: IRouter = Router();
 const VALID_EVENT_TYPES = [
   "page_view", "listing_view", "search", "tow_check", "outfitter_session",
   "dealer_contact", "filter_applied", "listing_save", "contact_open",
-  "outfitter_message", "swipe_like", "swipe_pass",
+  "outfitter_message", "swipe_like", "swipe_pass", "deck_complete", "inquiry_submitted", "outfitter_checkin",
   "quiz_start", "quiz_complete", "match_report_generated",
   "return_visit", "hero_cta_click", "listing_saved", "listing_skipped",
   // Conversion outcomes sent by trackLead() on the web client

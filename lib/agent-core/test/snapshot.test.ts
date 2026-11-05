@@ -162,7 +162,7 @@ describe("matching against stable fixtures", () => {
       mustHave: ["bunkhouse"],
       towVehicle: "F-150 rated 8,000 lbs",
     });
-    expect(jsonSize(compactSearchResult(out, 5))).toBeLessThan(2600);
+    expect(jsonSize(compactSearchResult(out, 5))).toBeLessThan(2700);
     expect(jsonSize(compactSearchResult(out, 3))).toBeLessThan(1900);
     expect(jsonSize(compactUnitDetail(out.results[0].unit))).toBeLessThan(1700);
   });

@@ -135,7 +135,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 if (DB_MODE === "none") {
   // listings + search/filters: served from inventory snapshot when DB is off
   // (see routes/listings.ts + services/snapshot-listings.ts).
-  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries)(\/|$)/;
+  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries|swipe|out)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/dealer-tools/quick-report" || req.path === "/dealer-tools/quick-report/email")) || (req.method === "GET" && (req.path === "/dealer-tools/quick-report/status" || req.path.startsWith("/dealer-tools/quick-report/pdf/")))) return next();
     res.status(503).json({
@@ -244,6 +244,8 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       return;
     }
 
+    // The swipe deck is a pilot surface: keep it out of search indexes for now.
+    if (req.path === "/swipe" || req.path.startsWith("/swipe/")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
     if (demo) {
       res.type("html").send(indexHtml);
     } else {

@@ -245,6 +245,11 @@ export interface Constraints {
   /** Hard minimum torque, lb-ft (exact unit's rating, never an engine-family max). */
   torqueMinLbFt?: number | null;
   torquePreferredLbFt?: number | null;
+  /**
+   * Shopper needs serious hitch capacity (race trailer, enclosed trailer, heavy tow).
+   * Unpublished or zero hitch rating is a hard fail; Class B / camper vans are out.
+   */
+  heavyTowRequired?: boolean | null;
   /** Loaded trailer the motorhome must tow. Non-motorized units fail. */
   trailerWeightLbs?: number | null;
   /** Loaded trailer tongue weight, if the shopper knows it. */
@@ -307,6 +312,10 @@ export interface SearchCoverage {
   nationwideTotal: number;
   /** True when a location was requested and zero units passed the geo hard filter. */
   noLocalMatches: boolean;
+  /** When the first radius could not fill three hard-pass fits, the wider radius used. */
+  expandedRadiusMiles?: number | null;
+  /** True when local lots lacked three passing units and the search looked farther out. */
+  expandedForCoverage?: boolean;
 }
 
 export interface SearchOutcome {

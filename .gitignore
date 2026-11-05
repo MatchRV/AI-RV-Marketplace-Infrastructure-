@@ -74,3 +74,4 @@ lib/agent-core/data/inventory.snapshot.json
 data/learned-facts.json
 data/session-memory.json
 data/dealer-inquiries.json
+data/outbound-clicks.jsonl

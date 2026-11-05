@@ -146,6 +146,7 @@ export const constraintsSchema = z.object({
   horsepowerPreferred: z.number().min(50).max(1000).nullish(),
   torqueMinLbFt: z.number().min(100).max(3000).nullish(),
   torquePreferredLbFt: z.number().min(100).max(3000).nullish(),
+  heavyTowRequired: z.boolean().nullish(),
   trailerWeightLbs: z.number().min(500).max(40_000).nullish(),
   trailerTongueLbs: z.number().min(50).max(5_000).nullish(),
   coachLoadedWeightLbs: z.number().min(3_000).max(80_000).nullish(),

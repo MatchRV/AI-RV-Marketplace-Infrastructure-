@@ -63,7 +63,8 @@ describe("Sherpa welcome routing", () => {
   });
   it("the welcome is the approved text", () => {
     expect(SHERPA_WELCOME).toContain("Think of me as your Sherpa: you wouldn't climb Everest without one");
-    expect(SHERPA_WELCOME.endsWith("What brings you in today?")).toBe(true);
+    expect(SHERPA_WELCOME).toContain("swipe or chat");
+    expect(SHERPA_WELCOME).toContain("matchrv.com/swipe");
   });
   it("general questions / comparisons → answer directly from the guides", () => {
     const o = classifyOpening("What's the difference between a motorhome and a trailer?");

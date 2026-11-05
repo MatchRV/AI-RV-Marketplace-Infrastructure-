@@ -73,6 +73,8 @@ export function compactSearchResult(
   const coverage = outcome.coverage;
   const emptyGuidance = coverage?.noLocalMatches
     ? `No local matches within ${coverage.radiusMiles} mi of ${coverage.requestedArea}. Do not substitute out-of-area inventory. Ask the shopper to widen radius_miles or pick another place.`
+    : coverage?.expandedForCoverage
+      ? `Local lots did not have three units that pass the hard fit rules; results include a wider radius (${coverage.expandedRadiusMiles} mi). Say that plainly — do not pad with wrong-class or zero-hitch units.`
     : "No units satisfy every hard constraint. Relax one (see excluded counts) or move it to a soft preference.";
 
   return {
@@ -90,6 +92,8 @@ export function compactSearchResult(
       units_in_area: coverage?.unitsInArea ?? null,
       nationwide_total: coverage?.nationwideTotal ?? outcome.funnel.totalUnits,
       no_local_matches: coverage?.noLocalMatches ?? false,
+      expanded_for_coverage: coverage?.expandedForCoverage ?? false,
+      expanded_radius_miles: coverage?.expandedRadiusMiles ?? null,
     },
     ...(outcome.towResolution
       ? {

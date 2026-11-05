@@ -276,7 +276,7 @@ export function constraintsFromQuery(query: string | undefined | null): Partial<
 
 /** Approved Sherpa welcome (use when the first message is a greeting or vague). */
 export const SHERPA_WELCOME =
-  "I'd love to help with anything RV. Think of me as your Sherpa: you wouldn't climb Everest without one, and you don't have to shop for an RV alone either. I can compare a motorhome vs. a trailer, help you set up a campsite, track down a specific RV, or work out which one fits you and your family best. What brings you in today?";
+  "I'd love to help with anything RV. Think of me as your Sherpa: you wouldn't climb Everest without one, and you don't have to shop for an RV alone either.\n\nTwo ways to start:\n1) Swipe nearby inventory on matchrv.com/swipe (quick look at real coaches around you).\n2) Chat with me as your RV Outfitter and I'll help narrow it down.\n\nWhich do you prefer — swipe or chat?";
 
 export type OpeningRoute = "welcome" | "education" | "specific_rv" | "help_choose";
 
@@ -314,7 +314,7 @@ export function classifyOpening(message: string | null | undefined): OpeningAsse
     return { route: "education", guideTopics: topics, extracted, guidance: "This is a question, not an RV search: answer it directly (outfitter_guide topics listed), with no discovery questions first. After answering, offer to help them find one; only then start the questions." };
   }
   if (!text || GREETING.test(text) || VAGUE.test(text)) {
-    return { route: "welcome", welcome: SHERPA_WELCOME, extracted, guidance: "Send the Sherpa welcome (verbatim or very close) and wait for their answer. Then route: general questions → outfitter_guide; a specific RV or 'help me choose' → Product Selection (outfitter_discovery)." };
+    return { route: "welcome", welcome: SHERPA_WELCOME, extracted, guidance: "Send the Sherpa welcome (verbatim or very close) and wait. If they pick swipe: ask location only, then search_rvs with shopper_requested_results_now=true (or send them to https://matchrv.com/swipe) and show mixed nearby cards (max two per dealer, no cheap-bonus). If they pick chat / Outfitter: call outfitter_discovery and continue Product Selection. General questions → outfitter_guide." };
   }
   return { route: "help_choose", extracted, guidance: "They told you what they want, so skip the welcome and dive into Product Selection: pass what they said to outfitter_discovery and ask its nextQuestions." };
 }

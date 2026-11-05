@@ -122,7 +122,9 @@ describe("committed snapshot after reconciliation", () => {
     const ctx = buildContext({ location: { place: "Tacoma", radiusMiles: 50 } });
     const within = idx.units.filter((u) => evaluateUnit(u, ctx).hardStatus !== "fail");
     const stores = new Set(within.map((u) => `${u.dealer.name}|${u.dealer.city}`));
-    expect([...stores].some((s) => s.startsWith("Tacoma RV Center|Fife"))).toBe(true);
+    // Tacoma RV Center units are held price_unverified since 2026-11-02 (no sale price on their own pages; MAP/unlock rule),
+    // so the Fife local-store check uses Fife RV Center (WA batch 2026-11-01).
+    expect([...stores].some((s) => s.startsWith("Fife RV Center|Fife"))).toBe(true);
     expect([...stores].some((s) => s.startsWith("Sumner RV|Sumner"))).toBe(true);
     expect(within.every((u) => u.dealer.state === "WA")).toBe(true);
     expect(within.some((u) => /windish/i.test(u.dealer.name))).toBe(false);

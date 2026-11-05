@@ -29,6 +29,7 @@ import {
 import { getInventory } from "../services/agent-inventory";
 import { readyUnits, searchReadyInventory } from "../services/search-ready";
 import { agentMetricsSnapshot, timedAgentOp } from "../services/agent-metrics";
+import { liveDealerInventoryStatus, normalizeDealerDomain } from "../services/dealer-inventory-status";
 import {
   createPreview,
   decidePreview,
@@ -81,6 +82,17 @@ router.get("/agent/meta", (_req: Request, res: Response) => {
     })),
     metrics: agentMetricsSnapshot(),
   });
+});
+
+// ── Dealer inventory status (no counts) ───────────────────────────────────
+
+router.get("/agent/dealer-status", (req: Request, res: Response) => {
+  const domain = normalizeDealerDomain(typeof req.query.domain === "string" ? req.query.domain : "");
+  if (!domain) {
+    res.status(400).json({ error: "invalid_arguments", issues: ["domain: a dealer website host is required"] });
+    return;
+  }
+  res.json({ domain, inventoryStatus: liveDealerInventoryStatus(domain) });
 });
 
 // ── Search ─────────────────────────────────────────────────────────────────

@@ -211,6 +211,7 @@ for (const r of rows) {
       marketcheck_price_below_msrp: "Dealer's asking price as crawled by MarketCheck (below MSRP); listing page not re-read.",
       page_price_2026_10_31: "Dealer's current asking price from the listing page (read 2026-10-31); not MSRP.",
       harvested_price_matches_page_2026_10_31: "Dealer's current asking price; matches the price on the listing page (read 2026-10-31).",
+      page_price_2026_11_01: "Dealer's current asking price from the listing page (read 2026-11-01); not MSRP.",
     };
     if (m.price_basis && PRICE_NOTE[m.price_basis]) u.priceUsd.note = PRICE_NOTE[m.price_basis];
   }

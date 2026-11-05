@@ -1,0 +1,361 @@
+{
+ "final": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "base_units": 137477,
+  "out_units": 131771,
+  "removed_or_held": 5706,
+  "added": 0,
+  "lastSeen_refreshed": 84390,
+  "price_changed": 9008,
+  "other_field_changes": {
+   "dealer": 757,
+   "condition": 3445,
+   "rvType": 4
+  },
+  "tacoma_held": 0
+ },
+ "windowsAfter": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 131771,
+  "passing_non_stale_rules": 131735,
+  "windows": {
+   "14": {
+    "eligible": 106880,
+    "domains": 623,
+    "locations": 1329,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 116417,
+    "domains": 623,
+    "locations": 1329,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 129308,
+    "domains": 651,
+    "locations": 1419,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 129308,
+    "domains": 651,
+    "locations": 1419,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "windowsBaseAtBuiltAt": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 137477,
+  "passing_non_stale_rules": 137439,
+  "windows": {
+   "14": {
+    "eligible": 93842,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 106159,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waBefore": {
+  "14": {
+   "total": 93842,
+   "WA": 3449,
+   "WA_domains": 25,
+   "domains": 512
+  },
+  "30": {
+   "total": 134772,
+   "WA": 5885,
+   "WA_domains": 42,
+   "domains": 649
+  },
+  "WA_loaded": 5886
+ },
+ "waAfter": {
+  "14": {
+   "total": 106880,
+   "WA": 4705,
+   "WA_domains": 40,
+   "domains": 623
+  },
+  "30": {
+   "total": 129308,
+   "WA": 5777,
+   "WA_domains": 42,
+   "domains": 651
+  },
+  "WA_loaded": 5778
+ },
+ "failedDealers": {
+  "dealers": 713,
+  "dealers_with_pages_read": 578,
+  "with_problem": 140,
+  "units_at_problem_dealers": 48258,
+  "no_sitemap_urls": 82,
+  "bot_walled": 16,
+  "no_unit_like": 17
+ },
+ "csoFixes": {
+  "cond": {
+   "stage": "cond",
+   "steps": {
+    "confirmed_new": 2989,
+    "no_heading_no_url_unchanged": 739,
+    "confirmed_used": 808,
+    "used->new": 1865
+   },
+   "changes": 1865,
+   "storesCreated": 0,
+   "byDomain": {
+    "ronhooverrvs.com": 967,
+    "wilkinsrv.com": 362,
+    "windishrv.com": 302,
+    "campersinn.com": 172,
+    "raycitte.com": 62
+   }
+  },
+  "lots": {
+   "stage": "lots",
+   "steps": {
+    "lot_moved": 3373,
+    "interstate": 890,
+    "same_state": 2483,
+    "bad_page_lot": 15
+   },
+   "changes": 3373,
+   "storesCreated": 37,
+   "byDomain": {
+    "ronhooverrvs.com": 1060,
+    "campersinn.com": 606,
+    "wilkinsrv.com": 418,
+    "windishrv.com": 201,
+    "tsrvs.com": 131,
+    "sr1rv.com": 130,
+    "thervcentral.com": 102,
+    "rvasap.com": 97,
+    "southernluxurysales.com": 91,
+    "laketawakonirvcenter.com": 84,
+    "petesrvindy.com": 77,
+    "camperliquidators.com": 60,
+    "sevenos.com": 57,
+    "funtownrv.com": 47,
+    "greenlawnrv.com": 42,
+    "petesrv.com": 41,
+    "bluecompassrv.com": 33,
+    "galpinrv.com": 29,
+    "worldwiderv.com": 23,
+    "petesrvmidatlantic.com": 23,
+    "texasrvguys.com": 11,
+    "leisurervcenter.com": 2,
+    "bishs.com": 2,
+    "recnationresale.com": 1,
+    "coltonrv.com": 1
+   }
+  },
+  "unknown": {
+   "stage": "unknown",
+   "steps": {
+    "unknown_city": 2360,
+    "no_page_left_unknown": 1670,
+    "page_states_no_lot": 171,
+    "filled": 366,
+    "filled_by_page title": 35,
+    "filled_by_schema.org PostalAddress": 331,
+    "state_conflict_left_unknown": 153
+   },
+   "changes": 366,
+   "storesCreated": 13,
+   "byDomain": {
+    "threewaycampers.com": 168,
+    "kunesrv.com": 97,
+    "rvcountry.com": 66,
+    "coachlightrv.com": 35
+   }
+  }
+ },
+ "interact": {
+  "price_unverified": 2613,
+  "sale_pending": 886,
+  "on_order": 115,
+  "dead_sold": 61,
+  "price_conflict_large": 9
+ },
+ "otherDealers": {
+  "heldByReason": {
+   "dead_sold": 215,
+   "price_unverified": 669,
+   "price_conflict_large": 9,
+   "sale_pending": 150,
+   "on_order": 1
+  },
+  "steps": {
+   "page_not_matched": 9152,
+   "fetch_bot_wall_403": 3,
+   "fetch_bot_wall_429": 1,
+   "fetch_bot_wall_200": 3,
+   "refreshed": 15884,
+   "no_price_on_page_price_left": 102,
+   "unit_claimed_by_several_pages": 97,
+   "identity_unconfirmed_no_change": 692,
+   "several_sale_labelled_prices_price_left": 89,
+   "vin_conflict_no_change": 8
+  }
+ },
+ "campingWorld": {
+  "lastSeen_only": 2596,
+  "lastSeen_refreshed_any": 6851,
+  "price_changed": 1974,
+  "condition_filled": 3428,
+  "lot_moved": 40,
+  "removed_total": 978,
+  "removed_dead_page_gone": 978
+ },
+ "carDealerQuarantine": {
+  "removed": 23,
+  "byDomain": {
+   "gervaiskia.com": 23
+  },
+  "units_after": 131748,
+  "dealers_after": 1479
+ },
+ "windowsAfterCarDealerQuarantine": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 131748,
+  "passing_non_stale_rules": 131712,
+  "windows": {
+   "14": {
+    "eligible": 106865,
+    "domains": 622,
+    "locations": 1328,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 116402,
+    "domains": 622,
+    "locations": 1328,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 129285,
+    "domains": 650,
+    "locations": 1418,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 129285,
+    "domains": 650,
+    "locations": 1418,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waAfterCarDealerQuarantine": {
+  "14": {
+   "total": 106865,
+   "WA": 4705,
+   "WA_domains": 40,
+   "domains": 622
+  },
+  "30": {
+   "total": 129285,
+   "WA": 5777,
+   "WA_domains": 42,
+   "domains": 650
+  },
+  "WA_loaded": 5778
+ },
+ "vehicleQuarantine": {
+  "removed": 20,
+  "held": 2,
+  "byReason": {
+   "car_dealer_non_rv": 7,
+   "placeholder_vin_non_rv": 1,
+   "tow_vehicle_non_rv": 12,
+   "data_unverified": 2
+  },
+  "units_after": 131726,
+  "dealers_after": 1474
+ },
+ "windowsAfterVehicleQuarantine": {
+  "builtAt": "2026-11-03T05:20:21.000Z",
+  "loaded": 131726,
+  "passing_non_stale_rules": 131690,
+  "windows": {
+   "14": {
+    "eligible": 106856,
+    "domains": 621,
+    "locations": 1327,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 22:20 PDT"
+   },
+   "21": {
+    "eligible": 116393,
+    "domains": 621,
+    "locations": 1327,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 22:20 PDT"
+   },
+   "30": {
+    "eligible": 129265,
+    "domains": 645,
+    "locations": 1413,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 22:20 PDT"
+   },
+   "45": {
+    "eligible": 129265,
+    "domains": 645,
+    "locations": 1413,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 22:20 PDT"
+   }
+  }
+ },
+ "waAfterVehicleQuarantine": {
+  "14": {
+   "total": 106856,
+   "WA": 4705,
+   "WA_domains": 40,
+   "domains": 621
+  },
+  "30": {
+   "total": 129265,
+   "WA": 5777,
+   "WA_domains": 42,
+   "domains": 645
+  },
+  "WA_loaded": 5778
+ }
+}

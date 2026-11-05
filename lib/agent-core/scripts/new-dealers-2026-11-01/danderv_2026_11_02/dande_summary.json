@@ -1,0 +1,38 @@
+{
+ "dealer": "DandE RV Sales",
+ "domain": "danderv.com",
+ "fetchedPT": "2026-11-02 21:08:54 PST",
+ "robots": "robots.txt 404 (no rules)",
+ "dealerListedCounts": {
+  "Motorhomes": 2,
+  "Travel Trailers": 20,
+  "5th Wheels": 11,
+  "Toyhaulers": 4
+ },
+ "unitPagesFetched": 39,
+ "rvUnits": 37,
+ "skippedNonRv": [
+  [
+   "28",
+   "2016 Yamaha XSR 900 Sportbike Touring Edition Motorcycle w/ Low Miles"
+  ],
+  [
+   "706",
+   "2021 Polaris Slingshot White and Black Near Brand New with 500 Miles"
+  ]
+ ],
+ "decisions": {
+  "held": 37
+ },
+ "byDealerCategory": {
+  "Toyhaulers": 4,
+  "Travel Trailers": 10,
+  "5th Wheels": 10,
+  "unconfirmed (TT/5W page 2)": 11,
+  "Motorhomes": 2
+ },
+ "withVin17": 35,
+ "vinDupOfSnapshot": 0,
+ "danderAlreadyInSnapshot": 0,
+ "added": 0
+}

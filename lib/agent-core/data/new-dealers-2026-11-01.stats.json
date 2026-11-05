@@ -1,0 +1,342 @@
+{
+ "build": {
+  "builtAt": "2026-11-02T03:03:56.358Z",
+  "keepBase": true,
+  "baseKeptUnits": 137317,
+  "oldUnits": 137317,
+  "freshRows": 631,
+  "freshByOrigin": {
+   "web_2026-11-01": 631
+  },
+  "freshAdmitted": 557,
+  "freshDupes": 12,
+  "freshUnique": 545,
+  "rejects": {
+   "no_dealer_stated_rv_type": 74
+  },
+  "typeVia": {
+   "dealer_category": 557
+  },
+  "mode": "refresh_and_add",
+  "typeStrict": true,
+  "oldUnitsDroppedGoneOrSold": 0,
+  "refreshOtherDomainSkipped": 0,
+  "freshUnitsNotAddedRefreshOnly": 0,
+  "refreshedOldUnits": 0,
+  "sep17UnitsSeenAgain": 0,
+  "oldDupesDropped": 0,
+  "idCollisions": 0,
+  "addedUnits": 522,
+  "addedFromNewDealerDomains": 372,
+  "noPriceUnitsHeldInSidecar": 23,
+  "noPriceUnitsHeldFromNewDealers": 21,
+  "addedNoPrice": 0,
+  "addedWithPrice": 522,
+  "heldBackDomains": [
+   "valleyrvsupercenter.com",
+   "atozrvs.com",
+   "wilderrvs.com"
+  ],
+  "heldBackUnits": 0,
+  "heldBackByDomain": {},
+  "priceTemplateHeldUnits": 0,
+  "priceTemplateHeldByDomain": {},
+  "priceTemplateValues": {},
+  "baseTitleNotUnitHeld": 0,
+  "chassisMakeFixedFromTitle": 0,
+  "chassisMakeFixedByDomain": {},
+  "stitchedRecordsRebuiltFromOwnTitle": 0,
+  "stitchedHeldUnconfirmable": 0,
+  "stitchedHeldByDomain": {},
+  "stitchedByDomain": {},
+  "stitchedFieldChanged": {
+   "stockNumber": 0,
+   "make": 0,
+   "model": 0,
+   "trim": 0,
+   "floorplanCode": 0,
+   "condition": 0
+  },
+  "stitchedFieldChangedByDomain": {},
+  "stitchedExamples": [],
+  "yearTitleRangeSkipped": 0,
+  "nonRvDropped": 0,
+  "nonRvDroppedByMake": {},
+  "nonRvExamples": [],
+  "lowPriceHeld": 0,
+  "lowPriceHeldByMake": {},
+  "lowPriceExamples": [],
+  "lowPriceKept": 0,
+  "lowPriceKeptByMake": {},
+  "dupStockPairs": 0,
+  "dupStockUnitsBlanked": 0,
+  "dupStockByDomain": {},
+  "dupStockExamples": [],
+  "lotCityBlanked": 0,
+  "lotCityBlankedByDomain": {},
+  "lotCityBefore": {},
+  "rvTypeVinHeld": 0,
+  "rvTypeVinHeldByDomain": {},
+  "rvTypeVinExamples": [],
+  "cityFilled": 0,
+  "cityFilledByDomain": {},
+  "cityBlanked": 0,
+  "cityBlankedByDomain": {},
+  "yearFromDealerTitle": 0,
+  "yearFromDealerTitleWhereVinAgreedWithOldYear": 0,
+  "yearFromDealerTitleByDomain": {},
+  "finalUnits": 137839,
+  "dealerDomains": 714,
+  "locations": 1436,
+  "states": 49,
+  "byState": {
+   "TX": 13712,
+   "MI": 10621,
+   "FL": 9105,
+   "CA": 8909,
+   "WA": 6248,
+   "PA": 4893,
+   "AZ": 4703,
+   "IN": 4200,
+   "OH": 3856,
+   "NY": 3717,
+   "MN": 3586,
+   "OR": 3463,
+   "MO": 3446,
+   "UT": 3385,
+   "GA": 3257,
+   "WI": 3211,
+   "CO": 3089,
+   "NC": 3045,
+   "IL": 3004,
+   "IA": 2623,
+   "ID": 2550,
+   "AL": 2482,
+   "AR": 2358,
+   "OK": 2241,
+   "TN": 2232,
+   "SC": 2221,
+   "VA": 2191,
+   "NV": 1739,
+   "KY": 1564,
+   "SD": 1474,
+   "LA": 1441,
+   "MT": 1395,
+   "NM": 1386,
+   "KS": 1070,
+   "NJ": 1021,
+   "MA": 959,
+   "NE": 915,
+   "MS": 869,
+   "WV": 851,
+   "ME": 826,
+   "NH": 809,
+   "ND": 732,
+   "CT": 610,
+   "VT": 546,
+   "MD": 498,
+   "DE": 377,
+   "WY": 338,
+   "RI": 54,
+   "AK": 17
+  },
+  "coverage": {
+   "length": 28433,
+   "sleeps": 65543,
+   "dryWeight": 44980,
+   "gvwr": 44090,
+   "price": 137839
+  }
+ },
+ "newpost": {
+  "builtAt": "2026-11-02T03:03:56.358Z",
+  "base_units": 137317,
+  "base_missing_in_build": 0,
+  "new_units_in_build": 522,
+  "city_casing": 110,
+  "new_added": 521,
+  "bh_cleared_motorized": 1,
+  "type_conflict_url": 1,
+  "out_units": 137838
+ },
+ "windows": {
+  "builtAt": "2026-11-02T16:31:39.258Z",
+  "loaded": 137477,
+  "passing_non_stale_rules": 137439,
+  "windows": {
+   "14": {
+    "eligible": 93842,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 09:31 PDT"
+   },
+   "21": {
+    "eligible": 106159,
+    "domains": 512,
+    "locations": 1178,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 09:31 PDT"
+   },
+   "30": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 09:31 PDT"
+   },
+   "45": {
+    "eligible": 134772,
+    "domains": 649,
+    "locations": 1365,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 09:31 PDT"
+   }
+  }
+ },
+ "windowsBaseAtNewBuiltAt": {
+  "builtAt": "2026-11-02T16:24:09.693Z",
+  "loaded": 137317,
+  "passing_non_stale_rules": 137279,
+  "windows": {
+   "14": {
+    "eligible": 93336,
+    "domains": 507,
+    "locations": 1171,
+    "states": 49,
+    "cutoff_PT": "2026-10-19 09:24 PDT"
+   },
+   "21": {
+    "eligible": 105653,
+    "domains": 507,
+    "locations": 1171,
+    "states": 49,
+    "cutoff_PT": "2026-10-12 09:24 PDT"
+   },
+   "30": {
+    "eligible": 134612,
+    "domains": 646,
+    "locations": 1361,
+    "states": 49,
+    "cutoff_PT": "2026-10-03 09:24 PDT"
+   },
+   "45": {
+    "eligible": 134612,
+    "domains": 646,
+    "locations": 1361,
+    "states": 49,
+    "cutoff_PT": "2026-09-18 09:24 PDT"
+   }
+  }
+ },
+ "waUniverse": {
+  "known": 120,
+  "status": {
+   "covered_before": 35,
+   "uncovered": 81,
+   "added_now": 4
+  },
+  "uncovered_reasons": {
+   "price_not_on_page": 2,
+   "tls_invalid": 1,
+   "wa_lots_none": 1,
+   "not_rv_dealer": 1,
+   "cso_holdback": 2,
+   "no_website": 20,
+   "lot_not_stated": 1,
+   "robots_disallow": 6,
+   "no_online_inventory": 14,
+   "no_structured_listing_data": 11,
+   "site_unreachable": 6,
+   "no_dealer_stated_rv_type": 2,
+   "bot_wall": 7,
+   "merged_into_covered": 4,
+   "not_wa_dealer": 1,
+   "out_of_business": 2
+  },
+  "under_covered": [
+   [
+    "seattleairstream.com",
+    18,
+    454
+   ]
+  ],
+  "added": [
+   [
+    "rnrrv.com",
+    185
+   ],
+   [
+    "fifervcenter.com",
+    89
+   ],
+   [
+    "camperschoicerv.com",
+    46
+   ],
+   [
+    "scottsrvvancouver.com",
+    30
+   ]
+  ]
+ },
+ "prep": {
+  "not_wa_lot_deferred": 1503,
+  "kept": 631,
+  "on_order": 18,
+  "dup_of_base_vin": 13,
+  "dup_of_base_dealer_stock": 3
+ },
+ "csoFix_2026_11_02": {
+  "bretz16_refreshed": 13,
+  "tacoma_no_price_on_page_held": 298,
+  "tacoma_not_in_sitemap_held": 32,
+  "fife_make_split": 5,
+  "cc_available_kept": 46,
+  "interact_listonly_held": 7,
+  "cc_on_order_held": 2,
+  "cc_sold_removed": 19,
+  "builtAt": "2026-11-02T16:31:39.258Z",
+  "units_in": 137838,
+  "units_out": 137477,
+  "bretz_not_in_sitemap_removed": 3
+ },
+ "dandeRV_2026_11_02": {
+  "dealer": "DandE RV Sales",
+  "domain": "danderv.com",
+  "fetchedPT": "2026-11-02 21:08:54 PST",
+  "robots": "robots.txt 404 (no rules)",
+  "dealerListedCounts": {
+   "Motorhomes": 2,
+   "Travel Trailers": 20,
+   "5th Wheels": 11,
+   "Toyhaulers": 4
+  },
+  "unitPagesFetched": 39,
+  "rvUnits": 37,
+  "skippedNonRv": [
+   [
+    "28",
+    "2016 Yamaha XSR 900 Sportbike Touring Edition Motorcycle w/ Low Miles"
+   ],
+   [
+    "706",
+    "2021 Polaris Slingshot White and Black Near Brand New with 500 Miles"
+   ]
+  ],
+  "decisions": {
+   "held": 37
+  },
+  "byDealerCategory": {
+   "Toyhaulers": 4,
+   "Travel Trailers": 10,
+   "5th Wheels": 10,
+   "unconfirmed (TT/5W page 2)": 11,
+   "Motorhomes": 2
+  },
+  "withVin17": 35,
+  "vinDupOfSnapshot": 0,
+  "danderAlreadyInSnapshot": 0,
+  "added": 0
+ }
+}

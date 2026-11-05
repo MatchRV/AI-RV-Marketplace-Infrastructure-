@@ -17,6 +17,11 @@ import { useRoute, useSearch } from "wouter";
 import { BrandLayout as Layout } from "@/components/brand-layout";
 import { SEO } from "@/components/seo";
 import {
+  DealerInventoryNotice,
+  dealerDomainFromReport,
+  type DealerInventoryStatus,
+} from "@/components/dealer-inventory-notice";
+import {
   ArrowRight,
   Building2,
   CheckCircle2,
@@ -772,6 +777,27 @@ export function Browse() {
     };
   }, [slug, unknownSlug]);
 
+  // Real dealers only: when every unit is held out of search, show a calm "inventory updating" state, never an empty page.
+  const [inventoryStatus, setInventoryStatus] = useState<DealerInventoryStatus | null>(null);
+  useEffect(() => {
+    setInventoryStatus(null);
+    if (!report || report.isDemo === true || report.slug === "cascade") return;
+    const domain = dealerDomainFromReport(report);
+    if (!domain) return;
+    let cancelled = false;
+    fetch(`/api/agent/dealer-status?domain=${encodeURIComponent(domain)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ inventoryStatus?: DealerInventoryStatus }>) : null))
+      .then((data) => {
+        if (!cancelled && data?.inventoryStatus) setInventoryStatus(data.inventoryStatus);
+      })
+      .catch(() => {
+        /* status is optional; the report still renders */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [report]);
+
   const isDemo = report?.isDemo !== false && (report?.slug === "cascade" || !report?.slug || slug === "cascade");
   // Cascade stays the free full public demo — never teaser-gate it.
   const isTeaser =
@@ -813,6 +839,8 @@ export function Browse() {
         {!report && !error && (
           <div className="mb-6 text-sm text-muted-foreground">Loading visibility report…</div>
         )}
+
+        {report && !isDemo && <DealerInventoryNotice dealer={report.dealer} domain={dealerDomainFromReport(report)} status={inventoryStatus} />}
 
         {report && (isTeaser ? <TeaserView report={report} /> : <FullReportView report={report} isDemo={isDemo} />)}
       </div>

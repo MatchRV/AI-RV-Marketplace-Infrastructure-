@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "thervbarnnw.com",
-      "finished_at": "2026-11-05T13:51:44Z",
+      "last_dealer_finished": "larrysrv.com",
+      "finished_at": "2026-11-05T13:52:40Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T13:51:44Z"
+  "updated_at": "2026-11-05T13:52:40Z"
 }

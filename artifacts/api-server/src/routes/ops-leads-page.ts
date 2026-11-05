@@ -125,7 +125,20 @@ export const OPS_LEADS_HTML = `<!doctype html>
     var fl = fitLines(i.fit);
     if (fl.length) { parts.push("Shopper fit:"); parts = parts.concat(fl); parts.push(""); }
     parts.push("Message:", p.message);
-    return parts.join("\\n");
+    return parts.concat(paymentLines(p.paymentEstimate)).join("\\n");
+  }
+  var CREDIT = { excellent_720_plus: "Excellent (720+)", good_680_719: "Good (680-719)", fair_620_679: "Fair (620-679)", rebuilding_below_620: "Rebuilding (below 620)", not_sure: "Not sure" };
+  function usd(v) { return typeof v === "number" ? "$" + v.toLocaleString("en-US", Number.isInteger(v) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"; }
+  function paymentSummary(pe) {
+    if (!pe) return null;
+    return "Price " + usd(pe.priceUsd) + " · Down " + usd(pe.downUsd) + " · Trade " + usd(pe.tradeUsd) +
+      " · APR " + (typeof pe.aprPct === "number" ? pe.aprPct + "%" : "-") + " · " + (typeof pe.termMonths === "number" ? pe.termMonths + " mo" : "- mo") +
+      " · Tax " + (typeof pe.taxPct === "number" ? pe.taxPct + "%" : "-") + " · Est. monthly " + usd(pe.estMonthlyUsd);
+  }
+  function paymentLines(pe) {
+    if (!pe) return [];
+    return ["", "Payment numbers the shopper chose to share (their own estimate, not a financing offer or credit check):", paymentSummary(pe),
+      "Credit (shopper's estimate, no credit check): " + (CREDIT[pe.creditRange] || "-")];
   }
   function render(list) {
     var root = $("list"); root.textContent = "";
@@ -153,6 +166,10 @@ export const OPS_LEADS_HTML = `<!doctype html>
       addRow(dl, "Delivery", (i.delivery && i.delivery.channel) || "-");
       addRow(dl, "Status note", i.statusDetail);
       if (i.dealerReply) addRow(dl, "Dealer reply", i.dealerReply.text);
+      if (p.paymentEstimate) {
+        addRow(dl, "Payment (shopper's estimate)", paymentSummary(p.paymentEstimate));
+        addRow(dl, "Credit (self-reported)", CREDIT[p.paymentEstimate.creditRange] || "-");
+      }
       card.appendChild(dl);
       var fl = fitLines(i.fit);
       if (fl.length) {

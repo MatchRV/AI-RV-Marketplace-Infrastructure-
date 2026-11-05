@@ -46,10 +46,8 @@ import {
   type CanonicalUnit,
   type UnitMatch,
 } from "@workspace/agent-core";
-import { getInventory as getOriginalInventory } from "./services/agent-inventory";
-import { screenMcpInventory } from "./services/mcp-inventory-quality";
-let screenedInventory: ReturnType<typeof screenMcpInventory> | undefined;
-function getInventory() { return screenedInventory ??= screenMcpInventory(getOriginalInventory()); }
+import { getScreenedInventory } from "./services/screened-inventory";
+function getInventory() { return getScreenedInventory(); }
 
 import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
 import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";

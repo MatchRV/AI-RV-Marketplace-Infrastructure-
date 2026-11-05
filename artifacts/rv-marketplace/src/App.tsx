@@ -72,6 +72,7 @@ const RvLoanCalculator = lazy(() => import("@/pages/rv-financing/rv-loan-calcula
 const FindRvsByMonthlyPayment = lazy(() => import("@/pages/rv-financing/find-rvs-by-monthly-payment").then(m => ({ default: m.FindRvsByMonthlyPayment })));
 const RvPreApproval = lazy(() => import("@/pages/rv-financing/rv-pre-approval-before-shopping").then(m => ({ default: m.RvPreApproval })));
 const UsedRvFinancing = lazy(() => import("@/pages/rv-financing/used-rv-financing").then(m => ({ default: m.UsedRvFinancing })));
+const Swipe = lazy(() => import("@/pages/swipe").then(m => ({ default: m.Swipe })));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -189,6 +190,7 @@ function AppRouter() {
       <Route path="/visibility-report" component={VisibilityReport} />
       <Route path="/book" component={BookReportCall} />
       <Route path="/shop" component={Shop} />
+      <Route path="/swipe" component={Swipe} />
       <Route path="/advertising" component={DealerAdvertising} />
       <Route path="/mcp-setup" component={McpSetup} />
       <Route path="/answers" component={AnswerEngine} />

@@ -60,6 +60,26 @@ export function lookupZipCentroid(zip5: string): LatLng | null {
   return null;
 }
 
+/**
+ * Nearest ZCTA to a coordinate (for a shopper's "near me" on /swipe). Linear scan of ~33.8k points;
+ * the coordinate is used only to pick the ZIP and is never stored.
+ */
+export function nearestZip(lat: number, lng: number): string | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  if (table === undefined) table = load();
+  if (!table) return null;
+  const la = lat * 1e4, lo = lng * 1e4, k = Math.cos((lat * Math.PI) / 180) ** 2;
+  let best = -1, bestD = Infinity;
+  for (let i = 0; i < table.zips.length; i++) {
+    const dy = table.lat[i] - la, dx = table.lng[i] - lo;
+    const d = dy * dy + k * dx * dx;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  // More than ~1.5 degrees from any US ZCTA means the shopper isn't in the covered area.
+  if (best < 0 || bestD > (1.5e4) ** 2) return null;
+  return String(table.zips[best]).padStart(5, "0");
+}
+
 /** True once the table has been read (for memory diagnostics). */
 export function zipTableLoaded(): boolean {
   return table !== undefined && table !== null;

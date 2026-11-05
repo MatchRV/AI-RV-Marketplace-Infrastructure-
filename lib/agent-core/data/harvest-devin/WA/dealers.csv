@@ -35,3 +35,4 @@ allseasonsrvsales.com,All Seasons RV,WA,WA,robots_blocked,0,robots.txt returns H
 aubreysrv.com,Aubrey's RV Center,WA,WA,robots_blocked,0,robots.txt returns HTTP 403 (treated as disallow all)
 westgatehomes.com,Westgate Homes and RV Center,WA,WA,robots_blocked,0,robots.txt returns HTTP 404 (treated as disallow all)
 uneekrv.com,U-Neek RV Center,Kelso,WA,robots_blocked,0,robots.txt returns HTTP 502 (treated as disallow all)
+dlsrv.com,D & L's RV Center,Wenatchee,WA,robots_blocked,0,robots.txt disallows the site root

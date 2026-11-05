@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "comrierv.com",
-      "finished_at": "2026-11-05T14:04:21Z",
+      "last_dealer_finished": "beavercoachsales.com",
+      "finished_at": "2026-11-05T14:05:31Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T14:04:21Z"
+  "updated_at": "2026-11-05T14:05:31Z"
 }

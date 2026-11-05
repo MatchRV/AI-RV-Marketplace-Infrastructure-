@@ -21,3 +21,4 @@ airwayrv.com,Airway RV,Spokane Valley,WA,error,0,"server closes the connection o
 airwayheightsrv.com,Airway Heights RV (redirects to Airway RV),Airway Heights,WA,error,0,"server closes the connection on every request (https and http, bare and www); not routed through other services"
 asrvparts.com,A's RV Parts & Repair,East Wenatchee,WA,error,0,"server closes the connection on every request (https and http, bare and www); not routed through other services"
 rvtown.com,Ryan's RV Town,Everett,WA,error,0,https: TLS handshake fails; http returns HTTP 409 with no content
+campstarsrv.com,The Campstars RV Sales,Olympia,WA,error,0,DNS resolves but connections time out (https and http)

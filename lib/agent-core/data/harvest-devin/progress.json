@@ -19,11 +19,11 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "99westtrailers.com",
-      "finished_at": "2026-11-05T10:03:39Z",
+      "last_dealer_finished": "countryroadsrecreation.com",
+      "finished_at": "2026-11-05T10:03:44Z",
       "part": 1
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T10:03:39Z"
+  "updated_at": "2026-11-05T10:03:44Z"
 }

@@ -28,3 +28,4 @@ travelandrvmarine.com,Traveland RV & Marine,Kennewick,WA,bot_wall,0,homepage ret
 truckcityrv.com,Truck City RV Sales,Sumner,WA,bot_wall,0,homepage returns HTTP 403 to our honestly identified crawler; not bypassed
 boykomotors.com,Boyko Motors,Spokane,WA,robots_blocked,0,robots.txt returns HTTP 403 (treated as disallow all)
 i5rvs.com,I-5 RVs,WA,WA,robots_blocked,0,robots.txt returns HTTP 403 (treated as disallow all)
+kentrv.com,Kent RV,Kent,WA,robots_blocked,0,robots.txt returns HTTP 403 (treated as disallow all)

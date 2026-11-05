@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "dorngooddeal.info",
-      "finished_at": "2026-11-05T13:31:59Z",
+      "last_dealer_finished": "justusedcars.net",
+      "finished_at": "2026-11-05T13:33:15Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T13:31:59Z"
+  "updated_at": "2026-11-05T13:33:15Z"
 }

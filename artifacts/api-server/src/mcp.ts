@@ -54,6 +54,7 @@ function getInventory() { return screenedInventory ??= screenMcpInventory(getOri
 import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
 import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
+import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 
 const OPT = "Optional. Pass only what the shopper actually said.";
@@ -730,6 +731,9 @@ function buildMatchRvServer(): McpServer {
         const discovery = assessDiscovery(profile);
         const road = assessRoadToSale(profile);
         const scope = resolveScope(ctx, input.session_key);
+        // Server-side only: stash stated fit facts for this shopper so a later
+        // send_dealer_inquiry can attach them. Does not change tool I/O.
+        rememberFit(scope, fitFromToolInput(input as unknown as Record<string, unknown>));
         const wantsMakeModel = Boolean(baseConstraints.makes?.length || baseConstraints.models?.length);
         // Server-side discovery gate. No host flag bypasses it: only the
         // facts themselves, or a "just show me" verified in the shopper's words.
@@ -974,6 +978,7 @@ function buildMatchRvServer(): McpServer {
         dryRun: input.dry_run,
         requesterKey: scope.id ? `scope:${scope.id}` : `ip:${(ctx as { http?: { req?: Request } }).http?.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"}`,
         scope: scope.id,
+        fitHint: recallFit(scope) ?? null,
         lookupUnit: (id) => getInventory().byId.get(id),
       });
       if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false }, true);

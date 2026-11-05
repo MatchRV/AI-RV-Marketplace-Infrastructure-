@@ -19,8 +19,8 @@
   "states": {
     "OR": {
       "status": "in_progress",
-      "last_dealer_finished": "oregonrvoutlet.com",
-      "finished_at": "2026-11-05T13:50:53Z",
+      "last_dealer_finished": "motorhomes503.com",
+      "finished_at": "2026-11-05T13:51:15Z",
       "part": 1,
       "skipped_covered": [
         "thompsonrvinc.com"
@@ -28,5 +28,5 @@
     }
   },
   "current_state": "OR",
-  "updated_at": "2026-11-05T13:50:53Z"
+  "updated_at": "2026-11-05T13:51:15Z"
 }

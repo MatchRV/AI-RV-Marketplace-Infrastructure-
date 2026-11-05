@@ -1,3 +1,4 @@
 dealer_domain,dealer_name,city,state,result,units,reason
 rvtradesok.com,"Trades OK, INC",Coburg,OR,robots_blocked,0,robots.txt disallows https://rvtradesok.com/
 anydayrv.com,AnyDayRV,Brookings,OR,robots_blocked,0,robots.txt disallows https://anydayrv.com/
+centerstreetridez.com,Center Street Ridez,Eugene,OR,robots_blocked,0,robots.txt disallows https://centerstreetridez.com/

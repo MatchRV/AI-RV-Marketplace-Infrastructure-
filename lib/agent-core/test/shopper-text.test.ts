@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHERPA_WELCOME, classifyOpening, explicitFuel, parseShopperText, placeFromText } from "../src/index.js";
+import { priceFloorOrRange } from "../src/shopper-text.js";
 
 describe("fuel filters ONLY on an explicit gas/diesel request", () => {
   it.each([
@@ -80,5 +81,32 @@ describe("Sherpa welcome routing", () => {
   it("'help me choose' and messages that already say what they want skip the welcome", () => {
     expect(classifyOpening("Help me choose the right RV for my family").route).toBe("help_choose");
     expect(classifyOpening("travel trailer that sleeps 6 under 50k near Spokane").route).toBe("help_choose");
+  });
+});
+
+describe("price floors and ranges in shopper text", () => {
+  it.each([
+    ["motorhome over $200,000", 200000],
+    ["at least $200k", 200000],
+    ["$200k and up", 200000],
+    ["$200k+", 200000],
+  ])("%s is a floor, never a ceiling", (q, min) => {
+    const c = parseShopperText(q).constraints;
+    expect(c.priceMinUsd).toBe(min);
+    expect(c.priceMaxUsd).toBeUndefined();
+  });
+  it.each([
+    ["between $150,000 and $250,000"],
+    ["$150k to $250k"],
+    ["$150-250k"],
+  ])("%s is a floor and a ceiling", (q) => {
+    expect(parseShopperText(q).constraints).toMatchObject({ priceMinUsd: 150000, priceMaxUsd: 250000 });
+  });
+  it("ceilings, rough targets and non-prices stay as they were", () => {
+    expect(parseShopperText("under $150,000").constraints).toMatchObject({ priceMaxUsd: 150000 });
+    expect(parseShopperText("under $150,000").constraints.priceMinUsd).toBeUndefined();
+    for (const q of ["around $200k", "over 30 ft", "towing over 6k lbs", "2024-2026 class a", "$30k to 40 ft long"]) {
+      expect(priceFloorOrRange(q)).toEqual({ min: null, max: null });
+    }
   });
 });

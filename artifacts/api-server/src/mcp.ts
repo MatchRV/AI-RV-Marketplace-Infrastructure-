@@ -144,6 +144,7 @@ function profileFrom(input: Record<string, unknown>, constraints: Constraints, e
     floorplanIntent: (input.floorplan_intent as BuyerProfile["floorplanIntent"]) ?? sherpa?.floorplanIntent ?? null,
     wantsBunks: (input.wants_bunks as boolean | undefined) ?? (constraints.mustHave?.includes("bunkhouse") ? true : null),
     budgetMaxUsd: constraints.priceMaxUsd ?? null,
+    budgetMinUsd: constraints.priceMinUsd ?? null,
     campingStyle: (input.camping_style as BuyerProfile["campingStyle"]) ?? sherpa?.campingStyle ?? (constraints.boondocking ? "boondocking" : null),
     towVehicle: constraints.towVehicle ?? null,
     truckPayloadLbs: (input.truck_payload_lbs as number | undefined) ?? sherpa?.truckPayloadLbs ?? null,
@@ -456,16 +457,17 @@ function typeKnown(profile: BuyerProfile, input: { covered_steps?: readonly stri
   return Boolean(profile.rvTypes?.length || profile.makes?.length || profile.models?.length) || stepNames(input).includes("rv_type");
 }
 function priceKnown(profile: BuyerProfile, input: { covered_steps?: readonly string[]; declined_questions?: readonly string[] }): boolean {
-  return profile.budgetMaxUsd != null || profile.cashBudgetUsd != null || profile.outTheDoorBudgetUsd != null
+  return profile.budgetMaxUsd != null || profile.budgetMinUsd != null || profile.cashBudgetUsd != null || profile.outTheDoorBudgetUsd != null
     || profile.monthlyPaymentUsd != null || profile.downPaymentUsd != null || profile.budgetDeclined === true
     || stepNames(input).includes("payment");
 }
 
-/** Link carries only whitelisted RV-fit facts. A ceiling is price_max. A floor is not invented here. */
+/** Link carries only whitelisted RV-fit facts. A ceiling is price_max; a stated floor is price_min (never invented). */
 export function swipeHandoffUrl(profile: BuyerProfile): string {
   const params = new URLSearchParams();
   if (profile.rvTypes?.length === 1) params.set("type", profile.rvTypes[0]);
   const ceiling = profile.budgetMaxUsd ?? profile.cashBudgetUsd ?? profile.outTheDoorBudgetUsd ?? null;
+  if (profile.budgetMinUsd != null) params.set("price_min", String(Math.round(profile.budgetMinUsd)));
   if (ceiling != null) params.set("price_max", String(Math.round(ceiling)));
   if (profile.lengthMaxFt != null) params.set("length_max", String(profile.lengthMaxFt));
   if (profile.place) params.set("place", profile.place);

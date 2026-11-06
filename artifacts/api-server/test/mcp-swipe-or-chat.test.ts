@@ -116,4 +116,48 @@ describe("type and price, then outfitter or swipe", () => {
     expectOffer(restart, ["class a", "Tacoma"]);
     expect(restart.knownSummary.join(" | ")).toMatch(/already asked: use/);
   });
+
+  it("a price floor, a ceiling or a range answers the price question in search_rvs", async () => {
+    const base = { location: "Bremerton, WA", radius_miles: 30, rv_types: ["class_a", "class_b", "class_c"], covered_steps: ["rv_type"] };
+    // "Over $200,000", passed three ways: never re-asked, kept as a floor, never a ceiling.
+    for (const floor of [
+      { price_min_usd: 200000 },
+      { constraints: { priceMinUsd: 200000 } },
+      { query: "motorhome over $200,000" },
+    ]) {
+      const d = await call("search_rvs", { ...base, ...floor });
+      expectOffer(d, ["Bremerton", "price ≥ $200,000"]);
+      expect(d.knownProfile.budgetMinUsd).toBe(200000);
+      expect(d.knownProfile.budgetMaxUsd ?? null).toBeNull();
+      expect(d.choices[1].url).toContain("price_min=200000");
+      expect(d.choices[1].url).not.toContain("price_max");
+    }
+
+    const ceiling = await call("search_rvs", { ...base, price_max_usd: 150000 });
+    expectOffer(ceiling, ["Bremerton"]);
+    expect(ceiling.choices[1].url).toContain("price_max=150000");
+    expect(ceiling.choices[1].url).not.toContain("price_min");
+
+    for (const range of [{ price_min_usd: 150000, price_max_usd: 250000 }, { query: "motorhome $150k to $250k" }]) {
+      const d = await call("search_rvs", { ...base, ...range });
+      expectOffer(d, ["Bremerton", "price ≥ $150,000"]);
+      expect(d.choices[1].url).toContain("price_min=150000");
+      expect(d.choices[1].url).toContain("price_max=250000");
+    }
+
+    const unsure = await call("search_rvs", { ...base, declined_questions: ["payment"] });
+    expectOffer(unsure, ["Bremerton"]);
+    expect(unsure.choices[1].url).not.toContain("price_m");
+  }, 60000);
+
+  it("the floor is a hard filter once results are shown", async () => {
+    const d = await call("search_rvs", {
+      location: "Tacoma, WA", rv_types: ["class_a"], price_min_usd: 200000,
+      shopper_requested_results_now: true, shopper_words: "just show me", limit: 10,
+    });
+    expect(d.appliedConstraints.priceMinUsd).toBe(200000);
+    expect(d.appliedConstraints.priceMaxUsd ?? null).toBeNull();
+    expect(d.results.length).toBeGreaterThan(0);
+    for (const r of d.results) if (r.price != null) expect(r.price).toBeGreaterThanOrEqual(200000);
+  }, 60000);
 });

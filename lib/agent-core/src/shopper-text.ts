@@ -42,6 +42,27 @@ function money(raw: string | undefined): number | null {
 const MONEY = String.raw`\$?\s*\d[\d,]*(?:\.\d+)?\s*(?:k\b|grand\b|thousand\b)?`;
 const pick = (re: RegExp, text: string): number | null => { const m = re.exec(text); return m ? money(m.slice(1).find(Boolean)) : null; };
 
+/** Dollar amounts only ("$200,000", "$200k", "200k"), never a length, weight or distance. */
+const DOLLARS = String.raw`\$\s*\d[\d,]*(?:\.\d+)?(?:\s*k\b)?|\d[\d,]*(?:\.\d+)?\s*k\b`;
+const NOT_A_UNIT = String.raw`(?!\s*(?:lbs?\b|pounds?\b|miles?\b|mi\b|ft\b|feet\b|foot\b))`;
+const PRICE_RANGE = new RegExp(String.raw`between\s+(${DOLLARS})${NOT_A_UNIT}\s+and\s+(${DOLLARS}|\d[\d,]*(?![\d,]))${NOT_A_UNIT}|(${DOLLARS})${NOT_A_UNIT}\s*(?:-|–|to)\s*(${DOLLARS}|\d[\d,]*(?![\d,]))${NOT_A_UNIT}`);
+const PRICE_FLOOR = new RegExp(String.raw`(?:over|above|more\s+than|at\s+least|starting\s+at|no\s+less\s+than|min(?:imum)?(?:\s+(?:price|budget))?(?:\s+of)?)\s*(${DOLLARS})${NOT_A_UNIT}|(${DOLLARS})${NOT_A_UNIT}\s*(?:\+|and\s+(?:up|above|over)\b|or\s+(?:more|above|over|higher)\b)`);
+
+/** A stated price floor, or a floor and ceiling from an explicit range. Around one number is neither. */
+export function priceFloorOrRange(q: string): { min: number | null; max: number | null } {
+  const r = PRICE_RANGE.exec(q);
+  if (r) {
+    const loRaw = r[1] ?? r[3], hiRaw = r[2] ?? r[4];
+    let lo = money(loRaw), hi = money(hiRaw);
+    if (lo != null && hi != null && lo < 1000 && /k\b/.test(hiRaw)) lo *= 1000;
+    if (lo != null && hi != null && hi < 1000 && /k\b/.test(loRaw)) hi *= 1000;
+    if (lo != null && hi != null && lo >= 1000 && hi > lo) return { min: lo, max: hi };
+  }
+  const f = PRICE_FLOOR.exec(q);
+  const floor = f ? money(f[1] ?? f[2]) : null;
+  return { min: floor != null && floor >= 1000 ? floor : null, max: null };
+}
+
 /** Budget ceiling stated in plain words ("budget is $35k", "$35k out the door"). */
 function budgetFromText(q: string): number | null {
   const n = pick(new RegExp(String.raw`(${MONEY})\s*(?:out\s+the\s+door|otd)\b|out\s+the\s+door\s+(?:budget\s+)?(?:of|is|at|around|about|under|=|:)?\s*(?:about|around|under)?\s*(${MONEY})|budget\s+(?:is|of|around|about|at|under|=|:)?\s*(?:about|around|under|roughly)?\s*(${MONEY})|(${MONEY})\s+(?:cash\s+|total\s+)?budget\b`, "i"), q);
@@ -114,6 +135,10 @@ export function parseShopperText(query: string | undefined | null): ParsedShoppe
     let n = parseInt(raw.replace(/,/g, ""), 10) * (k ? 1000 : 1);
     if (Number.isFinite(n) && n > 1000 && out.priceMaxUsd == null) out.priceMaxUsd = n;
   }
+  // "over $200k" / "at least $200,000" / "$200k and up" is a floor, never a ceiling. "$150k to $250k" is both.
+  const floorOrRange = priceFloorOrRange(q);
+  if (floorOrRange.min != null) out.priceMinUsd = floorOrRange.min;
+  if (floorOrRange.max != null && out.priceMaxUsd == null) out.priceMaxUsd = floorOrRange.max;
   const lenMax = /(?:nothing longer than|no longer than|not longer than|under|less than|up to|max(?:imum)?(?: of)?|at most)\s*(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\b/.exec(q) ?? /(\d{1,2}(?:\.\d+)?)\s*(?:ft\.?|feet|foot)\s*(?:or less|max(?:imum)?|and under)\b/.exec(q);
   if (lenMax) { const n = parseFloat(lenMax[1]); if (n >= 8 && n <= 60) out.lengthMaxFt = n; }
   const fuel = explicitFuel(q);

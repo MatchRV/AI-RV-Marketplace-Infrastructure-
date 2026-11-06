@@ -31,7 +31,7 @@ export function useChatSession() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hey there! I'm your RV Outfitter.\n\nTwo ways to start, including if you're back or want to start over:\n1) Swipe existing inventory at https://matchrv.com/swipe. That page already exists. I won't build a deck here, and it won't apply a type, diesel, budget, or city for you.\n2) Chat with me and I'll ask a few questions.\n\nWhich do you want — swipe or chat?"
+      content: "Hey there! I'm your RV Outfitter.\n\nI'll ask what kind of RV you're picturing, then a rough price range. After that you can keep working with me, or try swiping through RVs yourself and compare your favorites at https://matchrv.com/swipe. The deck already exists. I won't build one here."
     }
   ]);
   const [sessionId, setSessionId] = useState<string>(`session_${Math.random().toString(36).substr(2, 9)}`);

@@ -12,7 +12,8 @@ describe("website Outfitter offers the existing swipe page", () => {
       expect(src).toContain("https://matchrv.com/swipe");
       expect(src).toMatch(/already exists/);
     }
-    expect(opener).toMatch(/won't build a deck|do not offer to build|never offer to build/i);
-    expect(opener).toMatch(/swipe or chat/i);
+    expect(opener).toMatch(/won't build one here|do not offer to build|never offer to build/i);
+    expect(opener).toMatch(/what kind of RV/i);
+    expect(opener).toMatch(/rough price range/i);
   });
 });

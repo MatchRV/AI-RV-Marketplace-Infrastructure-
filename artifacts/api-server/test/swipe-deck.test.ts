@@ -74,6 +74,19 @@ describe("swipe cards", () => {
     expect(pool.cards.length).toBeGreaterThan(0);
     for (const c of pool.cards) { expect(c.rvType).toBe("fifth_wheel"); expect(c.priceUsd).toBeLessThanOrEqual(60000); }
   });
+  it("enforces a price floor without turning it into a ceiling, and does not invent Parkland", async () => {
+    const { deckConstraints } = await import("../src/services/swipe-deck");
+    expect(deckConstraints({ priceMinUsd: 200000 }).location).toBeUndefined();
+    expect(deckConstraints({ priceMinUsd: 200000 }).priceMinUsd).toBe(200000);
+    expect(deckConstraints({ priceMinUsd: 200000 }).priceMaxUsd).toBeUndefined();
+    const pool = await buildDeckPool({ zip: "98444", rvTypes: ["class_a"], priceMinUsd: 200000, priceMaxUsd: 350000 }, { photoCheck: ok });
+    expect(pool.cards.length).toBeGreaterThan(0);
+    for (const c of pool.cards) {
+      expect(c.rvType).toBe("class_a");
+      expect(c.priceUsd).toBeGreaterThanOrEqual(200000);
+      expect(c.priceUsd).toBeLessThanOrEqual(350000);
+    }
+  });
   it("reports coverage: eligible (price + photo) out of searchable", () => {
     const cov = deckCoverage();
     expect(cov.eligible).toBeGreaterThan(0);

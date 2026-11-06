@@ -159,12 +159,16 @@ export interface DeckState {
   checkIns: number;
 }
 
-export function startDeck(pool: SwipeCard[], radiusMiles: number): DeckState {
+export function startDeck(pool: SwipeCard[], radiusMiles: number, liked: SwipeCard[] = []): DeckState {
   const seen = new Set<string>();
   const unique = pool.filter((c) => c.photo && !seen.has(c.id) && seen.add(c.id));
+  const kept = new Map<string, SwipeCard>();
+  for (const card of liked) if (card?.id && !kept.has(card.id)) kept.set(card.id, card);
+  const saved = [...kept.values()];
+  const savedIds = new Set(saved.map((c) => c.id));
   const prefs = emptyPrefs();
-  const current = pickNext(unique, [], prefs, radiusMiles);
-  return { pool: unique, shown: current ? [current] : [], liked: [], prefs, current, radiusMiles, passStreak: 0, checkIns: 0 };
+  const current = pickNext(unique.filter((c) => !savedIds.has(c.id)), [], prefs, radiusMiles);
+  return { pool: unique, shown: current ? [current] : [], liked: saved, prefs, current, radiusMiles, passStreak: 0, checkIns: 0 };
 }
 
 export function isComplete(s: DeckState): boolean {

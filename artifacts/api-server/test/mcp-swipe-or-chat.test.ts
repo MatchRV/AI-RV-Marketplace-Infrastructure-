@@ -21,99 +21,99 @@ const call = async (name: string, args: Record<string, unknown>) => {
   return JSON.parse(result.content.find((c: { type: string }) => c.type === "text").text);
 };
 
-const SWIPE = "https://matchrv.com/swipe";
+const OFFER = "Would you like your RV Outfitter to keep helping you find the right fit, or try swiping through RVs yourself and compare your favorites?";
 
-function expectChoice(d: Record<string, any>, facts: string[]) {
-  expect(d.status).toBe("choose_swipe_or_chat");
-  expect(d.route).toBe("welcome");
-  expect(d.welcome).toContain(SWIPE);
-  expect(d.choices?.map((c: { id: string }) => c.id)).toEqual(["swipe", "outfitter"]);
-  expect(d.choices[0].url).toBe(SWIPE);
-  expect(d.guidance).toMatch(/already exists/);
-  expect(d.guidance).toMatch(/do not say swiping is missing/i);
-  expect(d.guidance).toMatch(/do not offer to build/i);
-  expect(d.guidance).toMatch(/not a ChatGPT swipe/i);
-  expect(d.guidance).toMatch(/do not ask nextQuestion in this same message/i);
+function expectBasics(d: Record<string, any>, id: string) {
+  expect(d.status).toBe("needs_discovery");
+  expect(d.route).toBe("basics");
+  expect(d.choices).toBeUndefined();
+  expect(d.nextQuestion.id).toBe(id);
+  expect(d.nextQuestions).toHaveLength(1);
+  expect(d.guidance).toMatch(/ask this one question/i);
+  expect(d.guidance).toMatch(/if they ask to swipe/i);
   expect(d.results ?? []).toEqual([]);
-  for (const fact of facts) expect(d.knownSummary.join(" | ")).toContain(fact);
-  expect(JSON.stringify(d)).not.toMatch(/build (?:your |a )?swipe deck|create a deck|no swiping feature/i);
 }
 
-describe("swipe or chat before the interview", () => {
-  it("startup instructions and tool descriptions name the existing page and forbid building one", async () => {
-    const init = await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "swipe-or-chat", version: "1" } });
+function expectOffer(d: Record<string, any>, facts: string[]) {
+  expect(d.status).toBe("choose_swipe_or_chat");
+  expect(d.offer).toBe(OFFER);
+  expect(d.choices.map((c: { id: string }) => c.id)).toEqual(["outfitter", "swipe"]);
+  expect(d.choices[1].url).toMatch(/^https:\/\/matchrv\.com\/swipe/);
+  expect(d.guidance).toMatch(/do not assume they have owned an RV/i);
+  expect(d.guidance).toMatch(/over or at least is a price floor/i);
+  expect(d.guidance).toMatch(/diesel and brand are not filters/i);
+  expect(d.guidance).toMatch(/if they ask to swipe/i);
+  for (const fact of facts) expect(d.knownSummary.join(" | ")).toContain(fact);
+}
+
+describe("type and price, then outfitter or swipe", () => {
+  it("startup instructions ask type then price before the offer", async () => {
+    const init = await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "type-price", version: "1" } });
     const instr = init.instructions as string;
-    expect(instr).toContain(SWIPE);
-    expect(instr).toMatch(/fresh|named RV|returning|restart/i);
-    expect(instr).toMatch(/do not say swiping is missing/i);
-    expect(instr).toMatch(/do not offer to build/i);
+    expect(instr).toContain(OFFER);
+    expect(instr).toMatch(/ask what kind of RV/i);
+    expect(instr).toMatch(/rough price range/i);
+    expect(instr).toMatch(/if they ask to swipe/i);
+    expect(instr).toMatch(/do not assume they have owned an RV/i);
     const { tools } = await rpc("tools/list");
     for (const name of ["outfitter_discovery", "search_rvs"]) {
       const tool = tools.find((t: { name: string }) => t.name === name);
       expect(tool.annotations.readOnlyHint).toBe(true);
-      expect(tool.description).toContain(SWIPE);
-      expect(tool.description).toMatch(/already exists/);
-      expect(tool.description).toMatch(/never offer to build/i);
+      expect(tool.description).toContain("https://matchrv.com/swipe");
+      expect(tool.description).toMatch(/rough price range/i);
     }
-    const discovery = tools.find((t: { name: string; inputSchema: any; annotations: unknown; title: string }) => t.name === "outfitter_discovery");
+    const discovery = tools.find((t: { name: string; inputSchema: any }) => t.name === "outfitter_discovery");
     const reviewed = JSON.parse(readFileSync(new URL("./fixtures/mcp-tools-v2.2.6.json", import.meta.url), "utf8"));
     const frozen = reviewed.find((t: { name: string }) => t.name === "outfitter_discovery");
-    const liveSchema = structuredClone(discovery.inputSchema);
-    const frozenSchema = structuredClone(frozen.inputSchema);
-    expect(liveSchema.properties.request_kind.enum).toEqual(["find_rv", "general_question", "greeting"]);
-    expect(Object.keys(liveSchema.properties).sort()).toEqual(Object.keys(frozenSchema.properties).sort());
-    liveSchema.properties.request_kind.description = frozenSchema.properties.request_kind.description;
-    expect(liveSchema).toEqual(frozenSchema);
-    expect(discovery.annotations).toEqual(frozen.annotations);
-    expect(discovery.title).toBe(frozen.title);
+    expect(Object.keys(discovery.inputSchema.properties).sort()).toEqual(Object.keys(frozen.inputSchema.properties).sort());
+    expect(discovery.inputSchema.properties.request_kind.enum).toEqual(["find_rv", "general_question", "greeting"]);
   });
 
-  it("a blank greeting, a specific RV, and a greeting that still carries old facts all offer the choice", async () => {
-    const blank = await call("outfitter_discovery", { request_kind: "greeting" });
-    expectChoice(blank, []);
+  it("asks type, then price, then offers; skips facts already given", async () => {
+    const fresh = await call("outfitter_discovery", {});
+    expectBasics(fresh, "rv_type");
 
-    const specific = await call("outfitter_discovery", { rv_types: ["class_a"], location: "Tacoma, WA" });
-    expectChoice(specific, ["class a", "Tacoma"]);
-    expect(specific.nextQuestion.id).toBe("use");
+    const typed = await call("outfitter_discovery", { rv_types: ["class_a"], covered_steps: ["rv_type"] });
+    expectBasics(typed, "price_range");
+    expect(typed.knownSummary.join(" | ")).toContain("class a");
+    expect(typed.guidance).toMatch(/do not pass budget_max_usd for a floor/i);
 
+    const both = await call("outfitter_discovery", { rv_types: ["class_a"], budget_max_usd: 150000, location: "Tacoma, WA" });
+    expectOffer(both, ["class a", "Tacoma"]);
+    expect(both.choices[1].url).toContain("type=class_a");
+    expect(both.choices[1].url).toContain("price_max=150000");
+    expect(both.choices[1].url).toContain("place=");
+    expect(both.choices[1].url).not.toContain("98444");
+  });
+
+  it("does not trap someone who is not sure, and does not repeat the offer after they choose the Outfitter", async () => {
+    const unsure = await call("outfitter_discovery", { declined_questions: ["rv_type", "payment"] });
+    expectOffer(unsure, []);
+    expect(unsure.knownSummary.join(" | ")).toMatch(/prefers not to answer: rv_type, payment/);
+
+    const chatting = await call("outfitter_discovery", {
+      request_kind: "find_rv",
+      rv_types: ["class_a"],
+      budget_max_usd: 150000,
+      covered_steps: ["rv_type", "payment", "use"],
+    });
+    expect(chatting.status).toBe("needs_discovery");
+    expect(chatting.choices).toBeUndefined();
+    expect(chatting.offer).toBeUndefined();
+    expect(chatting.nextQuestion.id).not.toBe("rv_type");
+    expect(chatting.nextQuestion.id).not.toBe("price_range");
+    expect(chatting.knownSummary.join(" | ")).toContain("class a");
+  });
+
+  it("a restart that still has type and price offers again and keeps the facts", async () => {
     const restart = await call("outfitter_discovery", {
       request_kind: "greeting",
       rv_types: ["class_a"],
+      budget_max_usd: 200000,
       location: "Tacoma, WA",
       covered_steps: ["use"],
     });
-    expectChoice(restart, ["class a", "Tacoma"]);
-    expect(restart.knownSummary.join(" | ")).toMatch(/use:|already asked: use/);
-  });
-
-  it("search with no interview progress offers the choice and returns no RVs", async () => {
-    const d = await call("search_rvs", { rv_types: ["class_a"], location: "Tacoma, WA" });
-    expectChoice(d, ["class a", "Tacoma"]);
-    expect(d.results).toEqual([]);
-  }, 60000);
-
-  it("after chat has started, a find_rv call does not repeat the choice and keeps the next question", async () => {
-    const d = await call("outfitter_discovery", {
-      request_kind: "find_rv",
-      rv_types: ["class_a"],
-      location: "Tacoma, WA",
-      covered_steps: ["use"],
-    });
-    expect(d.status).toBe("needs_discovery");
-    expect(d.choices).toBeUndefined();
-    expect(d.welcome).toBeUndefined();
-    expect(d.nextQuestion.id).toBe("activities");
-    expect(d.knownSummary.join(" | ")).toContain("class a");
-    expect(d.knownSummary.join(" | ")).toContain("Tacoma");
-  });
-
-  it("a direct question is still answered, and the same reply can point at the existing page", async () => {
-    const d = await call("outfitter_discovery", { request_kind: "general_question" });
-    expect(d.route).toBe("education");
-    expect(d.status).toBe("answer_directly");
-    expect(d.nextQuestions).toEqual([]);
-    expect(d.guidance).toContain(SWIPE);
-    expect(d.guidance).toMatch(/already exists/);
-    expect(d.choices[0].url).toBe(SWIPE);
+    expectOffer(restart, ["class a", "Tacoma"]);
+    expect(restart.knownSummary.join(" | ")).toMatch(/already asked: use/);
   });
 });

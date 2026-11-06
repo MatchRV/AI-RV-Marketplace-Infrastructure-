@@ -1,13 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { ConstraintError, type RvType } from "@workspace/agent-core";
-import { buildDeckPool, outboundTarget, RV_TYPES, unitDetail, withUtm, deckEligible } from "../services/swipe-deck";
+import { buildDeckPool, deckRadius, outboundTarget, RV_TYPES, unitDetail, withUtm, deckEligible } from "../services/swipe-deck";
 import { getScreenedInventory } from "../services/screened-inventory";
 import { nearestZip } from "../services/zip-centroids";
 import { outboundSummary, recordOutboundClick } from "../services/outbound-clicks";
 import { opsKeyValid } from "../services/dealer-inquiries";
 
 /**
- *   POST /api/swipe/deck        { rvType?, priceMaxUsd?, zip?, lat?, lng? } → candidate cards (no dealer names)
+ *   POST /api/swipe/deck        { rvType?, priceMaxUsd?, zip?, lat?, lng?, radiusMiles? (5 to 3000 = nationwide) } → candidate cards (no dealer names)
  *   GET  /api/swipe/units/:id   detail view: adds the dealer name and lot
  *   GET  /api/out?unit=ID&from= logged 302 to the dealer's page with utm_source=matchrv
  *   GET  /api/out/ops           click counts (Authorization: Bearer INQUIRY_OPS_KEY)
@@ -44,7 +44,7 @@ router.post("/swipe/deck", async (req: Request, res: Response) => {
   }
   if (!place) { res.status(422).json({ error: "location_required", guidance: "Enter a city or ZIP, or choose Near me." }); return; }
   try {
-    const radius = typeof b.radiusMiles === "number" && [25, 50, 100, 150, 250, 500].includes(b.radiusMiles) ? b.radiusMiles : undefined;
+    const radius = deckRadius(b.radiusMiles);
     const sleeps = typeof b.sleepsMin === "number" && Number.isInteger(b.sleepsMin) && b.sleepsMin >= 1 && b.sleepsMin <= 12 ? b.sleepsMin : undefined;
     const exclude = new Set(Array.isArray(b.excludeIds) ? b.excludeIds.filter((x): x is string => typeof x === "string").slice(0, 100) : []);
     const pool = await buildDeckPool({

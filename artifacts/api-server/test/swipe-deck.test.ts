@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { buildDeckPool, deckCoverage, deckEligible, toCard, unitDetail, withUtm, DECK_PER_DEALER_CAP } from "../src/services/swipe-deck";
+import { buildDeckPool, deckConstraints, deckCoverage, deckEligible, deckRadius, toCard, unitDetail, withUtm, DECK_PER_DEALER_CAP, NATIONWIDE_RADIUS_MILES } from "../src/services/swipe-deck";
 import { getScreenedInventory } from "../src/services/screened-inventory";
 import { inventoryQualityIssues } from "../src/services/mcp-inventory-quality";
 import { outboundSummary, resetOutboundClicks } from "../src/services/outbound-clicks";
@@ -194,4 +194,20 @@ describe("deck refetch for check-in edits", () => {
     expect(again.cards.length).toBeGreaterThan(0);
     for (const c of again.cards) { expect(exclude.has(c.id)).toBe(false); expect(c.sleeps ?? 0).toBeGreaterThanOrEqual(6); }
   });
+});
+
+describe("travel distance", () => {
+  it("takes any whole number of miles from 5 up to nationwide, and nothing else", () => {
+    for (const r of [5, 10, 75, 150, 300, NATIONWIDE_RADIUS_MILES]) expect(deckRadius(r)).toBe(r);
+    for (const r of [0, 4, 7.5, 3001, "50", null, undefined]) expect(deckRadius(r)).toBeUndefined();
+    expect(deckConstraints({ place: "Bremerton, WA", radiusMiles: 5 }).location).toEqual({ place: "Bremerton, WA", radiusMiles: 5 });
+    expect(deckConstraints({ place: "Bremerton, WA" }).location?.radiusMiles).toBe(150);
+  });
+  it("a wider distance reaches more RVs, and every card stays inside it", async () => {
+    const near = await buildDeckPool({ place: "Bremerton, WA", radiusMiles: 25 }, { photoCheck: ok });
+    const wide = await buildDeckPool({ place: "Bremerton, WA", radiusMiles: NATIONWIDE_RADIUS_MILES }, { photoCheck: ok });
+    expect(near.cards.length).toBeGreaterThan(0);
+    for (const c of near.cards) expect(c.distanceMiles ?? 0).toBeLessThanOrEqual(25);
+    expect(wide.stats.matched).toBeGreaterThan(near.stats.matched);
+  }, 60000);
 });

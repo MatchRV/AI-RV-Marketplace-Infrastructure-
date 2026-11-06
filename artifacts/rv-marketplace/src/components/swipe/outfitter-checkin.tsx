@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Compass } from "lucide-react";
-import { RV_TYPE_LABELS, type CheckInEdits, type RvType } from "@/lib/swipe-deck";
+import { RADIUS_STOPS, RV_TYPE_LABELS, radiusLabel, type CheckInEdits, type RvType } from "@/lib/swipe-deck";
 import { NAVY, TEAL, LINE } from "./tokens";
 
 const BUDGETS = [25_000, 50_000, 75_000, 100_000, 150_000, 250_000];
-const RADII = [25, 50, 100, 150, 250, 500];
 const SLEEPS = [2, 4, 6, 8];
 
 /** "RV Outfitter" check-in: quick edits that re-rank the rest of the deck, or keep swiping. */
@@ -41,7 +40,7 @@ export function OutfitterCheckIn({ initial, busy, onApply, onDismiss }: {
         <div>
           <label className={lab} style={{ color: NAVY }} htmlFor="ci-radius">Distance</label>
           <select id="ci-radius" className={field} style={{ border: `1px solid ${LINE}`, color: NAVY }} value={e.radiusMiles ?? ""} onChange={(x) => setE({ ...e, radiusMiles: x.target.value ? Number(x.target.value) : null })}>
-            {RADII.map((r) => <option key={r} value={r}>{r} mi</option>)}
+            {RADIUS_STOPS.map((r) => <option key={r} value={r}>{radiusLabel(r)}</option>)}
           </select>
         </div>
         <div className="col-span-2">

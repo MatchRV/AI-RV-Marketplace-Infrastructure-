@@ -17,6 +17,12 @@ export const DECK_POOL_SIZE = 60;
 export const DECK_PER_DEALER_CAP = 6;
 export const DEFAULT_DECK_ZIP = "98444";
 export const DEFAULT_DECK_RADIUS_MILES = 150;
+/** The shopper's travel distance runs from 5 miles to nationwide. Nationwide is the search engine's widest radius. */
+export const MIN_DECK_RADIUS_MILES = 5;
+export const NATIONWIDE_RADIUS_MILES = 3000;
+export function deckRadius(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isInteger(v) && v >= MIN_DECK_RADIUS_MILES && v <= NATIONWIDE_RADIUS_MILES ? v : undefined;
+}
 export const RV_TYPES: RvType[] = ["travel_trailer", "fifth_wheel", "toy_hauler", "class_a", "class_b", "class_c", "popup_camper", "truck_camper"];
 
 export interface SwipeCard {

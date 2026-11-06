@@ -63,6 +63,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
   it('never re-asks: covered steps walk the list once, in order, then shows exactly 3', async () => {
     let args: Record<string, any> = { ...COUPLE_FACTS };
     const asked: string[] = [];
+    let ready: any = null;
     // Fit facts the model derives from each answer; rapport answers send only the step name.
     const facts: Record<string, Record<string, unknown>> = {
       use: { use_type: ['camping'] }, activities: { desired_features: ['outdoor_kitchen'] }, vacation: {}, trade: {},
@@ -70,7 +71,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     };
     for (let turn = 0; turn < 12; turn++) {
       const d = await call('outfitter_discovery', args);
-      if (d.readyForProducts) { expect(d.searchConstraints).toBeDefined(); break; }
+      if (d.readyForProducts) { ready = d; expect(d.searchConstraints).toBeDefined(); break; }
       expect(d.nextQuestions).toHaveLength(1);
       const q = d.nextQuestion;
       expect(q.prompt).toMatch(/[?.]\s+I ask (?:so|because)\b/);
@@ -78,11 +79,17 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
       if (q.id === 'trade') expect(q.followUp.prompt).toMatch(/What are you trading in, and what's making you want to trade it\? I ask so/);
       args = { ...args, ...facts[q.id], covered_steps: [...args.covered_steps, q.step] };
     }
-    expect(asked).toEqual(['use', 'activities', 'vacation', 'trade', 'towing', 'storage', 'trips']);
+    // Budget, tow, and length are known after storage, so the early shortlist opens.
+    // Trips stays available afterward; it must not block the shortlist.
+    expect(asked).toEqual(['use', 'activities', 'vacation', 'trade', 'towing', 'storage']);
+    expect(ready.readyForProducts).toBe(true);
+    expect(ready.missingForProducts).toContain('trips');
+    expect(ready.nextQuestion.id).toBe('trips');
     const d = await call('search_rvs', args);
     expect(d.status).toBe('shortlist');
     expect(d.results.length).toBeLessThanOrEqual(3);
     expect(d.appliedConstraints.prefer).toContain('outdoor_kitchen');
+    expect(d.roadToSale.missingForProducts).toContain('trips');
   }, 90000);
 
   it('financing asks down payment, monthly payment and cash budget, one at a time', async () => {

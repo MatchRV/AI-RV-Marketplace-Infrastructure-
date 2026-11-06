@@ -805,7 +805,14 @@ function buildMatchRvServer(): McpServer {
           const walkthrough = ranked[i] ? walkthroughFor(ranked[i].unit) : null;
           return { ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }), ...(walkthrough ? { walkthrough } : {}) };
         });
-        const refine = refineHint({ shown: shortlist.length, requested: shortlistSize, verified: shortlist.filter((r) => (r as Record<string, unknown>).verified === true).length, noLocalMatches: Boolean((compact as Record<string, any>).coverage?.no_local_matches) });
+        const compactCoverage = (compact as Record<string, any>).coverage ?? {};
+        const refine = refineHint({
+          shown: shortlist.length,
+          requested: shortlistSize,
+          verified: shortlist.filter((r) => (r as Record<string, unknown>).verified === true).length,
+          noLocalMatches: Boolean(compactCoverage.no_local_matches),
+          expandedForCoverage: Boolean(compactCoverage.expanded_for_coverage),
+        });
         const { funnel, coverage, note: _note, results: _r, ...rest } = compact as Record<string, any>;
         const makeModelSummary = wantsMakeModel ? makeModelCount(corpus, constraints) : null;
         const inventoryQuality = getInventory().inventoryQuality;
@@ -816,7 +823,14 @@ function buildMatchRvServer(): McpServer {
         return textResult({
           status: "shortlist",
           ...rest,
-          coverage: { requested_area: coverage?.requested_area ?? null, radius_miles: coverage?.radius_miles ?? null, scope: coverage?.scope ?? "nationwide", no_local_matches: coverage?.no_local_matches ?? false },
+          coverage: {
+            requested_area: coverage?.requested_area ?? null,
+            radius_miles: coverage?.radius_miles ?? null,
+            scope: coverage?.scope ?? "nationwide",
+            no_local_matches: coverage?.no_local_matches ?? false,
+            expanded_for_coverage: coverage?.expanded_for_coverage ?? false,
+            expanded_radius_miles: coverage?.expanded_radius_miles ?? null,
+          },
           results: shortlist,
           shortlist: { size: shortlist.length, requested: shortlistSize, note: `These are the ${shortlist.length || "no"} best fits, not a sample. Present them as a shortlist. Don't quote or estimate how many total matches exist.` },
           ...(shortlist.length === 0 ? { guidance: compact.guidance } : {}),

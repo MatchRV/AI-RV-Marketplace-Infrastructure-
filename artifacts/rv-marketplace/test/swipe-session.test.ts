@@ -22,6 +22,14 @@ describe("swipe handoff query", () => {
     const q = parseSwipeSearch("?type=class_a&price_min=200000&place=Tacoma,%20WA&token=secret&account=9");
     expect(q).toMatchObject({ rvType: "class_a", priceMinUsd: 200000, priceMaxUsd: null, place: "Tacoma, WA" });
   });
+  it("keeps how far they'll travel, from 5 miles up to nationwide", () => {
+    expect(parseSwipeSearch("?place=Bremerton,%20WA&radius_miles=30")).toMatchObject({ place: "Bremerton, WA", radiusMiles: 30 });
+    expect(parseSwipeSearch("?place=Bremerton,%20WA&radius_miles=50")).toMatchObject({ place: "Bremerton, WA", radiusMiles: 50 });
+    expect(parseSwipeSearch("?radius_miles=any").radiusMiles).toBe(3000);
+    expect(parseSwipeSearch("?radius_miles=nationwide").radiusMiles).toBe(3000);
+    expect(parseSwipeSearch("?radius_miles=9000").radiusMiles).toBe(3000);
+    for (const junk of ["", "?radius_miles=2", "?radius_miles=far", "?radius_miles=12.5"]) expect(parseSwipeSearch(junk).radiusMiles).toBeNull();
+  });
   it("does not turn a rough target into a hard range, and drops a backwards range", () => {
     expect(parseSwipeSearch("?price_target=80000")).toMatchObject({ priceTargetUsd: 80000, priceMinUsd: null, priceMaxUsd: null });
     expect(parseSwipeSearch("?price_min=300000&price_max=150000")).toMatchObject({ priceMinUsd: null, priceMaxUsd: null });

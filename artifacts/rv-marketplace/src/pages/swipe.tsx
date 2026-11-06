@@ -29,6 +29,7 @@ function filterFromQuery(search: string): DeckFilter {
     lengthMaxFt: q.lengthMaxFt,
     place: q.zip ? "" : q.place,
     zip: q.zip,
+    radiusMiles: q.radiusMiles,
   };
 }
 
@@ -53,6 +54,7 @@ export function Swipe() {
     if (f.priceMaxUsd) body.priceMaxUsd = f.priceMaxUsd;
     if (f.lengthMinFt) body.lengthMinFt = f.lengthMinFt;
     if (f.lengthMaxFt) body.lengthMaxFt = f.lengthMaxFt;
+    if (f.radiusMiles && body.radiusMiles == null) body.radiusMiles = f.radiusMiles;
     if (f.coords) { body.lat = f.coords.lat; body.lng = f.coords.lng; }
     else if (/^\d{5}$/.test(f.zip)) body.zip = f.zip;
     else if (f.place.trim().length >= 2) body.place = f.place.trim();
@@ -106,7 +108,7 @@ export function Swipe() {
   const applyEdits = async (e: CheckInEdits) => {
     if (!deck) return;
     setCheckInBusy(true);
-    const f: DeckFilter = { ...filter, rvType: (e.rvType ?? "") as RvType | "", priceMaxUsd: e.priceMaxUsd ?? null };
+    const f: DeckFilter = { ...filter, rvType: (e.rvType ?? "") as RvType | "", priceMaxUsd: e.priceMaxUsd ?? null, radiusMiles: e.radiusMiles ?? filter.radiusMiles };
     let fresh: SwipeCard[] = [];
     try {
       const extra: Record<string, unknown> = { excludeIds: deck.shown.filter((c) => c.id !== deck.current?.id).map((c) => c.id) };

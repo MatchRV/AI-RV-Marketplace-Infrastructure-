@@ -471,6 +471,7 @@ export function swipeHandoffUrl(profile: BuyerProfile): string {
   if (ceiling != null) params.set("price_max", String(Math.round(ceiling)));
   if (profile.lengthMaxFt != null) params.set("length_max", String(profile.lengthMaxFt));
   if (profile.place) params.set("place", profile.place);
+  if (profile.place && profile.radiusMiles != null && profile.radiusMiles >= 5) params.set("radius_miles", String(Math.min(3000, Math.round(profile.radiusMiles))));
   const query = params.toString();
   return query ? `${SWIPE_URL}?${query}` : SWIPE_URL;
 }

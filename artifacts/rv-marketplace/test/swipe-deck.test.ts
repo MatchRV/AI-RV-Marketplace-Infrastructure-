@@ -3,6 +3,7 @@ import { sendDealerInquiry } from "@/lib/dealer-inquiry";
 import {
   cardFacts, cardPlace, DECK_LIMIT, defaultInquiryMessage, emptyPrefs, inquiryFormValid, inquiryPayload, isComplete,
   pickNext, skipBroken, startDeck, swipe, updatePrefs, fitScore, type SwipeCard,
+  RADIUS_STOPS, initialTravelRadius, radiusLabel, radiusStopIndex,
 } from "@/lib/swipe-deck";
 
 let n = 0;
@@ -162,5 +163,18 @@ describe("RV Outfitter check-in", () => {
     expect(matchesEdits(card({ sleeps: 6 }), { sleepsMin: 4 })).toBe(true);
     expect(matchesEdits(card({ priceUsd: 80000 }), { priceMaxUsd: 50000 })).toBe(false);
     expect(matchesEdits(card({ distanceMiles: 120 }), { radiusMiles: 50 })).toBe(false);
+  });
+});
+
+describe("travel distance slider", () => {
+  it("runs from 5 miles to nationwide and starts at the usual 150 miles", () => {
+    expect(RADIUS_STOPS[0]).toBe(5);
+    expect(radiusLabel(RADIUS_STOPS[0])).toBe("5 miles");
+    expect(radiusLabel(RADIUS_STOPS[RADIUS_STOPS.length - 1])).toBe("Nationwide");
+    expect(RADIUS_STOPS[radiusStopIndex(null)]).toBe(150);
+    expect(RADIUS_STOPS[radiusStopIndex(30)]).toBe(25);
+    expect(RADIUS_STOPS[radiusStopIndex(3000)]).toBe(3000);
+    expect(initialTravelRadius(30)).toBe(30);
+    expect(initialTravelRadius(null)).toBe(150);
   });
 });

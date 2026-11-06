@@ -1,4 +1,4 @@
-import { RV_TYPE_LABELS, type RvType, type SwipeCard } from "./swipe-deck";
+import { NATIONWIDE_RADIUS_MILES, RV_TYPE_LABELS, type RvType, type SwipeCard } from "./swipe-deck";
 
 const TYPES = new Set<string>(Object.keys(RV_TYPE_LABELS));
 const LIKES_KEY = "matchrv_swipe_likes";
@@ -13,16 +13,24 @@ export interface SwipeQuery {
   zip: string;
   lengthMinFt: number | null;
   lengthMaxFt: number | null;
+  /** How far they'll travel, 5 miles up to nationwide. Null = the server's default. */
+  radiusMiles: number | null;
 }
 
 const blank = (): SwipeQuery => ({
-  rvType: "", priceMinUsd: null, priceMaxUsd: null, priceTargetUsd: null, place: "", zip: "", lengthMinFt: null, lengthMaxFt: null,
+  rvType: "", priceMinUsd: null, priceMaxUsd: null, priceTargetUsd: null, place: "", zip: "", lengthMinFt: null, lengthMaxFt: null, radiusMiles: null,
 });
 
 function money(raw: string | null): number | null {
   if (raw == null || raw === "") return null;
   const n = Number(raw);
   return Number.isInteger(n) && n >= 1000 && n <= 2_000_000 ? n : null;
+}
+function miles(raw: string | null): number | null {
+  if (raw == null || raw === "") return null;
+  if (/^(?:any|nationwide)$/i.test(raw)) return NATIONWIDE_RADIUS_MILES;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 5 ? Math.min(n, NATIONWIDE_RADIUS_MILES) : null;
 }
 function feet(raw: string | null): number | null {
   if (raw == null || raw === "") return null;
@@ -47,6 +55,7 @@ export function parseSwipeSearch(search: string): SwipeQuery {
   if (place.length >= 2 && place.length <= 80 && /^[A-Za-z0-9 .,'-]+$/.test(place)) out.place = place;
   const zip = q.get("zip") ?? "";
   if (/^\d{5}$/.test(zip)) out.zip = zip;
+  out.radiusMiles = miles(q.get("radius_miles"));
   out.lengthMinFt = feet(q.get("length_min"));
   out.lengthMaxFt = feet(q.get("length_max"));
   if (out.lengthMinFt != null && out.lengthMaxFt != null && out.lengthMinFt > out.lengthMaxFt) {

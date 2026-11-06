@@ -84,6 +84,10 @@ describe("type and price, then outfitter or swipe", () => {
     expect(both.choices[1].url).toContain("price_max=150000");
     expect(both.choices[1].url).toContain("place=");
     expect(both.choices[1].url).not.toContain("98444");
+    expect(both.choices[1].url).not.toContain("radius_miles");
+
+    const withRadius = await call("outfitter_discovery", { rv_types: ["class_a"], budget_max_usd: 150000, location: "Bremerton, WA", radius_miles: 30 });
+    expect(withRadius.choices[1].url).toContain("radius_miles=30");
   });
 
   it("does not trap someone who is not sure, and does not repeat the offer after they choose the Outfitter", async () => {

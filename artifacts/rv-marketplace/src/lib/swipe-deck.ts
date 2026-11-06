@@ -30,6 +30,26 @@ export const DIVERSITY_WINDOW = 10;
 export const MAX_PER_DEALER_IN_WINDOW = 2;
 export const SWIPE_THRESHOLD_PX = 120;
 export const DEFAULT_ZIP = "98444";
+/** Travel distance stops for the slider: 5 miles up to nationwide. The server's default radius is 150. */
+export const NATIONWIDE_RADIUS_MILES = 3000;
+export const DEFAULT_RADIUS_MILES = 150;
+export const RADIUS_STOPS = [5, 10, 25, 50, 75, 100, 150, 200, 300, 500, NATIONWIDE_RADIUS_MILES] as const;
+export function radiusLabel(miles: number): string {
+  return miles >= NATIONWIDE_RADIUS_MILES ? "Nationwide" : `${miles} miles`;
+}
+/** Index of the stop closest to a radius. The thumb uses this; an explicit radius is not replaced by it. */
+export function radiusStopIndex(miles: number | null | undefined): number {
+  const target = miles ?? DEFAULT_RADIUS_MILES;
+  let best = 0;
+  RADIUS_STOPS.forEach((r, i) => { if (Math.abs(r - target) < Math.abs(RADIUS_STOPS[best] - target)) best = i; });
+  return best;
+}
+
+/** Miles to show and send before the shopper moves the slider. A valid whole radius stays exact. */
+export function initialTravelRadius(miles: number | null | undefined): number {
+  if (miles != null && Number.isInteger(miles) && miles >= 5 && miles <= NATIONWIDE_RADIUS_MILES) return miles;
+  return DEFAULT_RADIUS_MILES;
+}
 
 export const RV_TYPE_LABELS: Record<RvType, string> = {
   travel_trailer: "Travel trailer", fifth_wheel: "Fifth wheel", toy_hauler: "Toy hauler",

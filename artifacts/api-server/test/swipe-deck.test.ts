@@ -2,11 +2,11 @@ import { describe, expect, it, beforeEach } from "vitest";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { buildDeckPool, deckCoverage, deckEligible, toCard, unitDetail, withUtm, DECK_PER_DEALER_CAP } from "../src/services/swipe-deck";
+import { buildDeckPool, deckConstraints, deckCoverage, deckEligible, deckRadius, toCard, unitDetail, withUtm, DECK_PER_DEALER_CAP, NATIONWIDE_RADIUS_MILES } from "../src/services/swipe-deck";
 import { getScreenedInventory } from "../src/services/screened-inventory";
 import { inventoryQualityIssues } from "../src/services/mcp-inventory-quality";
 import { outboundSummary, resetOutboundClicks } from "../src/services/outbound-clicks";
-import { nearestZip } from "../src/services/zip-centroids";
+import { lookupZipCentroid, nearestZip } from "../src/services/zip-centroids";
 import swipeRouter from "../src/routes/swipe";
 
 const inv = () => getScreenedInventory();
@@ -194,4 +194,43 @@ describe("deck refetch for check-in edits", () => {
     expect(again.cards.length).toBeGreaterThan(0);
     for (const c of again.cards) { expect(exclude.has(c.id)).toBe(false); expect(c.sleeps ?? 0).toBeGreaterThanOrEqual(6); }
   });
+});
+
+describe("travel distance", () => {
+  it("takes any whole number of miles from 5 up to nationwide, and nothing else", () => {
+    for (const r of [5, 10, 75, 150, 300, NATIONWIDE_RADIUS_MILES]) expect(deckRadius(r)).toBe(r);
+    for (const r of [0, 4, 7.5, 3001, "50", null, undefined]) expect(deckRadius(r)).toBeUndefined();
+    expect(deckConstraints({ place: "Bremerton, WA", radiusMiles: 5 }).location).toEqual({ place: "Bremerton, WA", radiusMiles: 5 });
+    expect(deckConstraints({ place: "Bremerton, WA" }).location?.radiusMiles).toBe(150);
+  });
+  it("a wider distance reaches more RVs, and every card stays inside it", async () => {
+    const near = await buildDeckPool({ place: "Bremerton, WA", radiusMiles: 25 }, { photoCheck: ok });
+    const wide = await buildDeckPool({ place: "Bremerton, WA", radiusMiles: NATIONWIDE_RADIUS_MILES }, { photoCheck: ok });
+    expect(near.cards.length).toBeGreaterThan(0);
+    for (const c of near.cards) expect(c.distanceMiles ?? 0).toBeLessThanOrEqual(25);
+    expect(wide.stats.matched).toBeGreaterThan(near.stats.matched);
+  });
+  it("does not widen past an explicit radius when the nearby lot is sparse", async () => {
+    const zip = "98337";
+    const here = lookupZipCentroid(zip);
+    expect(here).not.toBeNull();
+    const base = sample();
+    const unitAt = (id: string, lat: number, lng: number): CanonicalUnit => ({
+      ...base,
+      id,
+      priceUsd: { value: 220000, source: "dealer_listing", confidence: "high" },
+      title: `${base.title} ${id}`,
+      dealer: { ...base.dealer, id, name: `${base.dealer.name} ${id}`, city: "Bremerton", state: "WA", lat, lng },
+    });
+    const pool = await buildDeckPool({
+      zip, radiusMiles: 25, priceMinUsd: 200000,
+    }, {
+      photoCheck: ok,
+      corpus: [unitAt("near-1", here!.lat, here!.lng), unitAt("far-1", here!.lat, here!.lng + 0.8)],
+    });
+    expect(pool.appliedConstraints.location?.radiusMiles).toBe(25);
+    expect(pool.cards.map((c) => c.id)).toContain("near-1");
+    expect(pool.cards.map((c) => c.id)).not.toContain("far-1");
+    for (const c of pool.cards) expect(c.distanceMiles ?? 0).toBeLessThanOrEqual(25);
+  }, 60000);
 });

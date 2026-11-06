@@ -19,17 +19,39 @@ router.post("/swipe/deck", async (req: Request, res: Response) => {
   noindex(res);
   const b = (req.body ?? {}) as Record<string, unknown>;
   const rvType = typeof b.rvType === "string" && (RV_TYPES as string[]).includes(b.rvType) ? (b.rvType as RvType) : undefined;
-  const price = typeof b.priceMaxUsd === "number" && b.priceMaxUsd > 0 && b.priceMaxUsd < 5_000_000 ? Math.round(b.priceMaxUsd) : undefined;
-  let zip = typeof b.zip === "string" && /^\d{5}$/.test(b.zip.trim()) ? b.zip.trim() : undefined;
-  if (!zip && typeof b.lat === "number" && typeof b.lng === "number") {
-    zip = nearestZip(b.lat, b.lng) ?? undefined;
-    if (!zip) { res.status(422).json({ error: "location_outside_coverage", guidance: "Enter a US ZIP code instead." }); return; }
+  const money = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 1000 && v <= 2_000_000 ? v : undefined;
+  const feet = (v: unknown) => typeof v === "number" && v >= 8 && v <= 60 ? v : undefined;
+  const priceMin = money(b.priceMinUsd);
+  const priceMax = money(b.priceMaxUsd);
+  if (priceMin != null && priceMax != null && priceMin > priceMax) {
+    res.status(422).json({ error: "price_range", guidance: "The lowest price is higher than the highest price." });
+    return;
   }
+  const lengthMin = feet(b.lengthMinFt);
+  const lengthMax = feet(b.lengthMaxFt);
+  if (lengthMin != null && lengthMax != null && lengthMin > lengthMax) {
+    res.status(422).json({ error: "length_range", guidance: "The shortest length is longer than the longest length." });
+    return;
+  }
+  let place = typeof b.zip === "string" && /^\d{5}$/.test(b.zip.trim()) ? b.zip.trim() : undefined;
+  if (!place && typeof b.place === "string") {
+    const raw = b.place.trim();
+    if (raw.length >= 2 && raw.length <= 80 && /^[A-Za-z0-9 .,'-]+$/.test(raw)) place = raw;
+  }
+  if (!place && typeof b.lat === "number" && typeof b.lng === "number") {
+    place = nearestZip(b.lat, b.lng) ?? undefined;
+    if (!place) { res.status(422).json({ error: "location_outside_coverage", guidance: "Enter a US city or ZIP instead." }); return; }
+  }
+  if (!place) { res.status(422).json({ error: "location_required", guidance: "Enter a city or ZIP, or choose Near me." }); return; }
   try {
     const radius = typeof b.radiusMiles === "number" && [25, 50, 100, 150, 250, 500].includes(b.radiusMiles) ? b.radiusMiles : undefined;
     const sleeps = typeof b.sleepsMin === "number" && Number.isInteger(b.sleepsMin) && b.sleepsMin >= 1 && b.sleepsMin <= 12 ? b.sleepsMin : undefined;
     const exclude = new Set(Array.isArray(b.excludeIds) ? b.excludeIds.filter((x): x is string => typeof x === "string").slice(0, 100) : []);
-    const pool = await buildDeckPool({ rvTypes: rvType ? [rvType] : undefined, priceMaxUsd: price, zip, radiusMiles: radius, sleepsMin: sleeps }, { exclude });
+    const pool = await buildDeckPool({
+      rvTypes: rvType ? [rvType] : undefined,
+      priceMinUsd: priceMin, priceMaxUsd: priceMax, lengthMinFt: lengthMin, lengthMaxFt: lengthMax,
+      place, radiusMiles: radius, sleepsMin: sleeps,
+    }, { exclude });
     res.setHeader("Cache-Control", "no-store");
     res.json({ cards: pool.cards, zip: pool.appliedConstraints.location?.place ?? null, radiusMiles: pool.appliedConstraints.location?.radiusMiles ?? null, matched: pool.stats.matched });
   } catch (err) {

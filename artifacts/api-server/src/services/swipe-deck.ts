@@ -96,14 +96,29 @@ export function toCard(u: CanonicalUnit, distanceMiles: number | null, photo?: s
   return card;
 }
 
-export interface DeckQuery { rvTypes?: RvType[]; priceMaxUsd?: number; zip?: string; radiusMiles?: number; sleepsMin?: number }
+export interface DeckQuery {
+  rvTypes?: RvType[];
+  priceMinUsd?: number;
+  priceMaxUsd?: number;
+  lengthMinFt?: number;
+  lengthMaxFt?: number;
+  /** City or ZIP the shopper actually gave. Never a stand-in ZIP. */
+  place?: string;
+  zip?: string;
+  radiusMiles?: number;
+  sleepsMin?: number;
+}
 
 export function deckConstraints(q: DeckQuery): Constraints {
   const c: Constraints = { sort: "best_match" };
   if (q.rvTypes?.length) c.rvTypes = q.rvTypes;
+  if (q.priceMinUsd && q.priceMinUsd > 0) c.priceMinUsd = q.priceMinUsd;
   if (q.priceMaxUsd && q.priceMaxUsd > 0) c.priceMaxUsd = q.priceMaxUsd;
+  if (q.lengthMinFt && q.lengthMinFt > 0) c.lengthMinFt = q.lengthMinFt;
+  if (q.lengthMaxFt && q.lengthMaxFt > 0) c.lengthMaxFt = q.lengthMaxFt;
   if (q.sleepsMin && q.sleepsMin > 0) c.sleepsMin = q.sleepsMin;
-  c.location = { place: q.zip || DEFAULT_DECK_ZIP, radiusMiles: q.radiusMiles || DEFAULT_DECK_RADIUS_MILES };
+  const place = (q.place || q.zip || "").trim();
+  if (place) c.location = { place, radiusMiles: q.radiusMiles || DEFAULT_DECK_RADIUS_MILES };
   return c;
 }
 

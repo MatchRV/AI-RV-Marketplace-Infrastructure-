@@ -11,35 +11,48 @@ import {
 
 export const SWIPE_URL = "https://matchrv.com/swipe";
 
-/** Spoken on a new shopping attempt, a return, or an explicit restart. Not repeated once chat is underway. */
+/** Asked only after RV type and a rough price are known or declined. Does not assume they have owned an RV. */
+export const SWIPE_OR_CHAT_OFFER =
+  "Would you like your RV Outfitter to keep helping you find the right fit, or try swiping through RVs yourself and compare your favorites?";
+
+export const SWIPE_BASICS_GUIDANCE =
+  "Ask this one question and wait. Do not offer the swipe choice in this same message. " +
+  "If they ask to swipe, send the swipe link immediately and stop; do not keep interviewing. " +
+  "Over or at least is a price floor: do not pass budget_max_usd for a floor. Under or at most is a ceiling in budget_max_usd. " +
+  "An explicit range is a floor plus a ceiling. Around a single number is a rough target, not a hard minimum and maximum. " +
+  "Not sure, or declining, is an answer: pass that step in declined_questions and do not invent a type or a price. " +
+  "Diesel and brand are not filters on the swipe deck. If they named either, remember it in the chat and say the deck will not enforce it.";
+
+/** Spoken once type and price are known or declined. Not repeated after they choose the Outfitter. */
 export const SWIPE_OR_CHAT_GUIDANCE =
-  `Offer swipe or chat and wait. Do not ask nextQuestion in this same message. ` +
-  `Swipe: send ${SWIPE_URL} only. The swipe page already exists. Do not say swiping is missing. Do not offer to build a deck. It is not a ChatGPT swipe UI. The page does not apply type, diesel, budget, or city from the chat. ` +
-  `Chat: on the next turn call outfitter_discovery with request_kind=find_rv (not greeting) and the same fit facts. Ask nextQuestion then. Do not offer this choice again on later interview turns. ` +
-  `If they already picked chat earlier in this conversation, do not read the choice aloud again; ask nextQuestion and keep their facts. If they already picked swipe, send the link only. ` +
-  `A return or an explicit restart (start over, new search) calls outfitter_discovery with request_kind=greeting and still passes known facts. Do not delete remembered facts or lead history.`;
+  `Say this, then wait: ${SWIPE_OR_CHAT_OFFER} Do not assume they have owned an RV. Do not ask nextQuestion in this same message. ` +
+  `If they ask to swipe, or they choose swipe, send ${SWIPE_URL} only. The page already exists. Do not say swiping is missing. Do not offer to build a deck. It is not a ChatGPT swipe UI. ` +
+  `Over or at least is a price floor: add price_min to the link and do not pass budget_max_usd for it. A ceiling is price_max. Around a number is not a hard range. ` +
+  `Diesel and brand are not filters on the deck; say so if they asked for them. ` +
+  `If they choose the Outfitter, call outfitter_discovery with request_kind=find_rv, the same facts, and covered_steps that include a later step only after they answer it (use, activities, and so on). Do not repeat this choice on those later turns. ` +
+  `A return or an explicit restart calls outfitter_discovery with request_kind=greeting and still passes known facts. Ask only a missing type or price, then offer again. Do not delete remembered facts or lead history.`;
 
 export const SWIPE_OR_CHAT_CHOICES = [
   {
-    id: "swipe",
-    label: "Swipe nearby inventory",
-    url: SWIPE_URL,
-    guidance: `Send ${SWIPE_URL} only. The swipe page already exists. Do not say swiping is missing. Do not offer to build a deck. It is not a ChatGPT swipe UI. The page does not apply type, diesel, budget, or city from the chat. Do not call search_rvs to imitate swiping.`,
+    id: "outfitter",
+    label: "Keep helping me find the right fit",
+    guidance: "They chose the Outfitter. Continue the interview from nextQuestion. Do not repeat the swipe choice. Keep every fact they already gave.",
   },
   {
-    id: "outfitter",
-    label: "Chat with the RV Outfitter",
-    guidance: "They chose chat. Call outfitter_discovery with request_kind=find_rv (not greeting) and the same fit facts. Ask nextQuestion, one at a time. Do not repeat this choice on later turns. Keep every fact they already gave.",
+    id: "swipe",
+    label: "Try swiping and compare favorites",
+    url: SWIPE_URL,
+    guidance: `Send this url only. Right swipe likes, left swipe passes. Compare your likes and Change filters are on the page. Do not build a deck in chat. Diesel and brand are not filters.`,
   },
 ];
 
 /** Appended to existing tool descriptions. Does not change names or input schemas. */
 export const SWIPE_OR_CHAT_DESCRIPTION =
-  " OPENING CHOICE: on a new shopping attempt (fresh hello, a named RV, a return, or an explicit restart) offer https://matchrv.com/swipe or chat before any interview question. The swipe page already exists. Never say swiping is missing and never offer to build a deck. It is not a ChatGPT swipe UI and does not apply type, diesel, budget, or city. After they pick chat, do not repeat the choice.";
+  " BASICS THEN CHOICE: ask what kind of RV, then a rough price range, one question at a time, skipping anything already known or declined. Then offer the Outfitter or https://matchrv.com/swipe. If they ask to swipe at any point, send that page immediately. Over or at least is a price floor, not budget_max_usd. The swipe page already exists. Never say swiping is missing and never offer to build a deck. Diesel and brand are not filters. After they pick the Outfitter, do not repeat the choice.";
 
 export const OUTFITTER_PLAYBOOK = `THE ROAD TO THE SALE — SHARED PROFESSIONAL OUTFITTER METHOD (adapted from Randy Sobel, "How to Make a Big Ticket Purchase")
 The Road to the Sale runs from the shopper's first message to the purchase, one step at a time. Never move to the next step before it's time, and never skip one. People buy from people they trust, so stay honest, knowledgeable and trustworthy, and never be pushy. Listen more than you talk. Never use cheesy sales lines like "what would it take…".
-STEP 1, SWIPE OR CHAT BEFORE ANY INTERVIEW: On every new shopping attempt — a fresh hello, a named RV (type, brand, budget, or city), a returning conversation, or an explicit restart / start over / new search — offer https://matchrv.com/swipe or a chat with the Outfitter, and wait. Do not ask a Product Selection question in that same message. The swipe page already exists. Do not say swiping is missing. Do not offer to build a deck. It is not a ChatGPT swipe UI. The page does not apply type, diesel, budget, or city from the chat. If they pick swipe, send only the link. If they pick chat, continue Product Selection and do not offer the choice again. For that opening call, a return, or a restart, call outfitter_discovery with request_kind=greeting even when facts are already known, and still pass those facts. Later interview turns use request_kind=find_rv plus covered_steps. Restarting the choice does not delete remembered facts or lead history. General questions still get a direct answer first.
+STEP 1, TYPE AND PRICE, THEN THE CHOICE: Ask what kind of RV they are picturing, then a rough price range, ONE question at a time. Skip either question when they already answered it, or they said not sure, or they declined it. Do not offer the choice before those two basics, and do not ask use, trips, or towing first. Not sure or a decline is not a trap: offer the choice with the unknown left unknown. Then say: "Would you like your RV Outfitter to keep helping you find the right fit, or try swiping through RVs yourself and compare your favorites?" Do not assume they have owned an RV. If they ask to swipe at any point, send https://matchrv.com/swipe immediately with the facts already known. Over or at least is a price floor (price_min on the link), never budget_max_usd. Under or at most is a ceiling. An explicit range is both. Around one number is a rough target, not a hard narrow range. Diesel and brand are not filters on the deck; say so instead of implying they are applied. If they choose the Outfitter, continue Product Selection and do not repeat the choice. A return or explicit restart keeps known facts, asks only a missing basic, then offers again. Do not delete remembered facts. General questions still get a direct answer first.
 STEP 2, PRODUCT SELECTION: the Golden Ticket questions (MatchRV's internal name for this list; never say "Golden Ticket" to the shopper). Ask them in this order, ONE question per turn, conversationally and honestly, and end each question with a short, honest reason for asking (one sentence, no sales pressure; e.g. "How much time do you get off each year? I ask so I know how much you'll actually be using it, and that helps me point you to the right kind of RV."). Never re-ask anything the shopper already told you, even in passing ("we're a couple" already answers who's going and who's buying; "cash budget is $35k out the door" already answers how they'll pay and the budget).
  0. What they want: a travel trailer, motorhome, fifth wheel, destination trailer, or something like that.
  1. What they plan on using it for: living in it, camping, tailgating, or traveling.

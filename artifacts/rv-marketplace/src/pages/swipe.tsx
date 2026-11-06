@@ -1,24 +1,42 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
-import { Heart, SlidersHorizontal } from "lucide-react";
+import { Link, useSearch } from "wouter";
 import { SEO } from "@/components/seo";
 import { SwipeCardView } from "@/components/swipe/swipe-card";
-import { OnboardingHint } from "@/components/swipe/onboarding-hint";
+import { OnboardingHint, hintAlreadySeen, markHintSeen } from "@/components/swipe/onboarding-hint";
+import { CompareLikes } from "@/components/swipe/compare-likes";
 import { PreFilter, defaultFilter, type DeckFilter } from "@/components/swipe/pre-filter";
 import { DetailSheet } from "@/components/swipe/detail-sheet";
 import { Shortlist } from "@/components/swipe/shortlist";
 import { OutfitterCheckIn } from "@/components/swipe/outfitter-checkin";
 import { NAVY, TEAL } from "@/components/swipe/tokens";
 import { trackSwipe } from "@/lib/swipe-analytics";
-import { DECK_LIMIT, applyCheckIn, isComplete, markCheckIn, shouldCheckIn, skipBroken, startDeck, swipe, type CheckInEdits, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
+import { loadLikes, parseSwipeSearch, saveLikes } from "@/lib/swipe-session";
+import { DECK_LIMIT, applyCheckIn, isComplete, markCheckIn, shouldCheckIn, skipBroken, startDeck, swipe, type RvType, type CheckInEdits, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
-type Phase = "filter" | "loading" | "deck" | "done" | "empty";
+type Phase = "filter" | "loading" | "deck" | "done" | "empty" | "compare";
+
+function filterFromQuery(search: string): DeckFilter {
+  const q = parseSwipeSearch(search);
+  return {
+    ...defaultFilter(),
+    rvType: q.rvType,
+    priceMinUsd: q.priceMinUsd,
+    priceMaxUsd: q.priceMaxUsd,
+    priceTargetUsd: q.priceTargetUsd,
+    lengthMinFt: q.lengthMinFt,
+    lengthMaxFt: q.lengthMaxFt,
+    place: q.zip ? "" : q.place,
+    zip: q.zip,
+  };
+}
 
 export function Swipe() {
+  const search = useSearch();
   const [phase, setPhase] = useState<Phase>("filter");
-  const [filter, setFilter] = useState<DeckFilter>(defaultFilter());
+  const [filter, setFilter] = useState<DeckFilter>(() => filterFromQuery(search));
+  const [hintOpen, setHintOpen] = useState(false);
   const [deck, setDeck] = useState<DeckState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SwipeCard | null>(null);
@@ -31,8 +49,13 @@ export function Swipe() {
   const deckBody = (f: DeckFilter, extra: Record<string, unknown> = {}) => {
     const body: Record<string, unknown> = { ...extra };
     if (f.rvType) body.rvType = f.rvType;
+    if (f.priceMinUsd) body.priceMinUsd = f.priceMinUsd;
     if (f.priceMaxUsd) body.priceMaxUsd = f.priceMaxUsd;
-    if (f.coords) { body.lat = f.coords.lat; body.lng = f.coords.lng; } else body.zip = f.zip;
+    if (f.lengthMinFt) body.lengthMinFt = f.lengthMinFt;
+    if (f.lengthMaxFt) body.lengthMaxFt = f.lengthMaxFt;
+    if (f.coords) { body.lat = f.coords.lat; body.lng = f.coords.lng; }
+    else if (/^\d{5}$/.test(f.zip)) body.zip = f.zip;
+    else if (f.place.trim().length >= 2) body.place = f.place.trim();
     return body;
   };
 
@@ -43,7 +66,8 @@ export function Swipe() {
       const r = await fetch(`${BASE}api/swipe/deck`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = (await r.json().catch(() => ({}))) as { cards?: SwipeCard[]; radiusMiles?: number; zip?: string; guidance?: string };
       if (!r.ok) { setError(data.guidance ?? "We couldn't load RVs right now. Please try again."); setPhase("filter"); return; }
-      const s = startDeck(data.cards ?? [], data.radiusMiles ?? 150);
+      const s = startDeck(data.cards ?? [], data.radiusMiles ?? 150, loadLikes(localStorage));
+      if (!hintAlreadySeen()) setHintOpen(true);
       setZipUsed(data.zip ?? null);
       setDeck(s);
       setPhase(isComplete(s) ? "empty" : "deck");
@@ -65,6 +89,7 @@ export function Swipe() {
     const c = deck.current;
     trackSwipe(liked ? "swipe_like" : "swipe_pass", { unitId: c.id, position: deck.shown.length, rvType: c.rvType, priceUsd: c.priceUsd });
     const next = swipe(deck, liked);
+    if (liked) saveLikes(localStorage, next.liked);
     setDeck(next);
     if (shouldCheckIn(next)) {
       setCheckIn(true);
@@ -81,7 +106,7 @@ export function Swipe() {
   const applyEdits = async (e: CheckInEdits) => {
     if (!deck) return;
     setCheckInBusy(true);
-    const f: DeckFilter = { ...filter, rvType: e.rvType ?? "", priceMaxUsd: e.priceMaxUsd ?? null };
+    const f: DeckFilter = { ...filter, rvType: (e.rvType ?? "") as RvType | "", priceMaxUsd: e.priceMaxUsd ?? null };
     let fresh: SwipeCard[] = [];
     try {
       const extra: Record<string, unknown> = { excludeIds: deck.shown.filter((c) => c.id !== deck.current?.id).map((c) => c.id) };
@@ -106,17 +131,23 @@ export function Swipe() {
             {/* The light logo has wide transparent margins; crop to the wordmark. */}
             <img src="/matchrv-logo-light.png" alt="MatchRV" className="absolute max-w-none" style={{ width: 230, left: -49, top: -51 }} />
           </Link>
-          {(phase === "deck" || phase === "done") && deck && (
-            <div className="flex items-center gap-3 text-sm font-bold" style={{ color: NAVY }}>
-              {phase === "deck" && <span data-testid="deck-progress">{position} / {DECK_LIMIT}</span>}
-              <span className="flex items-center gap-1 rounded-full px-2.5 py-1" style={{ background: NAVY, color: TEAL }}><Heart size={14} fill={TEAL} /> {deck.liked.length}</span>
-              <button type="button" aria-label="Change filters" onClick={() => setPhase("filter")}><SlidersHorizontal size={20} /></button>
-            </div>
-          )}
+          {deck && phase === "deck" && <span data-testid="deck-progress" className="text-sm font-bold" style={{ color: NAVY }}>{position} / {DECK_LIMIT}</span>}
+        </div>
+        <div className="max-w-md mx-auto grid grid-cols-2 gap-2 px-4 py-2">
+          <button type="button" className="rounded-full py-2.5 text-sm font-extrabold" style={{ background: NAVY, color: TEAL }} onClick={() => setPhase("compare")}>Compare your likes</button>
+          <button type="button" className="rounded-full py-2.5 text-sm font-extrabold" style={{ border: `1.5px solid ${NAVY}`, color: NAVY }} onClick={() => { setHintOpen(false); setPhase("filter"); }}>Change filters</button>
+        </div>
+        <div className="max-w-md mx-auto px-4 pb-2">
+          <button type="button" className="text-sm font-bold underline" style={{ color: NAVY }} onClick={() => setHintOpen(true)}>Replay swipe tips</button>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pt-4 pb-10">
+      <main className={`${phase === "compare" ? "max-w-4xl" : "max-w-md"} mx-auto px-4 pt-4 pb-10`}>
+        {hintOpen && phase !== "deck" && (
+          <div className="relative mb-4 h-80">
+            <OnboardingHint open onClose={() => { markHintSeen(); setHintOpen(false); }} />
+          </div>
+        )}
         {(phase === "filter" || phase === "loading") && (
           <>
             <h1 className="text-[1.7rem] font-extrabold leading-tight mb-3" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Swipe to find your RV</h1>
@@ -139,11 +170,12 @@ export function Swipe() {
 
         {phase === "deck" && deck?.current && !checkIn && (
           <div className="relative">
-            <OnboardingHint />
+            <OnboardingHint open={hintOpen} onClose={() => { markHintSeen(); setHintOpen(false); }} />
             <SwipeCardView key={deck.current.id} card={deck.current} onSwipe={onSwipe} onDetails={() => setDetail(deck.current)} onPhotoError={() => setDeck(skipBroken(deck))} />
           </div>
         )}
 
+        {phase === "compare" && <CompareLikes likes={loadLikes(localStorage)} activeIds={deck ? new Set(deck.pool.map((c) => c.id)) : null} onOpen={setDetail} />}
         {phase === "done" && deck && <Shortlist liked={deck.liked} shown={deck.shown.length} onOpen={setDetail} onRestart={() => setPhase("filter")} />}
       </main>
 

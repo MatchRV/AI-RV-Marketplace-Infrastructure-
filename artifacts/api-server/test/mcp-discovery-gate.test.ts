@@ -28,36 +28,36 @@ const COUPLE_FACTS = { rv_types: ['travel_trailer'], location: 'Tacoma, WA', par
 // The rest of the interview, as the model passes it: fit facts plus covered step names only.
 const GT = { use_type: ['camping'], desired_features: ['outdoor_kitchen'], covered_steps: ['activities', 'vacation', 'buyers', 'trade', 'trips'] };
 const COMPLETE = { ...GT, query: 'travel trailer', location: 'Tacoma, WA', radius_miles: 75, party_size: 4, tow_vehicle: 'none yet', no_length_limit: true, payment_method: 'cash', budget_max_usd: 40000, rv_types: ['travel_trailer'] };
-const PRODUCT_SELECTION = ['rv_type', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'trade_details', 'towing', 'storage', 'length_reason', 'length_flex', 'trips', 'location', 'pay_way', 'fin_down', 'fin_monthly', 'fin_cash', 'pay_numbers'];
+const PRODUCT_SELECTION = ['rv_type', 'price_range', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'trade_details', 'towing', 'storage', 'length_reason', 'length_flex', 'trips', 'location', 'pay_way', 'fin_down', 'fin_monthly', 'fin_cash', 'pay_numbers'];
 
 describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () => {
-  it("vague 'travel trailer for my family near Tacoma' offers swipe or chat and returns no RVs", async () => {
+  it("vague 'travel trailer for my family near Tacoma' asks the price range and returns no RVs", async () => {
     const d = await call('search_rvs', { query: 'travel trailer for my family near Tacoma' });
-    expect(d.status).toBe('choose_swipe_or_chat');
+    expect(d.status).toBe('needs_discovery');
+    expect(d.route).toBe('basics');
     expect(d.results).toEqual([]);
-    expect(d.choices[0].url).toBe('https://matchrv.com/swipe');
-    expect(ids(d.nextQuestions)).toEqual(['use']);
+    expect(d.nextQuestion.id).toBe('price_range');
     expect(d.knownSummary.join(' | ')).toContain('travel trailer');
-    expect(d.guidance).toMatch(/do not ask nextQuestion in this same message/i);
     expect(JSON.stringify(d)).not.toMatch(COUNT_TEXT);
     const disc = await call('outfitter_discovery', { rv_types: ['travel_trailer'], location: 'Tacoma, WA' });
-    expect(disc.status).toBe('choose_swipe_or_chat');
-    expect(ids(disc.nextQuestions)).toEqual(['use']);
-    expect(disc.nextQuestion.step).toBe('use');
+    expect(disc.status).toBe('needs_discovery');
+    expect(disc.nextQuestion.id).toBe('price_range');
+    expect(disc.nextQuestion.step).toBe('payment');
   }, 60000);
 
   it('the couple/cash facts (and the same words as search keywords) are never asked again', async () => {
     const open = ['use', 'activities', 'vacation', 'trade', 'towing', 'storage', 'trips'];
     const disc = await call('outfitter_discovery', COUPLE_FACTS);
+    expect(disc.nextQuestions).toHaveLength(1);
+    expect(disc.nextQuestion.id).toBe('use');
+    expect(disc.nextQuestion.prompt).toMatch(/I ask because/);
+    expect(disc.missingForProducts).toEqual(open);
+    expect(JSON.stringify(disc.nextQuestions)).not.toMatch(/how many will|making payments, or paying cash|cash budget/i);
     const search = await call('search_rvs', { query: COUPLE_MSG });
+    expect(search.status).toBe('choose_swipe_or_chat');
+    expect(search.results).toEqual([]);
     expect(search.knownProfile).toMatchObject({ rvTypes: ['travel_trailer'], place: 'Tacoma', sleepers: 2, paymentMethod: 'cash', cashBudgetUsd: 35000 });
-    for (const d of [disc, search]) {
-      expect(d.nextQuestions).toHaveLength(1);
-      expect(d.nextQuestion.id).toBe('use');
-      expect(d.nextQuestion.prompt).toMatch(/I ask because/);
-      expect(d.missingForProducts).toEqual(open);
-      expect(JSON.stringify(d.nextQuestions)).not.toMatch(/how many will|making payments, or paying cash|cash budget/i);
-    }
+    expect(search.choices[1].url).toContain('price_max=35000');
   }, 60000);
 
   it('never re-asks: covered steps walk the list once, in order, then shows exactly 3', async () => {
@@ -112,22 +112,27 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     const d = await call('search_rvs', { location: 'Tacoma, WA', radius_miles: 75, sleeps_min: 4, price_max_usd: 35000, rv_types: ['travel_trailer'], condition: 'any' });
     expect(d.status).toBe('choose_swipe_or_chat');
     expect(d.results).toEqual([]);
-    expect(d.choices[0].url).toBe('https://matchrv.com/swipe');
+    expect(d.choices[1].url).toContain('type=travel_trailer');
+    expect(d.choices[1].url).toContain('price_max=35000');
     expect(ids(d.nextQuestions)).toEqual(['use']);
     expect(d.knownSummary.join(' | ')).toContain('Tacoma');
   }, 60000);
 
   it("only an explicit skip in the shopper's words bypasses; named models do not", async () => {
     const rejected = await call('search_rvs', { query: 'travel trailer near Tacoma', shopper_requested_results_now: true, shopper_words: 'I want a travel trailer for my family' });
-    expect(rejected.status).toBe('choose_swipe_or_chat');
+    expect(rejected.status).toBe('needs_discovery');
+    expect(rejected.route).toBe('basics');
     expect(rejected.results).toEqual([]);
+    expect(rejected.nextQuestion.id).toBe('price_range');
     expect(rejected.waiverRejected).toMatch(/shopper_words/);
     const legacy = await call('search_rvs', { query: 'travel trailer near Tacoma', constraints: { sherpa: { discoveryWaived: true } } });
-    expect(legacy.status).toBe('choose_swipe_or_chat');
+    expect(legacy.status).toBe('needs_discovery');
+    expect(legacy.nextQuestion.id).toBe('price_range');
     expect(legacy.results).toEqual([]);
     const model = await call('search_rvs', { make: 'Tiffin', model: 'Allegro RED', location: 'Tacoma, WA', radius_miles: 150, party_size: 2, payment_method: 'cash', declined_questions: ['payment'] });
-    expect(model.status).toBe('needs_discovery');
-    expect(ids(model.nextQuestions)).toEqual(['use']);
+    expect(model.status).toBe('choose_swipe_or_chat');
+    expect(model.results).toEqual([]);
+    expect(model.knownSummary.join(' | ')).toMatch(/Tiffin/);
     const skip = await call('search_rvs', { query: 'travel trailer near Tacoma', shopper_requested_results_now: true, shopper_words: 'Skip the questions, just show me what you have' });
     expect(skip.status).toBe('shortlist');
     expect(skip.results.length).toBeGreaterThan(0);
@@ -143,8 +148,8 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(disc.nextQuestions).toEqual([]);
     expect(disc.guidance).toMatch(/Answer it directly/);
     const hi = await call('outfitter_discovery', { request_kind: 'greeting' });
-    expect(hi.route).toBe('welcome');
-    expect(hi.welcome).toMatch(/\S/);
+    expect(hi.route).toBe('basics');
+    expect(hi.nextQuestion.id).toBe('rv_type');
   }, 60000);
 
   it('complete answers return a shortlist of exactly 3 model lines, with no match count in what the model sees', async () => {

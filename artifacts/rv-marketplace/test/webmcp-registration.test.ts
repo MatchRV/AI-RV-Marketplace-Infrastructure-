@@ -66,6 +66,11 @@ describe("registerMatchrvTools against a mocked modelContext", () => {
       expect(typeof tool.execute).toBe("function");
       expect(tool.annotations).toBeDefined();
     }
+    const session = registered.find((t) => t.name === "get_shopping_session");
+    const search = registered.find((t) => t.name === "search_inventory");
+    expect(session?.description).toContain("https://matchrv.com/swipe");
+    expect(session?.description).toMatch(/never offer to build/i);
+    expect(search?.description).toContain("https://matchrv.com/swipe");
     const readOnly = registered.filter((t) => t.annotations?.readOnlyHint).map((t) => t.name);
     expect(readOnly).toContain("search_inventory");
     expect(readOnly).toContain("get_shopping_session");

@@ -31,16 +31,17 @@ const COMPLETE = { ...GT, query: 'travel trailer', location: 'Tacoma, WA', radiu
 const PRODUCT_SELECTION = ['rv_type', 'use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'trade_details', 'towing', 'storage', 'length_reason', 'length_flex', 'trips', 'location', 'pay_way', 'fin_down', 'fin_monthly', 'fin_cash', 'pay_numbers'];
 
 describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () => {
-  it("vague 'travel trailer for my family near Tacoma' returns no RVs, only the next question", async () => {
+  it("vague 'travel trailer for my family near Tacoma' offers swipe or chat and returns no RVs", async () => {
     const d = await call('search_rvs', { query: 'travel trailer for my family near Tacoma' });
-    expect(d.status).toBe('needs_discovery');
+    expect(d.status).toBe('choose_swipe_or_chat');
     expect(d.results).toEqual([]);
+    expect(d.choices[0].url).toBe('https://matchrv.com/swipe');
     expect(ids(d.nextQuestions)).toEqual(['use']);
-    expect(d.missingForProducts).toEqual(['use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'towing', 'storage', 'trips', 'pay_way', 'pay_numbers']);
-    expect(d.instruction).toMatch(/ASK, DON'T ASSUME/);
+    expect(d.knownSummary.join(' | ')).toContain('travel trailer');
+    expect(d.guidance).toMatch(/do not ask nextQuestion in this same message/i);
     expect(JSON.stringify(d)).not.toMatch(COUNT_TEXT);
     const disc = await call('outfitter_discovery', { rv_types: ['travel_trailer'], location: 'Tacoma, WA' });
-    expect(disc.status).toBe('needs_discovery');
+    expect(disc.status).toBe('choose_swipe_or_chat');
     expect(ids(disc.nextQuestions)).toEqual(['use']);
     expect(disc.nextQuestion.step).toBe('use');
   }, 60000);
@@ -100,19 +101,23 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(done.appliedConstraints.priceMaxUsd).toBe(Math.round(8000 + 600 * 111.4));
   }, 60000);
 
-  it('the guessed ChatGPT call (sleeps 4 + price, nothing else) is still gated', async () => {
+  it('the guessed ChatGPT call (sleeps 4 + price, nothing else) offers swipe or chat and returns no RVs', async () => {
     const d = await call('search_rvs', { location: 'Tacoma, WA', radius_miles: 75, sleeps_min: 4, price_max_usd: 35000, rv_types: ['travel_trailer'], condition: 'any' });
-    expect(d.status).toBe('needs_discovery');
+    expect(d.status).toBe('choose_swipe_or_chat');
     expect(d.results).toEqual([]);
+    expect(d.choices[0].url).toBe('https://matchrv.com/swipe');
     expect(ids(d.nextQuestions)).toEqual(['use']);
+    expect(d.knownSummary.join(' | ')).toContain('Tacoma');
   }, 60000);
 
   it("only an explicit skip in the shopper's words bypasses; named models do not", async () => {
     const rejected = await call('search_rvs', { query: 'travel trailer near Tacoma', shopper_requested_results_now: true, shopper_words: 'I want a travel trailer for my family' });
-    expect(rejected.status).toBe('needs_discovery');
+    expect(rejected.status).toBe('choose_swipe_or_chat');
+    expect(rejected.results).toEqual([]);
     expect(rejected.waiverRejected).toMatch(/shopper_words/);
     const legacy = await call('search_rvs', { query: 'travel trailer near Tacoma', constraints: { sherpa: { discoveryWaived: true } } });
-    expect(legacy.status).toBe('needs_discovery');
+    expect(legacy.status).toBe('choose_swipe_or_chat');
+    expect(legacy.results).toEqual([]);
     const model = await call('search_rvs', { make: 'Tiffin', model: 'Allegro RED', location: 'Tacoma, WA', radius_miles: 150, party_size: 2, payment_method: 'cash', declined_questions: ['payment'] });
     expect(model.status).toBe('needs_discovery');
     expect(ids(model.nextQuestions)).toEqual(['use']);

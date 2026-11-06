@@ -27,7 +27,7 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
     expect(init.instructions).toContain('Same model — this unit may differ');
   });
 
-  it('keeps every tool name, title, description, input schema and annotation identical to the reviewed 2.2.6 surface', async () => {
+  it('keeps every tool name, title, input schema and annotation identical to the reviewed 2.2.6 surface', async () => {
     const reviewed = JSON.parse(readFileSync(new URL('./fixtures/mcp-tools-v2.2.6.json', import.meta.url), 'utf8'));
     const list = await rpc('tools/list');
     const now = list.tools
@@ -35,7 +35,32 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
     expect(now.map((t: any) => t.name)).toEqual(reviewed.map((t: any) => t.name));
     expect(now).toHaveLength(11);
-    expect(now).toEqual(reviewed);
+    for (const tool of now) {
+      const prev = reviewed.find((t: any) => t.name === tool.name);
+      expect(tool.title).toBe(prev.title);
+      expect(tool.annotations).toEqual(prev.annotations);
+      if (tool.name === 'outfitter_discovery') {
+        const live = structuredClone(tool.inputSchema);
+        const frozen = structuredClone(prev.inputSchema);
+        expect(live.properties.request_kind.enum).toEqual(frozen.properties.request_kind.enum);
+        expect(live.properties.request_kind.description).toMatch(/restart/);
+        expect(live.properties.request_kind.description).toMatch(/swipe-or-chat/);
+        live.properties.request_kind.description = frozen.properties.request_kind.description;
+        expect(live).toEqual(frozen);
+      } else {
+        expect(tool.inputSchema).toEqual(prev.inputSchema);
+      }
+      // Descriptions of the two shopping-entry tools now name the existing swipe page.
+      // Every other description, and every input schema, stays on the reviewed surface.
+      if (tool.name === 'outfitter_discovery' || tool.name === 'search_rvs') {
+        expect(tool.description).toContain('https://matchrv.com/swipe');
+        expect(tool.description).toMatch(/already exists/);
+        expect(tool.description).toMatch(/never offer to build/i);
+        expect(tool.description).not.toBe(prev.description);
+      } else {
+        expect(tool.description).toBe(prev.description);
+      }
+    }
   });
 
   it('search_rvs rows carry a walkthrough and the response carries refine guidance', async () => {

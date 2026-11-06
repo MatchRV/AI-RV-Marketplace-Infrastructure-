@@ -72,14 +72,17 @@ describe('MCP 2.2.7 — Road to the Sale + make/model search', () => {
     expect(diesel.appliedConstraints.fuelType).toBe('diesel');
   }, 60000);
 
-  it('an exact model does not skip the questions, and its count stays internal', async () => {
+  it('an exact model offers swipe or chat first, shows no RVs, and does not leak a count', async () => {
     const { r, d } = await callRaw('search_rvs', { query: 'Tiffin Allegro Red near Tacoma, WA', radius_miles: 150 });
-    expect(d.status).toBe('needs_discovery');
+    expect(d.status).toBe('choose_swipe_or_chat');
     expect(d.results).toEqual([]);
+    expect(d.choices[0].url).toBe('https://matchrv.com/swipe');
     expect(d.modelCount).toBeUndefined();
-    expect(typeof r._meta['matchrv/internal'].modelCount.count).toBe('number');
-    // The model answers "what do you want"; the rest of the list is still asked, in order.
+    expect(r._meta?.['matchrv/internal']?.modelCount).toBeUndefined();
+    expect(d.knownSummary.join(' | ')).toMatch(/Tiffin/);
+    // The model answers "what do you want"; the rest of the list is still queued, not asked in this message.
     expect(d.nextQuestions.map((q: any) => q.id)).toEqual(['use']);
+    expect(d.guidance).toMatch(/do not ask nextQuestion in this same message/i);
     expect(d.missingForProducts).not.toContain('rv_type');
     expect(d.missingForProducts).toEqual(expect.arrayContaining(['who_going', 'buyers', 'trade', 'towing', 'storage', 'trips', 'pay_way']));
   }, 60000);
@@ -90,20 +93,24 @@ describe('MCP 2.2.7 — Road to the Sale + make/model search', () => {
     expect(d.roadToSale.resumeQuestions.map((q: any) => q.id)).toEqual(['use']);
   }, 60000);
 
-  it('outfitter_discovery: Sherpa welcome for a vague opener; skips it when they say what they want', async () => {
+  it('outfitter_discovery: swipe or chat for a vague opener and for a named RV', async () => {
     const hi = await call('outfitter_discovery', { request_kind: 'greeting' });
     expect(hi.route).toBe('welcome');
+    expect(hi.status).toBe('choose_swipe_or_chat');
     expect(hi.welcome).toMatch(/^I'd love to help with anything RV\. Think of me as your Sherpa/);
+    expect(hi.choices[0].url).toBe('https://matchrv.com/swipe');
     const edu = await call('outfitter_discovery', { request_kind: 'general_question' });
     expect(edu.route).toBe('education');
     expect(edu.status).toBe('answer_directly');
     expect(edu.nextQuestions).toEqual([]);
     expect(edu.welcome).toBeUndefined();
+    expect(edu.choices[0].url).toBe('https://matchrv.com/swipe');
     const specific = await call('outfitter_discovery', { make: 'Tiffin', model: 'Phaeton', location: 'Spokane, WA' });
-    expect(specific.route).toBe('specific_rv');
-    expect(specific.welcome).toBeUndefined();
-    expect(specific.nextQuestions.length).toBeGreaterThan(0);
-    expect(specific.nextQuestions.length).toBeLessThanOrEqual(3);
+    expect(specific.status).toBe('choose_swipe_or_chat');
+    expect(specific.welcome).toContain('https://matchrv.com/swipe');
+    expect(specific.knownSummary.join(' | ')).toMatch(/Tiffin/);
+    expect(specific.knownSummary.join(' | ')).toMatch(/Phaeton|Spokane/);
+    expect(specific.nextQuestions.length).toBe(1);
   });
 
   it('outfitter_guide serves the six ways to pay', async () => {

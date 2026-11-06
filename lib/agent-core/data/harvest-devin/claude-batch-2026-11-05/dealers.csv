@@ -1,0 +1,21 @@
+dealer_domain,dealer_name,city,state,result,units,reason
+rvtradesok.com,Trades OK (RV Trades OK),Coburg,OR,skipped_duplicate,0,Devin OR run 2026-11-05 logged robots_blocked (robots.txt disallows /); not retried
+boiseairstream.com,Boise Airstream Adventures,Caldwell,ID,blocked,0,robots.txt disallows ClaudeBot/Claude-Web/anthropic-ai and sets Content-Signal ai-train=no; not crawled; Jonathan to decide
+smithrvidaho.com,Smith RV Idaho,Idaho Falls,ID,blocked,0,"Cloudflare challenge (Just a moment...) to honest UA on /new-rvs-for-sale; stopped, no bypass"
+rvoutletonline.com,RV Outlet Online,,OR,skipped_duplicate,0,"already harvested by Devin OR run (ok, 81 units)"
+royalcoachsales.com,Royal Coach Sales,Eugene,OR,ok,37,"crawl-delay 10 honored; 3 non-RVs (2 pickups, 1 boat) excluded; sold units omitted"
+rivercityrv.com,River City RV,Grants Pass,OR,skipped_duplicate,0,"already harvested by Devin OR run (ok, 36 units)"
+beavercoachsales.com,Beaver Coach Sales & Service,Bend,OR,skipped_duplicate,0,"already harvested by Devin OR run (ok, 36 units)"
+familyfunrv.net,Family Fun RV,Saint Helens,OR,blocked,0,"Cloudflare challenge on homepage; stopped, no bypass"
+iwssales.com,IWS Sales,Mountain Home,ID,blocked,0,robots.txt disallows ClaudeBot/Claude-Web/anthropic-ai and sets Content-Signal ai-train=no; not crawled; Jonathan to decide
+countryroadsrecreation.com,Country Roads Recreation,Florence,OR,skipped_duplicate,0,Devin OR run logged bot_wall 403; not retried
+lewistonrv.com,Lewiston RV,Lewiston,ID,ok,44,"WooCommerce Store API (the site's own public endpoint), 1 request; crawl-delay 30 honored; 22 Sold-tagged omitted"
+oregonrvoutlet.com,Oregon RV Outlet,Grants Pass,OR,skipped_duplicate,0,"already harvested by Devin OR run (ok, 29 units)"
+qrvsllc.com,QRVs LLC,Milwaukie,OR,skipped_duplicate,0,"already harvested by Devin OR run (ok, 3 units)"
+mikesrvsales.com,Mike's RV Sales,Spokane,WA,ok,0,34 RVs held condition_unverified (no condition on any listing); 5 non-RVs excluded
+anydayrv.com,AnyDayRV,Brookings,OR,skipped_duplicate,0,Devin OR run logged robots_blocked; not retried
+playmorerv.com,Play More RV,,ID,blocked,0,"Cloudflare challenge on /inventory/; stopped, no bypass"
+sundance-rv-center.com,Sundance RV Center,Shelton,WA,ok,6,"WooCommerce Store API, 1 request; 77 held condition_unverified; 2 pickups excluded; /inventory/rv redirects to a services page"
+cascadervpdx.com,Cascade RV,Tualatin,OR,ok,23,23 of 23 results; price = Internet (Retail/MSRP ignored)
+adventuretradingrv.com,Adventure Trading RV,,OR,skipped_duplicate,0,Devin OR run logged robots_blocked; not retried
+anniesrvs.com,Annie's RVs,Vancouver,WA,ok,0,"17 RVs held condition_unverified (no condition, VIN or stock on listings)"

@@ -343,6 +343,7 @@ export function knownSummary(p: BuyerProfile): string[] {
   if (p.paymentMethod) k.push(`paying: ${p.paymentMethod.replace(/_/g, " ")}`);
   const b = effectiveBudgetMaxUsd(p);
   if (b != null) k.push(`budget ≤ ${usd(b)}${p.budgetMaxUsd == null && p.outTheDoorBudgetUsd == null ? " (estimated from down + monthly; not a financing approval)" : ""}`);
+  if (p.budgetMinUsd != null) k.push(`price ≥ ${usd(p.budgetMinUsd)}`);
   if (p.budgetDeclined) k.push("budget: prefers not to say (searching without a ceiling)");
   if (p.lengthMaxFt != null) k.push(`max length ${p.lengthMaxFt} ft${p.lengthReason ? ` (${p.lengthReason})` : ""}${p.lengthFlexApproved ? " +2 ft gate open" : ""}`);
   if (p.towVehicle) k.push(`tow vehicle: ${p.towVehicle}`);

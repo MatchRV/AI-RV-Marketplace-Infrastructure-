@@ -130,7 +130,7 @@ export function Outfitter() {
               <div>
                 <h1 className="text-lg font-display font-black tracking-tight">RV Outfitter</h1>
                 <p className="text-white/60 text-xs">
-                  Ask me anything about RVs — or say "help me find one" to get personalized matches
+                  Swipe at https://matchrv.com/swipe, or chat here. The swipe page already exists.
                 </p>
               </div>
             </div>
@@ -388,7 +388,7 @@ export function Outfitter() {
             </form>
             <div className="max-w-3xl mx-auto px-4 pb-2">
               <p className="text-[10px] text-[#3b4949] text-center">
-                Ask any RV question, or say "help me find one" to start a personalized match
+                Swipe existing inventory at https://matchrv.com/swipe, or chat here. The page already exists.
               </p>
             </div>
           </div>

@@ -70,6 +70,11 @@ describe("refining a search", () => {
     expect(refineHint({ shown: 0, requested: 3, verified: 0, noLocalMatches: false }).reason).toBe("no_results");
     expect(refineHint({ shown: 3, requested: 3, verified: 0, noLocalMatches: false }).reason).toBe("no_fully_verified_matches");
     expect(refineHint({ shown: 1, requested: 3, verified: 1, noLocalMatches: false }).reason).toBe("fewer_than_requested");
+    // A full shortlist that only exists because the radius was widened is still thin locally.
+    expect(refineHint({ shown: 3, requested: 3, verified: 3, noLocalMatches: false, expandedForCoverage: true })).toMatchObject({
+      suggested: true,
+      reason: "expanded_for_coverage",
+    });
     const h = refineHint({ shown: 3, requested: 3, verified: 3, noLocalMatches: false });
     expect(h.ask).toMatch(/price.*length.*floorplan.*how far.*type of RV.*new vs\. used/);
     expect(h.rule).toMatch(/ONE thing at a time/);

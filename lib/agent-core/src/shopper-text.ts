@@ -276,7 +276,7 @@ export function constraintsFromQuery(query: string | undefined | null): Partial<
 
 /** Approved Sherpa welcome (use when the first message is a greeting or vague). */
 export const SHERPA_WELCOME =
-  "I'd love to help with anything RV. Think of me as your Sherpa: you wouldn't climb Everest without one, and you don't have to shop for an RV alone either.\n\nTwo ways to start:\n1) Swipe nearby inventory on matchrv.com/swipe (quick look at real coaches around you).\n2) Chat with me as your RV Outfitter and I'll help narrow it down.\n\nWhich do you prefer — swipe or chat?";
+  "I'd love to help with anything RV. Think of me as your Sherpa: you wouldn't climb Everest without one, and you don't have to shop for an RV alone either.\n\nTwo ways to start:\n1) Swipe nearby inventory at https://matchrv.com/swipe (the page already exists; it does not apply type, diesel, budget, or city for you).\n2) Chat with me as your RV Outfitter and I'll help narrow it down.\n\nWhich do you prefer — swipe or chat?";
 
 export type OpeningRoute = "welcome" | "education" | "specific_rv" | "help_choose";
 

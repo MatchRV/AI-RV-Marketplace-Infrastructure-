@@ -55,8 +55,9 @@ describe('MCP release transport', () => {
   it('sherpa gate: asks who sleeps in it (and how they will pay) before showing any trailer', async () => {
     const gated = await rpc('tools/call', { name: 'search_rvs', arguments: { location: 'Fife, WA', constraints: { rvTypes: ['travel_trailer'], maxWeightLbs: 6000, towVehicle: '2021 Ford F-150 3.5L EcoBoost' } } });
     const data = JSON.parse(gated.content.find((c: any) => c.type === 'text').text);
-    expect(data.status).toBe('needs_discovery');
+    expect(data.status).toBe('choose_swipe_or_chat');
     expect(data.results).toEqual([]);
+    expect(data.choices[0].url).toBe('https://matchrv.com/swipe');
     expect(data.nextQuestion.id).toBe('use');
     // Every Golden Ticket question is open except type, area and towing (the truck was given).
     expect(data.missingForProducts).toEqual(['use', 'activities', 'vacation', 'who_going', 'buyers', 'trade', 'storage', 'trips', 'pay_way', 'pay_numbers']);
@@ -84,7 +85,9 @@ describe('MCP release transport', () => {
     expect(list.tools.map((t: any) => t.name)).toContain('outfitter_discovery');
     const disc = await rpc('tools/call', { name: 'outfitter_discovery', arguments: {} });
     const data = JSON.parse(disc.content.find((c: any) => c.type === 'text').text);
+    expect(data.status).toBe('choose_swipe_or_chat');
     expect(data.readyToSearch).toBe(false);
+    expect(data.choices[0].url).toBe('https://matchrv.com/swipe');
     expect(data.nextQuestion.id).toBe('rv_type');
   });
   it('serves buyer-guide knowledge for education questions', async () => {

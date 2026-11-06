@@ -168,7 +168,7 @@ export const TOOL_CONTRACTS: ToolContract[] = [
     name: "search_inventory",
     title: "Search RV inventory",
     description:
-      "Search MatchRV's normalized multi-dealer RV inventory with structured constraints (price, type, length, weight/tow vehicle, sleeps, features, location radius). Updates the shared shopping session the human sees on the page. Returns a match funnel, top results with match scores, and per-unit unknowns. Default mode 'refine' merges with existing constraints, so pass only what changed.",
+      "Search MatchRV's normalized multi-dealer RV inventory with structured constraints (price, type, length, weight/tow vehicle, sleeps, features, location radius). Updates the shared shopping session the human sees on the page. Returns a match funnel, top results with match scores, and per-unit unknowns. Default mode 'refine' merges with existing constraints, so pass only what changed. Swipe already exists at https://matchrv.com/swipe; send that link and never offer to build a deck.",
     schema: searchInventoryInput,
     annotations: { readOnlyHint: true },
   },
@@ -216,7 +216,7 @@ export const TOOL_CONTRACTS: ToolContract[] = [
     name: "get_shopping_session",
     title: "Read the shared shopping session",
     description:
-      "Current shared state of this page: active constraints (including changes the human made in the UI), shortlist, last search funnel, focused unit, and any pending dealer-contact preview. Call it when joining mid-session or after the human says they changed something.",
+      "Current shared state of this page: active constraints (including changes the human made in the UI), shortlist, last search funnel, focused unit, and any pending dealer-contact preview. Call it when joining mid-session or after the human says they changed something. Swipe already exists at https://matchrv.com/swipe; send that link and never offer to build a deck.",
     schema: getShoppingSessionInput,
     annotations: { readOnlyHint: true },
   },

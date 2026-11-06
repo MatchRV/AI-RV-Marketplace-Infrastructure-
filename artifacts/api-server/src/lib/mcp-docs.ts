@@ -11,8 +11,8 @@ interface ToolDoc { purpose: string; outputs: string; cls: ToolClass; classNote:
 
 export const MCP_TOOL_DOCS: Record<string, ToolDoc> = {
   outfitter_discovery: {
-    purpose: "Runs MatchRV's guided RV-fit interview. Returns the one next question to ask (with a short reason for asking) and, once enough fit facts are known, the search constraints for search_rvs.",
-    outputs: "status (needs_discovery, ready_for_products, or answer_directly for general questions); nextQuestion (exactly one, with its step and reason; the trade question includes a followUp); knownSummary (what is already known, so nothing is asked twice); searchConstraints when readyForProducts is true.",
+    purpose: "On a new shopping attempt, a return, or a restart, offers the existing swipe page at https://matchrv.com/swipe or a chat with the Outfitter before any interview question. After the shopper picks chat, returns the one next question and, once enough fit facts are known, the search constraints for search_rvs.",
+    outputs: "status choose_swipe_or_chat (the choice, knownSummary, and the question to ask only after they pick chat), needs_discovery, ready_for_products, or answer_directly. Facts already passed stay in knownSummary. Nothing stored is deleted.",
     cls: "Read", classNote: "Read-only and stateless. Takes RV-fit facts only; stores nothing and contacts no one.",
   },
   outfitter_guide: {

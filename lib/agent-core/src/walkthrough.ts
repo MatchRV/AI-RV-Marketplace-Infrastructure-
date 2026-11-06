@@ -108,6 +108,8 @@ export interface RefineInput {
   requested: number;
   verified: number;
   noLocalMatches: boolean;
+  /** True when the shortlist only filled after the requested radius was widened. */
+  expandedForCoverage?: boolean;
 }
 
 export interface RefineHint {
@@ -123,6 +125,7 @@ export function refineHint(r: RefineInput): RefineHint {
   let reason: string | null = null;
   if (r.noLocalMatches) reason = "no_local_matches";
   else if (r.shown === 0) reason = "no_results";
+  else if (r.expandedForCoverage) reason = "expanded_for_coverage";
   else if (r.verified === 0) reason = "no_fully_verified_matches";
   else if (r.shown < r.requested) reason = "fewer_than_requested";
   return { suggested: reason != null, reason, ask: REFINE_ASK, options: REFINE_OPTIONS, rule: REFINE_RULE };

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { matchRvMcpHandler, MCP_VERSION } from '../src/mcp';
+import { SWIPE_OR_CHAT_DESCRIPTION } from '../src/services/outfitter-guidance';
 
 async function rpc(method: string, params: unknown = {}) {
   const response = await matchRvMcpHandler.fetch(new Request('http://localhost/mcp', {
@@ -27,7 +28,7 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
     expect(init.instructions).toContain('Same model — this unit may differ');
   });
 
-  it('keeps every tool name, title, description, input schema and annotation identical to the reviewed 2.2.6 surface', async () => {
+  it('keeps the 11-tool contract: names, titles, annotations, and input shape except the approved heavy-tow field', async () => {
     const reviewed = JSON.parse(readFileSync(new URL('./fixtures/mcp-tools-v2.2.6.json', import.meta.url), 'utf8'));
     const list = await rpc('tools/list');
     const now = list.tools
@@ -35,7 +36,55 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
     expect(now.map((t: any) => t.name)).toEqual(reviewed.map((t: any) => t.name));
     expect(now).toHaveLength(11);
-    expect(now).toEqual(reviewed);
+    const dropHeavyTow = (schema: any) => {
+      const copy = structuredClone(schema);
+      const visit = (node: any) => {
+        if (!node || typeof node !== 'object') return;
+        if (node.properties && Object.prototype.hasOwnProperty.call(node.properties, 'heavyTowRequired')) delete node.properties.heavyTowRequired;
+        for (const value of Object.values(node)) visit(value);
+      };
+      visit(copy);
+      return copy;
+    };
+    const heavyTow = (schema: any): any => {
+      let found: any;
+      const visit = (node: any) => {
+        if (!node || typeof node !== 'object' || found) return;
+        if (node.properties?.heavyTowRequired) found = node.properties.heavyTowRequired;
+        for (const value of Object.values(node)) visit(value);
+      };
+      visit(schema);
+      return found;
+    };
+    const ranking = "When budget or tow/use-case is known, results rank by fit (budget band + hitch/tow), not by nearest/cheapest. Heavy tow (race/enclosed/heavy trailer) excludes unpublished or zero hitch and Class B/camper vans; if local lots lack three passing units, say so and widen radius rather than padding. ";
+    const widened = " coverage.expanded_for_coverage means the radius was widened to find three fits.";
+    const localSentence = "If coverage.no_local_matches, say there is no local inventory and offer to widen radius.";
+    for (const tool of now) {
+      const prev = reviewed.find((t: any) => t.name === tool.name);
+      expect(tool.title).toBe(prev.title);
+      expect(tool.annotations).toEqual(prev.annotations);
+      const live = structuredClone(tool.inputSchema);
+      const frozen = structuredClone(prev.inputSchema);
+      if (tool.name === 'outfitter_discovery') {
+        expect(live.properties.request_kind.enum).toEqual(['find_rv', 'general_question', 'greeting']);
+        expect(live.properties.request_kind.description).toMatch(/restart/);
+        expect(live.properties.request_kind.description).toMatch(/swipe-or-chat/);
+        live.properties.request_kind.description = frozen.properties.request_kind.description;
+        expect(tool.description.replace('choose_swipe_or_chat, ', '').replace(SWIPE_OR_CHAT_DESCRIPTION, '')).toBe(prev.description);
+      }
+      if (tool.name === 'search_rvs' || tool.name === 'compare_rvs') {
+        expect(heavyTow(tool.inputSchema)).toEqual({ anyOf: [{ type: 'boolean' }, { type: 'null' }] });
+      } else {
+        expect(heavyTow(tool.inputSchema)).toBeUndefined();
+      }
+      expect(dropHeavyTow(live)).toEqual(dropHeavyTow(frozen));
+      if (tool.name === 'search_rvs') {
+        const expected = prev.description.replace(localSentence, ranking + localSentence + widened) + SWIPE_OR_CHAT_DESCRIPTION;
+        expect(tool.description).toBe(expected);
+      } else if (tool.name !== 'outfitter_discovery') {
+        expect(tool.description).toBe(prev.description);
+      }
+    }
   });
 
   it('search_rvs rows carry a walkthrough and the response carries refine guidance', async () => {
@@ -67,7 +116,10 @@ describe('MCP 2.2.7 — refine + walkthrough, tool surface unchanged from 2.2.6'
     const r = body(await rpc('tools/call', { name: 'search_rvs', arguments: { ...SKIP, rv_types: ['class_a'], location: 'Tacoma, WA', radius_miles: 5, price_max_usd: 20000 } }));
     expect(r.status).toBe('shortlist');
     expect(r.refine.suggested).toBe(true);
-    expect(['no_local_matches', 'no_results', 'no_fully_verified_matches', 'fewer_than_requested']).toContain(r.refine.reason);
+    expect(r.refine.reason).toBe('expanded_for_coverage');
+    expect(r.coverage.radius_miles).toBe(5);
+    expect(r.coverage.expanded_for_coverage).toBe(true);
+    expect(r.coverage.expanded_radius_miles).toBeGreaterThan(5);
     expect(r.nextStep).toMatch(/look thin/);
   }, 60000);
 

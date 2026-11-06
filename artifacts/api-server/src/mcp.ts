@@ -23,7 +23,6 @@ import {
   resolveWantedSeries,
   canonicalBrand,
   classifyOpening,
-  knownSummary as roadKnownSummary,
   parseShopperText,
   placeFromText,
   profileFactsFromText,
@@ -36,7 +35,6 @@ import {
   unitMakeModel,
   isServableFact,
   SHERPA_WELCOME,
-  ROAD_TO_SALE_STEPS,
   INTERVIEW_STEPS,
   walkthroughFor,
   refineHint,
@@ -49,7 +47,7 @@ import {
 import { getScreenedInventory } from "./services/screened-inventory";
 function getInventory() { return getScreenedInventory(); }
 
-import { OUTFITTER_GUIDANCE } from "./services/outfitter-guidance";
+import { OUTFITTER_GUIDANCE, SWIPE_OR_CHAT_CHOICES, SWIPE_OR_CHAT_DESCRIPTION, SWIPE_OR_CHAT_GUIDANCE } from "./services/outfitter-guidance";
 import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
@@ -115,7 +113,7 @@ const searchInput = z.object({
 });
 
 const profileInput = z.object({
-  request_kind: z.enum(["find_rv", "general_question", "greeting"]).optional().describe("Optional. find_rv (default): they want help finding an RV. general_question: a question that isn't an RV search, like \"motorhome or fifth wheel?\" (answered directly, no interview). greeting: a hello or vague first message (returns the welcome)."),
+  request_kind: z.enum(["find_rv", "general_question", "greeting"]).optional().describe("Optional. find_rv (default): they already chose chat; return the next interview question. general_question: a question that isn't an RV search, like \"motorhome or fifth wheel?\" (answered directly, no interview). greeting: a new shopping attempt, a return, or an explicit restart. Returns the swipe-or-chat choice even when fit facts are included."),
   ...fitFields,
 });
 
@@ -432,6 +430,31 @@ function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | u
 /** All searches start with the nationwide corpus; the engine applies location filters. */
 function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { return getInventory().units; }
 
+/** Chat has started only after a step was covered or declined. A greeting is always a new attempt, even with old facts. */
+function interviewStarted(input: { covered_steps?: readonly string[]; declined_questions?: readonly string[] }): boolean {
+  return (input.covered_steps?.length ?? 0) > 0 || (input.declined_questions?.length ?? 0) > 0;
+}
+
+function choiceResult(road: { knownSummary: string[]; nextQuestions: { id?: string }[]; missingForProducts: string[] }, extra: Record<string, unknown> = {}) {
+  const next = road.nextQuestions.slice(0, 1);
+  return textResult({
+    ...extra,
+    status: "choose_swipe_or_chat",
+    route: "welcome",
+    welcome: SHERPA_WELCOME,
+    choices: SWIPE_OR_CHAT_CHOICES,
+    knownSummary: road.knownSummary,
+    readyForProducts: false,
+    readyToSearch: false,
+    nextQuestion: next[0] ?? null,
+    nextQuestions: next,
+    missingForProducts: road.missingForProducts,
+    missingEssentials: road.missingForProducts,
+    results: [],
+    guidance: SWIPE_OR_CHAT_GUIDANCE,
+  });
+}
+
 function textResult(payload: unknown, isError = false, meta?: Record<string, unknown>) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload) }],
@@ -531,7 +554,7 @@ function buildMatchRvServer(): McpServer {
         "REFINING RESULTS: " + REFINE_RULE + " search_rvs returns refine (suggested=true when results are thin) with the exact question to ask. " +
         "WALKTHROUGH VIDEOS: search_rvs rows and get_rv include walkthrough. When the shopper likes a unit or model, offer 'Want to see a walkthrough video of the inside?' and share walkthrough.url. kind=dealer_video is a link the dealer put in this unit's listing (not verified to film this exact unit; pass on walkthrough.note); kind=model_search is a YouTube search for the same model, so say it shows the model, not this exact unit ('Same model — this unit may differ'). Never describe a video you haven't seen. " +
         "EDUCATION FIRST: for general questions (towing numbers, motorhome vs trailer, fifth wheel vs travel trailer, families, full-time, used buying, costs, financing), call outfitter_guide and teach from it before mentioning inventory. " +
-        "ROAD TO THE SALE (MCP tools): The shared method above decides the order. outfitter_discovery (pass the fit facts and covered_steps gathered so far; request_kind=greeting for a hello or vague first message) returns the ONE next interview question to ask (nextQuestion, with its step and reason; nextQuestions holds just that one), knownSummary (never re-ask these), and readyForProducts with searchConstraints. For a greeting it returns the Sherpa welcome, and you send it. Questions that aren't an RV search (comparisons like 'what's better, a motorhome or a 5th wheel?', how-to, costs) get answered directly from outfitter_guide with no questions first (route=education, status=answer_directly). " + GOLDEN_TICKET_TEXT + " ENFORCED BY THE SERVER: search_rvs returns status=needs_discovery with results=[] until every question is answered. ASK, DON'T ASSUME: never fill an answer the shopper hasn't given. 'Family' is not a party size, a budget is not a payment method, and silence is not 'no length limit'. When you get needs_discovery, ask its nextQuestion (one question, with its reason) and wait. Skipping counts only when the shopper literally asks: pass shopper_requested_results_now=true with their exact words in shopper_words, show results, then ask resumeQuestions. SHORTLIST: search_rvs returns the 3 best fits (three different model lines) by default (more, up to 10, only if the shopper asks). Present them as a shortlist and never quote or estimate how many RVs matched or exist, including for a named model. After products, ask whether they want to contact the dealer (DEALER INQUIRIES). MAKE/MODEL: always pass make and model to search_rvs when the shopper names them (e.g. make=Tiffin, model=Allegro RED), and never substitute another brand or series without asking. FUEL: pass fuel_type only when the shopper explicitly says gas or diesel; never infer it from 'gas mileage', 'propane' or 'gas or diesel is fine', and never bring fuel up unprompted. LENGTH RULE: when a shopper states a max length, ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer — except for motorhomes (Class A/B/C) at or near 45 ft, where +2 would invent a non-normal length (never offer 47 ft). Only approved comfort flexibility widens the cap, by exactly +2 ft and never past the motorhome ceiling. Pass length_max_ft, length_reason and length_flex_approved. TOW: 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer. Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR. 1-2 sleepers / no kids = couples layouts first; 3+ or kids = sleeping capacity first. Explain every pick in lifestyle terms with its tradeoff, and never pad to three. " +
+        "ROAD TO THE SALE (MCP tools): The shared method above decides the order. STEP 1 is the swipe-or-chat choice on every new shopping attempt, return, and explicit restart, including when they already named an RV. Call outfitter_discovery with request_kind=greeting for that opening even if you pass fit facts and covered_steps; it returns status=choose_swipe_or_chat. Offer the choice and wait. Do not ask nextQuestion in that message. Keep every fact in knownSummary; do not delete remembered facts or lead history. After they pick chat, later turns use request_kind=find_rv plus covered_steps and do not repeat the choice. outfitter_discovery then returns the ONE next interview question (nextQuestion, with its step and reason), knownSummary, and readyForProducts with searchConstraints. Questions that aren't an RV search (comparisons like 'what's better, a motorhome or a 5th wheel?', how-to, costs) get answered directly from outfitter_guide with no interview first (route=education, status=answer_directly); if they have not already chosen, also offer the swipe page. " + GOLDEN_TICKET_TEXT + " ENFORCED BY THE SERVER: search_rvs returns status=needs_discovery with results=[] until every question is answered. ASK, DON'T ASSUME: never fill an answer the shopper hasn't given. 'Family' is not a party size, a budget is not a payment method, and silence is not 'no length limit'. When you get status=choose_swipe_or_chat, offer the choice and wait. Do not ask nextQuestion in that message. When you get needs_discovery after they have chosen chat, ask its nextQuestion (one question, with its reason) and wait. Skipping counts only when the shopper literally asks: pass shopper_requested_results_now=true with their exact words in shopper_words, show results, then ask resumeQuestions. SHORTLIST: search_rvs returns the 3 best fits (three different model lines) by default (more, up to 10, only if the shopper asks). Present them as a shortlist and never quote or estimate how many RVs matched or exist, including for a named model. After products, ask whether they want to contact the dealer (DEALER INQUIRIES). MAKE/MODEL: always pass make and model to search_rvs when the shopper names them (e.g. make=Tiffin, model=Allegro RED), and never substitute another brand or series without asking. FUEL: pass fuel_type only when the shopper explicitly says gas or diesel; never infer it from 'gas mileage', 'propane' or 'gas or diesel is fine', and never bring fuel up unprompted. LENGTH RULE: when a shopper states a max length, ask whether it is for storage (physical fit; NEVER exceed it) or comfort. If comfort, ask permission to keep the gate open 1-2 ft longer — except for motorhomes (Class A/B/C) at or near 45 ft, where +2 would invent a non-normal length (never offer 47 ft). Only approved comfort flexibility widens the cap, by exactly +2 ft and never past the motorhome ceiling. Pass length_max_ft, length_reason and length_flex_approved. TOW: 'Under 6,000 lbs my F-150 can tow' is a WEIGHT CEILING, not a request for the smallest trailer. Tow fit is PRELIMINARY until payload (yellow door sticker) or an exact stated rating is known: quote GVWR (never dry weight alone), tongue = 10-15% of GVWR. 1-2 sleepers / no kids = couples layouts first; 3+ or kids = sleeping capacity first. Explain every pick in lifestyle terms with its tradeoff, and never pad to three. " +
         "MatchRV searches a nationwide US dealer inventory snapshot. It is not restricted to the Pacific Northwest. Coverage varies by dealer, state and requested features. State-only locations (Florida or FL) search that state; city locations (Tampa, FL) use a radius. Ask a relevant Outfitter follow-up when it affects recommendations, and clarify ambiguous preferences in the conversation. Never describe external web listings as MatchRV results. ALWAYS pass location (e.g. location=\"Fife, WA\") for local searches — never present out-of-area inventory as a local match; if coverage.no_local_matches is true, say so and offer to widen radius. Don't cite inventory totals or match counts to the shopper. sleeps=null means neither the dealer nor the manufacturer published sleeping capacity, so say it's not published and needs confirming (never estimate it); towFit='verify tow fit' means nobody has checked it against their vehicle yet, so say so. Never claim towing safety from a generic vehicle model. VIN lookup is not available through this MCP server.",
     },
   );
@@ -604,52 +627,32 @@ function buildMatchRvServer(): McpServer {
     {
       title: "RV fit interview: next question and search constraints",
       description:
-        "Returns the next question in MatchRV's guided RV-fit interview and, once enough fit facts are known, the search constraints for search_rvs. It takes only RV-fit facts: RV type, make or model, use category, desired features, party size, tow vehicle (or what a motorhome will tow), length limit, shopping area and radius, and budget with payment method (plus down and monthly payment if financing). Conversation-only questions (time off, who's buying, a trade-in, planned trips) are tracked by step name in covered_steps; their answers are never sent to MatchRV. Every input is optional, and the shopper may decline any question (declined_questions); a covered or declined step is never asked again. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one. Returns: status (needs_discovery, ready_for_products, or answer_directly when request_kind is general_question); nextQuestion (exactly one, with its step and a short reason for asking, to ask close to word for word; the trade question carries a followUp for when they have one); knownSummary; and, when readyForProducts is true, searchConstraints for search_rvs. Stateless and read-only: pass the fit facts and covered_steps gathered so far on every call.",
+        "Returns the next question in MatchRV's guided RV-fit interview and, once enough fit facts are known, the search constraints for search_rvs. It takes only RV-fit facts: RV type, make or model, use category, desired features, party size, tow vehicle (or what a motorhome will tow), length limit, shopping area and radius, and budget with payment method (plus down and monthly payment if financing). Conversation-only questions (time off, who's buying, a trade-in, planned trips) are tracked by step name in covered_steps; their answers are never sent to MatchRV. Every input is optional, and the shopper may decline any question (declined_questions); a covered or declined step is never asked again. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one. Returns: status (choose_swipe_or_chat, needs_discovery, ready_for_products, or answer_directly when request_kind is general_question); nextQuestion (exactly one, with its step and a short reason for asking, to ask close to word for word; the trade question carries a followUp for when they have one); knownSummary; and, when readyForProducts is true, searchConstraints for search_rvs. Stateless and read-only: pass the fit facts and covered_steps gathered so far on every call." + SWIPE_OR_CHAT_DESCRIPTION,
       inputSchema: mcpSchema(profileInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async (input) => {
       const profile = discoveryProfile(input as Record<string, any>);
-      const nothingKnown = roadKnownSummary(profile).length === 0;
-      if (input.request_kind === "greeting" && nothingKnown) {
-        return textResult({
-          route: "welcome",
-          welcome: SHERPA_WELCOME,
-          step: { id: ROAD_TO_SALE_STEPS[0].id, number: ROAD_TO_SALE_STEPS[0].number, title: ROAD_TO_SALE_STEPS[0].title },
-          readyForProducts: false,
-          readyToSearch: false,
-          nextQuestions: [],
-          nextQuestion: null,
-          choices: [
-            {
-              id: "swipe",
-              label: "Swipe nearby inventory",
-              url: "https://matchrv.com/swipe",
-              guidance: "Ask their shopping area (city or ZIP), then either send them to https://matchrv.com/swipe or call search_rvs with location + shopper_requested_results_now=true and their words. Show mixed nearby cards, at most two from the same dealer, with no bonus for being cheap. Apply budget/length/tow fit rules only after they state them or start reacting.",
-            },
-            {
-              id: "outfitter",
-              label: "Chat with the RV Outfitter",
-              guidance: "Call outfitter_discovery and continue Product Selection. Show a 3-unit shortlist as soon as budget, length, and tow are known — do not wait for every rapport question.",
-            },
-          ],
-          guidance: "Send this welcome (verbatim or very close) and wait for swipe vs chat. Swipe → location then cards (or https://matchrv.com/swipe). Chat → outfitter_discovery. General questions or comparisons go to outfitter_guide.",
-        });
-      }
       const road = assessRoadToSale(profile);
-      const route = input.request_kind === "general_question" ? "education" : profile.makes?.length || profile.models?.length ? "specific_rv" : "help_choose";
-      if (route === "education") {
-        // Not an RV search: answer it directly. No gate, no questions first.
+      if (input.request_kind === "general_question") {
+        // Not an RV search: answer it directly. The swipe page stays available if they have not chosen yet.
         return textResult({
           status: "answer_directly",
-          route,
+          route: "education",
           readyForProducts: road.readyForProducts,
           nextQuestions: [],
           pendingQuestions: road.nextQuestions,
           knownSummary: road.knownSummary,
-          guidance: "This is a question, not an RV search. Answer it directly and honestly (outfitter_guide helps), without asking the interview questions first. Afterward you may offer to help them find one; if they want that, ask pendingQuestions then.",
+          choices: SWIPE_OR_CHAT_CHOICES,
+          guidance: "This is a question, not an RV search. Answer it directly and honestly (outfitter_guide helps), without asking the interview questions first. " + SWIPE_OR_CHAT_GUIDANCE,
         });
       }
+      // Greeting is every new attempt, return, or explicit restart, even when old facts are replayed.
+      // find_rv with no covered or declined step is still the opening, including a named RV.
+      if (input.request_kind === "greeting" || !interviewStarted(input)) {
+        return choiceResult(road);
+      }
+      const route = profile.makes?.length || profile.models?.length ? "specific_rv" : "help_choose";
       return textResult({
         status: road.readyForProducts ? "ready_for_products" : "needs_discovery",
         route,
@@ -691,7 +694,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Search and match RVs",
       description:
-        "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. Inputs are RV-fit facts only (type, make/model, use category, desired features, party size, tow vehicle or towed vehicle, length limit, area and radius, budget with payment method), plus covered_steps / declined_questions: the interview steps already asked or declined, by name only. Conversation-only answers (time off, who's buying, a trade-in, planned trips) are never sent. Every input is optional. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one; contacting a dealer is a separate step that needs the shopper's explicit approval. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every interview step is covered (or declined), it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its step and reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (short search keywords like \"travel trailer sleeps 8\", not the shopper's message), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). When budget or tow/use-case is known, results rank by fit (budget band + hitch/tow), not by nearest/cheapest. Heavy tow (race/enclosed/heavy trailer) excludes unpublished or zero hitch and Class B/camper vans; if local lots lack three passing units, say so and widen radius rather than padding. If coverage.no_local_matches, say there is no local inventory and offer to widen radius. coverage.expanded_for_coverage means the radius was widened to find three fits. Sleeps and other specs are published facts only (dealer listing or the manufacturer's spec for that exact floorplan, with sleepsSourceUrl / *_url); null = not published.",
+        "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. Inputs are RV-fit facts only (type, make/model, use category, desired features, party size, tow vehicle or towed vehicle, length limit, area and radius, budget with payment method), plus covered_steps / declined_questions: the interview steps already asked or declined, by name only. Conversation-only answers (time off, who's buying, a trade-in, planned trips) are never sent. Every input is optional. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one; contacting a dealer is a separate step that needs the shopper's explicit approval. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every interview step is covered (or declined), it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its step and reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (short search keywords like \"travel trailer sleeps 8\", not the shopper's message), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). When budget or tow/use-case is known, results rank by fit (budget band + hitch/tow), not by nearest/cheapest. Heavy tow (race/enclosed/heavy trailer) excludes unpublished or zero hitch and Class B/camper vans; if local lots lack three passing units, say so and widen radius rather than padding. If coverage.no_local_matches, say there is no local inventory and offer to widen radius. coverage.expanded_for_coverage means the radius was widened to find three fits. Sleeps and other specs are published facts only (dealer listing or the manufacturer's spec for that exact floorplan, with sleepsSourceUrl / *_url); null = not published." + SWIPE_OR_CHAT_DESCRIPTION,
       _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -741,6 +744,15 @@ function buildMatchRvServer(): McpServer {
         const profile = withTextFacts(profileFrom(input as unknown as Record<string, unknown>, baseConstraints, { waived: waiver.waived, towVehicleUnknown }), input.query);
         const discovery = assessDiscovery(profile);
         const road = assessRoadToSale(profile);
+        // Opening search, before any interview step: offer the existing swipe page or chat.
+        // Do not stash fit facts on this turn. A verified "just show me" still searches.
+        if (!waiver.waived && !interviewStarted(input)) {
+          return choiceResult(road, {
+            knownProfile: profile,
+            ...(waiver.rejected ? { waiverRejected: waiver.rejected } : {}),
+            ...(parsedQuery.fuelMentionUnclear ? { fuelNote: "The shopper mentioned gas/diesel without a clear request. No fuel filter was applied; ask only if it matters to them." } : {}),
+          });
+        }
         const scope = resolveScope(ctx, input.session_key);
         // Server-side only: stash stated fit facts for this shopper so a later
         // send_dealer_inquiry can attach them. Does not change tool I/O.
@@ -793,7 +805,14 @@ function buildMatchRvServer(): McpServer {
           const walkthrough = ranked[i] ? walkthroughFor(ranked[i].unit) : null;
           return { ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }), ...(walkthrough ? { walkthrough } : {}) };
         });
-        const refine = refineHint({ shown: shortlist.length, requested: shortlistSize, verified: shortlist.filter((r) => (r as Record<string, unknown>).verified === true).length, noLocalMatches: Boolean((compact as Record<string, any>).coverage?.no_local_matches) });
+        const compactCoverage = (compact as Record<string, any>).coverage ?? {};
+        const refine = refineHint({
+          shown: shortlist.length,
+          requested: shortlistSize,
+          verified: shortlist.filter((r) => (r as Record<string, unknown>).verified === true).length,
+          noLocalMatches: Boolean(compactCoverage.no_local_matches),
+          expandedForCoverage: Boolean(compactCoverage.expanded_for_coverage),
+        });
         const { funnel, coverage, note: _note, results: _r, ...rest } = compact as Record<string, any>;
         const makeModelSummary = wantsMakeModel ? makeModelCount(corpus, constraints) : null;
         const inventoryQuality = getInventory().inventoryQuality;
@@ -804,7 +823,14 @@ function buildMatchRvServer(): McpServer {
         return textResult({
           status: "shortlist",
           ...rest,
-          coverage: { requested_area: coverage?.requested_area ?? null, radius_miles: coverage?.radius_miles ?? null, scope: coverage?.scope ?? "nationwide", no_local_matches: coverage?.no_local_matches ?? false },
+          coverage: {
+            requested_area: coverage?.requested_area ?? null,
+            radius_miles: coverage?.radius_miles ?? null,
+            scope: coverage?.scope ?? "nationwide",
+            no_local_matches: coverage?.no_local_matches ?? false,
+            expanded_for_coverage: coverage?.expanded_for_coverage ?? false,
+            expanded_radius_miles: coverage?.expanded_radius_miles ?? null,
+          },
           results: shortlist,
           shortlist: { size: shortlist.length, requested: shortlistSize, note: `These are the ${shortlist.length || "no"} best fits, not a sample. Present them as a shortlist. Don't quote or estimate how many total matches exist.` },
           ...(shortlist.length === 0 ? { guidance: compact.guidance } : {}),

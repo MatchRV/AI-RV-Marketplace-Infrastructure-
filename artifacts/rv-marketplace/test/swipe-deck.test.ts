@@ -3,7 +3,7 @@ import { sendDealerInquiry } from "@/lib/dealer-inquiry";
 import {
   cardFacts, cardPlace, DECK_LIMIT, defaultInquiryMessage, emptyPrefs, inquiryFormValid, inquiryPayload, isComplete,
   pickNext, skipBroken, startDeck, swipe, updatePrefs, fitScore, type SwipeCard,
-  RADIUS_STOPS, radiusLabel, radiusStopIndex,
+  RADIUS_STOPS, initialTravelRadius, radiusLabel, radiusStopIndex,
 } from "@/lib/swipe-deck";
 
 let n = 0;
@@ -174,5 +174,7 @@ describe("travel distance slider", () => {
     expect(RADIUS_STOPS[radiusStopIndex(null)]).toBe(150);
     expect(RADIUS_STOPS[radiusStopIndex(30)]).toBe(25);
     expect(RADIUS_STOPS[radiusStopIndex(3000)]).toBe(3000);
+    expect(initialTravelRadius(30)).toBe(30);
+    expect(initialTravelRadius(null)).toBe(150);
   });
 });

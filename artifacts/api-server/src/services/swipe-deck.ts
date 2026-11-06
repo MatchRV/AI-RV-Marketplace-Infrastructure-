@@ -140,7 +140,8 @@ export async function buildDeckPool(q: DeckQuery, opts: { corpus?: CanonicalUnit
   const cap = opts.perDealerCap ?? DECK_PER_DEALER_CAP;
   const photoCheck = opts.photoCheck ?? checkPhoto;
   const constraints = deckConstraints(q);
-  const outcome = runSearch(corpus, constraints);
+  // The shopper's radius is a hard cap. Coverage widening stays on Outfitter search, not this deck.
+  const outcome = runSearch(corpus, constraints, null, { skipRadiusExpand: true });
   const ranked = outcome.results.filter((m) => m.hardStatus === "pass");
   const perDealer = new Map<string, number>();
   const candidates: UnitMatch[] = [];

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LocateFixed } from "lucide-react";
-import { RADIUS_STOPS, RV_TYPE_LABELS, radiusLabel, radiusStopIndex, type RvType } from "@/lib/swipe-deck";
+import { RADIUS_STOPS, RV_TYPE_LABELS, initialTravelRadius, radiusLabel, radiusStopIndex, type RvType } from "@/lib/swipe-deck";
 import { NAVY, TEAL, LINE } from "./tokens";
 
 export interface DeckFilter {
@@ -27,8 +27,7 @@ export function PreFilter({ initial, onStart, busy }: { initial: DeckFilter; onS
   const [maxText, setMaxText] = useState(initial.priceMaxUsd?.toString() ?? "");
   const [lenMinText, setLenMinText] = useState(initial.lengthMinFt?.toString() ?? "");
   const [lenMaxText, setLenMaxText] = useState(initial.lengthMaxFt?.toString() ?? "");
-  const [radiusIndex, setRadiusIndex] = useState(radiusStopIndex(initial.radiusMiles));
-  const radius = RADIUS_STOPS[radiusIndex];
+  const [radiusMiles, setRadiusMiles] = useState(() => initialTravelRadius(initial.radiusMiles));
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
   const label = "block text-xs font-bold uppercase tracking-wider mb-1.5";
@@ -59,7 +58,7 @@ export function PreFilter({ initial, onStart, busy }: { initial: DeckFilter; onS
 
   return (
     <form className="rounded-3xl bg-white p-5" style={{ border: `1px solid ${LINE}`, boxShadow: "0 10px 30px rgba(11,31,58,.08)" }}
-      onSubmit={(e) => { e.preventDefault(); if (placeOk && priceOk && lengthOk) onStart({ ...f, priceMinUsd: priceMin, priceMaxUsd: priceMax, lengthMinFt: lengthMin, lengthMaxFt: lengthMax, radiusMiles: radius }); }}>
+      onSubmit={(e) => { e.preventDefault(); if (placeOk && priceOk && lengthOk) onStart({ ...f, priceMinUsd: priceMin, priceMaxUsd: priceMax, lengthMinFt: lengthMin, lengthMaxFt: lengthMax, radiusMiles }); }}>
       <p className="text-sm text-slate-600 mb-4">Swipe right to like and left to pass. Your likes stay when you change filters.</p>
       <label className={label} style={{ color: NAVY }} htmlFor="swipe-type">RV type</label>
       <select id="swipe-type" className={field} style={{ border: `1px solid ${LINE}`, color: NAVY }} value={f.rvType} onChange={(e) => setF({ ...f, rvType: e.target.value as RvType | "" })}>
@@ -105,11 +104,11 @@ export function PreFilter({ initial, onStart, busy }: { initial: DeckFilter; onS
       </div>
       <div className="mt-4 flex items-baseline justify-between">
         <label className={label} style={{ color: NAVY }} htmlFor="swipe-radius">How far will you travel?</label>
-        <span className="text-sm font-bold" style={{ color: NAVY }} data-testid="swipe-radius-value">{radiusLabel(radius)}</span>
+        <span className="text-sm font-bold" style={{ color: NAVY }} data-testid="swipe-radius-value">{radiusLabel(radiusMiles)}</span>
       </div>
-      <input id="swipe-radius" type="range" min={0} max={RADIUS_STOPS.length - 1} step={1} value={radiusIndex}
-        aria-valuetext={radiusLabel(radius)} className="w-full" style={{ accentColor: NAVY }}
-        onChange={(e) => setRadiusIndex(Number(e.target.value))} />
+      <input id="swipe-radius" type="range" min={0} max={RADIUS_STOPS.length - 1} step={1} value={radiusStopIndex(radiusMiles)}
+        aria-valuetext={radiusLabel(radiusMiles)} className="w-full" style={{ accentColor: NAVY }}
+        onChange={(e) => setRadiusMiles(RADIUS_STOPS[Number(e.target.value)] ?? radiusMiles)} />
       <div className="flex justify-between text-xs text-slate-500"><span>5 miles</span><span>Nationwide</span></div>
       {locError && <p className="mt-2 text-sm text-rose-700">{locError}</p>}
       {!placeOk && <p className="mt-2 text-sm text-slate-600">Enter a city or ZIP, or choose Near me. We don't pick a city for you.</p>}

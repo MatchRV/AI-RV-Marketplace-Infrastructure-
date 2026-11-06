@@ -15,4 +15,9 @@ describe("swipe pre-filter travel distance", () => {
     const html = renderToStaticMarkup(<PreFilter initial={{ ...defaultFilter(), radiusMiles: 3000 }} onStart={() => {}} busy={false} />);
     expect(html).toContain(">Nationwide<");
   });
+  it("shows an explicit 30-mile handoff as 30 miles, not the nearest slider stop", () => {
+    const html = renderToStaticMarkup(<PreFilter initial={{ ...defaultFilter(), place: "Bremerton, WA", radiusMiles: 30 }} onStart={() => {}} busy={false} />);
+    expect(html).toContain(">30 miles<");
+    expect(html).not.toContain(">25 miles<");
+  });
 });

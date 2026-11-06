@@ -23,6 +23,7 @@ describe("swipe handoff query", () => {
     expect(q).toMatchObject({ rvType: "class_a", priceMinUsd: 200000, priceMaxUsd: null, place: "Tacoma, WA" });
   });
   it("keeps how far they'll travel, from 5 miles up to nationwide", () => {
+    expect(parseSwipeSearch("?place=Bremerton,%20WA&radius_miles=30")).toMatchObject({ place: "Bremerton, WA", radiusMiles: 30 });
     expect(parseSwipeSearch("?place=Bremerton,%20WA&radius_miles=50")).toMatchObject({ place: "Bremerton, WA", radiusMiles: 50 });
     expect(parseSwipeSearch("?radius_miles=any").radiusMiles).toBe(3000);
     expect(parseSwipeSearch("?radius_miles=nationwide").radiusMiles).toBe(3000);

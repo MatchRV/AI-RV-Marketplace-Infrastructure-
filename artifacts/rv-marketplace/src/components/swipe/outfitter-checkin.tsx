@@ -40,7 +40,7 @@ export function OutfitterCheckIn({ initial, busy, onApply, onDismiss }: {
         <div>
           <label className={lab} style={{ color: NAVY }} htmlFor="ci-radius">Distance</label>
           <select id="ci-radius" className={field} style={{ border: `1px solid ${LINE}`, color: NAVY }} value={e.radiusMiles ?? ""} onChange={(x) => setE({ ...e, radiusMiles: x.target.value ? Number(x.target.value) : null })}>
-            {RADIUS_STOPS.map((r) => <option key={r} value={r}>{radiusLabel(r)}</option>)}
+            {(e.radiusMiles != null && !(RADIUS_STOPS as readonly number[]).includes(e.radiusMiles) ? [...RADIUS_STOPS, e.radiusMiles].sort((a, b) => a - b) : RADIUS_STOPS).map((r) => <option key={r} value={r}>{radiusLabel(r)}</option>)}
           </select>
         </div>
         <div className="col-span-2">

@@ -6,7 +6,7 @@ import { buildDeckPool, deckConstraints, deckCoverage, deckEligible, deckRadius,
 import { getScreenedInventory } from "../src/services/screened-inventory";
 import { inventoryQualityIssues } from "../src/services/mcp-inventory-quality";
 import { outboundSummary, resetOutboundClicks } from "../src/services/outbound-clicks";
-import { nearestZip } from "../src/services/zip-centroids";
+import { lookupZipCentroid, nearestZip } from "../src/services/zip-centroids";
 import swipeRouter from "../src/routes/swipe";
 
 const inv = () => getScreenedInventory();
@@ -209,5 +209,28 @@ describe("travel distance", () => {
     expect(near.cards.length).toBeGreaterThan(0);
     for (const c of near.cards) expect(c.distanceMiles ?? 0).toBeLessThanOrEqual(25);
     expect(wide.stats.matched).toBeGreaterThan(near.stats.matched);
+  });
+  it("does not widen past an explicit radius when the nearby lot is sparse", async () => {
+    const zip = "98337";
+    const here = lookupZipCentroid(zip);
+    expect(here).not.toBeNull();
+    const base = sample();
+    const unitAt = (id: string, lat: number, lng: number): CanonicalUnit => ({
+      ...base,
+      id,
+      priceUsd: { value: 220000, source: "dealer_listing", confidence: "high" },
+      title: `${base.title} ${id}`,
+      dealer: { ...base.dealer, id, name: `${base.dealer.name} ${id}`, city: "Bremerton", state: "WA", lat, lng },
+    });
+    const pool = await buildDeckPool({
+      zip, radiusMiles: 25, priceMinUsd: 200000,
+    }, {
+      photoCheck: ok,
+      corpus: [unitAt("near-1", here!.lat, here!.lng), unitAt("far-1", here!.lat, here!.lng + 0.8)],
+    });
+    expect(pool.appliedConstraints.location?.radiusMiles).toBe(25);
+    expect(pool.cards.map((c) => c.id)).toContain("near-1");
+    expect(pool.cards.map((c) => c.id)).not.toContain("far-1");
+    for (const c of pool.cards) expect(c.distanceMiles ?? 0).toBeLessThanOrEqual(25);
   }, 60000);
 });

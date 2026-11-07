@@ -42,7 +42,10 @@ describe("dealer location from the unit's own evidence", () => {
   });
   it("geocodes published city spellings that already exist in the gazetteer", () => {
     expect(resolveDealerLocation("Schereville", "IN", "Camper Liquidators", "camperliquidators.com")?.city).toBe("Schererville");
-    expect(resolveDealerLocation("Battleground", "WA", "McCord's Vancouver RV", "vancouverrv.com")).not.toBeNull();
+    const battleGround = resolveDealerLocation("Battleground", "WA", "Independent Lot", "not-in-registry.example");
+    expect(battleGround?.city).toBe("Battle Ground");
+    expect(haversineMiles(battleGround!.coords, { lat: 45.781, lng: -122.5337 })).toBeLessThan(1);
+    expect(resolveDealerLocation("Battleground", "OR", "Some Dealer", "example-or.test")).toBeNull();
     expect(resolveDealerLocation("Winston Salem", "NC", "Blue Compass RV", "bluecompassrv.com")).not.toBeNull();
     expect(resolveDealerLocation("North Charlestion", "SC", "Charleston Paradise", "charlestonparadise.com")).not.toBeNull();
     expect(resolveDealerLocation("Salt Lake", "UT", "Bish's RV", "bishs.com")?.city).toBe("Salt Lake City");
@@ -54,6 +57,10 @@ describe("dealer location from the unit's own evidence", () => {
     expect(resolveDealerLocation("", "WA", "RV Country - Mt. Vernon", "rvcountry.com")).toBeNull();
     expect(resolveDealerLocation("", "WA", "Fife RV Center", "fifervcenter.com")).toBeNull();
     expect(resolveDealerLocation("", "WA", "Apache Camping Center (3 WA locations)", "apachecamping.com")).toBeNull();
+    expect(resolveDealerLocation("unknown", "WA", "RV Country - Mt. Vernon", "rvcountry.com")).toBeNull();
+    expect(resolveDealerLocation("WA", "WA", "RV Country - Mt. Vernon", "rvcountry.com")).toBeNull();
+    expect(resolveDealerLocation("Not A Real Place", "WA", "RV Country - Mt. Vernon", "rvcountry.com")).toBeNull();
+    expect(resolveDealerLocation("Fife", "WA", "RV Country - Mt. Vernon", "rvcountry.com")?.city).toBe("Fife");
     expect(resolveDealerLocation("Not A Real Place", "WA", "Mystery Dealer", "mystery.example")).toBeNull();
   });
   it("keeps a stated lot city for Poulsbo, Fife RV, and RV Country Fife", () => {

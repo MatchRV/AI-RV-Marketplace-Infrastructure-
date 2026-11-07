@@ -75,7 +75,6 @@ const CITY_ALIASES_EXTRA: Record<string, string> = {
   "ft pierce": "fort pierce",
   // Spellings already in the gazetteer. No new coordinates.
   schereville: "schererville",
-  battleground: "battle ground",
   "north charlestion": "north charleston",
   "salt lake": "salt lake city",
 };
@@ -118,17 +117,22 @@ export function resolveDealerLocation(city: string, state: string, dealerName?: 
   const raw = (city || "").trim();
   const host = (dealerDomain || "").replace(/^www\./i, "").toLowerCase();
   const multi = MULTI_LOT_DOMAINS.has(host);
-  const candidates = raw && raw.toLowerCase() !== "unknown" && raw.toUpperCase() !== st ? dealerCityCandidates(raw) : [];
+  const ownCity = raw && raw.toLowerCase() !== "unknown" && raw.toUpperCase() !== st ? dealerCityCandidates(raw) : [];
   const fromName = cityFromDealerName(dealerName);
   const reg = host ? lookupDealer(host) : null;
-  // A blank city plus the chain's own default label is not this unit's lot.
+  // The chain's default label is not evidence when this unit's own city did not resolve.
   const nameIsRegistryDefault = Boolean(fromName && reg && foldCity(fromName) === foldCity(reg.city));
-  if (fromName && !(multi && !raw && nameIsRegistryDefault)) candidates.push(...dealerCityCandidates(fromName).slice(0, 1));
-  // Curated single-store registry city (wa-dealers.json), same state only.
-  if (reg && reg.state.toUpperCase() === st && !multi && !/\blocations?\b/i.test(dealerName ?? "")) candidates.push(reg.city);
-  for (const c of candidates) {
+  for (const c of ownCity) {
     const hit = resolveCityInState(c, st);
     if (hit) return hit;
+  }
+  if (fromName && !(multi && nameIsRegistryDefault)) {
+    const hit = resolveCityInState(fromName, st);
+    if (hit) return hit;
+  }
+  // Curated single-store registry city (wa-dealers.json), same state only.
+  if (reg && reg.state.toUpperCase() === st && !multi && !/\blocations?\b/i.test(dealerName ?? "")) {
+    return resolveCityInState(reg.city, st);
   }
   return null;
 }
@@ -147,7 +151,10 @@ function gazetteerCoords(city: string, st: string): LatLng | null {
 }
 
 function resolveCityInState(city: string, st: string): { coords: LatLng; city: string } | null {
-  const aliased = CITY_ALIASES_EXTRA[city.toLowerCase()] ?? city;
+  // "Battleground" is Battle Ground, WA in this table. The same word in another state is not that town.
+  const aliased = (st === "WA" && city.toLowerCase() === "battleground")
+    ? "battle ground"
+    : (CITY_ALIASES_EXTRA[city.toLowerCase()] ?? city);
   // State-qualified gazetteer first: unambiguous ("Lakewood|CO" ≠ "Lakewood|WA").
   if (st) {
     const g = gazetteerCoords(aliased, st);

@@ -118,7 +118,15 @@ export function dealerCityCandidates(city: string | null | undefined): string[] 
 /** City named in a dealer's display name: "Lazydays RV of Vancouver", "ClickIt RV - Union Gap". */
 export function cityFromDealerName(name: string | null | undefined): string | null {
   const m = /(?:\s[-–]\s|\bof\s)([A-Za-z][A-Za-z .']+?)\s*$/i.exec(name ?? "");
-  return m ? m[1].trim() : null;
+  if (!m) return null;
+  const parts = m[1].trim().split(/\s+/);
+  // "Bath Ny" repeats the state already stored on the unit. "Union Gap" does not.
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1].replace(/\./g, "");
+    if (/^[A-Za-z]{2}$/.test(last) && US_STATE_CODES.has(last.toUpperCase())) parts.pop();
+  }
+  const city = parts.join(" ").trim();
+  return city || null;
 }
 
 export const US_STATE_CODES = new Set(

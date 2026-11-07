@@ -73,7 +73,19 @@ const CITY_ALIASES_EXTRA: Record<string, string> = {
   "ft worth": "fort worth",
   "ft. worth": "fort worth",
   "ft pierce": "fort pierce",
+  // Spellings already in the gazetteer. No new coordinates.
+  schereville: "schererville",
+  battleground: "battle ground",
+  "north charlestion": "north charleston",
+  "salt lake": "salt lake city",
 };
+
+/** Chains whose registry city is a default store, not this unit's lot. */
+const MULTI_LOT_DOMAINS = new Set(["poulsborv.com", "fifervcenter.com", "rvcountry.com"]);
+
+function foldCity(city: string): string {
+  return city.toLowerCase().replace(/\./g, "").replace(/\bmt\b/g, "mount").replace(/\s+/g, " ").trim();
+}
 
 /**
  * Max plausible miles from a state's centroid to any point in it. City tables
@@ -104,29 +116,54 @@ export function resolveDealerCoords(city: string, state: string, dealerName?: st
 export function resolveDealerLocation(city: string, state: string, dealerName?: string | null, dealerDomain?: string | null): { coords: LatLng; city: string } | null {
   const st = (state || "").toUpperCase();
   const raw = (city || "").trim();
+  const host = (dealerDomain || "").replace(/^www\./i, "").toLowerCase();
+  const multi = MULTI_LOT_DOMAINS.has(host);
   const candidates = raw && raw.toLowerCase() !== "unknown" && raw.toUpperCase() !== st ? dealerCityCandidates(raw) : [];
   const fromName = cityFromDealerName(dealerName);
-  if (fromName) candidates.push(...dealerCityCandidates(fromName).slice(0, 1));
+  const reg = host ? lookupDealer(host) : null;
+  // A blank city plus the chain's own default label is not this unit's lot.
+  const nameIsRegistryDefault = Boolean(fromName && reg && foldCity(fromName) === foldCity(reg.city));
+  if (fromName && !(multi && !raw && nameIsRegistryDefault)) candidates.push(...dealerCityCandidates(fromName).slice(0, 1));
   // Curated single-store registry city (wa-dealers.json), same state only.
-  // Multi-location dealers are skipped: their default city is not the unit's store.
-  const reg = dealerDomain ? lookupDealer(dealerDomain) : null;
-  if (reg && reg.state.toUpperCase() === st && !/\blocations?\b/i.test(dealerName ?? "")) candidates.push(reg.city);
+  if (reg && reg.state.toUpperCase() === st && !multi && !/\blocations?\b/i.test(dealerName ?? "")) candidates.push(reg.city);
   for (const c of candidates) {
     const hit = resolveCityInState(c, st);
-    if (hit) return { coords: hit, city: c };
+    if (hit) return hit;
   }
   return null;
 }
 
-function resolveCityInState(city: string, st: string): LatLng | null {
+function titleCity(city: string): string {
+  return city.replace(/(^|[\s'-])\w/g, (c) => c.toUpperCase());
+}
+
+function gazetteerCoords(city: string, st: string): LatLng | null {
+  const key = cityKey(city, st);
+  for (const alt of [key, key.replace(/-/g, " "), key.replace(/ /g, "-")]) {
+    const g = DEALER_CITY_COORDS[alt];
+    if (g) return { lat: g[0], lng: g[1] };
+  }
+  return null;
+}
+
+function resolveCityInState(city: string, st: string): { coords: LatLng; city: string } | null {
   const aliased = CITY_ALIASES_EXTRA[city.toLowerCase()] ?? city;
   // State-qualified gazetteer first: unambiguous ("Lakewood|CO" ≠ "Lakewood|WA").
   if (st) {
-    const g = DEALER_CITY_COORDS[cityKey(aliased, st)];
-    if (g) return { lat: g[0], lng: g[1] };
+    const g = gazetteerCoords(aliased, st);
+    if (g) return { coords: g, city: titleCity(aliased) };
   }
   const hit = resolveDealerCoordsUnchecked(aliased, st);
-  return hit && coordsMatchState(hit, st) ? hit : null;
+  return hit && coordsMatchState(hit, st) ? { coords: hit, city: titleCity(aliased) } : null;
+}
+
+/** Poulsbo's stored name is the chain default ("Poulsbo Rv Mt. Vernon") on every lot. */
+export function lotDisplayName(name: string, city: string, domain?: string | null): string {
+  const labeled = chainStoreName(name, city);
+  const host = (domain || "").replace(/^www\./i, "").toLowerCase();
+  const place = (city || "").trim();
+  if (host !== "poulsborv.com" || !place || /^unknown$/i.test(place)) return labeled;
+  return `Poulsbo RV of ${place}`;
 }
 
 /** Camping World stores all share one domain; never label one store with another's city. */
@@ -301,7 +338,7 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
       stats.relocatedFromTitle++;
     }
 
-    u.dealer.name = chainStoreName(u.dealer.name, u.dealer.city);
+    const dealerDomain = u.provenance?.dealerDomain ?? u.dealer.id.split(":")[0];
     if (u.dealer.lat !== null && u.dealer.lng !== null
       && (!coordsMatchState({ lat: u.dealer.lat, lng: u.dealer.lng }, u.dealer.state) || isStateCentroid(u.dealer.lat, u.dealer.lng))) {
       u.dealer.lat = null;
@@ -322,6 +359,7 @@ export function enrichSnapshotUnits(units: CanonicalUnit[], now = new Date()): E
         stats.stillMissingCoords++;
       }
     }
+    u.dealer.name = lotDisplayName(u.dealer.name, u.dealer.city || "", dealerDomain);
 
     if (u.sleeps.value !== null) {
       stats.sleepsAlreadyKnown++;

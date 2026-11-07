@@ -2,6 +2,10 @@ import { runSearch, type CanonicalUnit, type Constraints, type Fact } from "@wor
 import { getInventory } from "./agent-inventory";
 
 const published = (fact: Fact<number>) => fact.value !== null && fact.value > 0 && (fact.source === "dealer_listing" || fact.source === "derived_text");
+/** Motorhomes are not towables. A missing GVWR/dry weight stays unknown; it does not hide the coach. */
+const MOTORHOME_TYPES = new Set(["class_a", "class_b", "class_c"]);
+export const SEARCHABLE_UNITS_NOTE =
+  "In-page WebMCP search_inventory only: a published price, length, sleeps, and photo, plus a published weight on towables. A motorhome is not withheld only because that weight is unpublished. This count is not the listing total and not the ChatGPT search_rvs corpus.";
 export function usablePhotoUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -16,7 +20,7 @@ export function isSearchReady(unit: CanonicalUnit): boolean {
   return unit.status === "available" && unit.year > 1980 &&
     !!unit.make && !!unit.model && !/unknown|unspecified/i.test(`${unit.make} ${unit.model}`) &&
     published(unit.priceUsd) && published(unit.lengthFt) && published(unit.sleeps) &&
-    (published(unit.gvwrLbs) || published(unit.dryWeightLbs)) &&
+    (MOTORHOME_TYPES.has(unit.rvType) || published(unit.gvwrLbs) || published(unit.dryWeightLbs)) &&
     !!unit.dealer.name && !!unit.dealer.city && !!unit.dealer.state &&
     unit.images.some(usablePhotoUrl);
 }

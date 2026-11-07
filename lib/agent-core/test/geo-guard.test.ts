@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { chainStoreName, coordsMatchState, resolveDealerCoords } from "../src/enrich-snapshot.js";
+import { chainStoreName, coordsMatchState, lotDisplayName, resolveDealerCoords, resolveDealerLocation } from "../src/enrich-snapshot.js";
+import { cityFromDealerName } from "../src/listing-reconcile.js";
 import { haversineMiles } from "../src/geo.js";
 
 const TACOMA = { lat: 47.2529, lng: -122.4443 };
@@ -21,5 +22,49 @@ describe("chain store naming", () => {
     expect(chainStoreName("Camping World of Woodland", "Fife")).toBe("Camping World of Fife");
     expect(chainStoreName("Camping World of Woodland", "Woodland")).toBe("Camping World of Woodland");
     expect(chainStoreName("Tacoma RV", "Fife")).toBe("Tacoma RV");
+  });
+  it("labels each Poulsbo lot by that lot's city, not the chain default", () => {
+    expect(lotDisplayName("Poulsbo Rv Mt. Vernon", "Kent", "poulsborv.com")).toBe("Poulsbo RV of Kent");
+    expect(lotDisplayName("Poulsbo Rv Mt. Vernon", "Sumner", "poulsborv.com")).toBe("Poulsbo RV of Sumner");
+    expect(lotDisplayName("Poulsbo Rv Mt. Vernon", "Everett", "poulsborv.com")).toBe("Poulsbo RV of Everett");
+    expect(lotDisplayName("Poulsbo Rv Mt. Vernon", "Mount Vernon", "poulsborv.com")).toBe("Poulsbo RV of Mount Vernon");
+    expect(lotDisplayName("Poulsbo Rv Mt. Vernon", "", "poulsborv.com")).toBe("Poulsbo Rv Mt. Vernon");
+  });
+});
+
+describe("dealer location from the unit's own evidence", () => {
+  it("reads a lot city out of a dealer name and drops a repeated state abbreviation", () => {
+    expect(cityFromDealerName("Meyers Rv Superstore - Bath Ny")).toBe("Bath");
+    expect(cityFromDealerName("Meyers Rv Superstore - Ripley Wv")).toBe("Ripley");
+    expect(cityFromDealerName("ClickIt RV - Union Gap")).toBe("Union Gap");
+    expect(cityFromDealerName("RV Country - Mt. Vernon")).toBe("Mt. Vernon");
+    expect(cityFromDealerName("Poulsbo Rv Mt. Vernon")).toBeNull();
+  });
+  it("geocodes published city spellings that already exist in the gazetteer", () => {
+    expect(resolveDealerLocation("Schereville", "IN", "Camper Liquidators", "camperliquidators.com")?.city).toBe("Schererville");
+    expect(resolveDealerLocation("Battleground", "WA", "McCord's Vancouver RV", "vancouverrv.com")).not.toBeNull();
+    expect(resolveDealerLocation("Winston Salem", "NC", "Blue Compass RV", "bluecompassrv.com")).not.toBeNull();
+    expect(resolveDealerLocation("North Charlestion", "SC", "Charleston Paradise", "charlestonparadise.com")).not.toBeNull();
+    expect(resolveDealerLocation("Salt Lake", "UT", "Bish's RV", "bishs.com")?.city).toBe("Salt Lake City");
+  });
+  it("uses a blank-city dealer's own store name, and does not drop a multi-lot chain onto its default city", () => {
+    expect(resolveDealerLocation("", "NY", "Meyers Rv Superstore - Bath Ny", "meyersrvsuperstores.com")?.city).toBe("Bath");
+    expect(resolveDealerLocation("", "WA", "ClickIt RV - Union Gap", "clickitrv.com")?.city).toBe("Union Gap");
+    expect(resolveDealerLocation("", "WA", "Poulsbo Rv Mt. Vernon", "poulsborv.com")).toBeNull();
+    expect(resolveDealerLocation("", "WA", "RV Country - Mt. Vernon", "rvcountry.com")).toBeNull();
+    expect(resolveDealerLocation("", "WA", "Fife RV Center", "fifervcenter.com")).toBeNull();
+    expect(resolveDealerLocation("", "WA", "Apache Camping Center (3 WA locations)", "apachecamping.com")).toBeNull();
+    expect(resolveDealerLocation("Not A Real Place", "WA", "Mystery Dealer", "mystery.example")).toBeNull();
+  });
+  it("keeps a stated lot city for Poulsbo, Fife RV, and RV Country Fife", () => {
+    const poulsbo = resolveDealerLocation("Kent", "WA", "Poulsbo Rv Mt. Vernon", "poulsborv.com")!;
+    const fifeRv = resolveDealerLocation("Fife", "WA", "Fife RV Center", "fifervcenter.com")!;
+    const rvCountry = resolveDealerLocation("Fife", "WA", "RV Country", "rvcountry.com")!;
+    expect(haversineMiles(poulsbo.coords, TACOMA)).toBeLessThan(20);
+    expect(haversineMiles(fifeRv.coords, TACOMA)).toBeLessThan(10);
+    expect(haversineMiles(rvCountry.coords, TACOMA)).toBeLessThan(10);
+    expect(poulsbo.city).toBe("Kent");
+    expect(fifeRv.city).toBe("Fife");
+    expect(rvCountry.city).toBe("Fife");
   });
 });

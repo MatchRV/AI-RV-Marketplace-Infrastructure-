@@ -27,7 +27,7 @@ import {
   type Constraints,
 } from "@workspace/agent-core";
 import { getInventory } from "../services/agent-inventory";
-import { readyUnits, searchReadyInventory } from "../services/search-ready";
+import { readyUnits, searchReadyInventory, SEARCHABLE_UNITS_NOTE } from "../services/search-ready";
 import { agentMetricsSnapshot, timedAgentOp } from "../services/agent-metrics";
 import { liveDealerInventoryStatus, normalizeDealerDomain } from "../services/dealer-inventory-status";
 import {
@@ -70,6 +70,7 @@ router.get("/agent/meta", (_req: Request, res: Response) => {
     dataset: {
       units: inv.units.length,
       searchableUnits: readyUnits().length,
+      searchableUnitsNote: SEARCHABLE_UNITS_NOTE,
       dealers: inv.snapshot.stats.dealers,
       builtAt: inv.snapshot.builtAt,
       note: inv.snapshot.datasetNote,

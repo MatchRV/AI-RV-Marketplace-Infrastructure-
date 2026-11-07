@@ -9,9 +9,13 @@ Source: `GET https://www.poulsborv.com/wp-json/pbrv/api/v1/products` (HTTP 200).
 | | Count |
 |---|---:|
 | Feed rows | 743 |
-| Already in the 2026-11-03 snapshot (VIN or Poulsbo stock) | 681 |
+| Feed rows already in the 2026-11-03 snapshot and not held | 681 |
 | Net-new admitted (`WA/poulsborv.com.csv`) | 57 |
 | Held (`held/WA/poulsborv.com.csv`) | 5 |
+
+The 5 held rows are also already in the snapshot (`E6105`, `M3902`, `S1082` by VIN; `cs-5658` and `cs-5659` by Poulsbo stock). They stay in the held file because the current feed has no sale price or no condition. They are not part of the 681.
+
+The snapshot has 710 Poulsbo units. 686 of those match a current feed row (681 not held + 5 held). The other 24 are in the snapshot and are not in today's feed. That is not a sold determination. Their last-seen times are 2026-10-30 or 2026-11-03. Identities are listed in the QA note for this batch. Do not delete them from the snapshot on this evidence.
 
 Holds: 3 `callforsaleprice` (the regular figure was not taken as a sale price), 2 with no new/used condition.
 

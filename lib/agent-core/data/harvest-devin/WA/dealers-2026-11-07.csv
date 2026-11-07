@@ -1,0 +1,3 @@
+dealer_domain,dealer_name,city,state,result,units,reason
+poulsborv.com,Poulsbo RV,"Kent, Everett, Mt. Vernon, Sumner",WA,ok,57,public products feed; 681 already in snapshot; 5 held (3 callforsaleprice, 2 condition unstated)
+johnsonrv.com,Johnson RV,Fife,WA,blocked,0,collection HTML has no VIN rows; robots disallows /inventory-feed and /internal/inventory; feed not requested; no bypass

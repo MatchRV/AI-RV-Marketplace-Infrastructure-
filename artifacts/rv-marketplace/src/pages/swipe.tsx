@@ -12,6 +12,7 @@ import { NAVY, TEAL } from "@/components/swipe/tokens";
 import { trackSwipe } from "@/lib/swipe-analytics";
 import { loadLikes, parseSwipeSearch, saveLikes } from "@/lib/swipe-session";
 import { DECK_LIMIT, applyCheckIn, isComplete, markCheckIn, shouldCheckIn, skipBroken, startDeck, swipe, type RvType, type CheckInEdits, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
+import { swipeLogoFrame } from "@/lib/swipe-logo";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
@@ -124,14 +125,14 @@ export function Swipe() {
   };
 
   const position = deck ? Math.min(deck.shown.length, DECK_LIMIT) : 0;
+  const logo = swipeLogoFrame();
   return (
     <div className="min-h-screen" style={{ background: "#F5F8FB", fontFamily: "'DM Sans', sans-serif" }}>
       <SEO title="Swipe RVs near you" description="Swipe through RVs for sale near you and build a shortlist." canonical="/swipe" noIndex />
       <header className="sticky top-0 z-40 bg-white" style={{ borderBottom: "1px solid #DDE4EE" }}>
         <div className="max-w-md mx-auto flex items-center justify-between px-4 h-14">
-          <Link href="/" aria-label="MatchRV home" className="relative block overflow-hidden" style={{ width: 140, height: 42 }}>
-            {/* The light logo has wide transparent margins; crop to the wordmark. */}
-            <img src="/matchrv-logo-light.png" alt="MatchRV" className="absolute max-w-none" style={{ width: 230, left: -49, top: -51 }} />
+          <Link href="/" aria-label="MatchRV home" className="relative block overflow-hidden" style={{ width: logo.frame.width, height: logo.frame.height }}>
+            <img src="/matchrv-logo-light.png" alt="MatchRV" className="absolute max-w-none" style={{ width: logo.img.width, height: logo.img.height, left: logo.img.left, top: logo.img.top }} />
           </Link>
           {deck && phase === "deck" && <span data-testid="deck-progress" className="text-sm font-bold" style={{ color: NAVY }}>{position} / {DECK_LIMIT}</span>}
         </div>

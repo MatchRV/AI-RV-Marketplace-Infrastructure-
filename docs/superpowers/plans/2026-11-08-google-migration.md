@@ -8,7 +8,7 @@
 
 **Tech Stack:** The existing Node 22 build. Inventory stays the committed gzip snapshot. No new Postgres.
 
-**This plan is not ready to execute.** The hard blockers are listed below. A checked box in a later task is a future gate, not permission to run it from this pull request.
+**Cutover is not ready.** H1 (write freeze) and H2 (public TLS) stay closed. A staging install on the already-created VM is the next procedure. This pull request still does not SSH, deploy, or change DNS.
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 
 The live site keeps shopper notes on a Render disk. Nothing from that disk has been copied off. Copying it while the site is still accepting writes can miss a file or catch a file halfway through a save. Render's shell exists only while the instance is running, so suspending the service first makes the copy impossible. The app has no switch that stops writes and then flushes them. Until that switch exists, there is no consistent final copy and no safe rollback.
 
-The machine in this plan is one virtual machine with its own HTTPS certificate, checked against the name `matchrv.com` before the public address changes. A Google load balancer is not part of this plan. The hourly prices below are public list prices gathered for this document. They are not an account quote, and they are not approved.
+The machine in this plan is one virtual machine with its own HTTPS certificate, checked against the name `matchrv.com` before the public address changes. A Google load balancer is not part of this plan. The hourly prices below are public list prices gathered for this document. They are not an account quote. The e2-small target was later approved; the credit's SKU scope is still not.
 
 ## Hard blockers (unresolved)
 
@@ -30,9 +30,135 @@ These stay open. Do not describe the plan as ready while any of them is open.
 
 - [ ] **H1 Write freeze.** Final copy and rollback are blocked. `dealer-inquiries.ts`, `learned-store.ts`, and `shopper-fit.ts` save on a 300ms or 400ms timer via `writeFileSync`. `outbound-clicks.ts` appends immediately. Nothing handles `SIGTERM` or otherwise flushes those timers. Stopping the process drops accepted writes that have not been written yet. Render SSH and the dashboard shell attach only to a running instance and close on restart ([Render SSH](https://render.com/docs/ssh)). A suspended or stopped instance cannot be copied. There is no documented Render control that freezes HTTP writes and leaves the shell up. Repeating a tar until the inquiry count is stable does not freeze session memory, shopper fit, or clicks, and it does not close the gap between the end of the copy and suspend. The missing piece is an in-app freeze, under its own approval: reject new mutations, flush the timers, keep the process running so SSH still works, and report freeze state without printing records. Until that code exists, every copy is crash-consistent only.
 - [ ] **H2 TLS before cutover.** ChatGPT uses `https://matchrv.com`. Cutover is blocked until that name verifies against the VM address with a publicly trusted certificate. The route is DNS-01 plus a reverse proxy on the VM, not a load balancer. Issuing the certificate needs a DNS TXT record, which is a separate approval (G-DNS). No certificate and no DNS record are created here.
-- [ ] **H3 Backup.** No archive has been taken. A denied login from one desktop means the key that desktop offered was not accepted. It does not prove the Render account has no other keys. This pull request registers none.
-- [ ] **H4 Billing.** The billing account is closed. Reopening charges every linked project. Reported credits are not verified. The Iowa totals are an unapproved planning estimate.
-- [ ] **H5 Build capacity.** e2-small is a runtime candidate only. A full `pnpm install` and build on a 2 GB machine is not proven. Build elsewhere and copy the artifacts, or get a separate approval to measure a 4 GB machine.
+- [ ] **H3 Backup.** A desktop copy of the live Render `/var/data` was verified at 2:48 PM PST on Nov 8, 2026: four files, `dealer-inquiries` with 4 records, `learned-facts`, `shopper-fit`, and one outbound-click line. `session-memory.json` was absent. That copy is not a write-frozen final copy. Runtime env values and the git inventory snapshot were not in it. A denied desktop SSH login still does not prove the Render account has no other keys. This pull request registers none.
+- [ ] **H4 Billing.** The console was independently read as billing account `01E001-C07D15-6638A4`, appearing open, with 2000 USD available at 100 percent from Mar 19, 2026 through Mar 19, 2028. This agent did not open that console. Which SKUs the credit pays is still unconfirmed, so the credit is not yet proof it covers Compute Engine, disk, or IPv4. Do not create a second billing account. Reopening a closed account would still bill every linked project.
+- [ ] **H5 Memory headroom.** e2-small is the approved runtime target. A 2 GiB cgroup was not enforceable in the sandbox that ran the build (permission denied on `memory.max`; the parent limit was 15,706,882,048 bytes). Sampled peaks there: API build about 469 MiB RSS, web build about 1371 MiB RSS, server VmHWM about 1459 MiB after the smoke calls. That is not proof the VM's 2 GiB cap will hold the build and the OS together. If the VM build is OOM-killed, build off the box and copy `dist`. Do not resize the machine from this document.
+
+## Staging preflight on the existing VM
+
+Do this only after the blank data disk is mounted at `/var/data`. Do not format a disk that is already mounted. Do not restore the 2:48 PM backup onto it. Do not point DNS at the VM. Do not open a firewall port for the app. Do not SSH from this repository's automation. The commands below are for an operator shell on the VM.
+
+Machine, as created and verified outside this pull request: `matchrv-core-20261108`, Debian 12 bookworm image `Debian12-bookworm-v20261102`, amd64, e2-small (2 GiB, shared-core), project `main-business-514122`, zone `us-central1-a`, 30 GB standard boot disk, 10 GB data disk `matchrv-core-data`, static address `34.171.66.221` named `matchrv-core-ip`. No service account, no IAM changes, and no firewall changes were part of that create. No application is on it yet.
+
+### What this sandbox already ran
+
+Direct tests on Nov 8, 2026, against commit `15b9c9604d27c33d031ba65183ead958039043a3` (it is an ancestor of this branch, and the only file differing from it is this document). These did not run on the VM.
+
+- Public archive, no credentials: `https://codeload.github.com/MatchRV/AI-RV-Marketplace-Infrastructure-/tar.gz/15b9c9604d27c33d031ba65183ead958039043a3` returned HTTP 200. The first archive entry is `AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3/`. ETag `c5cdcbe4eb3fb8108cf398e6084723b881b06bb2f372451f5ec679fb2f8ba0d0`. Do not send an `Authorization` header. If that URL stops returning 200, stop. Do not put a token on the VM.
+- Snapshot file `lib/agent-core/data/inventory.snapshot.json.gz`: `gzip -t` passed. SHA-256 `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Compressed 42,990,266 bytes. Gzip trailer isize 521,508,319. The bundle does not embed this file. The checkout must keep it at that path.
+- Node in the sandbox was v22.23.4 and pnpm 10.33.0. The deployed blueprint pins Node 22.22.0. Both satisfy `engines.node` `>=22.12`. The VM should install 22.22.0. The smoke process was not that exact build.
+- `pnpm run build:api` exit 0, sampled tree RSS about 469 MiB. `pnpm run build:web` exit 0, sampled tree RSS about 1371 MiB. Sampling interval 200 ms. Not a 2 GiB cgroup.
+- Production start with `env -i` and only `PATH`, `HOME`, `NODE_ENV=production`, `DISABLE_DB=1`, `PORT`, and the five path variables. `DATABASE_URL` and every SMTP, Gmail, ntfy, Twilio, CRM, Anthropic, Clerk, Gemini, OpenAI, and PostHog name were absent. Startup log: database mode `none`, Anthropic not configured, scraper cron disabled, web dist served. No enrichment cron line.
+- Listen socket was `tcp6` address `::` (every interface). `app.listen(port)` in `artifacts/api-server/src/index.ts` takes no host. Current code cannot bind loopback. That is a blocker for "listen only on localhost." Do not patch it in this preparation. Do not add a firewall allow for `PORT`. Reach the process through an SSH local forward to `127.0.0.1`, which succeeded here because IPv4-mapped connections were accepted.
+- After listen, VmHWM was 1,241,728 KiB. After the calls below, VmHWM was 1,494,160 KiB. The temp state directory stayed empty.
+- `GET /api/healthz` 200 `{"status":"ok"}`.
+- `GET /api/listings?limit=1` 200, one listing, `total` 131718.
+- `GET /api/search/filters` 200.
+- `POST /api/swipe/deck` with only `rvType` returned 422 `location_required`. With `{"rvType":"travel_trailer","zip":"98402"}` it returned 200 and a `cards` array of 60. Do not call `GET /api/out`.
+- `POST /api/agent/search` with the body below returned 200 and 12 rows. The handler slices with `Math.max(limit, 12)`, so `limit: 3` does not mean three rows. `shownToAgent` is the requested limit in code; this smoke test did not print that field.
+- `POST /api/outfitter/chat` returned 503 `ai_not_configured` before any model call.
+- `POST /mcp` `initialize` returned serverInfo `matchrv` `2.2.7`. `tools/list` returned the eleven names in Task 3. `search_rvs` with the body below returned `status` `shortlist` and 3 results. `outfitter_guide` returned 3 topics.
+
+### Install on the VM
+
+Confirm the data disk, then stop if it is missing. Do not `mkfs` from this procedure.
+
+```bash
+findmnt -T /var/data -n -o FSTYPE,SOURCE,TARGET
+```
+
+`TARGET` must be `/var/data` and `SOURCE` must be the data disk (the by-id path for `matchrv-core-data`), not the boot disk. Then:
+
+```bash
+curl -fsSL -o /tmp/node-v22.22.0-linux-x64.tar.xz https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
+echo '9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37  /tmp/node-v22.22.0-linux-x64.tar.xz' | sha256sum -c -
+sudo tar -C /usr/local --strip-components=1 -xJf /tmp/node-v22.22.0-linux-x64.tar.xz
+node -v   # v22.22.0
+sudo corepack enable
+sudo corepack prepare pnpm@10.33.0 --activate
+```
+
+The checksum is the `node-v22.22.0-linux-x64.tar.xz` line from `https://nodejs.org/dist/v22.22.0/SHASUMS256.txt`, read while writing this document.
+
+```bash
+sudo useradd --system --create-home --shell /usr/sbin/nologin matchrv || true
+sudo install -d -o matchrv -g matchrv /opt/matchrv /var/data
+curl -fsSL -o /tmp/matchrv-15b9c96.tar.gz \
+  https://codeload.github.com/MatchRV/AI-RV-Marketplace-Infrastructure-/tar.gz/15b9c9604d27c33d031ba65183ead958039043a3
+sudo tar -C /opt/matchrv -xzf /tmp/matchrv-15b9c96.tar.gz
+sudo chown -R matchrv:matchrv /opt/matchrv /var/data
+sudo -u matchrv bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && sha256sum lib/agent-core/data/inventory.snapshot.json.gz && gzip -t lib/agent-core/data/inventory.snapshot.json.gz'
+```
+
+Stop if the SHA-256 is not `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Then, still as `matchrv`, from that directory, the same build `render.yaml` uses:
+
+```bash
+pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..."
+pnpm run build:web && pnpm run build:api
+```
+
+If the kernel OOM-kills that build, stop. Build those two commands on another machine from this same tarball and copy `artifacts/api-server/dist` and `artifacts/rv-marketplace/dist` into the checkout. Do not check out a newer `main`.
+
+`/etc/matchrv.env` mode `640`, owner `root:matchrv`. These are the whole non-secret values. Do not add `DATABASE_URL`. Do not add SMTP, Gmail, ntfy, Twilio, CRM, Anthropic, Clerk, Gemini, OpenAI, or PostHog names. Leaving `POSTHOG_PROJECT_API_KEY` unset is what disables capture. An empty `POSTHOG_HOST` would not disable it if the key were set.
+
+```
+NODE_ENV=production
+DISABLE_DB=1
+PORT=8080
+LEARNED_FACTS_PATH=/var/data/learned-facts.json
+SESSION_MEMORY_PATH=/var/data/session-memory.json
+INQUIRIES_PATH=/var/data/dealer-inquiries.json
+SHOPPER_FIT_PATH=/var/data/shopper-fit.json
+OUTBOUND_CLICKS_PATH=/var/data/outbound-clicks.jsonl
+```
+
+`/etc/systemd/system/matchrv.service`:
+
+```
+[Unit]
+Description=MatchRV staging (no public cutover)
+After=network-online.target
+Wants=network-online.target
+ConditionPathIsMountPoint=/var/data
+
+[Service]
+Type=simple
+User=matchrv
+Group=matchrv
+WorkingDirectory=/opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3
+EnvironmentFile=/etc/matchrv.env
+ExecStart=/usr/local/bin/node artifacts/api-server/dist/index.cjs
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`ConditionPathIsMountPoint` refuses to start when `/var/data` is a plain directory on the boot disk. It does not check the disk name. Before `systemctl enable --now matchrv`, `findmnt` must still show the data disk. The runtime user owns `/var/data`. The process is not root.
+
+Side effects this env avoids, from the code at the pinned commit:
+
+- `DISABLE_DB=1` and no `DATABASE_URL` select mode `none`. Enrichment starts only when mode is not `none` and Anthropic is configured. The scraper cron starts only for `postgres` when the sibling scraper script exists. The GitHub archive does not include that sibling.
+- Unset Anthropic keys make `POST /api/outfitter/chat` return 503 `ai_not_configured`.
+- Unset PostHog key makes `activeConfig()` return null.
+- Inquiry mail runs only inside `sendInquiry` when `dry_run` is false and SMTP or Gmail is configured. Do not call `send_dealer_inquiry` or `GET /api/out` on this host.
+
+Smoke from an SSH local forward, not from the public address:
+
+```bash
+ssh -L 18080:127.0.0.1:8080 VM_SSH_USER@34.171.66.221
+curl -fsS http://127.0.0.1:18080/api/healthz
+curl -fsS 'http://127.0.0.1:18080/api/listings?limit=1'
+curl -fsS http://127.0.0.1:18080/api/search/filters
+curl -fsS http://127.0.0.1:18080/api/swipe/deck -H 'content-type: application/json' -d '{"rvType":"travel_trailer","zip":"98402"}'
+curl -fsS http://127.0.0.1:18080/api/agent/search -H 'content-type: application/json' -d '{"constraints":{"rvTypes":["travel_trailer"],"location":{"place":"Tacoma, WA","radiusMiles":50}},"limit":3}'
+curl -sS -o /tmp/outfitter.json -w '%{http_code}\n' http://127.0.0.1:18080/api/outfitter/chat -H 'content-type: application/json' -d '{"messages":[{"role":"user","content":"hello"}]}'
+```
+
+Expect health `{"status":"ok"}`, listings HTTP 200, filters HTTP 200, swipe HTTP 200 with `cards`, agent search HTTP 200, outfitter HTTP 503. Then the two MCP posts from Task 5, aimed at `http://127.0.0.1:18080/mcp`, with no `mcp-session-id`. Expect server name `matchrv` and a `search_rvs` `shortlist`. Journal must include `db: none` and `scraper cron disabled`, and must not include `Scrape scheduler active` or `Hourly batch starting`.
+
+`/var/data` may gain files only if something writes. These read calls left the sandbox directory empty. If `dealer-inquiries.json` or `outbound-clicks.jsonl` appears, stop. Do not load the 2:48 PM archive. Do not call a delivering inquiry.
 
 ## What the code actually writes
 
@@ -62,7 +188,7 @@ Jonathan owns billing, the decision to reopen, DNS including any TXT record, OS 
 
 ## Financial preflight (planning estimate only)
 
-Public list prices gathered for this runbook from Google's pricing pages. Jonathan did not research these rates, and he has not approved a purchase. This is not an invoice and not a ceiling Google will enforce.
+Public list prices gathered for this runbook from Google's pricing pages. On Nov 8, 2026 at 3:09 PM PST the e2-small target was approved at about 18 USD/month gross plus usage. The VM named below was created after that. This is still not an invoice and not a ceiling Google will enforce. This pull request did not create the VM.
 
 Do not treat credits as active. Do not create another billing account to receive them. Program terms issue credits only after written acceptance, and only into the billing account ID on the application ([program](https://cloud.google.com/startup), [terms](https://cloud.google.com/terms/startup-program-tos), [FAQ](https://cloud.google.com/startup/faq)). The reported name `2024GFSCloudProgram-Start`, the reported 2000 USD remainder, and the reported Mar 19, 2026–Mar 19, 2028 window are not on those public pages. The account Credits page is what shows name, status, remainder, scope, and dates ([savings and credits](https://docs.cloud.google.com/billing/docs/how-to/reports/savings-and-credits)). A closed account is not documented as deleting that balance, and it is not documented as spendable while the account stays closed.
 
@@ -80,7 +206,7 @@ Iowa (`us-central1`) list prices used for the arithmetic:
 
 About 17.98 USD/month on e2-small and 30.21 USD/month on e2-medium, before egress, logs, operations, tax, and other linked projects. The VM price sheet does not include disk or networking ([VM pricing](https://cloud.google.com/compute/vm-instance-pricing), [disk pricing](https://cloud.google.com/compute/disks-image-pricing), [network pricing](https://cloud.google.com/vpc/network-pricing)). Premium Tier egress is the default. This plan adds no load balancer. Adding one is a different design and needs its own cost approval.
 
-e2-small (2 GB) is the runtime candidate because of the observed RSS. It is not approved, and it is not a build machine. e2-medium is the larger shared-core list-price row if a 4 GB runtime or a measured build is later approved. Read the memory column on the pricing page at approval time.
+e2-small (2 GiB, shared-core) is the approved runtime machine. It is still a poor place to compile if the build is OOM-killed. e2-medium remains only a list-price comparison, not a second machine to create.
 
 An alerts-only budget does not cap spending ([budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets)). A spend cap pauses one eligible service on one project ([spend caps](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps)). Do not treat either, including a 2026 preview, as an off switch for this VM.
 
@@ -88,8 +214,8 @@ An alerts-only budget does not cap spending ([budgets](https://docs.cloud.google
 
 Migration of the current core does not wait on Supabase. A paused Supabase export is separate preservation work. It is not required for `DISABLE_DB=1`, and it is not done.
 
-- [ ] **G1 Billing.** Linked projects, payments, and the Credits page are inspected before any reopen. SKU coverage for Compute Engine, disk, and in-use IPv4 is copied into private notes. One of the two Iowa estimates is approved in writing, with the exclusions above.
-- [ ] **G2 Crash-consistent copy.** After H3's identity is sorted and Jonathan authorizes SSH, stream the running disk to a private machine he controls. Label it crash-consistent. It is not the cutover copy. H1 still blocks the final copy.
+- [ ] **G1 Billing.** e2-small is approved. The account appears open and the 2000 USD credit is visible. SKU coverage for Compute Engine, disk, and in-use IPv4 is still not copied from the Credits page. That line stays open.
+- [ ] **G2 Crash-consistent copy.** The 2:48 PM four-file copy exists and is labeled crash-consistent, not frozen. A later frozen copy still waits on H1. Env values are still not in a private store.
 - [ ] **G3 Private env.** Copy names and values from the Render dashboard into a private store. Do not commit them. Do not print them.
 - [ ] **G-DNS.** Jonathan approves a DNS-01 TXT record for `matchrv.com` at the DNS provider. This is not approval to change A or AAAA records.
 - [ ] **G5 Shell identity.** A future backup uses a key Jonathan registers himself, on a running instance, per [Render SSH](https://render.com/docs/ssh). Not in this pull request.

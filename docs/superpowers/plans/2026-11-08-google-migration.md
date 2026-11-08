@@ -16,8 +16,9 @@
 - Latest `main` for this document is `15b9c9604d27c33d031ba65183ead958039043a3`.
 - Live Render report used as input: 1:21 PM PST startup with `DISABLE_DB=1`, enrichment and scraper disabled, classic database pages disabled. Deployment `15b9c96` was live at 12:49 PM PST and `/api/healthz` returned 200.
 - Real backups: none obtained. Render CLI authentication works. SSH from that network closes. Jonathan's Windows desktop reaches Render and is denied because no public key is registered. Registering a key was not authorized. Do not work around that.
-- Reported Google for Startups credits are not verified and must not be treated as spendable. Reported window Mar 19, 2026 through Mar 19, 2028. Reported name `2024GFSCloudProgram-Start`. Reported remainder 2000 USD. Billing account is closed.
-- Do not create a second billing account and expect credits to move.
+- Reported Google for Startups credits are not verified and must not be treated as spendable. Reported window Mar 19, 2026 through Mar 19, 2028. Reported name `2024GFSCloudProgram-Start`. Reported remainder 2000 USD. None of that name, amount, or window appears on the public program pages. Billing account is closed.
+- Public program terms: credits are issued only after Google accepts the company in writing, and only into the Cloud Billing account ID on the application. They pay qualifying usage that accrues after issuance, until the expiration date Google specifies. They cover Google-owned first-party products billed pay-as-you-go or on consumption. They do not cover subscription, pre-pay, or annual-license products, or third-party products including Google Cloud Marketplace and Model Garden. Sources: [Google for Startups Cloud Program](https://cloud.google.com/startup), [program terms](https://cloud.google.com/terms/startup-program-tos), [FAQ](https://cloud.google.com/startup/faq).
+- Do not create a second billing account and expect credits to move. The terms issue credits into the account ID on the application.
 - Reopening the closed billing account, per Google, makes every project linked to that account able to incur charges again, not only MatchRV.
 - Iowa hourly rates below are a planning estimate, not an account quote and not a spend cap. Region and machine purchase stay unapproved until Jonathan accepts them.
 - No new Postgres is required to host the inventory core. Optional accounts and trips are already disabled and are not restored by this move.
@@ -66,11 +67,15 @@ Public tool names and `/mcp` behavior stay as they are in this commit. This docu
 
 Jonathan owns the Google billing account, which projects are linked, payment method, promotions, budgets, the decision to reopen, SSH public-key registration at Render, DNS for `matchrv.com`, OS updates, backup schedule, restore drills, and watching the bill. A later agent may copy files and run the documented commands only after he says that gate is open. Neither a bot nor this pull request may reopen billing, create projects, buy a VM, register an SSH key, or change DNS.
 
-This VM is not Cloud Run, Cloud SQL, or App Engine. Google will not patch the guest, rotate backups, or page him. If he wants a platform that restarts and scales the process for him, that is Cloud Run, and it is a different project: the writers in `learned-store.ts`, `dealer-inquiries.ts`, `shopper-fit.ts`, and `outbound-clicks.ts` would have to stop using the local disk. That code change is out of scope here.
+This VM is not Cloud Run, Cloud SQL, or App Engine. Google will not patch the guest, rotate backups, or page him. Cloud Run's container filesystem is an in-memory writable overlay, and its optional ephemeral disk is deleted when the instance stops. Cloud Run instances have no persistent disk. Compute Engine Persistent Disk is the durable disk this plan uses: it can be detached and the data remains after the instance is deleted. Sources: [Cloud Run container contract](https://docs.cloud.google.com/run/docs/container-contract), [ephemeral disk](https://docs.cloud.google.com/run/docs/configuring/services/ephemeral-disk), [Persistent Disk](https://docs.cloud.google.com/compute/docs/disks/persistent-disks). Moving to Cloud Run would mean changing the writers in `learned-store.ts`, `dealer-inquiries.ts`, `shopper-fit.ts`, and `outbound-clicks.ts`. That code change is out of scope here.
 
 ## Financial preflight (planning estimate only)
 
-Do not treat credits as active. Do not create another billing account to receive them. Credits are not documented as transferable that way, and this plan does not assume a transfer.
+Do not treat credits as active. Do not create another billing account to receive them. The program terms issue credits into the billing account ID on the application, after written acceptance. This plan does not assume a transfer, and it does not assume the reported name, 2000 USD remainder, or Mar 19, 2028 expiry. Those figures are not on the public program pages. The account's own Credits page is what shows the name, status (available, used, or expired), remaining and original value, scope, and start and end dates ([savings and credits](https://docs.cloud.google.com/billing/docs/how-to/reports/savings-and-credits)).
+
+Closing the account is not documented as deleting a promotional balance, and a closed or suspended account cannot use products in linked projects, including free billing-eligible services. The public pages do not say the balance can be spent while the account stays closed. Reopening is what makes linked projects incur charges again. Promotional credits, when available, apply to future charges and reduce the bill automatically ([resolve billing issues](https://docs.cloud.google.com/billing/docs/how-to/resolve-issues)).
+
+A [discount-exclusions list](https://cloud.google.com/skus/exclusions) names committed use discounts and Support. That page does not say the list governs these startup credits. Do not treat support, committed use, or premium networking as covered or excluded until the Credits page on this account says so. Compute Engine, persistent disk, and in-use external IPv4 still have to be confirmed on that page.
 
 Official reopen page: [Close or reopen your Cloud Billing account](https://docs.cloud.google.com/billing/docs/how-to/close-or-reopen-billing-account).
 
@@ -103,6 +108,8 @@ Sources, as checked for this estimate:
 - [Network pricing](https://cloud.google.com/vpc/network-pricing)
 
 e2-small is the planning baseline because the process already sits around 643–716 MiB and the snapshot inflate needs headroom past 1 GB. e2-medium is the larger shared-core option on the same page. Jonathan still has to read the memory column on that page and approve a machine before anyone creates one. No region and no machine type are purchased by this document.
+
+The VM price sheet does not include disk or networking. Each attached disk is its own charge, prorated by the second, and snapshots are another charge. An external IPv4 in use on a standard VM is a charge; an unused reserved address costs more; external IPv6 on a VM is not charged. Internet egress is a charge, Premium Tier is the default unless Standard Tier is set, and inbound transfer is not charged. Responses to requests count as data transfer out. Those rows stay outside the 17.98 / 30.21 illustration. Sources: [VM instance pricing](https://cloud.google.com/compute/vm-instance-pricing), [disk and image pricing](https://cloud.google.com/compute/disks-image-pricing), [network pricing](https://cloud.google.com/vpc/network-pricing).
 
 A budget alert is not a spend cap. Google's budgets document says an alerts-only budget does not automatically cap Google Cloud usage or spending ([Create, edit, or delete budgets and budget alerts](https://docs.cloud.google.com/billing/docs/how-to/budgets)). Spend-cap budgets ([Manage spend cap budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps)) pause only an eligible service on one project. Do not plan on a spend cap, including a 2026 preview of that feature, to stop this Compute Engine VM. Set an alert below the number Jonathan is willing to see, and treat a human shutting the VM down as the only off switch.
 
@@ -246,24 +253,28 @@ Expected log lines: database mode `none`, enrichment cron not started, scraper c
 
 ### Task 3: HTTPS and `/mcp` before the A record changes
 
-Google-managed certificates become `ACTIVE` only after public DNS A and AAAA records point at the load balancer ([Google-managed SSL certificates](https://cloud.google.com/load-balancing/docs/ssl-certificates/google-managed-certs)). That is a DNS cutover. Do not use that method as the pre-cutover test. Do not change `matchrv.com` A/AAAA records in this task.
+A new Google-managed certificate stays `PROVISIONING`. It becomes `ACTIVE` only after it is associated with the load balancer target proxy and the steps on the certificate page are finished. Provisioning requires the public DNS A and AAAA records to point at the load balancer IP. Validation fails when those names point at any other IP. `FAILED_NOT_VISIBLE` means DNS does not resolve to that IP. After DNS and load-balancer changes have propagated, the certificate can take up to 60 minutes; DNS propagation can take up to 72 hours; the load balancer can take another 30 minutes to serve an `ACTIVE` certificate. Sources: [Google-managed SSL certificates](https://docs.cloud.google.com/load-balancing/docs/ssl-certificates/google-managed-certs), [troubleshooting](https://docs.cloud.google.com/load-balancing/docs/ssl-certificates/troubleshooting). Do not change `matchrv.com` A/AAAA records in this task. A Google-managed certificate is not a pre-cutover proof.
 
-- [ ] **Step 1.** Put a certificate that already names `matchrv.com` on the VM, or stop and say TLS is not testable yet. Getting that certificate with a TXT record only, without changing the A record, is Jonathan's DNS decision. This document does not make it.
-
-- [ ] **Step 2.** From a laptop, without changing public DNS:
+The pages document this certificate check for both Google-managed and self-managed certificates. They do not document `curl --resolve`.
 
 ```bash
-curl -fsS --resolve matchrv.com:443:<VM_PUBLIC_IP> https://matchrv.com/api/healthz
-curl -fsS --resolve matchrv.com:443:<VM_PUBLIC_IP> \
-  -H 'content-type: application/json' \
-  -H 'accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"preflight","version":"0"}}}' \
-  https://matchrv.com/mcp
+echo | openssl s_client -showcerts -servername matchrv.com -connect IP_ADDRESS:443 -verify 99 -verify_return_error
 ```
 
-Expected: health 200, and `initialize` lists the same server name `matchrv` as production. Do not call `send_dealer_inquiry` with `confirmed` true. Do not call a path that sends mail.
+- [ ] **Step 1.** Before any DNS change, prove the app on the VM over plain HTTP, as in Task 2. `curl -fsS http://127.0.0.1:8080/api/healthz` returns 200. Then `initialize` on the same host:
 
-- [ ] **Step 3.** Dry-run inquiry only. Use the existing `dry_run: true` flag on `POST /api/inquiries` after a preview, against the VM via `--resolve`, with a clearly fake contact used only for this check. Expected status is the dry-run status. Confirm no SMTP or ntfy env vars are set on the VM before this call. If they are set, do not run the call.
+```bash
+curl -fsS http://127.0.0.1:8080/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"preflight","version":"0"}}}'
+```
+
+Expected: `initialize` lists the same server name `matchrv` as production. Do not call `send_dealer_inquiry` with `confirmed` true. Do not call a path that sends mail.
+
+- [ ] **Step 2.** Run the `openssl s_client` check above only when some certificate for `matchrv.com` is already being served. For a Google-managed certificate, that is after the A and AAAA records point at the load balancer, which is cutover, not this task. A self-managed certificate on the VM is Jonathan's decision and is not created here. If no certificate is being served, record that TLS is not testable yet and stop this step.
+
+- [ ] **Step 3.** Dry-run inquiry only, on the VM, over `http://127.0.0.1:8080`. Use the existing `dry_run: true` flag on `POST /api/inquiries` after a preview, with a clearly fake contact used only for this check. Expected status is the dry-run status. Confirm no SMTP or ntfy env vars are set on the VM before this call. If they are set, do not run the call.
 
 ### Task 4: Cutover and rollback
 

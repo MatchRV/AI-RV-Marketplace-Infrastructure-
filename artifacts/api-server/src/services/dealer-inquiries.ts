@@ -37,6 +37,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CanonicalUnit } from "@workspace/agent-core";
 import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
+import { recordInquiryOutcome } from "./product-analytics";
 export type { ShopperFit };
 
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed";
@@ -335,23 +336,41 @@ export async function sendInquiry(args: {
   /** Fit facts recalled from this shopper's interview scope (ChatGPT path). Token fit wins when present. */
   fitHint?: ShopperFit | null;
   lookupUnit: (id: string) => CanonicalUnit | undefined;
+  /** Where this send was accepted. Omitted callers stay "unknown" rather than guessed. */
+  analyticsSource?: "mcp" | "website" | "unknown";
 }): Promise<SendResult> {
+  const note = (result: SendResult): SendResult => {
+    try {
+      recordInquiryOutcome({
+        source: args.analyticsSource ?? "unknown",
+        status: result.ok ? result.inquiry.status : result.code,
+        channel: result.ok ? result.inquiry.deliveryChannel : "none",
+        duplicate: result.ok ? result.duplicate : false,
+        dryRun: result.ok ? result.inquiry.dryRun : false,
+        listingId: result.ok ? result.inquiry.unit.id : undefined,
+        dealerId: result.ok ? result.inquiry.dealer.id : undefined,
+      });
+    } catch {
+      /* analytics must not change inquiry handling */
+    }
+    return result;
+  };
   load(); purge();
-  if (args.confirmed !== true) return { ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." };
+  if (args.confirmed !== true) return note({ ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." });
   const v = verifyToken(args.confirmationToken);
-  if (!v.ok) return { ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." };
+  if (!v.ok) return note({ ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." });
   const p = v.payload;
   const existingId = byNonce.get(p.nonce);
   if (existingId && inquiries.get(existingId)) {
     const existing = inquiries.get(existingId)!;
-    return { ok: false, code: "invalid_token", guidance: `This preview was already sent (inquiry ${existing.id}, status ${existing.status}). It is not sent twice; use the status tool with the status token from the first send.` };
+    return note({ ok: false, code: "invalid_token", guidance: `This preview was already sent (inquiry ${existing.id}, status ${existing.status}). It is not sent twice; use the status tool with the status token from the first send.` });
   }
   const unit = args.lookupUnit(p.u);
-  if (!unit || unit.status === "removed") return { ok: false, code: "unit_unavailable", guidance: "This RV is no longer in MatchRV's inventory snapshot. Nothing was sent." };
+  if (!unit || unit.status === "removed") return note({ ok: false, code: "unit_unavailable", guidance: "This RV is no longer in MatchRV's inventory snapshot. Nothing was sent." });
   const dryRun = Boolean(args.dryRun) || forceDryRun();
   const contactKey = (p.e ?? p.p ?? "").toLowerCase();
   if (!rateLimit("requester", args.requesterKey) || !rateLimit("contact", contactKey) || !rateLimit("global", "all")) {
-    return { ok: false, code: "rate_limited", guidance: "Too many inquiries were sent recently from this conversation or contact. Nothing was sent; try again later or contact the dealership directly." };
+    return note({ ok: false, code: "rate_limited", guidance: "Too many inquiries were sent recently from this conversation or contact. Nothing was sent; try again later or contact the dealership directly." });
   }
 
   const contact: InquiryContact = { name: p.n, email: p.e, phone: p.p };
@@ -374,14 +393,14 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
     inquiry.status = "dry_run";
     inquiry.statusDetail = "Dry run: validated and recorded for testing. Nothing was sent to the dealership or to MatchRV staff.";
   } else if (dup) {
-    return { ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true };
+    return note({ ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true });
   } else {
     await deliver(inquiry, unit);
   }
   inquiries.set(inquiry.id, inquiry);
   byNonce.set(inquiry.nonce, inquiry.id);
   persistSoon();
-  return { ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false };
+  return note({ ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false });
 }
 
 function dealerEmailText(i: DealerInquiry): string {

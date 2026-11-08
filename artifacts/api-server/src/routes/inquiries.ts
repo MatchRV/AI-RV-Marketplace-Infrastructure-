@@ -27,6 +27,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
       dryRun: body.dry_run === true,
       requesterKey: requester(req),
       scope: null,
+      analyticsSource: "website",
       lookupUnit: (id) => getInventory().byId.get(id),
     });
     if (!result.ok) {

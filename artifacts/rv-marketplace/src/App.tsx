@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
-import { trackPageView, detectReturnVisit } from "@/lib/analytics";
+import { trackPageView, detectReturnVisit, getAnalyticsSessionId } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -151,6 +152,11 @@ function PageViewTracker() {
   useEffect(() => {
     trackPageView(location, document.title);
     recordPageViewIntent(location, document.title);
+    try {
+      trackWebsiteProductEvent({ event: "website_page_view", path: location, sessionId: getAnalyticsSessionId() });
+    } catch {
+      /* analytics must not break navigation */
+    }
   }, [location]);
   return null;
 }

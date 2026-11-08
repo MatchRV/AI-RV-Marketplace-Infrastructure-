@@ -4,7 +4,9 @@ import { SEO } from "@/components/seo";
 import { ListingCard } from "@/components/listing-card";
 import { useGetListings } from "@workspace/api-client-react";
 import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getAnalyticsSessionId } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 
 interface FAQItem {
   question: string;
@@ -66,6 +68,20 @@ export function CategoryListingsPage({
   const { data, isLoading } = useGetListings(params);
   const listings = data?.listings ?? [];
   const total = data?.total ?? 0;
+  const searchReported = useRef(false);
+  useEffect(() => {
+    if (searchReported.current || isLoading || !data) return;
+    searchReported.current = true;
+    let sessionId: string | undefined;
+    try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+    trackWebsiteProductEvent({
+      event: "website_search_results",
+      surface: "category_listings",
+      rvType,
+      resultCount: listings.length,
+      sessionId,
+    });
+  }, [data, isLoading, listings.length, rvType]);
 
   const browseUrl = rvType ? `/browse?type=${rvType}` : "/browse";
 

@@ -18,7 +18,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
-import { trackEvent, trackLead } from "@/lib/analytics";
+import { getAnalyticsSessionId, trackEvent, trackLead } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
@@ -160,6 +161,13 @@ export function ListingDetail() {
   useEffect(() => {
     if (listing && !trackedView.current) {
       trackedView.current = true;
+      trackWebsiteProductEvent({
+        event: "website_listing_view",
+        listingId: String(listing.id),
+        dealerId: listing.dealerId == null ? undefined : String(listing.dealerId),
+        surface: "listing_detail",
+        sessionId: (() => { try { return getAnalyticsSessionId(); } catch { return undefined; } })(),
+      });
       recordBuyerIntent("listing_view", {
         listingId: listing.id,
         dealerId: listing.dealerId as number,

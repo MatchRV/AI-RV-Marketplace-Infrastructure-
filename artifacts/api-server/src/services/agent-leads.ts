@@ -25,6 +25,7 @@
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { db, buyerLeadsTable, DB_MODE } from "@workspace/db";
+import { recordInquiryOutcome } from "./product-analytics";
 import type { CanonicalUnit, Constraints } from "@workspace/agent-core";
 
 export type PreviewStatus =
@@ -196,36 +197,63 @@ export type SubmitResult =
   | { ok: false; code: "not_found" | "awaiting_human_approval" | "rejected" | "expired" | "already_submitted" | "duplicate"; guidance: string };
 
 export async function submitPreview(id: string): Promise<SubmitResult> {
+  const note = (result: SubmitResult, listingId?: string): SubmitResult => {
+    try {
+      if (result.ok) {
+        recordInquiryOutcome({
+          source: "website_webmcp",
+          status: "queued_for_matchrv",
+          channel: "demo_lead_record",
+          duplicate: false,
+          dryRun: false,
+          dealerDeliverySupported: false,
+          listingId: result.preview.unitId,
+        });
+      } else {
+        recordInquiryOutcome({
+          source: "website_webmcp",
+          status: result.code,
+          channel: "none",
+          duplicate: false,
+          dryRun: false,
+          listingId,
+        });
+      }
+    } catch {
+      /* analytics must not change lead handling */
+    }
+    return result;
+  };
   const p = getPreview(id);
   if (!p) {
-    return { ok: false, code: "not_found", guidance: "Unknown preview_id — call prepare_dealer_contact first." };
+    return note({ ok: false, code: "not_found", guidance: "Unknown preview_id — call prepare_dealer_contact first." });
   }
   if (p.status === "awaiting_human_approval") {
-    return {
+    return note({
       ok: false,
       code: "awaiting_human_approval",
       guidance:
         "The human has not approved this contact request yet. Ask them to review the preview shown on the MatchRV page and click Approve — do not retry until they say they have.",
-    };
+    }, p.unitId);
   }
   if (p.status === "rejected") {
-    return { ok: false, code: "rejected", guidance: "The human declined this contact request. Do not resubmit; ask what they'd like to change." };
+    return note({ ok: false, code: "rejected", guidance: "The human declined this contact request. Do not resubmit; ask what they'd like to change." }, p.unitId);
   }
   if (p.status === "expired") {
-    return { ok: false, code: "expired", guidance: "This preview expired unapproved. Prepare a new one if the shopper still wants it." };
+    return note({ ok: false, code: "expired", guidance: "This preview expired unapproved. Prepare a new one if the shopper still wants it." }, p.unitId);
   }
   if (p.status === "submitted") {
-    return { ok: false, code: "already_submitted", guidance: "This contact request was already submitted — no need to repeat it." };
+    return note({ ok: false, code: "already_submitted", guidance: "This contact request was already submitted — no need to repeat it." }, p.unitId);
   }
 
   const dedupeKey = `${p.unitId}|${p.customer.email.toLowerCase()}`;
   if (submittedKeys.has(dedupeKey)) {
     p.status = "rejected";
-    return {
+    return note({
       ok: false,
       code: "duplicate",
       guidance: "A contact request for this unit and email was already submitted in this session. The dealership has it — don't send another.",
-    };
+    }, p.unitId);
   }
 
   let leadId: number | string;
@@ -266,13 +294,13 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
   p.submittedLeadId = leadId;
   submittedKeys.add(dedupeKey);
 
-  return {
+  return note({
     ok: true,
     preview: p,
     leadId,
     recordedAt,
     delivery: `Recorded in MatchRV's lead queue (${DB_MODE} database). Demo environment: nothing is delivered to the real dealership.`,
-  };
+  });
 }
 
 /** Test hook: reset in-memory state. */

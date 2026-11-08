@@ -5,7 +5,8 @@ import { SEO } from "@/components/seo";
 import { useGetListings } from "@workspace/api-client-react";
 import type { Listing } from "@workspace/api-client-react";
 import { X, Heart, MapPin, RefreshCw, ArrowRight, Info, Sparkles } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { getAnalyticsSessionId, trackEvent } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { recordBuyerIntent } from "@/lib/buyer-intent";
 import { formatCurrency, formatRvType } from "@/lib/utils";
 import { useAppAuth } from "@/contexts/auth-context";
@@ -43,6 +44,7 @@ export function Discover() {
   const [swipeAnim, setSwipeAnim]  = useState<"none" | "left" | "right">("none");
   const startXRef = useRef(0);
   const cardRef   = useRef<HTMLDivElement>(null);
+  const searchReported = useRef(false);
 
   const current    = allListings[currentIdx];
   const next       = allListings[currentIdx + 1];
@@ -54,7 +56,29 @@ export function Discover() {
   }, []);
 
   useEffect(() => {
+    if (searchReported.current || isLoading || !listingsData) return;
+    searchReported.current = true;
+    let sessionId: string | undefined;
+    try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+    trackWebsiteProductEvent({
+      event: "website_search_results",
+      surface: "discover",
+      resultCount: allListings.length,
+      sessionId,
+    });
+  }, [isLoading, listingsData, allListings.length]);
+
+  useEffect(() => {
     if (!current) return;
+    let sessionId: string | undefined;
+    try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+    trackWebsiteProductEvent({
+      event: "website_card_viewed",
+      listingId: String(current.id),
+      dealerId: current.dealerId == null ? undefined : String(current.dealerId),
+      surface: "discover",
+      sessionId,
+    });
     recordBuyerIntent("listing_view", {
       listingId: current.id,
       dealerId: current.dealerId as number,
@@ -81,6 +105,16 @@ export function Discover() {
     if (dir === "right") {
       const newLiked = [...likedIds, current.id];
       setLikedIds(newLiked);
+      let sessionId: string | undefined;
+      try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+      trackWebsiteProductEvent({
+        event: "website_inventory_attention",
+        listingId: String(current.id),
+        dealerId: current.dealerId == null ? undefined : String(current.dealerId),
+        surface: "discover",
+        action: "like",
+        sessionId,
+      });
       recordBuyerIntent("listing_saved", {
         listingId: current.id,
         dealerId: current.dealerId as number,

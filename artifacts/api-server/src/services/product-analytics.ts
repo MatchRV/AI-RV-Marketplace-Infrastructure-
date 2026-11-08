@@ -11,7 +11,7 @@
  * never see a throw.
  */
 
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 export const POSTHOG_US_HOST = "https://us.i.posthog.com";
 export const POSTHOG_EU_HOST = "https://eu.i.posthog.com";
@@ -167,21 +167,48 @@ function fetchTransport(host: string): AnalyticsTransport {
   };
 }
 
-function safeId(value: unknown): string | undefined {
+function acceptedListingKey(text: string): boolean {
+  if (/^[0-9]{1,12}$/.test(text)) return true;
+  if (text.startsWith("vin:")) return /^vin:[A-HJ-NPR-Z0-9]{11,17}$/i.test(text);
+  if (text.startsWith("stk:")) return /^stk:[A-Za-z0-9._:-]{1,160}$/.test(text) && !text.includes("://") && !text.includes("/");
+  if (text.startsWith("key:u:")) return text.length <= 300 && /^key:u:[^\s]{1,240}$/.test(text);
+  return false;
+}
+
+/** `lst_` plus the first 24 hex chars of SHA-256. Same input always maps to the same id. */
+export function telemetryListingId(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) value = String(value);
   if (typeof value !== "string") return undefined;
-  // Inventory keys include stk:host:stock and key:u:https://dealer/product/slug.
-  // Query strings, fragments, and contact-shaped values stay out.
-  if (value.length < 1 || value.length > 200) return undefined;
-  if (!/^[A-Za-z0-9:._/-]+$/.test(value)) return undefined;
-  if (value.includes("..") || value.includes("@") || value.includes("?") || value.includes("#")) return undefined;
-  return value;
+  const text = value.trim();
+  if (text.length < 1 || text.length > 300) return undefined;
+  if (/[\s@?#]|[^\u0020-\u007e]|\.\./.test(text)) return undefined;
+  if (/^lst_[0-9a-f]{24}$/.test(text)) return text;
+  if (!acceptedListingKey(text)) return undefined;
+  return `lst_${createHash("sha256").update(text).digest("hex").slice(0, 24)}`;
+}
+
+/** Dealer slug only. URLs, VINs, and contact-shaped values are omitted. */
+export function telemetryDealerId(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) value = String(value);
+  if (typeof value !== "string") return undefined;
+  const text = value.trim().toLowerCase();
+  if (text.length < 1 || text.length > 120) return undefined;
+  if (text.includes("://") || text.includes("@") || text.includes("?") || text.includes("#") || text.includes("/") || text.startsWith("vin:")) return undefined;
+  if (/^[a-z0-9][a-z0-9.-]{0,79}$/.test(text)) return text;
+  if (/^[a-z0-9][a-z0-9.-]{0,79}:[a-z0-9-]{1,60}$/.test(text)) return text;
+  return undefined;
 }
 
 function safePath(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
-  if (!/^\/[A-Za-z0-9/_:%.~-]{0,200}$/.test(value)) return undefined;
-  if (value.includes("..")) return undefined;
-  return value;
+  const bare = value.split("#")[0]?.split("?")[0] ?? "";
+  let path = bare;
+  try { path = decodeURIComponent(bare); } catch { return undefined; }
+  if (!path.startsWith("/") || path.includes("..") || path.includes("@")) return undefined;
+  if (/^\/listing\/./.test(path)) path = "/listing";
+  if (/https?:\/\//i.test(path) || /vin:/i.test(path)) return undefined;
+  if (!/^\/[A-Za-z0-9/_.~-]{0,160}$/.test(path)) return undefined;
+  return path;
 }
 
 function safeCount(value: unknown): number | undefined {
@@ -250,8 +277,8 @@ export function sanitizeProductEvent(event: ProductEvent): ProductEvent | null {
     if (!path) return null;
     clean.path = path;
   } else if (path) clean.path = path;
-  const listing = safeId(event.listing_id);
-  const dealer = safeId(event.dealer_id);
+  const listing = telemetryListingId(event.listing_id);
+  const dealer = telemetryDealerId(event.dealer_id);
   if (listing) clean.listing_id = listing;
   if (dealer) clean.dealer_id = dealer;
   if (typeof event.surface === "string" && SURFACES.has(event.surface)) clean.surface = event.surface;
@@ -299,14 +326,16 @@ function sanitizeServerEvent(event: ProductEvent): (ProductEvent & { distinctId:
   else delete clean.channel;
   if (typeof event.client_hint === "string" && CLIENT_HINTS.has(event.client_hint)) clean.client_hint = event.client_hint;
   if (event.client_hint_is_proof === false) clean.client_hint_is_proof = false;
-  const listing = safeId(event.listing_id);
-  const dealer = safeId(event.dealer_id);
+  const listing = telemetryListingId(event.listing_id);
+  const dealer = telemetryDealerId(event.dealer_id);
   if (listing) clean.listing_id = listing;
   if (dealer) clean.dealer_id = dealer;
-  for (const key of ["counts_as_shopper_tool", "counts_as_error", "counts_as_results_returned", "counts_as_submitted", "counts_as_queued", "counts_as_delivered"] as const) {
+  for (const key of ["counts_as_shopper_tool", "counts_as_error", "counts_as_results_returned", "counts_as_submitted", "counts_as_queued", "counts_as_delivered", "batch_executed"] as const) {
     const value = flag(event[key]);
     if (value !== undefined) clean[key] = value;
   }
+  const requestedTools = safeCount(event.requested_tool_calls);
+  if (requestedTools !== undefined && requestedTools <= 20) clean.requested_tool_calls = requestedTools;
   const latency = safeCount(event.latency_ms);
   const http = safeCount(event.http_status);
   const results = safeCount(event.result_count);
@@ -443,8 +472,8 @@ export interface InquiryOutcomeInput {
 }
 
 export function buildInquiryOutcomeEvent(input: InquiryOutcomeInput): ProductEvent {
-  const listing = safeId(input.listingId);
-  const dealer = safeId(input.dealerId);
+  const listing = telemetryListingId(input.listingId);
+  const dealer = telemetryDealerId(input.dealerId);
   const channel = INQUIRY_CHANNELS.has(input.channel) ? input.channel : "none";
   const status = safeCode(input.status) ?? "unknown";
   let outcome = "rejected";
@@ -533,6 +562,7 @@ export function summarizeMcpExchange(input: {
   userAgent?: string | null;
   listingIds?: string[];
   executionId?: string;
+  bodyState?: "ok" | "aborted";
 }): ProductEvent[] {
   const hint = classifyClientHint(input.userAgent);
   const method = safeCode(input.method.replaceAll("/", "_"), 64) ?? "unknown";
@@ -566,7 +596,10 @@ export function summarizeMcpExchange(input: {
   let counts_as_error = false;
   let counts_as_results_returned = false;
   let error_code: string | undefined;
-  if (isError) {
+  if (input.bodyState === "aborted") {
+    outcome = "aborted";
+    counts_as_error = true;
+  } else if (isError) {
     outcome = httpStatus >= 400 || rpc?.error ? "protocol_error" : "app_error";
     if (result?.isError === true) outcome = "app_error";
     counts_as_error = true;
@@ -583,7 +616,7 @@ export function summarizeMcpExchange(input: {
   } else if (!payload && !result) {
     outcome = "unparsed";
   }
-  const listing = (input.listingIds ?? []).map((id) => safeId(id)).find((id): id is string => Boolean(id));
+  const listing = (input.listingIds ?? []).map((id) => telemetryListingId(id)).find((id): id is string => Boolean(id));
   const execution_id = input.executionId && /^[A-Za-z0-9_-]{8,80}$/.test(input.executionId) ? input.executionId : executionId();
   const tool_name = safeTool(input.toolName) ?? "unknown";
   const started: ProductEvent = {
@@ -601,7 +634,7 @@ export function summarizeMcpExchange(input: {
     outcome,
     http_status: httpStatus,
     latency_ms: latency,
-    counts_as_shopper_tool: true,
+    counts_as_shopper_tool: outcome !== "protocol_error" && outcome !== "aborted" && outcome !== "unparsed",
     counts_as_error,
     counts_as_results_returned,
     ...((outcome === "results" || outcome === "no_results") && results !== undefined ? { result_count: results } : {}),
@@ -611,28 +644,100 @@ export function summarizeMcpExchange(input: {
   return [started, completed];
 }
 
-/** Read a JSON-RPC method and tool name without keeping the raw arguments. */
-export function peekMcpRequest(raw: string): { method: string; toolName?: string; listingIds: string[] } | null {
+export interface PeekedToolCall {
+  id: string;
+  toolName?: string;
+  listingIds: string[];
+}
+
+export interface PeekedMcpRequest {
+  method: string;
+  toolName?: string;
+  listingIds: string[];
+  batch: boolean;
+  calls: PeekedToolCall[];
+}
+
+function listingIdsFromArgs(args: unknown): string[] {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return [];
+  const record = args as { unit_id?: unknown; unit_ids?: unknown };
+  const ids: string[] = [];
+  if (typeof record.unit_id === "string") ids.push(record.unit_id);
+  if (Array.isArray(record.unit_ids)) {
+    for (const id of record.unit_ids.slice(0, 4)) if (typeof id === "string") ids.push(id);
+  }
+  return ids;
+}
+
+function toolCallFromMessage(message: unknown): PeekedToolCall | null {
+  if (!message || typeof message !== "object" || Array.isArray(message)) return null;
+  const body = message as { id?: unknown; method?: unknown; params?: { name?: unknown; arguments?: unknown } };
+  if (body.method !== "tools/call") return null;
+  const id = typeof body.id === "string" || typeof body.id === "number" ? String(body.id) : "";
+  if (!id) return null;
+  return {
+    id,
+    toolName: typeof body.params?.name === "string" ? body.params.name : undefined,
+    listingIds: listingIdsFromArgs(body.params?.arguments),
+  };
+}
+
+/** Read JSON-RPC method and tool names. A batch is not one tool execution. */
+export function peekMcpRequest(raw: string): PeekedMcpRequest | null {
   const slice = raw.length > 65_536 ? raw.slice(0, 65_536) : raw;
   try {
     const parsed = JSON.parse(slice) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { method: "batch", listingIds: [] };
-    const body = parsed as { method?: unknown; params?: { name?: unknown; arguments?: unknown } };
-    const method = typeof body.method === "string" ? body.method.slice(0, 64) : "unknown";
-    const toolName = typeof body.params?.name === "string" ? body.params.name : undefined;
-    const args = body.params?.arguments;
-    const listingIds: string[] = [];
-    if (args && typeof args === "object" && !Array.isArray(args)) {
-      const record = args as { unit_id?: unknown; unit_ids?: unknown };
-      if (typeof record.unit_id === "string") listingIds.push(record.unit_id);
-      if (Array.isArray(record.unit_ids)) {
-        for (const id of record.unit_ids.slice(0, 6)) if (typeof id === "string") listingIds.push(id);
-      }
+    if (Array.isArray(parsed)) {
+      const calls = parsed.map(toolCallFromMessage).filter((call): call is PeekedToolCall => Boolean(call)).slice(0, 20);
+      return { method: "batch", listingIds: [], batch: true, calls };
     }
-    return { method, toolName, listingIds };
+    if (!parsed || typeof parsed !== "object") return null;
+    const body = parsed as { method?: unknown; params?: { name?: unknown; arguments?: unknown }; id?: unknown };
+    const method = typeof body.method === "string" ? body.method.slice(0, 64) : "unknown";
+    const call = toolCallFromMessage(parsed);
+    return {
+      method,
+      toolName: typeof body.params?.name === "string" ? body.params.name : undefined,
+      listingIds: listingIdsFromArgs(body.params?.arguments),
+      batch: false,
+      calls: call ? [call] : [],
+    };
   } catch {
     return null;
   }
+}
+
+function rpcMessages(raw: string): Array<{ id?: string; result?: Record<string, unknown>; error?: unknown }> {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const parsedValues: unknown[] = [];
+  const take = (value: string) => {
+    try { parsedValues.push(JSON.parse(value)); } catch { /* ignore a non-json frame */ }
+  };
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) take(trimmed);
+  else {
+    for (const line of trimmed.split("\n")) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload && payload !== "[DONE]") take(payload);
+    }
+  }
+  const messages: Array<{ id?: string; result?: Record<string, unknown>; error?: unknown }> = [];
+  const push = (value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    const body = value as { id?: unknown; result?: unknown; error?: unknown };
+    messages.push({
+      id: typeof body.id === "string" || typeof body.id === "number" ? String(body.id) : undefined,
+      result: body.result && typeof body.result === "object" && !Array.isArray(body.result) ? body.result as Record<string, unknown> : undefined,
+      error: body.error,
+    });
+  };
+  if (Array.isArray(parsedValues[0])) {
+    for (const item of parsedValues[0]) push(item);
+  } else {
+    for (const item of parsedValues) push(item);
+  }
+  return messages;
 }
 
 export async function observeMcpFetch(request: Request, inner: (request: Request) => Promise<Response>): Promise<Response> {
@@ -653,18 +758,20 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
   } catch (err) {
     if (enabled) {
       void peekPromise.then((peeked) => {
-        if (peeked?.method !== "tools/call") return;
-        const execution = executionId();
-        for (const event of summarizeMcpExchange({
-          method: "tools/call",
-          toolName: peeked.toolName,
-          httpStatus: 500,
-          latencyMs: performance.now() - started,
-          responseBody: "",
-          userAgent: request.headers.get("user-agent"),
-          listingIds: peeked.listingIds,
-          executionId: execution,
-        })) captureServerProductEvent(event);
+        const calls = peeked?.calls ?? [];
+        for (const call of calls) {
+          for (const event of summarizeMcpExchange({
+            method: "tools/call",
+            toolName: call.toolName,
+            httpStatus: 500,
+            latencyMs: performance.now() - started,
+            responseBody: "",
+            userAgent: request.headers.get("user-agent"),
+            listingIds: call.listingIds,
+            executionId: executionId(),
+            bodyState: "aborted",
+          })) captureServerProductEvent(event);
+        }
       }).catch(() => undefined);
     }
     throw err;
@@ -678,45 +785,64 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
     try { bodyPromise = response.clone().text(); } catch { bodyPromise = null; }
   }
   void peekPromise.then(async (peeked) => {
+    const calls = peeked?.calls ?? [];
     const method = peeked?.method ?? "unknown";
-    if (method !== "tools/call") {
+    if (calls.length === 0) {
       for (const event of summarizeMcpExchange({
         method,
         httpStatus,
         latencyMs: performance.now() - started,
         responseBody: "",
         userAgent,
-      })) captureServerProductEvent(event);
+      })) {
+        captureServerProductEvent(peeked?.batch ? { ...event, batch_executed: false, requested_tool_calls: 0 } : event);
+      }
       return;
     }
-    const execution = executionId();
-    const listed = peeked?.listingIds ?? [];
-    const startedEvent = summarizeMcpExchange({
-      method: "tools/call",
-      toolName: peeked?.toolName,
-      httpStatus,
-      latencyMs: 0,
-      responseBody: "",
-      userAgent,
-      listingIds: listed,
-      executionId: execution,
-    })[0];
-    captureServerProductEvent(startedEvent);
     let responseBody = "";
+    let bodyState: "ok" | "aborted" = bodyPromise ? "ok" : "aborted";
     if (bodyPromise) {
-      try { responseBody = await bodyPromise; } catch { responseBody = ""; }
+      try { responseBody = await bodyPromise; } catch { bodyState = "aborted"; }
     }
-    const completed = summarizeMcpExchange({
-      method: "tools/call",
-      toolName: peeked?.toolName,
-      httpStatus,
-      latencyMs: performance.now() - started,
-      responseBody,
-      userAgent,
-      listingIds: listed,
-      executionId: execution,
-    })[1];
-    captureServerProductEvent(completed);
+    if (!responseBody.trim()) bodyState = "aborted";
+    const messages = bodyState === "ok" ? rpcMessages(responseBody) : [];
+    const latencyMs = performance.now() - started;
+    const executed = httpStatus < 400 && bodyState === "ok";
+    if (peeked?.batch) {
+      captureServerProductEvent({
+        event: "mcp_protocol_request",
+        source: "mcp",
+        method: "batch",
+        http_status: httpStatus,
+        latency_ms: latencyMs,
+        counts_as_shopper_tool: false,
+        batch_executed: executed,
+        requested_tool_calls: calls.length,
+        ...classifyClientHint(userAgent),
+        identity_is_person: false,
+        identity_scope: "anonymous_request",
+        $process_person_profile: false,
+      });
+    }
+    for (const call of calls) {
+      const matched = peeked?.batch
+        ? messages.find((message) => message.id === call.id)
+        : messages.find((message) => message.id === call.id) ?? messages[0];
+      const failed = !executed || !matched;
+      const pair = summarizeMcpExchange({
+        method: "tools/call",
+        toolName: call.toolName,
+        httpStatus,
+        latencyMs,
+        responseBody: matched ? JSON.stringify({ result: matched.result, error: matched.error }) : "",
+        userAgent,
+        listingIds: call.listingIds,
+        executionId: executionId(),
+        bodyState: failed ? "aborted" : "ok",
+      });
+      captureServerProductEvent(pair[0]);
+      captureServerProductEvent(pair[1]);
+    }
   }).catch(() => undefined);
   return response;
 }

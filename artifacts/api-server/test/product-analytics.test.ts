@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildInquiryOutcomeEvent,
@@ -5,10 +6,13 @@ import {
   configureProductAnalyticsForTests,
   captureProductEvent,
   flushProductAnalytics,
+  observeMcpFetch,
   productAnalyticsDroppedCount,
   resetProductAnalyticsForTests,
   sanitizeProductEvent,
   summarizeMcpExchange,
+  telemetryDealerId,
+  telemetryListingId,
 } from "../src/services/product-analytics";
 
 const secretEmail = "pat@example.com";
@@ -39,12 +43,13 @@ describe("product analytics privacy allowlist", () => {
     expect(clean).toMatchObject({
       event: "website_listing_view",
       source: "website",
-      listing_id: "stk:dealer.example:unit-1",
+      listing_id: telemetryListingId("stk:dealer.example:unit-1"),
       dealer_id: "dealer-42",
       surface: "listing_detail",
       identity_is_person: false,
       $process_person_profile: false,
     });
+    expect(clean?.listing_id).toMatch(/^lst_[0-9a-f]{24}$/);
     const blob = JSON.stringify(clean);
     expect(blob).not.toContain(secretEmail);
     expect(blob).not.toContain("555-0142");
@@ -55,16 +60,54 @@ describe("product analytics privacy allowlist", () => {
     expect(blob).not.toContain("raw-mcp-session");
     expect(blob).not.toContain("1HGCM82633A004352");
     expect(blob).not.toContain("Pat Tester");
+    expect(blob).not.toContain("stk:dealer.example:unit-1");
+  });
+
+  it("hashes bounded listing keys and drops URL, VIN, query, and oversized identifiers", () => {
+    const vin = "vin:1HGCM82633A004352";
+    const urlKey = "key:u:https://nhrv.com/product/2018-keystone-montana-300lk/";
+    const vinId = telemetryListingId(vin);
+    const urlId = telemetryListingId(urlKey);
+    expect(vinId).toBe(`lst_${createHash("sha256").update(vin).digest("hex").slice(0, 24)}`);
+    expect(urlId).toBe(`lst_${createHash("sha256").update(urlKey).digest("hex").slice(0, 24)}`);
+    expect(vinId).not.toContain("1HGCM");
+    expect(urlId).not.toContain("https");
+    expect(telemetryListingId(vin)).toBe(vinId);
+    expect(telemetryDealerId("4ZSRVS.com:Peru")).toBe("4zsrvs.com:peru");
+    const hostile = [
+      "key:u:https://evil.example/unit?token=sekret&email=pat@example.com",
+      `key:u:https://evil.example/${"a".repeat(400)}`,
+      "https://evil.example/only",
+      "pat@example.com",
+      "vin:not-a-vin",
+      "stk:../secret",
+    ];
+    for (const value of hostile) {
+      const event = sanitizeProductEvent({ event: "website_listing_view", source: "website", listing_id: value, dealer_id: "https://dealer.example/path" });
+      expect(event?.listing_id).toBeUndefined();
+      expect(event?.dealer_id).toBeUndefined();
+      expect(JSON.stringify(event)).not.toContain("sekret");
+      expect(JSON.stringify(event)).not.toContain("https://");
+      expect(JSON.stringify(event)).not.toContain("pat@");
+    }
+    expect(sanitizeProductEvent({
+      event: "website_page_view",
+      source: "website",
+      path: "/listing/vin:1HGCM82633A004352?token=sekret",
+    })).toMatchObject({ path: "/listing" });
   });
 
   it("rejects forged inquiry events and full urls from the website allowlist", () => {
     expect(sanitizeProductEvent({ event: "inquiry_outcome", source: "website", channel: "client" })).toBeNull();
     expect(sanitizeProductEvent({ event: "mcp_tool_completed", source: "website", tool_name: "search_rvs" })).toBeNull();
-    expect(sanitizeProductEvent({
+    const stripped = sanitizeProductEvent({
       event: "website_page_view",
       source: "website",
       path: "/swipe?zip=98402&q=family",
-    })).toBeNull();
+    });
+    expect(stripped).toMatchObject({ path: "/swipe" });
+    expect(JSON.stringify(stripped)).not.toContain("98402");
+    expect(JSON.stringify(stripped)).not.toContain("family");
     expect(sanitizeProductEvent({
       event: "website_page_view",
       source: "website",
@@ -184,9 +227,42 @@ describe("MCP exchange semantics", () => {
       error_code: "unit_not_found",
       counts_as_error: true,
       http_status: 200,
-      listing_id: "unit-9",
     });
+    expect(events[1].listing_id).toBeUndefined();
     expect(JSON.stringify(events)).not.toContain(secretEmail);
+    expect(JSON.stringify(events)).not.toContain("unit-9");
+  });
+
+  it("does not record a successful tool execution when the response body is aborted", async () => {
+    const events: Array<{ event: string; properties: Record<string, unknown> }> = [];
+    configureProductAnalyticsForTests({
+      apiKey: "test-project-token",
+      host: "https://us.i.posthog.com",
+      timeoutMs: 50,
+      transport: {
+        async sendBatch(body) {
+          events.push(...(JSON.parse(body) as { batch: typeof events }).batch);
+          return { ok: true };
+        },
+      },
+    });
+    const response = await observeMcpFetch(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "search_rvs", arguments: { unit_id: "stk:dealer.example:unit-1" } } }),
+      }),
+      async () => new Response(new ReadableStream({
+        pull(controller) { controller.error(new Error("aborted")); },
+      }), { status: 200 }),
+    );
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    await flushProductAnalytics();
+    const completed = events.filter((event) => event.event === "mcp_tool_completed");
+    expect(completed).toHaveLength(1);
+    expect(completed[0].properties).toMatchObject({ outcome: "aborted", counts_as_shopper_tool: false, counts_as_error: true });
+    expect(completed[0].properties.outcome).not.toBe("results");
   });
 
   it("does not emit a second shopper tool event for protocol methods", () => {
@@ -209,7 +285,7 @@ describe("inquiry outcome boundaries", () => {
       channel: "matchrv_forward",
       duplicate: false,
       dryRun: false,
-      listingId: "unit-1",
+      listingId: "stk:dealer.example:unit-1",
       dealerId: "dealer-7",
     });
     expect(queued).toMatchObject({
@@ -220,9 +296,10 @@ describe("inquiry outcome boundaries", () => {
       counts_as_queued: true,
       counts_as_delivered: false,
       channel: "matchrv_forward",
-      listing_id: "unit-1",
+      listing_id: telemetryListingId("stk:dealer.example:unit-1"),
       dealer_id: "dealer-7",
     });
+    expect(JSON.stringify(queued)).not.toContain("stk:dealer.example:unit-1");
 
     const delivered = buildInquiryOutcomeEvent({
       source: "mcp",

@@ -33,7 +33,7 @@ until the POST body ends. GET session streams are not read.
 
 | Event | When it is emitted | Counts as |
 | --- | --- | --- |
-| `mcp_protocol_request` | MCP `initialize`, `tools/list`, `ping`, and any method other than `tools/call` | Not shopper tool use |
+| `mcp_protocol_request` | One non-tool HTTP request: `initialize`, `tools/list`, `ping`, or a JSON-RPC batch envelope | Not a tool execution and not a user. `method=batch` with `batch_executed: false` means the endpoint did not run the batch. `batch_executed: true` only says the HTTP request was accepted; count `mcp_tool_completed` for each tool that ran |
 | `mcp_tool_started` | The request is recognized as `tools/call`, before the response body is finished | Pair with the completion via `execution_id`. It is not a separate shopper count |
 | `mcp_tool_completed` | The POST response body has been read, including an `isError` result on HTTP 200 | Shopper tool execution. `latency_ms` runs until that body ends. `counts_as_error` is false for `discovery` and `no_results`. `counts_as_results_returned` is true only for `results` |
 | `website_search_results` | Swipe deck built, or a category / Discover page received its result list once | Results returned. Not a card view |
@@ -42,7 +42,7 @@ until the POST body ends. GET session streams are not read.
 | `website_inventory_attention` | Swipe or Discover like, or the swipe detail sheet opened | Explicit attention. `action` is `like` or `detail_open` |
 | `website_dealer_click` | `GET /api/out` is about to redirect to a real dealer page | One outbound click. A miss back to `/swipe` emits nothing |
 | `website_page_view` | SPA location change, path only | A page view. Repeated within 2 seconds is dropped |
-| `inquiry_outcome` | `sendInquiry` or the in-page WebMCP `submitPreview` returns | The lead funnel. Not a button click |
+| `inquiry_outcome` | `sendInquiry` or the in-page WebMCP `submitPreview` returns | A delivery outcome: queued, delivered, failed, duplicate, dry run, or rejected. Not a button click, not a user, and not a sale |
 
 `search_rvs` outcomes:
 
@@ -85,10 +85,24 @@ A website browser session id, when the page already has one, is sent as
 tab session, not one person. Do not chart unique distinct ids as shoppers.
 
 Events do not include contact fields, message text, search text, prompts,
-confirmation tokens, raw MCP session keys, authorization headers, or full
-page URLs with query strings. Listing and dealer ids are the inventory keys.
-Some listing keys embed a public dealer product URL; the query string is
-still removed.
+confirmation tokens, raw MCP session keys, authorization headers, full page
+URLs, query strings, or raw VINs. A listing reference is sent only as
+`lst_` plus the first 24 hex characters of SHA-256 over the canonical unit
+id (`vin:…`, `stk:…`, `key:u:…`, or a numeric listing id). The same id always hashes to the same
+value, so attention can be joined back to inventory offline:
+
+```text
+lst_ + sha256(canonical_unit_id).hexdigest()[:24]
+```
+
+No secret is used. Query strings, addresses with `@`, and values longer than
+300 characters are dropped instead of hashed. Dealer attribution stays on
+`dealer_id` when it is the dealer slug (`example.com:city` or a short id).
+A dealer URL is not sent. Page views of a listing are recorded as `/listing`
+without the unit id.
+
+These counts are requests, tool executions, browser sessions, user-agent
+hints, and delivery outcomes. They are not counts of people and not sales.
 
 ## Denominators
 
@@ -153,18 +167,33 @@ GROUP BY method, hint
 
 ## Activation
 
-1. In the Render service `matchrv-mcp`, set `POSTHOG_PROJECT_API_KEY` to the
-   project's write token. Leave `POSTHOG_HOST` unset for US cloud, or set it
-   to `https://us.i.posthog.com`.
-2. Redeploy that service. Do not put the token in git.
-3. Confirm new events in the PostHog activity view. Old traffic will not appear.
+Project `427311` on PostHog US cloud. This code does not set that project up
+and does not create dashboards.
 
-Rollback: unset `POSTHOG_PROJECT_API_KEY` and redeploy. The same code keeps
-running and emits nothing. No database migration is involved.
+1. On Render service `matchrv-mcp`, set the environment variable
+   `POSTHOG_PROJECT_API_KEY` to that project's write token. Do not commit the
+   value.
+2. Leave `POSTHOG_HOST` unset to use `https://us.i.posthog.com`. The only
+   other accepted value is `https://eu.i.posthog.com`.
+3. Redeploy `matchrv-mcp`. Events begin only after that deploy. Older requests
+   are not backfilled.
+
+Rollback: remove `POSTHOG_PROJECT_API_KEY` and redeploy. The same build then
+emits nothing. No database migration and no access change are required.
+
+## If the browser PostHog wizard is also merged
+
+This server collector stands alone. The open browser-SDK change uses different
+event names and calls PostHog identify with account fields. Merging both
+would collect two streams and could create person profiles from the browser
+SDK while this collector marks events anonymous. Do not treat those person
+profiles as shoppers. Leave one path unwired, or do not turn on the browser
+SDK's identify calls, before reading a combined report.
 
 ## Gaps
 
-- A batched JSON-RPC body is recorded as one protocol event named `batch`, not as separate tool calls.
+- An accepted JSON-RPC batch records one `mcp_tool_completed` per executed `tools/call` (at most 20). The `mcp_protocol_request` with `method=batch` is only the envelope. A rejected batch sets `batch_executed` false and those calls are not successful tool executions.
+- An empty or failed tool response is `outcome=aborted`, not a successful execution. A retried capture reuses the event `uuid`.
 - Header search on the marketing site only navigates to `/shop`. It does not run an inventory query, so it is not a search event.
 - Category grids do not emit an impression per painted card. A card counts when the shopper opens the listing.
 - The in-page WebMCP submit path cannot report dealer email delivery. It only queues a MatchRV record.

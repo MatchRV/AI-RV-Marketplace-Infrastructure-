@@ -252,10 +252,11 @@ describe("website server actions", () => {
     expect(clicks).toHaveLength(1);
     expect(clicks[0].properties).toMatchObject({
       source: "website",
-      listing_id: unit.id,
-      dealer_id: unit.dealer.id,
+      dealer_id: unit.dealer.id.toLowerCase(),
       surface: "swipe",
     });
+    expect(clicks[0].properties.listing_id).toMatch(/^lst_[0-9a-f]{24}$/);
+    expect(clicks[0].properties.listing_id).not.toBe(unit.id);
     const blob = JSON.stringify(events);
     expect(blob).not.toContain("98402");
     expect(blob).not.toContain(unit.dealer.name);
@@ -282,6 +283,38 @@ describe("website server actions", () => {
     expect(events[0].properties.path).toBe("/swipe");
     expect(events[0].distinct_id.startsWith("web_session_")).toBe(true);
     expect(JSON.stringify(events)).not.toContain(SHOPPER_EMAIL);
+  });
+
+  it("does not accept a forged lead or a raw URL listing id from the website beacon", async () => {
+    const events = collectEvents();
+    const urlKey = "key:u:https://nhrv.com/product/hostile/";
+    const response = await fetch(`${base}/api/analytics/product`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        event: "inquiry_outcome",
+        source: "mcp",
+        outcome: "submitted_delivered",
+        listing_id: urlKey,
+        email: SHOPPER_EMAIL,
+      }),
+    });
+    const listed = await fetch(`${base}/api/analytics/product`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: "website_listing_view", listing_id: urlKey, dealer_id: "https://dealer.example", source: "website" }),
+    });
+    expect(response.status).toBe(204);
+    expect(listed.status).toBe(204);
+    await settle();
+    expect(events.map((event) => event.event)).toEqual(["website_listing_view"]);
+    expect(events[0].properties.listing_id).toMatch(/^lst_[0-9a-f]{24}$/);
+    expect(events[0].properties.dealer_id).toBeUndefined();
+    expect(events[0].properties.outcome).toBeUndefined();
+    const blob = JSON.stringify(events);
+    expect(blob).not.toContain("https://");
+    expect(blob).not.toContain(SHOPPER_EMAIL);
+    expect(blob).not.toContain("submitted_delivered");
   });
 });
 
@@ -311,9 +344,40 @@ describe("in-page WebMCP lead queue", () => {
       channel: "demo_lead_record",
       counts_as_delivered: false,
       counts_as_queued: true,
-      listing_id: unit.id,
     });
+    expect(leads[1].properties.listing_id).toMatch(/^lst_[0-9a-f]{24}$/);
     expect(JSON.stringify(leads)).not.toContain(SHOPPER_EMAIL);
     expect(JSON.stringify(leads)).not.toContain("Please hold");
+    expect(JSON.stringify(leads)).not.toContain(unit.id);
+    expect(JSON.stringify(leads)).not.toContain("https://");
+  });
+});
+
+describe("JSON-RPC batch counting", () => {
+  it("counts each executed tools/call and does not treat a rejected batch as tool success", async () => {
+    const events = collectEvents();
+    const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
+    const calls = [
+      { jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "outfitter_guide", arguments: { topic: "costs" } } },
+      { jsonrpc: "2.0", id: 12, method: "tools/call", params: { name: "outfitter_guide", arguments: { topic: "financing" } } },
+    ];
+    const executed = await matchRvMcpHandler.fetch(new Request("http://localhost/mcp", {
+      method: "POST", headers, body: JSON.stringify(calls),
+    }));
+    expect(executed.status).toBe(200);
+    const rejected = await matchRvMcpHandler.fetch(new Request("http://localhost/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(calls),
+    }));
+    expect(rejected.status).toBeGreaterThanOrEqual(400);
+    await settle();
+    const successful = events.filter((event) => event.event === "mcp_tool_completed" && event.properties.counts_as_shopper_tool === true);
+    expect(successful).toHaveLength(2);
+    expect(successful.every((event) => event.properties.tool_name === "outfitter_guide")).toBe(true);
+    expect(new Set(successful.map((event) => event.properties.execution_id)).size).toBe(2);
+    const rejectedTools = events.filter((event) => event.event === "mcp_tool_completed" && event.properties.http_status === rejected.status);
+    expect(rejectedTools.every((event) => event.properties.counts_as_shopper_tool === false)).toBe(true);
+    expect(events.some((event) => event.event === "mcp_protocol_request" && event.properties.method === "batch" && event.properties.batch_executed === true && event.properties.counts_as_shopper_tool === false)).toBe(true);
   });
 });

@@ -17,8 +17,48 @@ export interface DealerInquiryInput {
   paymentEstimate?: import("./payment-calc").PaymentEstimatePayload | null;
 }
 export type DealerInquiryResult =
-  | { ok: true; inquiryId: string; status: string; statusDetail: string }
+  | { ok: true; inquiryId: string; status: string; statusDetail: string; statusToken?: string }
   | { ok: false; error: string };
+
+/** How often the shopper page re-reads a queued inquiry. The safety sweep is separate. */
+export const SHOPPER_STATUS_POLL_MS = 60_000;
+
+/** Shopper-facing wording. Queued is not forwarded, and forwarded is not a dealer reply. */
+export function shopperInquiryStatusCopy(status: string, dealerName: string): string {
+  switch (status) {
+    case "forwarded":
+      return `MatchRV forwarded your message to ${dealerName}. They can reply to you directly. This does not mean they have replied yet.`;
+    case "delivered":
+      return `Sent to ${dealerName}. Their mail server accepted it. This does not mean they have replied yet.`;
+    case "queued_for_matchrv":
+      return `MatchRV received your message and will forward it to ${dealerName}. It has not reached the dealership yet.`;
+    case "dry_run":
+      return "Test mode: your request was checked but not sent to the dealer.";
+    default:
+      return `MatchRV has your message and is still working on reaching ${dealerName}.`;
+  }
+}
+
+export async function fetchShopperInquiryStatus(
+  base: string,
+  inquiryId: string,
+  statusToken: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<{ status: string; statusDetail: string } | null> {
+  const root = base.endsWith("/") ? base : `${base}/`;
+  try {
+    const res = await fetchImpl(`${root}api/inquiries/${encodeURIComponent(inquiryId)}`, {
+      headers: { "x-inquiry-token": statusToken },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { inquiry?: { status?: string; statusDetail?: string } };
+    if (!body.inquiry?.status) return null;
+    return { status: body.inquiry.status, statusDetail: body.inquiry.statusDetail ?? "" };
+  } catch {
+    return null;
+  }
+}
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -62,10 +102,17 @@ export async function sendDealerInquiry(input: DealerInquiryInput, base = "/", f
       body: JSON.stringify({ confirmation_token: confirmationToken, confirmed: true }),
     });
     if (!sent.ok) return { ok: false, error: await readError(sent, "Unable to send message. Please try again.") };
-    const { inquiry } = (await sent.json()) as { inquiry?: { inquiryId: string; status: string; statusDetail: string } };
+    const body = (await sent.json()) as { inquiry?: { inquiryId: string; status: string; statusDetail: string }; statusToken?: string | null };
+    const inquiry = body.inquiry;
     if (!inquiry) return { ok: false, error: "Unable to send message. Please try again." };
     if (inquiry.status === "failed") return { ok: false, error: inquiry.statusDetail || "We couldn't reach the dealership right now. Please contact them directly." };
-    return { ok: true, inquiryId: inquiry.inquiryId, status: inquiry.status, statusDetail: inquiry.statusDetail };
+    return {
+      ok: true,
+      inquiryId: inquiry.inquiryId,
+      status: inquiry.status,
+      statusDetail: inquiry.statusDetail,
+      ...(body.statusToken ? { statusToken: body.statusToken } : {}),
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Network error" };
   }

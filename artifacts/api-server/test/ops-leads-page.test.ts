@@ -62,7 +62,7 @@ describe('/ops/leads page', () => {
   it('marks test leads and offers forward text only for real queued leads', () => {
     expect(OPS_LEADS_HTML).toContain('TEST · do not forward');
     expect(OPS_LEADS_HTML).toContain('Forward to dealer');
-    expect(OPS_LEADS_HTML).toMatch(/!test && i\.status === "queued_for_matchrv"/);
+    expect(OPS_LEADS_HTML).toMatch(/!test && \(i\.status === "queued_for_matchrv" \|\| i\.status === "failed"\)/);
   });
 
   it('renders a Shopper fit block from textContent only and includes fit in forward text', () => {

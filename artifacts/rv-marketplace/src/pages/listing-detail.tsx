@@ -23,7 +23,7 @@ import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
-import { sendDealerInquiry } from "@/lib/dealer-inquiry";
+import { fetchShopperInquiryStatus, sendDealerInquiry, SHOPPER_STATUS_POLL_MS, shopperInquiryStatusCopy } from "@/lib/dealer-inquiry";
 
 const DEAL_CHIP: Record<string, { bg: string; text: string }> = {
   great_deal: { bg: "bg-emerald-100", text: "text-emerald-900" },
@@ -137,7 +137,7 @@ export function ListingDetail() {
   const savedLeadFired = useRef(false);
   const { isAuthenticated, isSaved, toggleSave, login, user } = useAppAuth();
   const [contactMsg, setContactMsg] = useState("");
-  const [contactSent, setContactSent] = useState(false);
+  const [contactInquiry, setContactInquiry] = useState<{ inquiryId: string; status: string; statusToken?: string } | null>(null);
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   const [guestName, setGuestName] = useState("");
@@ -187,6 +187,20 @@ export function ListingDetail() {
         },
       });
   }, [listing]);
+
+  useEffect(() => {
+    if (!contactInquiry?.statusToken || contactInquiry.status !== "queued_for_matchrv") return;
+    let stop = false;
+    const tick = () => {
+      void fetchShopperInquiryStatus(BASE, contactInquiry.inquiryId, contactInquiry.statusToken!).then((next) => {
+        if (!stop && next && next.status !== contactInquiry.status) {
+          setContactInquiry((cur) => (cur ? { ...cur, status: next.status } : cur));
+        }
+      });
+    };
+    const timer = window.setInterval(tick, SHOPPER_STATUS_POLL_MS);
+    return () => { stop = true; window.clearInterval(timer); };
+  }, [contactInquiry]);
 
   // Reset gallery to the first photo when navigating between listings
   useEffect(() => {
@@ -876,9 +890,9 @@ export function ListingDetail() {
                       </p>
                     </div>
 
-                    {contactSent ? (
-                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm flex items-center gap-2">
-                        <Check className="w-4 h-4" /> Message received. MatchRV is passing it to {listing.dealer.name}, and they’ll reply to you directly.
+                    {contactInquiry ? (
+                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm flex items-center gap-2" role="status">
+                        <Check className="w-4 h-4" /> {shopperInquiryStatusCopy(contactInquiry.status, listing.dealer.name)}
                       </div>
                     ) : (
                       <>
@@ -984,10 +998,10 @@ export function ListingDetail() {
                                     smsOptIn: guestPhone.trim() ? smsOptIn : false,
                                   });
                                 }
-                                if (ok) {
+                                if (ok && sent.ok) {
                                   recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
-                                  setContactSent(true);
+                                  setContactInquiry({ inquiryId: sent.inquiryId, status: sent.status, statusToken: sent.statusToken });
                                   setContactMsg("");
                                   setGuestName("");
                                   setGuestEmail("");
@@ -1023,10 +1037,10 @@ export function ListingDetail() {
                                   contactEmail: user?.email ?? undefined,
                                 });
                               }
-                              if (ok) {
+                              if (ok && sent.ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
-                                setContactSent(true);
+                                setContactInquiry({ inquiryId: sent.inquiryId, status: sent.status, statusToken: sent.statusToken });
                                 setContactMsg("");
                               } else {
                                 setContactError(error ?? "Unable to send message. Please try again.");

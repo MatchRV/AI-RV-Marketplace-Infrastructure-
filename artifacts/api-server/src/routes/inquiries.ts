@@ -1,8 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getInventory } from "../services/agent-inventory";
 import {
-  getInquiryStatus, opsGet, opsKeyValid, opsList, opsUpdate, prepareInquiry, rateLimit, sendInquiry,
+  confirmInquiryForwarded, getInquiryStatus, opsGet, opsKeyValid, opsList, opsUpdate, prepareInquiry, rateLimit, sendInquiry,
 } from "../services/dealer-inquiries";
+import { runInquirySafetySweep } from "../services/inquiry-safety";
 
 /**
  * Dealer inquiry HTTP API (same service the MCP tools use).
@@ -13,7 +14,9 @@ import {
  *                                       (X-Inquiry-Token header or ?token=)
  *   GET  /api/inquiries/ops             ops list        (Authorization: Bearer INQUIRY_OPS_KEY)
  *   GET  /api/inquiries/ops/:id         ops detail
+ *   POST /api/inquiries/ops/sweep       run the lead safety sweep (same ops key; no shopper contact in the response)
  *   POST /api/inquiries/ops/:id         ops update: { status?, statusDetail?, dealerReply?, test? }
+ *                                       or { action: "confirm_forward" } after the lead was actually sent
  */
 const router: IRouter = Router();
 const requester = (req: Request) => `ip:${req.ip ?? "unknown"}`;
@@ -59,6 +62,11 @@ function requireOps(req: Request, res: Response): boolean {
   return true;
 }
 router.get("/inquiries/ops", (req: Request, res: Response) => { if (requireOps(req, res)) res.json({ inquiries: opsList() }); });
+router.post("/inquiries/ops/sweep", async (req: Request, res: Response) => {
+  if (!requireOps(req, res)) return;
+  const result = await runInquirySafetySweep();
+  res.json(result);
+});
 router.get("/inquiries/ops/:id", (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
   const i = opsGet(String(req.params.id));
@@ -68,6 +76,15 @@ router.get("/inquiries/ops/:id", (req: Request, res: Response) => {
 router.post("/inquiries/ops/:id", (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
   const b = (req.body ?? {}) as Record<string, unknown>;
+  if (b.action === "confirm_forward") {
+    const confirmed = confirmInquiryForwarded(String(req.params.id));
+    if (!confirmed.ok) {
+      res.status(confirmed.code === "not_found" ? 404 : 409).json({ error: confirmed.code });
+      return;
+    }
+    res.json({ inquiry: confirmed.inquiry });
+    return;
+  }
   const status = b.status === "delivered" || b.status === "queued_for_matchrv" || b.status === "failed" ? b.status : undefined;
   const i = opsUpdate(String(req.params.id), { status, statusDetail: typeof b.statusDetail === "string" ? b.statusDetail : undefined, dealerReply: typeof b.dealerReply === "string" ? b.dealerReply : undefined, test: typeof b.test === "boolean" ? b.test : undefined });
   if (!i) { res.status(404).json({ error: "not_found" }); return; }

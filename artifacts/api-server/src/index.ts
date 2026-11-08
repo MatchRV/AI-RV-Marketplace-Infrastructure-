@@ -7,6 +7,7 @@ import app from "./app";
 import { autoImportIfEmpty } from "./lib/auto-import";
 import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { shouldStartEnrichmentCron, startEnrichmentCron } from "./services/listing-enrichment";
+import { startInquirySafetySweep } from "./services/inquiry-safety";
 import { warmInventory } from "./services/agent-inventory";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
@@ -137,6 +138,9 @@ async function start() {
       startScraperCron();
     } else {
       console.log("[startup] scraper cron disabled (embedded db or scraper script not present)");
+    }
+    if (!startInquirySafetySweep()) {
+      console.log("[inquiry-safety] sweep off (set INQUIRY_SAFETY_SWEEP=1 to check queued leads every 10 minutes). No extra service is started.");
     }
   });
 }

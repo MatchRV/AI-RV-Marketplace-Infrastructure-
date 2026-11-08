@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Building2, CheckCircle2, MapPin, PlayCircle, X } from "lucide-react";
 import { creditLabel, loadPaymentPrefs, paymentEstimatePayload, type PaymentPrefs } from "@/lib/payment-calc";
 import { PaymentCalculator } from "./payment-calculator";
-import { sendDealerInquiry } from "@/lib/dealer-inquiry";
+import { fetchShopperInquiryStatus, sendDealerInquiry, SHOPPER_STATUS_POLL_MS, shopperInquiryStatusCopy } from "@/lib/dealer-inquiry";
 import { getAnalyticsSessionId, trackLead } from "@/lib/analytics";
 import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { trackSwipe } from "@/lib/swipe-analytics";
@@ -83,7 +83,7 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
   const [form, setForm] = useState<InquiryForm>({ name: "", email: "", phone: "", message: defaultInquiryMessage(card) });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<{ status: string } | null>(null);
+  const [sent, setSent] = useState<{ status: string; inquiryId?: string; statusToken?: string } | null>(null);
   const [payPrefs, setPayPrefs] = useState<PaymentPrefs>(() => loadPaymentPrefs());
   const [calcPrice, setCalcPrice] = useState<number | null>(card.priceUsd);
   // Off by default: the shopper's numbers are only shared if they tick the box.
@@ -91,6 +91,18 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
   const estimate = paymentEstimatePayload(calcPrice, payPrefs);
   const formRef = useRef<HTMLFormElement | null>(null);
   useEffect(() => { if (showForm && detail && !initialForm) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [showForm, detail, initialForm]);
+
+  useEffect(() => {
+    if (!sent?.statusToken || sent.status !== "queued_for_matchrv") return;
+    let stop = false;
+    const tick = () => {
+      void fetchShopperInquiryStatus(BASE, sent.inquiryId!, sent.statusToken!).then((next) => {
+        if (!stop && next && next.status !== sent.status) setSent((cur) => (cur ? { ...cur, status: next.status } : cur));
+      });
+    };
+    const timer = window.setInterval(tick, SHOPPER_STATUS_POLL_MS);
+    return () => { stop = true; window.clearInterval(timer); };
+  }, [sent]);
 
   useEffect(() => {
     let sessionId: string | undefined;
@@ -117,7 +129,7 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
     try {
       const r = await sendDealerInquiry(inquiryPayload(card.id, form, { sharePayment, estimate }), BASE);
       if (!r.ok) { setError(r.error); return; }
-      setSent({ status: r.status });
+      setSent({ status: r.status, inquiryId: r.inquiryId, statusToken: r.statusToken });
       trackSwipe("inquiry_submitted", { unitId: card.id, status: r.status, sharedPayment: sharePayment && Boolean(estimate) });
       if (r.status !== "dry_run") trackLead("buyer_dealer_inquiry", { formId: "swipe_see_in_person", dedupeKey: card.id, metadata: { source: "swipe_deck", unitId: card.id } });
     } finally { setSending(false); }
@@ -202,11 +214,7 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
             <div className="mt-4 rounded-2xl p-4 flex gap-3" style={{ border: `1.5px solid ${TEAL}` }} role="status">
               <CheckCircle2 color={TEAL_DARK} className="shrink-0" />
               <p className="text-sm" style={{ color: NAVY }}>
-                {sent.status === "dry_run"
-                  ? "Test mode: your request was checked but not sent to the dealer."
-                  : sent.status === "delivered"
-                    ? `Sent to ${dealerName}. They'll reply to the contact info you gave.`
-                    : `Received. MatchRV will pass your request to ${dealerName}.`}
+                {shopperInquiryStatusCopy(sent.status, dealerName)}
               </p>
             </div>
           )}

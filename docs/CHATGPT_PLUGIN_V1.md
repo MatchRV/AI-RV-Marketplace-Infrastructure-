@@ -16,7 +16,7 @@ As implemented in `artifacts/api-server/src/mcp.ts` (host-neutral):
 
 - Read-only: `outfitter_discovery`, `outfitter_guide`, `outfitter_memory`, `search_rvs`, `get_rv`, `compare_rvs`, `evaluate_tow_fit`, `prepare_dealer_inquiry` (preview only, sends and stores nothing), `get_dealer_inquiry_status`.
 - Write: `teach_outfitter` (shopper-scoped memory only).
-- Consequential (destructive, open-world): `send_dealer_inquiry`, which requires the preview's confirmation token and `confirmed=true`, and returns an honest delivery status (`delivered` / `queued_for_matchrv` / `failed` / `dry_run`).
+- Consequential (destructive, open-world): `send_dealer_inquiry`, which requires the preview's confirmation token and `confirmed=true`, and returns an honest delivery status (`delivered` / `queued_for_matchrv` / `failed` / `dry_run`). A later status check can also return `forwarded` after a MatchRV operator confirms the handoff. Queued is not forwarded.
 
 Memory is scoped per shopper (`openai/subject` → `openai/session` → MCP session → issued `session_key`). Shared memory is curated and read-only. Not in the MCP surface: VIN tow-vehicle lookup (website-only via `/api/agent/*`).
 

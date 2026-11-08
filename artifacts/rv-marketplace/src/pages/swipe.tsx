@@ -10,6 +10,8 @@ import { Shortlist } from "@/components/swipe/shortlist";
 import { OutfitterCheckIn } from "@/components/swipe/outfitter-checkin";
 import { NAVY, TEAL } from "@/components/swipe/tokens";
 import { trackSwipe } from "@/lib/swipe-analytics";
+import { getAnalyticsSessionId } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { loadLikes, parseSwipeSearch, saveLikes } from "@/lib/swipe-session";
 import { DECK_LIMIT, applyCheckIn, isComplete, markCheckIn, shouldCheckIn, skipBroken, startDeck, swipe, type RvType, type CheckInEdits, type DeckState, type SwipeCard } from "@/lib/swipe-deck";
 import { swipeLogoFrame } from "@/lib/swipe-logo";
@@ -80,6 +82,13 @@ export function Swipe() {
   };
 
   useEffect(() => {
+    if (phase !== "deck" || !deck?.current) return;
+    let sessionId: string | undefined;
+    try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+    trackWebsiteProductEvent({ event: "website_card_viewed", listingId: deck.current.id, surface: "swipe", sessionId });
+  }, [phase, deck?.current?.id]);
+
+  useEffect(() => {
     if (phase === "deck" && deck && isComplete(deck) && !completed.current) {
       completed.current = true;
       trackSwipe("deck_complete", { shown: deck.shown.length, liked: deck.liked.length });
@@ -91,6 +100,11 @@ export function Swipe() {
     if (!deck?.current) return;
     const c = deck.current;
     trackSwipe(liked ? "swipe_like" : "swipe_pass", { unitId: c.id, position: deck.shown.length, rvType: c.rvType, priceUsd: c.priceUsd });
+    if (liked) {
+      let sessionId: string | undefined;
+      try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+      trackWebsiteProductEvent({ event: "website_inventory_attention", listingId: c.id, surface: "swipe", action: "like", sessionId });
+    }
     const next = swipe(deck, liked);
     if (liked) saveLikes(localStorage, next.liked);
     setDeck(next);

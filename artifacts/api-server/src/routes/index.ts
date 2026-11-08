@@ -18,6 +18,7 @@ import dealerToolsRouter from "./dealer-tools";
 import shopOutfitterRouter from "./shop-outfitter";
 import inquiriesRouter from "./inquiries";
 import swipeRouter from "./swipe";
+import productAnalyticsRouter from "./product-analytics";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(webmcpEventsRouter);
 router.use(dealerToolsRouter);
 router.use(inquiriesRouter);
 router.use(swipeRouter);
+router.use(productAnalyticsRouter);
 
 export default router;

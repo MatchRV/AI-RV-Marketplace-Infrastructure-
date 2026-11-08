@@ -3,7 +3,8 @@ import { ArrowUpRight, Building2, CheckCircle2, MapPin, PlayCircle, X } from "lu
 import { creditLabel, loadPaymentPrefs, paymentEstimatePayload, type PaymentPrefs } from "@/lib/payment-calc";
 import { PaymentCalculator } from "./payment-calculator";
 import { sendDealerInquiry } from "@/lib/dealer-inquiry";
-import { trackLead } from "@/lib/analytics";
+import { getAnalyticsSessionId, trackLead } from "@/lib/analytics";
+import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { trackSwipe } from "@/lib/swipe-analytics";
 import { cardFacts, cardPlace, cardTitle, defaultInquiryMessage, formatPrice, inquiryFormValid, inquiryPayload, type InquiryForm, type SwipeCard } from "@/lib/swipe-deck";
 import { NAVY, TEAL, TEAL_DARK, LINE } from "./tokens";
@@ -90,6 +91,12 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
   const estimate = paymentEstimatePayload(calcPrice, payPrefs);
   const formRef = useRef<HTMLFormElement | null>(null);
   useEffect(() => { if (showForm && detail && !initialForm) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [showForm, detail, initialForm]);
+
+  useEffect(() => {
+    let sessionId: string | undefined;
+    try { sessionId = getAnalyticsSessionId(); } catch { sessionId = undefined; }
+    trackWebsiteProductEvent({ event: "website_inventory_attention", listingId: card.id, surface: "swipe_detail", action: "detail_open", sessionId });
+  }, [card.id]);
 
   useEffect(() => {
     let live = true;

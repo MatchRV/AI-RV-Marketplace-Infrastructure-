@@ -137,7 +137,7 @@ if (DB_MODE === "none") {
   // (see routes/listings.ts + services/snapshot-listings.ts).
   const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries|swipe|out)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
-    if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/dealer-tools/quick-report" || req.path === "/dealer-tools/quick-report/email")) || (req.method === "GET" && (req.path === "/dealer-tools/quick-report/status" || req.path.startsWith("/dealer-tools/quick-report/pdf/")))) return next();
+    if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/analytics/product" || req.path === "/dealer-tools/quick-report" || req.path === "/dealer-tools/quick-report/email")) || (req.method === "GET" && (req.path === "/dealer-tools/quick-report/status" || req.path.startsWith("/dealer-tools/quick-report/pdf/")))) return next();
     res.status(503).json({
       error: "database_disabled",
       message:

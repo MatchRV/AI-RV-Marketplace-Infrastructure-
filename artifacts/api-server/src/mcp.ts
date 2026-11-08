@@ -52,6 +52,7 @@ import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekSco
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
+import { observeMcpFetch } from "./services/product-analytics";
 
 const OPT = "Optional. Pass only what the shopper actually said.";
 const FEATURES = ["bunkhouse", "outdoor_kitchen", "solar", "solar_prep", "lithium", "generator", "four_season", "two_entry_doors"] as const;
@@ -1080,6 +1081,7 @@ function buildMatchRvServer(): McpServer {
         dryRun: input.dry_run,
         requesterKey: scope.id ? `scope:${scope.id}` : `ip:${(ctx as { http?: { req?: Request } }).http?.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"}`,
         scope: scope.id,
+        analyticsSource: "mcp",
         fitHint: recallFit(scope) ?? null,
         lookupUnit: (id) => getInventory().byId.get(id),
       });
@@ -1114,5 +1116,11 @@ function buildMatchRvServer(): McpServer {
   return server;
 }
 
-export const matchRvMcpHandler = createMcpHandler(() => buildMatchRvServer());
+const matchRvMcpServer = createMcpHandler(() => buildMatchRvServer());
+const matchRvMcpFetch = matchRvMcpServer.fetch.bind(matchRvMcpServer);
+matchRvMcpServer.fetch = ((input: Request | string, init?: RequestInit) => {
+  const request = input instanceof Request ? input : new Request(input, init);
+  return observeMcpFetch(request, matchRvMcpFetch);
+}) as typeof matchRvMcpServer.fetch;
+export const matchRvMcpHandler = matchRvMcpServer;
 export const matchRvMcpNodeHandler = toNodeHandler(matchRvMcpHandler);

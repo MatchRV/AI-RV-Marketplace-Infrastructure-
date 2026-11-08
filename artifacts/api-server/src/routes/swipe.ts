@@ -4,6 +4,7 @@ import { buildDeckPool, deckRadius, outboundTarget, RV_TYPES, unitDetail, withUt
 import { getScreenedInventory } from "../services/screened-inventory";
 import { nearestZip } from "../services/zip-centroids";
 import { outboundSummary, recordOutboundClick } from "../services/outbound-clicks";
+import { captureProductEvent } from "../services/product-analytics";
 import { opsKeyValid } from "../services/dealer-inquiries";
 
 /**
@@ -54,6 +55,18 @@ router.post("/swipe/deck", async (req: Request, res: Response) => {
     }, { exclude });
     res.setHeader("Cache-Control", "no-store");
     res.json({ cards: pool.cards, zip: pool.appliedConstraints.location?.place ?? null, radiusMiles: pool.appliedConstraints.location?.radiusMiles ?? null, matched: pool.stats.matched });
+    try {
+      captureProductEvent({
+        event: "website_search_results",
+        source: "website",
+        surface: "swipe",
+        ...(rvType ? { rv_type: rvType } : {}),
+        result_count: pool.cards.length,
+        matched_count: pool.stats.matched,
+      });
+    } catch {
+      /* analytics must not change the deck response */
+    }
   } catch (err) {
     if (err instanceof ConstraintError) { res.status(422).json({ error: "unknown_location", guidance: "That ZIP code isn't in our table. Try a nearby ZIP." }); return; }
     console.error("[swipe] deck failed:", err);
@@ -78,6 +91,17 @@ router.get("/out", (req: Request, res: Response) => {
   if (!u || !target) { res.redirect(302, "/swipe"); return; }
   const dest = withUtm(target, from === "swipe" ? "swipe_deck" : from);
   recordOutboundClick({ unitId: u.id, dealerId: u.dealer.id, dealerName: u.dealer.name, host: new URL(dest).hostname, from });
+  try {
+    captureProductEvent({
+      event: "website_dealer_click",
+      source: "website",
+      surface: from === "swipe" ? "swipe" : "outbound",
+      listing_id: u.id,
+      dealer_id: u.dealer.id,
+    });
+  } catch {
+    /* analytics must not block the redirect */
+  }
   res.redirect(302, dest);
 });
 

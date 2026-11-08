@@ -133,7 +133,7 @@ export function ListingDetail() {
   const towMutation = useTowMatch();
   const [towForm, setTowForm] = useState({ make: "", model: "", year: "" });
   const [towResult, setTowResult] = useState<TowMatchResponse | null>(null);
-  const trackedView = useRef(false);
+  const trackedView = useRef<string | null>(null);
   const savedLeadFired = useRef(false);
   const { isAuthenticated, isSaved, toggleSave, login, user } = useAppAuth();
   const [contactMsg, setContactMsg] = useState("");
@@ -159,16 +159,18 @@ export function ListingDetail() {
   const emailDrawerShownRef = useRef(false);
 
   useEffect(() => {
-    if (listing && !trackedView.current) {
-      trackedView.current = true;
-      trackWebsiteProductEvent({
-        event: "website_listing_view",
-        listingId: String(listing.id),
-        dealerId: listing.dealerId == null ? undefined : String(listing.dealerId),
-        surface: "listing_detail",
-        sessionId: (() => { try { return getAnalyticsSessionId(); } catch { return undefined; } })(),
-      });
-      recordBuyerIntent("listing_view", {
+    if (!listing) return;
+    const viewedId = String(listing.id);
+    if (trackedView.current === viewedId) return;
+    trackedView.current = viewedId;
+    trackWebsiteProductEvent({
+      event: "website_listing_view",
+      listingId: viewedId,
+      dealerId: listing.dealerId == null ? undefined : String(listing.dealerId),
+      surface: "listing_detail",
+      sessionId: (() => { try { return getAnalyticsSessionId(); } catch { return undefined; } })(),
+    });
+    recordBuyerIntent("listing_view", {
         listingId: listing.id,
         dealerId: listing.dealerId as number,
         metadata: {
@@ -184,7 +186,6 @@ export function ListingDetail() {
           dealerState: listing.dealer?.state,
         },
       });
-    }
   }, [listing]);
 
   // Reset gallery to the first photo when navigating between listings

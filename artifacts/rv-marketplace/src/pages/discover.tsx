@@ -94,7 +94,7 @@ export function Discover() {
       },
       sendAnalytics: false,
     });
-  }, [current]);
+  }, [current?.id]);
 
   const triggerSwipe = useCallback((dir: "left" | "right") => {
     if (!current || swipeAnim !== "none") return;

@@ -44,7 +44,7 @@ export interface WebsiteProductEvent {
 function cleanPath(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const path = value.split("#")[0]?.split("?")[0] ?? "";
-  if (!/^\/[A-Za-z0-9/_-]{0,160}$/.test(path) || path.includes("..")) return undefined;
+  if (!/^\/[A-Za-z0-9/_:%.~-]{0,200}$/.test(path) || path.includes("..")) return undefined;
   return path;
 }
 
@@ -102,7 +102,7 @@ export function trackWebsiteProductEvent(event: WebsiteProductEvent): boolean {
     if (Number.isInteger(event.matchedCount) && (event.matchedCount as number) >= 0 && (event.matchedCount as number) <= 100_000) body.matched_count = event.matchedCount;
     const sid = sessionId(event.sessionId);
     if (sid) body.session_id = sid;
-    const dedupe = [event.event, path ?? "", listingId ?? "", body.surface ?? "", body.action ?? ""].join("|");
+    const dedupe = [event.event, path ?? "", listingId ?? "", body.surface ?? "", body.action ?? "", body.rv_type ?? ""].join("|");
     if (!claim(dedupe)) return false;
     const base = import.meta.env.BASE_URL || "/";
     const url = `${base.endsWith("/") ? base : `${base}/`}api/analytics/product`;

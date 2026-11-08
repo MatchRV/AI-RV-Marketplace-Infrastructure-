@@ -78,7 +78,7 @@ export function CategoryListingsPage({
       event: "website_search_results",
       surface: "category_listings",
       rvType,
-      resultCount: listings.length,
+      resultCount: total,
       sessionId,
     });
   }, [data, isLoading, listings.length, rvType]);

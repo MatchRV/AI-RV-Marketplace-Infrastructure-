@@ -160,7 +160,7 @@ describe("MCP exchange semantics", () => {
       outcome: "no_results",
       result_count: 0,
       counts_as_error: false,
-      counts_as_results_returned: true,
+      counts_as_results_returned: false,
     });
   });
 
@@ -328,7 +328,7 @@ describe("collector fail-open behavior", () => {
     expect(Date.now() - started).toBeLessThan(500);
     // One bounded retry, then the event is dropped. Neither attempt is allowed to hang the caller.
     expect(bodies).toHaveLength(2);
-    const payload = JSON.parse(bodies[0]) as { api_key: string; historical_migration: boolean; batch: Array<{ event: string; distinct_id: string; properties: Record<string, unknown> }> };
+    const payload = JSON.parse(bodies[0]) as { api_key: string; historical_migration: boolean; batch: Array<{ event: string; distinct_id: string; uuid?: string; properties: Record<string, unknown> }> };
     expect(payload.api_key).toBe("test-project-token");
     expect(payload.historical_migration).toBe(false);
     expect(payload.batch).toHaveLength(1);
@@ -336,6 +336,8 @@ describe("collector fail-open behavior", () => {
     expect(payload.batch[0].properties.$process_person_profile).toBe(false);
     expect(payload.batch[0].properties.identity_is_person).toBe(false);
     expect(payload.batch[0].distinct_id.startsWith("anon_")).toBe(true);
+    expect(typeof payload.batch[0].uuid).toBe("string");
+    expect(bodies[0]).toBe(bodies[1]);
     expect(productAnalyticsDroppedCount()).toBe(1);
   });
 

@@ -11,7 +11,7 @@
  * never see a throw.
  */
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 export const POSTHOG_US_HOST = "https://us.i.posthog.com";
 export const POSTHOG_EU_HOST = "https://eu.i.posthog.com";
@@ -179,7 +179,7 @@ function safeId(value: unknown): string | undefined {
 
 function safePath(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
-  if (!/^\/[A-Za-z0-9/_-]{0,160}$/.test(value)) return undefined;
+  if (!/^\/[A-Za-z0-9/_:%.~-]{0,200}$/.test(value)) return undefined;
   if (value.includes("..")) return undefined;
   return value;
 }
@@ -338,6 +338,16 @@ function enqueue(event: ProductEvent & { distinctId: string }): void {
   try {
     const cfg = activeConfig();
     if (!cfg) return;
+    // Browser events cannot fill the queue and evict MCP or inquiry events.
+    const websiteCap = cfg.maxQueue >= 20 ? Math.floor(cfg.maxQueue / 2) : cfg.maxQueue;
+    if (event.source === "website") {
+      let websiteCount = 0;
+      for (const queued of queue) if (queued.source === "website") websiteCount += 1;
+      if (websiteCount >= websiteCap) {
+        dropped += 1;
+        return;
+      }
+    }
     if (queue.length >= cfg.maxQueue) {
       dropped += 1;
       return;
@@ -379,6 +389,8 @@ async function flushOnce(): Promise<void> {
         distinct_id: distinctId,
         properties,
         timestamp: new Date().toISOString(),
+        // Same body is retried, so this uuid lets PostHog drop the duplicate delivery.
+        uuid: randomUUID(),
       };
     }),
   });
@@ -520,6 +532,7 @@ export function summarizeMcpExchange(input: {
   responseBody: string;
   userAgent?: string | null;
   listingIds?: string[];
+  executionId?: string;
 }): ProductEvent[] {
   const hint = classifyClientHint(input.userAgent);
   const method = safeCode(input.method.replaceAll("/", "_"), 64) ?? "unknown";
@@ -562,7 +575,6 @@ export function summarizeMcpExchange(input: {
     outcome = "discovery";
   } else if (status === "shortlist" && results === 0) {
     outcome = "no_results";
-    counts_as_results_returned = true;
   } else if (status === "shortlist" && typeof results === "number") {
     outcome = "results";
     counts_as_results_returned = true;
@@ -572,7 +584,7 @@ export function summarizeMcpExchange(input: {
     outcome = "unparsed";
   }
   const listing = (input.listingIds ?? []).map((id) => safeId(id)).find((id): id is string => Boolean(id));
-  const execution_id = executionId();
+  const execution_id = input.executionId && /^[A-Za-z0-9_-]{8,80}$/.test(input.executionId) ? input.executionId : executionId();
   const tool_name = safeTool(input.toolName) ?? "unknown";
   const started: ProductEvent = {
     ...shared,
@@ -592,7 +604,7 @@ export function summarizeMcpExchange(input: {
     counts_as_shopper_tool: true,
     counts_as_error,
     counts_as_results_returned,
-    ...(counts_as_results_returned && results !== undefined ? { result_count: results } : {}),
+    ...((outcome === "results" || outcome === "no_results") && results !== undefined ? { result_count: results } : {}),
     ...(error_code ? { error_code } : {}),
     ...(listing ? { listing_id: listing } : {}),
   };
@@ -626,8 +638,7 @@ export function peekMcpRequest(raw: string): { method: string; toolName?: string
 export async function observeMcpFetch(request: Request, inner: (request: Request) => Promise<Response>): Promise<Response> {
   const started = performance.now();
   const enabled = Boolean(activeConfig());
-  // Clone before the handler reads the body, but do not wait on that read.
-  // The tool runs immediately; classification happens after the response is returned.
+  // Clone the request before the handler reads it, but do not wait on that read.
   let peekPromise: Promise<ReturnType<typeof peekMcpRequest>> = Promise.resolve(null);
   if (enabled) {
     try {
@@ -643,6 +654,7 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
     if (enabled) {
       void peekPromise.then((peeked) => {
         if (peeked?.method !== "tools/call") return;
+        const execution = executionId();
         for (const event of summarizeMcpExchange({
           method: "tools/call",
           toolName: peeked.toolName,
@@ -651,32 +663,60 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
           responseBody: "",
           userAgent: request.headers.get("user-agent"),
           listingIds: peeked.listingIds,
+          executionId: execution,
         })) captureServerProductEvent(event);
       }).catch(() => undefined);
     }
     throw err;
   }
   if (!enabled) return response;
-  const latencyMs = performance.now() - started;
   const userAgent = request.headers.get("user-agent");
   const httpStatus = response.status;
-  let copyText: Promise<string> = Promise.resolve("");
-  try {
-    copyText = response.clone().text();
-  } catch {
-    copyText = Promise.resolve("");
+  // Only POST bodies are finite tool results. A GET SSE session is not read.
+  let bodyPromise: Promise<string> | null = null;
+  if (request.method === "POST") {
+    try { bodyPromise = response.clone().text(); } catch { bodyPromise = null; }
   }
-  void Promise.all([peekPromise, copyText]).then(([peeked, responseBody]) => {
-    const summary = summarizeMcpExchange({
-      method: peeked?.method ?? "unknown",
+  void peekPromise.then(async (peeked) => {
+    const method = peeked?.method ?? "unknown";
+    if (method !== "tools/call") {
+      for (const event of summarizeMcpExchange({
+        method,
+        httpStatus,
+        latencyMs: performance.now() - started,
+        responseBody: "",
+        userAgent,
+      })) captureServerProductEvent(event);
+      return;
+    }
+    const execution = executionId();
+    const listed = peeked?.listingIds ?? [];
+    const startedEvent = summarizeMcpExchange({
+      method: "tools/call",
       toolName: peeked?.toolName,
       httpStatus,
-      latencyMs,
+      latencyMs: 0,
+      responseBody: "",
+      userAgent,
+      listingIds: listed,
+      executionId: execution,
+    })[0];
+    captureServerProductEvent(startedEvent);
+    let responseBody = "";
+    if (bodyPromise) {
+      try { responseBody = await bodyPromise; } catch { responseBody = ""; }
+    }
+    const completed = summarizeMcpExchange({
+      method: "tools/call",
+      toolName: peeked?.toolName,
+      httpStatus,
+      latencyMs: performance.now() - started,
       responseBody,
       userAgent,
-      listingIds: peeked?.listingIds,
-    });
-    for (const event of summary) captureServerProductEvent(event);
+      listingIds: listed,
+      executionId: execution,
+    })[1];
+    captureServerProductEvent(completed);
   }).catch(() => undefined);
   return response;
 }

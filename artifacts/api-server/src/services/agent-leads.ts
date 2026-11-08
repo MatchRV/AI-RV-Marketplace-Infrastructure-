@@ -214,7 +214,7 @@ export async function submitPreview(id: string): Promise<SubmitResult> {
           source: "website_webmcp",
           status: result.code,
           channel: "none",
-          duplicate: false,
+          duplicate: result.code === "duplicate",
           dryRun: false,
           listingId,
         });

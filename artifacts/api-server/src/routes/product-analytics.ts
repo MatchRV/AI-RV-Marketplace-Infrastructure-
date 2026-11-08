@@ -8,9 +8,17 @@ import { captureProductEvent } from "../services/product-analytics";
  */
 const router: IRouter = Router();
 const hits = new Map<string, { n: number; at: number }>();
+let globalWindow = 0;
+let globalCount = 0;
 
 function allowed(key: string): boolean {
   const now = Date.now();
+  if (now - globalWindow > 60_000) {
+    globalWindow = now;
+    globalCount = 0;
+  }
+  if (globalCount >= 300) return false;
+  globalCount += 1;
   const row = hits.get(key);
   if (!row || now - row.at > 60_000) {
     if (hits.size > 5_000) hits.clear();

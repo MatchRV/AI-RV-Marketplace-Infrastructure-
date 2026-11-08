@@ -21,17 +21,21 @@ false`, and `$process_person_profile: false` so events stay anonymous.
 See [Capture API](https://posthog.com/docs/api/capture) and
 [anonymous events](https://posthog.com/docs/data/anonymous-vs-identified-events).
 
-The collector queues at most 100 events, sends batches of 20, times out each
-attempt after 1.5 seconds, retries once, then drops the batch. A full queue
-drops new events. Failures are logged as a count, not as payloads. Callers
-do not wait on the network. A missing key, a rejected host, or a thrown
-transport is a no-op.
+The collector queues at most 100 events. Website events can occupy at most
+half of that queue, so a public beacon cannot evict MCP or inquiry events.
+The public route also accepts at most 300 website events per minute and 60
+per session id. Batches hold 20 events. Each event has a `uuid`. A batch
+times out after 1.5 seconds, retries once with that same body, then drops.
+PostHog can dedupe the retry by the uuid. Failures are logged as a count,
+not as payloads. Callers do not wait on the network. A missing key, a
+rejected host, or a thrown transport is a no-op. MCP `latency_ms` is measured
+until the POST body ends. GET session streams are not read.
 
 | Event | When it is emitted | Counts as |
 | --- | --- | --- |
 | `mcp_protocol_request` | MCP `initialize`, `tools/list`, `ping`, and any method other than `tools/call` | Not shopper tool use |
-| `mcp_tool_started` | A `tools/call` begins | Pair with the completion via `execution_id` |
-| `mcp_tool_completed` | That call returns, including an `isError` result on HTTP 200 | Shopper tool execution. `counts_as_error` is false for `discovery` and `no_results` |
+| `mcp_tool_started` | The request is recognized as `tools/call`, before the response body is finished | Pair with the completion via `execution_id`. It is not a separate shopper count |
+| `mcp_tool_completed` | The POST response body has been read, including an `isError` result on HTTP 200 | Shopper tool execution. `latency_ms` runs until that body ends. `counts_as_error` is false for `discovery` and `no_results`. `counts_as_results_returned` is true only for `results` |
 | `website_search_results` | Swipe deck built, or a category / Discover page received its result list once | Results returned. Not a card view |
 | `website_card_viewed` | The swipe or Discover card actually on screen | A viewed card, not the result list |
 | `website_listing_view` | A listing page recorded its first view for that mount | A listing open |
@@ -89,7 +93,8 @@ still removed.
 ## Denominators
 
 - Shopper MCP tool use: `mcp_tool_completed` where `counts_as_shopper_tool` is true. Do not add `mcp_protocol_request`.
-- MCP searches that returned a shortlist: `mcp_tool_completed` where `tool_name` is `search_rvs` and `counts_as_results_returned` is true. Split `results` and `no_results` with `outcome`.
+- MCP searches that returned rows: `mcp_tool_completed` where `tool_name` is `search_rvs` and `counts_as_results_returned` is true. `no_results` is a completed shortlist with `result_count` 0 and that flag false.
+- Category pages report `website_search_results.result_count` as the API total, not the 12 cards on the page. Card opens are `website_listing_view`.
 - MCP tool errors: `counts_as_error` is true. Do not treat `discovery` or `no_results` as errors.
 - Website searches: `website_search_results`, split by `surface` (`swipe`, `category_listings`, `discover`).
 - Cards viewed: `website_card_viewed`. Listing opens: `website_listing_view`. Do not add those to the search count.

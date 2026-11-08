@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Button, Input } from "@/components/ui-elements";
+import { posthog, posthogLogger } from "@/lib/posthog";
+import { captureAiGeneration, createAiTraceId } from "@/lib/ai-observability";
 import { Truck, Check, Upload, Sparkles, Loader2, X } from "lucide-react";
 
 const RV_TYPES = [
@@ -170,25 +172,34 @@ export function Sell() {
 
   const generateDescription = async () => {
     setGenerating(true);
+    const descriptionRequest = {
+      year: form.year,
+      make: form.make,
+      model: form.model,
+      type: form.type,
+      condition: form.condition,
+      mileage: form.mileage,
+      price: form.askingPrice,
+      features: featureStrings,
+      extraNotes,
+    };
+    const traceId = createAiTraceId();
+    const generationStartedAt = performance.now();
     try {
       const r = await fetch("/api/generate-description", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          year: form.year,
-          make: form.make,
-          model: form.model,
-          type: form.type,
-          condition: form.condition,
-          mileage: form.mileage,
-          price: form.askingPrice,
-          features: featureStrings,
-          extraNotes,
-        }),
+        body: JSON.stringify(descriptionRequest),
       });
       if (r.ok) {
         const { description } = await r.json();
         update("description", description);
+        captureAiGeneration({
+          traceId,
+          sessionId: null,
+          spanName: "listing_description",
+          latencySeconds: (performance.now() - generationStartedAt) / 1_000,
+        });
       }
     } catch (err) {
       console.error("Failed to generate description", err);
@@ -203,7 +214,21 @@ export function Sell() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, features: featureStrings }),
     });
-    if (r.ok) setSubmitted(true);
+    if (r.ok) {
+      posthog.capture("listing_submitted", {
+        listing_type: form.type,
+        condition: form.condition,
+        photo_count: photos.length,
+        feature_count: featureStrings.length,
+      });
+      posthogLogger.info("listing_submission_completed", {
+        listing_type: form.type,
+        condition: form.condition,
+        photo_count: photos.length,
+        feature_count: featureStrings.length,
+      });
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {

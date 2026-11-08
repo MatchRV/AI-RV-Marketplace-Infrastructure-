@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { SnapshotProgress } from "@/components/snapshot-progress";
 import { trackLead } from "@/lib/analytics";
+import { captureAiGeneration, createAiTraceId } from "@/lib/ai-observability";
 
 type QuickReportResult = {
   reportId: string;
@@ -55,6 +56,8 @@ export function QuickReport() {
     setError("");
     setResult(null);
     setEmailStatus("");
+    const traceId = createAiTraceId();
+    const generationStartedAt = performance.now();
     try {
       const response = await fetch("/api/dealer-tools/quick-report", {
         method: "POST",
@@ -64,6 +67,16 @@ export function QuickReport() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "The check could not finish. Please try again.");
       const report = payload as QuickReportResult;
+      if (report.ai.question && report.ai.answer) {
+        captureAiGeneration({
+          traceId,
+          sessionId: null,
+          spanName: "dealer_visibility_snapshot",
+          latencySeconds: (performance.now() - generationStartedAt) / 1_000,
+          model: report.ai.model,
+          provider: "gemini",
+        });
+      }
       trackLead("snapshot_request", { formId: "visibility_snapshot", dedupeKey: report.reportId, metadata: { report_id: report.reportId } });
       setResult(report);
     } catch (cause) {

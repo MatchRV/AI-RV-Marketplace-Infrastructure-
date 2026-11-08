@@ -1,8 +1,11 @@
+import { posthog } from "@/lib/posthog";
+
 export const DEALER_SESSION_KEY = "matchrv_dealer_session";
 
 export type DealerTier = "free" | "intelligence" | "agent";
 
 export interface DealerSession {
+  distinctId: string;
   email: string;
   dealerName: string;
   signedInAt: string;
@@ -30,6 +33,7 @@ export function setDealerSession(email: string, tier: DealerTier = "free"): Deal
     : "Dealer";
 
   const session: DealerSession = {
+    distinctId: globalThis.crypto.randomUUID(),
     email: normalizedEmail,
     dealerName: dealerName.replace(/\b\w/g, (char) => char.toUpperCase()),
     signedInAt: new Date().toISOString(),
@@ -37,6 +41,7 @@ export function setDealerSession(email: string, tier: DealerTier = "free"): Deal
   };
 
   localStorage.setItem(DEALER_SESSION_KEY, JSON.stringify(session));
+  posthog.identify(session.distinctId, { email: session.email, dealer_tier: session.tier });
   return session;
 }
 
@@ -50,4 +55,5 @@ export function upgradeDealerTier(tier: DealerTier): void {
 export function clearDealerSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(DEALER_SESSION_KEY);
+  posthog.reset();
 }

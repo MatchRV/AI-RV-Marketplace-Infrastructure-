@@ -8,6 +8,7 @@ import type {
   ExpansionSuggestion,
 } from "@workspace/api-client-react";
 import { recordBuyerIntent } from "@/lib/buyer-intent";
+import { captureAiGeneration, createAiTraceId } from "@/lib/ai-observability";
 
 export type { NoMatchFilters, ExpansionSuggestion };
 
@@ -63,6 +64,8 @@ export function useChatSession() {
     setExpansionSuggestions([]);
     const userMsg: ChatMessage = { role: "user", content };
     const newMessages = [...messages, userMsg];
+    const traceId = createAiTraceId();
+    const generationStartedAt = performance.now();
     setMessages(newMessages);
 
     const attemptRequest = async (attemptsLeft: number): Promise<void> => {
@@ -76,7 +79,13 @@ export function useChatSession() {
         });
 
         setMessages(prev => [...prev, { role: "assistant", content: response.message }]);
-        
+        captureAiGeneration({
+          traceId,
+          sessionId: response.sessionId ?? sessionId,
+          spanName: "outfitter_chat",
+          latencySeconds: (performance.now() - generationStartedAt) / 1_000,
+        });
+
         if (response.sessionId) setSessionId(response.sessionId);
         if (response.updatedProfile) {
           setProfile(response.updatedProfile);

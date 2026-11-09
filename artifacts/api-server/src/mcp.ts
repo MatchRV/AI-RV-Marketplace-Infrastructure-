@@ -1065,7 +1065,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Send the approved dealer inquiry",
       description:
-        "Step 2: sends the inquiry previewed by prepare_dealer_inquiry. Consequential — it shares the shopper's name, contact details and message outside MatchRV. Call only after the shopper explicitly approved the exact preview, with confirmed=true. The content is locked to the preview (it cannot be changed here). Returns an inquiry_id, a private status_token and an honest status: delivered (emailed to a dealership that accepts MatchRV inquiries), queued_for_matchrv (MatchRV staff were alerted and will forward it; not yet at the dealer), or failed (tell the shopper to contact the dealership directly). Do not send this preview again. MatchRV may retry a failed delivery of this same inquiry to the original recipient; a queued inquiry has not been forwarded. Never claim the dealer has replied.",
+        "Step 2: sends the inquiry previewed by prepare_dealer_inquiry. Consequential — it shares the shopper's name, contact details and message outside MatchRV. Call only after the shopper explicitly approved the exact preview, with confirmed=true. The content is locked to the preview (it cannot be changed here). Returns an inquiry_id, a private status_token and an honest status: delivered (emailed to a dealership that accepts MatchRV inquiries), queued_for_matchrv (MatchRV staff were alerted and will forward it; not yet at the dealer), or failed (tell the shopper to contact the dealership directly). Never retry automatically and never claim the dealer has replied.",
       inputSchema: mcpSchema(z.object({
         confirmation_token: z.string().min(10).max(4000),
         confirmed: z.boolean().describe("Must be true, and only after the shopper explicitly approved the preview"),
@@ -1102,7 +1102,7 @@ function buildMatchRvServer(): McpServer {
     {
       title: "Check a dealer inquiry",
       description:
-        "Read-only status of an inquiry this shopper sent: delivered / queued_for_matchrv / forwarded / failed / dry_run, plus the dealership's reply only if MatchRV has recorded one. forwarded means a MatchRV operator confirmed they sent it to the dealership; queued_for_matchrv does not. Requires the inquiry_id and private status_token returned by send_dealer_inquiry; other shoppers' inquiries are never visible.",
+        "Read-only status of an inquiry this shopper sent: delivered / queued_for_matchrv / failed / dry_run, plus the dealership's reply only if MatchRV has recorded one. Requires the inquiry_id and private status_token returned by send_dealer_inquiry; other shoppers' inquiries are never visible.",
       inputSchema: mcpSchema(z.object({ inquiry_id: z.string().min(5).max(60), status_token: z.string().min(10).max(80) })),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },

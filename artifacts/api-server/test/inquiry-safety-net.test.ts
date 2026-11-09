@@ -1,14 +1,16 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express from "express";
 import type { AddressInfo } from "node:net";
+import { matchRvMcpHandler } from "../src/mcp";
 import { getInventory } from "../src/services/agent-inventory";
 import inquiriesRouter from "../src/routes/inquiries";
 import { OPS_LEADS_HTML } from "../src/routes/ops-leads-page";
 import {
   __exportInquiries,
+  confirmInquiryForwarded,
   __importInquiries,
   __inquiryCount,
   __reloadPersistedInquiries,
@@ -433,6 +435,42 @@ describe("inquiry safety net", () => {
     mock.sent.pushes.length = 0;
     await runInquirySafetySweep(t0 + QUEUED_ALERT_24H_MS);
     expect(ageAlerts(mock.sent)).toHaveLength(0);
+  });
+
+  it("keeps the frozen inquiry tool descriptions and input schemas, and the status tool returns forwarded", async () => {
+    const reviewed = JSON.parse(readFileSync(new URL("./fixtures/mcp-tools-v2.2.6.json", import.meta.url), "utf8")) as Array<{ name: string; description: string; inputSchema: unknown }>;
+    const listed = await matchRvMcpHandler.fetch(new Request("http://localhost/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    }));
+    const raw = await listed.text();
+    const tools = JSON.parse(raw.startsWith("event:") || raw.startsWith("data:") ? raw.split("\n").find((line) => line.startsWith("data:"))!.slice(5) : raw).result.tools as Array<{ name: string; description: string; inputSchema: unknown }>;
+    for (const name of ["prepare_dealer_inquiry", "send_dealer_inquiry", "get_dealer_inquiry_status"]) {
+      const live = tools.find((tool) => tool.name === name);
+      const prev = reviewed.find((tool) => tool.name === name);
+      expect(live?.description).toBe(prev?.description);
+      expect(live?.inputSchema).toEqual(prev?.inputSchema);
+    }
+    const t0 = Date.now();
+    const sent = await queueLead(t0);
+    expect(confirmInquiryForwarded(sent.inquiry.inquiryId, t0 + 1).ok).toBe(true);
+    const statusCall = await matchRvMcpHandler.fetch(new Request("http://localhost/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "get_dealer_inquiry_status", arguments: { inquiry_id: sent.inquiry.inquiryId, status_token: sent.statusToken } },
+      }),
+    }));
+    const statusRaw = await statusCall.text();
+    const statusResult = JSON.parse(statusRaw.startsWith("event:") || statusRaw.startsWith("data:") ? statusRaw.split("\n").find((line) => line.startsWith("data:"))!.slice(5) : statusRaw).result;
+    const status = JSON.parse(statusResult.content.find((part: { type: string }) => part.type === "text").text);
+    expect(status.inquiry.status).toBe("forwarded");
+    expect(status.inquiry.statusDetail).toMatch(/Forwarded/);
+    expect(status.inquiry).not.toHaveProperty("forwarded");
   });
 
   it("does not start the in-process sweep unless INQUIRY_SAFETY_SWEEP=1", () => {

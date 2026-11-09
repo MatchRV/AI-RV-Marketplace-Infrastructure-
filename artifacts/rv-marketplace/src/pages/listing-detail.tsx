@@ -24,6 +24,7 @@ import { buildLeadBuyerProfile, recordBuyerIntent } from "@/lib/buyer-intent";
 import { cleanListingImages } from "@/lib/listing-images";
 import { useAppAuth } from "@/contexts/auth-context";
 import { sendDealerInquiry } from "@/lib/dealer-inquiry";
+import { posthog } from "@/lib/posthog";
 
 const DEAL_CHIP: Record<string, { bg: string; text: string }> = {
   great_deal: { bg: "bg-emerald-100", text: "text-emerald-900" },
@@ -834,6 +835,11 @@ export function ListingDetail() {
                           });
                           if (!r.ok) throw new Error();
                         }
+                        posthog.capture("price_alert_created", {
+                          listing_id: listing.id,
+                          listing_type: listing.type,
+                          is_authenticated: isAuthenticated,
+                        });
                         setAlertSet(true);
                         setAlertPrice("");
                         setAlertEmail("");
@@ -987,6 +993,11 @@ export function ListingDetail() {
                                 if (ok) {
                                   recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
+                                  posthog.capture("listing_contact_submitted", {
+                                    listing_id: listing.id,
+                                    listing_type: listing.type,
+                                    is_authenticated: false,
+                                  });
                                   setContactSent(true);
                                   setContactMsg("");
                                   setGuestName("");
@@ -1026,6 +1037,11 @@ export function ListingDetail() {
                               if (ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
                                   trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
+                                posthog.capture("listing_contact_submitted", {
+                                  listing_id: listing.id,
+                                  listing_type: listing.type,
+                                  is_authenticated: true,
+                                });
                                 setContactSent(true);
                                 setContactMsg("");
                               } else {

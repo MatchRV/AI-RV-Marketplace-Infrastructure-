@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { useUser, useAuth, useClerk } from "@clerk/react";
 import { useSavedListings } from "@/hooks/use-saved-listings";
+import { posthog } from "@/lib/posthog";
 
 interface SavedSearch {
   id: number;
@@ -96,8 +97,26 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   }, [openSignIn]);
 
   const logout = useCallback(() => {
+    posthog.reset();
     signOut();
   }, [signOut]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isAuthenticated || !clerkUser) {
+      posthog.reset();
+      return;
+    }
+
+    posthog.identify(clerkUser.id, {
+      ...(clerkUser.primaryEmailAddress?.emailAddress
+        ? { email: clerkUser.primaryEmailAddress.emailAddress }
+        : {}),
+      ...(clerkUser.firstName ? { first_name: clerkUser.firstName } : {}),
+      ...(clerkUser.lastName ? { last_name: clerkUser.lastName } : {}),
+    });
+  }, [clerkUser?.id, isAuthenticated, isLoaded]);
 
   useEffect(() => {
     if (!isAuthenticated) {

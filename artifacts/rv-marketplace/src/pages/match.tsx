@@ -5,6 +5,8 @@ import { SEO } from "@/components/seo";
 import { useChatSession } from "@/hooks/use-chat-session";
 import { trackEvent, trackLead } from "@/lib/analytics";
 import { trackClarity } from "@/lib/clarity";
+import { posthog, posthogLogger } from "@/lib/posthog";
+import { captureAiGeneration, createAiTraceId } from "@/lib/ai-observability";
 import { buildLeadBuyerProfile } from "@/lib/buyer-intent";
 import { useAppAuth } from "@/contexts/auth-context";
 import type { BuyerProfile } from "@workspace/api-client-react";
@@ -414,6 +416,8 @@ export function Match() {
     setReportFailed(false);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 35_000);
+    const traceId = createAiTraceId();
+    const generationStartedAt = performance.now();
     try {
       const quizPayload = buildQuizPayload();
 
@@ -428,8 +432,20 @@ export function Match() {
       if (res.ok) {
         const report = await res.json();
         sessionStorage.setItem("matchrv_report", JSON.stringify(report));
+        captureAiGeneration({
+          traceId,
+          sessionId: null,
+          spanName: "rv_match_report",
+          latencySeconds: (performance.now() - generationStartedAt) / 1_000,
+        });
         trackEvent("match_report_generated", {
           metadata: { reportId: report.reportId, picksCount: report.picks?.length },
+        });
+        posthog.capture("match_preferences_submitted", {
+          recommendation_count: report.picks?.length ?? 0,
+        });
+        posthogLogger.info("match_report_generation_completed", {
+          recommendation_count: report.picks?.length ?? 0,
         });
       } else {
         setReportFailed(true);
@@ -446,13 +462,17 @@ export function Match() {
   const handleViewReport = () => {
     const stored = sessionStorage.getItem("matchrv_report");
     if (stored) {
+      posthog.capture("match_report_viewed");
       navigate("/match-report");
     } else if (!isGeneratingReport) {
       reportGenerated.current = false;
       setReportFailed(false);
       generateReport().then(() => {
         const s = sessionStorage.getItem("matchrv_report");
-        if (s) navigate("/match-report");
+        if (s) {
+          posthog.capture("match_report_viewed");
+          navigate("/match-report");
+        }
       });
     }
   };

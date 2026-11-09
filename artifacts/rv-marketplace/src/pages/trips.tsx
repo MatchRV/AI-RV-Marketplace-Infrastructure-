@@ -2,6 +2,7 @@ import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { useAppAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui-elements";
+import { posthog, posthogLogger } from "@/lib/posthog";
 import { Link } from "wouter";
 import { Map, Plus, Calendar, MapPin, ChevronRight, Tent, Trash2, Route, Star, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -235,6 +236,14 @@ export function Trips() {
       });
       const d = await r.json();
       if (d.trip) {
+        posthog.capture("trip_created", {
+          has_start_date: Boolean(newStart),
+          has_end_date: Boolean(newEnd),
+        });
+        posthogLogger.info("trip_creation_completed", {
+          has_start_date: Boolean(newStart),
+          has_end_date: Boolean(newEnd),
+        });
         setTrips((prev) => [{ ...d.trip, stopCount: 0 }, ...prev]);
         setShowNew(false);
         setNewName(""); setNewStart(""); setNewEnd("");
@@ -244,7 +253,8 @@ export function Trips() {
 
   async function handleDelete(tripId: number) {
     if (!confirm("Delete this trip?")) return;
-    await fetch(`/api/trips/${tripId}`, { method: "DELETE", credentials: "include" });
+    const response = await fetch(`/api/trips/${tripId}`, { method: "DELETE", credentials: "include" });
+    if (response.ok) posthog.capture("trip_deleted");
     setTrips((prev) => prev.filter((t) => t.id !== tripId));
   }
 

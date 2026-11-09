@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
+import "./lib/posthog";
 import { registerMatchrvTools } from "./agent/webmcp";
 
 // Register WebMCP tools at module load (before React render) so ChatGPT's

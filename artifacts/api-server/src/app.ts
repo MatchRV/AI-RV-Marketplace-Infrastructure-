@@ -22,6 +22,34 @@ const app: Express = express();
 // visitor IP for the free-report budget limit without trusting arbitrary hops.
 app.set("trust proxy", 1);
 
+// Muse MCP domain verification. The checker GETs this exact path over HTTPS
+// with no cookies or Authorization header and requires HTTP 200, no redirect,
+// and a text/plain body of `muse-challenge=<token>`. Registered before CORS,
+// Clerk, body parsers, rate limits, and the SPA fallback so none of them can
+// rewrite the response. MUSE_CHALLENGE (the token only, not the
+// `muse-challenge=` prefix) replaces the baked-in
+// value for the next verification; unset, the default below is served.
+const DEFAULT_MUSE_CHALLENGE =
+  "8833f5f9e4a467193678ff2dfde7ceedfe4c069628542403bf97123beb5c2930";
+
+function museChallengeToken(): string {
+  const fromEnv = process.env.MUSE_CHALLENGE?.trim();
+  return fromEnv ? fromEnv : DEFAULT_MUSE_CHALLENGE;
+}
+
+app.get("/.well-known/muse-challenge/:token", (req: Request, res: Response) => {
+  const expected = museChallengeToken();
+  const raw = req.params.token;
+  const token = Array.isArray(raw) ? raw[0] : raw;
+  res.setHeader("Content-Type", "text/plain");
+  res.setHeader("Cache-Control", "no-store");
+  if (token !== expected) {
+    res.status(404).end("not found");
+    return;
+  }
+  res.status(200).end(`muse-challenge=${expected}`);
+});
+
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));

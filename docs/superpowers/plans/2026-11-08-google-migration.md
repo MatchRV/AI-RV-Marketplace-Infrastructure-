@@ -69,16 +69,13 @@ findmnt -T /var/data -n -o FSTYPE,SOURCE,TARGET
 
 `TARGET` must be `/var/data` and `SOURCE` must be the data disk (the by-id path for `matchrv-core-data`), not the boot disk. Then:
 
-```bash
-curl -fsSL -o /tmp/node-v22.22.0-linux-x64.tar.xz https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
-echo '9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37  /tmp/node-v22.22.0-linux-x64.tar.xz' | sha256sum -c -
-sudo tar -C /usr/local --strip-components=1 -xJf /tmp/node-v22.22.0-linux-x64.tar.xz
-node -v   # v22.22.0
-sudo corepack enable
-sudo corepack prepare pnpm@10.33.0 --activate
-```
+Node 22.22.0 from that official archive is already installed on the VM, and `sudo corepack enable` already linked `corepack` and `pnpm` under `/usr/local/bin`. Do not extract Node again. Do not run `sudo corepack prepare`.
 
-The checksum is the `node-v22.22.0-linux-x64.tar.xz` line from `https://nodejs.org/dist/v22.22.0/SHASUMS256.txt`, read while writing this document.
+`sudo corepack prepare pnpm@10.33.0 --activate` writes pnpm only into root's Corepack home (`/root/.cache/node/corepack` when sudo sets `HOME=/root`). The shell shim `/usr/local/lib/node_modules/corepack/dist/pnpm.js` then runs as the calling user. With no `package.json` above the working directory and no last-known-good file in that user's home, Corepack 0.34.0 asks the registry for the `latest` dist-tag. On Nov 9, 2026 that tag was pnpm 12.18.0, and the shim's default `COREPACK_ENABLE_DOWNLOAD_PROMPT` is `1`, so a terminal asks before downloading `pnpm-12.18.0.tgz`. The `corepack` command itself defaults that prompt to `0`, so root's prepare of 10.33.0 does not ask. Answering `n` still records 12.18.0 in that user's `lastKnownGood.json` before the download aborts. That is not an installed pnpm, and it is the wrong version.
+
+The pinned commit's `package.json` says `"packageManager": "pnpm@10.33.0"` and has no `devEngines`. Inside that checkout, the same shim selects 10.33.0 even if the user's last-known-good file says 12.18.0. `COREPACK_DEFAULT_TO_LATEST=0` is not the pin: this Corepack build's internal default is pnpm 10.13.1. Do not set `COREPACK_INTEGRITY_KEYS=0`.
+
+Activate 10.33.0 as `matchrv`, in the extracted source, after the snapshot check below. `pnpm --version` must print `10.33.0`. If a prompt appears, the URL must be `pnpm-10.33.0.tgz` before anyone answers `y`. If the URL contains `12.18.0`, answer `n` and stop. Do not run bare `pnpm` from `/tmp`.
 
 ```bash
 sudo useradd --system --create-home --shell /usr/sbin/nologin matchrv || true
@@ -90,11 +87,16 @@ sudo chown -R matchrv:matchrv /opt/matchrv /var/data
 sudo -u matchrv bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && sha256sum lib/agent-core/data/inventory.snapshot.json.gz && gzip -t lib/agent-core/data/inventory.snapshot.json.gz'
 ```
 
-Stop if the SHA-256 is not `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Then, still as `matchrv`, from that directory, the same build `render.yaml` uses:
+Stop if the SHA-256 is not `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Then, as `matchrv`, from that directory:
 
 ```bash
-pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..."
-pnpm run build:web && pnpm run build:api
+sudo -u matchrv -H bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && /usr/local/bin/corepack prepare pnpm@10.33.0 --activate && /usr/local/bin/pnpm --version'
+```
+
+Stop unless that prints `10.33.0` and does not offer `pnpm-12.18.0.tgz`. The same user and directory then run the build `render.yaml` uses. The VM had about 1.5 GiB free when this was written, and a sandbox web build peaked near 1371 MiB RSS with no 2 GiB cap, so this build can be OOM-killed:
+
+```bash
+sudo -u matchrv -H bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." && pnpm run build:web && pnpm run build:api'
 ```
 
 If the kernel OOM-kills that build, stop. Build those two commands on another machine from this same tarball and copy `artifacts/api-server/dist` and `artifacts/rv-marketplace/dist` into the checkout. Do not check out a newer `main`.

@@ -33,6 +33,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
   .badge.test { background: #b45309; color: #fff; }
   .badge.queued_for_matchrv { background: #fde68a; }
   .badge.delivered { background: #bbf7d0; }
+  .badge.forwarded { background: #bfdbfe; }
   .badge.failed { background: #fecaca; }
   h2 { font-size: 16px; margin: 8px 0 4px; }
   dl { display: grid; grid-template-columns: 130px 1fr; gap: 2px 10px; margin: 8px 0; }
@@ -43,7 +44,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
   .fit { background: #eef7f7; border-radius: 8px; padding: 10px; margin: 8px 0; }
   .fit h3 { font-size: 13px; margin: 0 0 6px; color: #004f53; text-transform: uppercase; letter-spacing: 0.04em; }
   .muted { color: #5b6b6b; font-size: 13px; }
-  #error { color: #b91c1c; }
+  #error, .err { color: #b91c1c; }
 </style>
 </head>
 <body>
@@ -185,21 +186,46 @@ export const OPS_LEADS_HTML = `<!doctype html>
         card.appendChild(fitBox);
       }
       card.appendChild(el("div", { class: "msg" }, p.message || ""));
-      if (!test && i.status === "queued_for_matchrv") {
+      if (!test && (i.status === "queued_for_matchrv" || i.status === "failed")) {
         var fwd = el("div", { class: "fwd" });
         fwd.appendChild(el("strong", null, "Forward to dealer"));
-        fwd.appendChild(el("div", { class: "muted" }, "MatchRV has no direct line to this dealer yet. Copy this and send it to the dealer, then reply to the shopper."));
+        fwd.appendChild(el("div", { class: "muted" }, "MatchRV has no direct line to this dealer yet. Copy this and send it yourself. Copying does not mark the lead forwarded. After the dealer has it, confirm below so the shopper's status updates."));
         var pre = el("pre", { class: "msg" }, forwardText(i));
         fwd.appendChild(pre);
         var btn = el("button", { type: "button" }, "Copy forward text");
         btn.addEventListener("click", function () { navigator.clipboard && navigator.clipboard.writeText(pre.textContent).then(function () { btn.textContent = "Copied"; }); });
         fwd.appendChild(btn);
+        var confirmBtn = el("button", { type: "button", "data-action": "confirm-forward" }, "I sent this to the dealer");
+        confirmBtn.addEventListener("click", function () { confirmForward(i.id, confirmBtn); });
+        fwd.appendChild(confirmBtn);
         card.appendChild(fwd);
+      } else if (!test && i.status === "forwarded") {
+        var when = i.forwarded && i.forwarded.at ? " " + fmtTime(i.forwarded.at) : "";
+        card.appendChild(el("p", { class: "muted" }, "Marked forwarded" + when + ". The shopper status now says forwarded. This does not mean the dealer has replied."));
       } else if (test) {
         card.appendChild(el("p", { class: "muted" }, "Test inquiry from MatchRV. Do not forward to the dealer."));
       }
       root.appendChild(card);
     });
+  }
+  function confirmForward(id, btn) {
+    btn.disabled = true;
+    var key = sessionStorage.getItem(KEY);
+    fetch("/api/inquiries/ops/" + encodeURIComponent(id), {
+      method: "POST",
+      headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      cache: "no-store",
+      credentials: "omit",
+      body: JSON.stringify({ action: "confirm_forward" })
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Not marked forwarded (HTTP " + r.status + ").");
+      return r.json();
+    }).then(function () { load(); })
+      .catch(function (e) {
+        btn.disabled = false;
+        var note = el("p", { class: "err", role: "alert" }, e.message || "Not marked forwarded.");
+        btn.parentNode.appendChild(note);
+      });
   }
   function showLogin(msg) {
     $("login").hidden = false; $("refresh").hidden = true; $("logout").hidden = true;

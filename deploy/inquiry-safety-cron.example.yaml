@@ -1,0 +1,29 @@
+# EXAMPLE ONLY. Not referenced by render.yaml and not deployed.
+#
+# A Render cron service is a separate paid service: per-second compute with a
+# $1/month minimum (https://render.com/pricing, https://render.com/docs/cronjobs).
+# Do not add this to the live blueprint unless that cost is approved.
+#
+# Prefer INQUIRY_SAFETY_SWEEP=1 on the existing web service. That runs the same
+# sweep in-process every 10 minutes and does not add a service. See
+# docs/INQUIRY_SAFETY_NET.md.
+#
+# This cron only calls the protected endpoint. It does not send mail itself.
+# Schedule is UTC. "*/10 * * * *" is every 10 minutes.
+
+services:
+  - type: cron
+    name: matchrv-inquiry-safety-example
+    runtime: node
+    # Do not set this until the extra service is approved. Cron compute is
+    # billed per second with a $1/month minimum, not as an always-on web instance.
+    schedule: "*/10 * * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -X POST "$MATCHRV_APP_URL/api/inquiries/ops/sweep"
+      -H "Authorization: Bearer $INQUIRY_OPS_KEY"
+    envVars:
+      - key: MATCHRV_APP_URL
+        sync: false
+      - key: INQUIRY_OPS_KEY
+        sync: false

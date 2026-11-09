@@ -58,11 +58,11 @@ export const MCP_TOOL_DOCS: Record<string, ToolDoc> = {
   send_dealer_inquiry: {
     purpose: "Step 2: sends the inquiry the shopper approved in the preview. The content is locked to the preview and cannot be changed here.",
     outputs: "inquiry_id, a private status_token and an honest status: delivered, queued_for_matchrv or failed.",
-    cls: "Sensitive write", classNote: "Shares the shopper's name, contact details and message with a dealership. Requires the shopper's explicit approval of the exact preview (confirmed=true). Never retried automatically.",
+    cls: "Sensitive write", classNote: "Shares the shopper's name, contact details and message with a dealership. Requires the shopper's explicit approval of the exact preview (confirmed=true). A failed delivery may be retried to the same recipient; the preview is not sent again as a new inquiry.",
   },
   get_dealer_inquiry_status: {
     purpose: "Checks the status of an inquiry this shopper sent.",
-    outputs: "delivered, queued_for_matchrv, failed or dry_run, plus the dealership's reply only if MatchRV has recorded one.",
+    outputs: "delivered, queued_for_matchrv, forwarded, failed or dry_run, plus the dealership's reply only if MatchRV has recorded one. forwarded means a MatchRV operator confirmed the dealership was sent the inquiry.",
     cls: "Read", classNote: "Read-only. Requires the inquiry_id and private status_token; other shoppers' inquiries are never visible.",
   },
 };
@@ -208,7 +208,7 @@ ${toolSections}
 <li><code>prepare_dealer_inquiry</code> validates the shopper-provided details and returns the exact preview: dealership, RV, the shopper's name and contact details, the message, and how it will be delivered. <strong>Nothing is sent.</strong></li>
 <li>The assistant shows the whole preview and asks the shopper to approve it.</li>
 <li><code>send_dealer_inquiry</code> is a <strong>sensitive write</strong>. It is called only after explicit approval, with <code>confirmed=true</code> and the preview's confirmation token (valid 30 minutes). The content is locked to the approved preview.</li>
-<li>It reports an honest status (delivered, queued_for_matchrv or failed), is never retried automatically, and never claims the dealer has replied. <code>get_dealer_inquiry_status</code> checks status with a private token.</li>
+<li>It reports an honest status (delivered, queued_for_matchrv or failed). A failed delivery may be retried later to the same recipient; that does not send a new inquiry and does not mark the lead forwarded. <code>get_dealer_inquiry_status</code> can later show forwarded after a MatchRV operator confirms they sent it to the dealership. Queued is not forwarded. It never claims the dealer has replied.</li>
 </ol>
 </div>
 

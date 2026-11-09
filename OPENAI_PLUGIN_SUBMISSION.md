@@ -62,9 +62,9 @@ Every tool marked `readOnlyHint: true` has no side effects. A rating or payload 
 2. `send_dealer_inquiry(confirmation_token, confirmed: true)` sends exactly the previewed content (the token locks it). It is single-use, rate-limited (10 per shopper/IP per hour, 5 per contact per hour), and duplicate-guarded (same contact + RV within 24h). It returns `inquiry_id`, a private `status_token` and an honest status:
    - `delivered`: emailed to a dealership that has opted in to direct MatchRV inquiries (`data/dealer-inquiry-routes.json`) and accepted by its mail server. This does not mean anyone has read it.
    - `queued_for_matchrv`: there is no direct route to that dealership, so the MatchRV team was alerted (ntfy push without PII, and/or the ops mailbox) to forward it. It has not reached the dealer yet.
-   - `failed`: neither the dealer nor MatchRV ops could be reached. The shopper is told to contact the dealership directly.
+   - `failed`: neither the dealer nor MatchRV ops could be reached. The shopper is told to contact the dealership directly. MatchRV may retry that same authorized delivery later; it does not send a new inquiry.
    - `dry_run` (testing only, `dry_run: true` or `INQUIRY_DRY_RUN=1`): validated and recorded in memory; nothing is delivered to anyone.
-3. `get_dealer_inquiry_status(inquiry_id, status_token)` returns the status and `dealerReply`, which is only non-null when MatchRV ops record a real reply.
+3. `get_dealer_inquiry_status(inquiry_id, status_token)` returns the status and `dealerReply`, which is only non-null when MatchRV ops record a real reply. A later status of `forwarded` means a MatchRV operator confirmed in the lead inbox that they sent the inquiry to the dealership. Queued is not forwarded, and forwarded is not a dealer reply.
 
 HTTP equivalents (same service): `POST /api/inquiries` (preview, or send with `confirmation_token` + `confirmed: true`), `GET /api/inquiries/:id` with `X-Inquiry-Token`, and ops-only `GET|POST /api/inquiries/ops[/:id]` (Bearer `INQUIRY_OPS_KEY`).
 

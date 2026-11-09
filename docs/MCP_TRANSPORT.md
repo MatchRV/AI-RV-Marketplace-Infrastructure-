@@ -21,7 +21,9 @@ See the annotation table in `OPENAI_PLUGIN_SUBMISSION.md`. In summary:
 
 `services/dealer-inquiries.ts` plus `routes/inquiries.ts` (`POST /api/inquiries`, `GET /api/inquiries/:id`, ops-only `/api/inquiries/ops*`). The preview is stateless: an HMAC-signed token carries the exact preview, so the preview step has no side effects. Delivery goes to an opted-in dealer by email (`data/dealer-inquiry-routes.json`), else to the MatchRV ops queue with an ntfy/email alert, else the status is `failed`. Dry run: `dry_run: true` or `INQUIRY_DRY_RUN=1`.
 
-Environment: `NTFY_TOPIC` / `NTFY_URL`, `GMAIL_USER` + `GMAIL_APP_PASSWORD` or `SMTP_HOST` + `SMTP_FROM` (+ `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE`), `INQUIRY_OPS_EMAIL` (default sales@matchrv.com), `INQUIRY_OPS_KEY`, `INQUIRY_SIGNING_SECRET`, `INQUIRY_DRY_RUN`, `INQUIRY_RETENTION_DAYS`, `INQUIRIES_PATH`, `DEALER_INQUIRY_ROUTES` / `DEALER_INQUIRY_ROUTES_PATH`, `SESSION_MEMORY_PATH`, `SESSION_MEMORY_TTL_DAYS`, `CURATED_FACTS_PATH`.
+Environment: `NTFY_TOPIC` / `NTFY_URL`, `GMAIL_USER` + `GMAIL_APP_PASSWORD` or `SMTP_HOST` + `SMTP_FROM` (+ `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE`), `INQUIRY_OPS_EMAIL` (default sales@matchrv.com), `INQUIRY_OPS_KEY`, `INQUIRY_SIGNING_SECRET`, `INQUIRY_DRY_RUN`, `INQUIRY_RETENTION_DAYS`, `INQUIRIES_PATH`, `DEALER_INQUIRY_ROUTES` / `DEALER_INQUIRY_ROUTES_PATH`, `INQUIRY_SAFETY_SWEEP` (set to `1` to run the in-process queued-lead sweep every 10 minutes; off by default), `SESSION_MEMORY_PATH`, `SESSION_MEMORY_TTL_DAYS`, `CURATED_FACTS_PATH`.
+
+The safety sweep, forward confirmation, and alert setup are documented in `docs/INQUIRY_SAFETY_NET.md`. `queued_for_matchrv` is not `forwarded`. `forwarded` is set only when an ops user confirms in `/ops/leads`.
 
 ## Tests
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sendDealerInquiry } from "@/lib/dealer-inquiry";
+import { fetchShopperInquiryStatus, sendDealerInquiry, shopperInquiryStatusCopy } from "@/lib/dealer-inquiry";
 
 type Call = { url: string; body: any };
 function fakeFetch(responses: Array<{ status: number; body: unknown }>) {
@@ -41,6 +41,27 @@ describe("listing page Contact Dealer → /api/inquiries", () => {
     ]);
     const r = await sendDealerInquiry(input, "/", f.impl);
     expect(r).toEqual({ ok: false, error: "Not delivered: contact the dealership directly." });
+  });
+
+  it("shows queued and forwarded as different shopper statuses", () => {
+    expect(shopperInquiryStatusCopy("queued_for_matchrv", "Fife RV")).toMatch(/has not reached the dealership/);
+    expect(shopperInquiryStatusCopy("queued_for_matchrv", "Fife RV")).not.toMatch(/forwarded your message/);
+    expect(shopperInquiryStatusCopy("forwarded", "Fife RV")).toMatch(/forwarded your message to Fife RV/);
+    expect(shopperInquiryStatusCopy("forwarded", "Fife RV")).toMatch(/does not mean they have replied/);
+    expect(shopperInquiryStatusCopy("delivered", "Fife RV")).not.toMatch(/forwarded your message/);
+  });
+
+  it("reads a forwarded status with the shopper token and ignores a failed lookup", async () => {
+    const calls: string[] = [];
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      calls.push(url);
+      expect(new Headers(init?.headers).get("x-inquiry-token")).toBe("ist_token");
+      return new Response(JSON.stringify({ inquiry: { status: "forwarded", statusDetail: "Forwarded." } }), { status: 200 });
+    };
+    await expect(fetchShopperInquiryStatus("/", "inq_1", "ist_token", fetchImpl)).resolves.toEqual({ status: "forwarded", statusDetail: "Forwarded." });
+    expect(calls).toEqual(["/api/inquiries/inq_1"]);
+    const missing = async () => new Response("{}", { status: 404 });
+    await expect(fetchShopperInquiryStatus("/", "inq_1", "ist_nope", missing)).resolves.toBeNull();
   });
 
   it("respects a non-root BASE_URL", async () => {

@@ -18,7 +18,12 @@
  *                               alerted (ntfy and/or email) and will forward;
  *        - "failed"             neither the dealer nor MatchRV ops could be
  *                               reached — the shopper is told to contact the
- *                               dealership directly;
+ *                               dealership directly. A later sweep may retry
+ *                               that same authorized delivery; it does not
+ *                               invent a new recipient;
+ *        - "forwarded"          a MatchRV operator confirmed in the lead inbox
+ *                               that they sent it to the dealership. An ops
+ *                               alert or a queued message is not this status;
  *        - "dry_run"            testing only: validated and recorded in memory,
  *                               nothing delivered to anyone.
  *
@@ -33,14 +38,29 @@
  */
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { CanonicalUnit } from "@workspace/agent-core";
 import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
 import { recordInquiryOutcome } from "./product-analytics";
+import { DELIVERY_RETRY_BACKOFF_MS } from "./inquiry-safety-policy";
 export type { ShopperFit };
 
-export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed";
+export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed" | "forwarded";
+
+export interface InquiryDelivery {
+  channel: "dealer_email" | "matchrv_forward" | "none";
+  attemptedAt: string;
+  dealerEmailAccepted: boolean;
+  opsNotified: { ntfy: boolean; email: boolean };
+  error: string | null;
+  /** Recipient locked at the shopper's confirmed send. Retries use this, not a later route table. */
+  authorized?: { kind: "dealer_email" | "ops_queue"; dealerEmail: string | null; dealerDomain: string | null };
+  autoRetries?: number;
+  nextRetryAt?: string | null;
+  retryState?: "active" | "succeeded" | "permanent" | "exhausted" | "stopped";
+  claim?: { token: string; until: string } | null;
+}
 
 export interface InquiryContact { name: string; email: string | null; phone: string | null }
 
@@ -113,7 +133,13 @@ export interface DealerInquiry {
   statusTokenHash: string;
   scope: string | null;
   preview: InquiryPreview;
-  delivery: { channel: "dealer_email" | "matchrv_forward" | "none"; attemptedAt: string; dealerEmailAccepted: boolean; opsNotified: { ntfy: boolean; email: boolean }; error: string | null };
+  delivery: InquiryDelivery;
+  /** When the lead entered queued_for_matchrv. Age alerts count from here. */
+  queuedAt?: string;
+  /** Set only by an explicit ops confirmation, never by a transport accept. */
+  forwarded?: { at: string; by: "matchrv_ops" };
+  /** ISO timestamps once an age or exhaustion alert was delivered. `pending:<ms>` is an in-flight claim. */
+  safety?: { alert2hAt?: string; alert24hAt?: string; exhaustedAlertAt?: string };
   dealerReply: { text: string; receivedAt: string; recordedBy: "matchrv_ops" } | null;
   /** Set by MatchRV ops for internal test inquiries: shown as TEST in the lead inbox, never forwarded. */
   test?: boolean;
@@ -243,7 +269,9 @@ let loaded = false;
 let persistenceEnabled = process.env.NODE_ENV !== "test" && !process.env.VITEST;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+let storePathOverride: string | null = null;
 function storePath(): string {
+  if (storePathOverride) return storePathOverride;
   if (process.env.INQUIRIES_PATH) return resolve(process.env.INQUIRIES_PATH);
   if (process.env.LEARNED_FACTS_PATH) return resolve(dirname(resolve(process.env.LEARNED_FACTS_PATH)), "dealer-inquiries.json");
   return resolve("data/dealer-inquiries.json");
@@ -264,16 +292,20 @@ function purge(now = Date.now()): void {
     if (age > RETENTION_MS || (inq.dryRun && age > 24 * 60 * 60 * 1000)) { inquiries.delete(id); byNonce.delete(inq.nonce); }
   }
 }
+function persistSync(): void {
+  if (!persistenceEnabled) return;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try {
+    const p = storePath();
+    mkdirSync(dirname(p), { recursive: true });
+    const tmp = `${p}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify([...inquiries.values()].filter((i) => !i.dryRun)));
+    renameSync(tmp, p);
+  } catch (err) { console.warn("[inquiries] could not persist store:", err instanceof Error ? err.message : err); }
+}
 function persistSoon(): void {
   if (!persistenceEnabled || saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const p = storePath();
-      mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, JSON.stringify([...inquiries.values()].filter((i) => !i.dryRun)));
-    } catch (err) { console.warn("[inquiries] could not persist store:", err instanceof Error ? err.message : err); }
-  }, 300);
+  saveTimer = setTimeout(() => { saveTimer = null; persistSync(); }, 300);
 }
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
@@ -338,6 +370,8 @@ export async function sendInquiry(args: {
   lookupUnit: (id: string) => CanonicalUnit | undefined;
   /** Where this send was accepted. Omitted callers stay "unknown" rather than guessed. */
   analyticsSource?: "mcp" | "website" | "unknown";
+  /** Clock for createdAt and the delivery attempt. Defaults to Date.now(). */
+  now?: number;
 }): Promise<SendResult> {
   const note = (result: SendResult): SendResult => {
     try {
@@ -355,9 +389,10 @@ export async function sendInquiry(args: {
     }
     return result;
   };
+  const now = args.now ?? Date.now();
   load(); purge();
   if (args.confirmed !== true) return note({ ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." });
-  const v = verifyToken(args.confirmationToken);
+  const v = verifyToken(args.confirmationToken, now);
   if (!v.ok) return note({ ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." });
   const p = v.payload;
   const existingId = byNonce.get(p.nonce);
@@ -379,15 +414,15 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
   const statusToken = `ist_${randomBytes(18).toString("base64url")}`;
   const inquiry: DealerInquiry = {
     id: `inq_${randomBytes(9).toString("base64url")}`,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(now).toISOString(),
     status: "failed", statusDetail: "", dryRun, nonce: p.nonce,
     statusTokenHash: hashToken(statusToken), scope: args.scope, preview,
-    delivery: { channel: "none", attemptedAt: new Date().toISOString(), dealerEmailAccepted: false, opsNotified: { ntfy: false, email: false }, error: null },
+    delivery: { channel: "none", attemptedAt: new Date(now).toISOString(), dealerEmailAccepted: false, opsNotified: { ntfy: false, email: false }, error: null },
     dealerReply: null,
     ...(fit ? { fit } : {}),
   };
   // Duplicate guard: same contact + unit within 24h returns a duplicate notice instead of resending.
-  const dup = [...inquiries.values()].find((i) => !i.dryRun && !dryRun && i.preview.unit.id === unit.id && (i.preview.shopper.email ?? i.preview.shopper.phone ?? "").toLowerCase() === contactKey && Date.now() - Date.parse(i.createdAt) < 24 * 60 * 60 * 1000 && i.status !== "failed");
+  const dup = [...inquiries.values()].find((i) => !i.dryRun && !dryRun && i.preview.unit.id === unit.id && (i.preview.shopper.email ?? i.preview.shopper.phone ?? "").toLowerCase() === contactKey && now - Date.parse(i.createdAt) < 24 * 60 * 60 * 1000 && i.status !== "failed");
 
   if (dryRun) {
     inquiry.status = "dry_run";
@@ -395,7 +430,7 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
   } else if (dup) {
     return note({ ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true });
   } else {
-    await deliver(inquiry, unit);
+    await deliver(inquiry, unit, now);
   }
   inquiries.set(inquiry.id, inquiry);
   byNonce.set(inquiry.nonce, inquiry.id);
@@ -438,18 +473,88 @@ export function formatInquiryForwardText(i: DealerInquiry): string {
   ].join("\n");
 }
 
-async function deliver(i: DealerInquiry, unit: CanonicalUnit): Promise<void> {
+export function redactDeliveryError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[email]").slice(0, 300);
+}
+
+/** Permanent means the same attempt cannot succeed later (bad address, 4xx other than 429). Everything else stays retryable until the cap. */
+export function classifyDeliveryFailure(message: string): "permanent" | "transient" {
+  const m = message.toLowerCase();
+  if (/email_not_configured|ntfy_not_configured|econn|etimedout|timeout|smtp down|network|temporar|429|http_5|ntfy_http_5/.test(m)) return "transient";
+  if (/\b550\b|\b553\b|\b554\b|user unknown|invalid recipient|mailbox unavailable|permanent/.test(m)) return "permanent";
+  if (/ntfy_http_4\d\d/.test(m) && !/ntfy_http_429/.test(m)) return "permanent";
+  return "transient";
+}
+
+function worsen(current: "permanent" | "transient" | null, next: "permanent" | "transient"): "permanent" | "transient" {
+  if (current === "transient" || next === "transient") return "transient";
+  return "permanent";
+}
+
+function opsForwardPushBody(i: DealerInquiry): string {
+  const firstName = i.preview.shopper.name.split(" ")[0];
+  const u = i.preview.unit;
+  const d = i.preview.dealer;
+  return `${i.id}: ${firstName} asked about ${u.title} (stock ${u.stockNumber ?? "n/a"}) at ${d.name}, ${d.city} ${d.state}. Full contact details in the ops inbox / GET /api/inquiries/ops/${i.id}.`;
+}
+
+function opsForwardEmailText(i: DealerInquiry, dealerDomain: string | null): string {
+  const d = i.preview.dealer;
+  const site = d.website ?? dealerDomain;
+  return `Forward to: ${d.name}, ${d.city} ${d.state}${site ? ` (${site})` : ""}\n\n${dealerEmailText(i)}`;
+}
+
+function deliveredDetail(dealerName: string): string {
+  return `Emailed to ${dealerName}. "Delivered" means the dealership's mail server accepted it; it does not mean anyone has read or answered it yet.`;
+}
+
+function queuedDetail(dealerName: string): string {
+  return `Queued: MatchRV does not have a direct connection to ${dealerName}, so the MatchRV team was alerted and will forward this inquiry. It has NOT reached the dealership yet.`;
+}
+
+function failedDetail(dealerName: string, website: string | null): string {
+  return `Not delivered: MatchRV could not reach ${dealerName} or its own team right now. The shopper should contact the dealership directly${website ? ` (${website})` : ""}. The request is kept for MatchRV to retry.`;
+}
+
+function scheduleInitialFailure(i: DealerInquiry, now: number, failure: "permanent" | "transient"): void {
+  i.delivery.autoRetries = 0;
+  if (failure === "permanent") {
+    i.delivery.retryState = "permanent";
+    i.delivery.nextRetryAt = null;
+    return;
+  }
+  i.delivery.retryState = "active";
+  i.delivery.nextRetryAt = new Date(now + DELIVERY_RETRY_BACKOFF_MS[0]).toISOString();
+}
+
+export function isTestInquiry(i: DealerInquiry): boolean {
+  if (i.dryRun || i.status === "dry_run" || i.test === true) return true;
+  return /\bTEST\b/.test(i.preview?.shopper?.name ?? "");
+}
+
+async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()): Promise<void> {
   const route = dealerRoute(unit.dealer.id);
   const d = i.delivery;
-  if (route && transport.emailConfigured()) {
+  const emailOn = transport.emailConfigured();
+  const canEmailDealer = Boolean(route && emailOn);
+  d.authorized = canEmailDealer
+    ? { kind: "dealer_email", dealerEmail: route, dealerDomain: unit.provenance.dealerDomain ?? null }
+    : { kind: "ops_queue", dealerEmail: null, dealerDomain: unit.provenance.dealerDomain ?? null };
+  let dealerFailure: "permanent" | "transient" | null = null;
+  let opsFailure: "permanent" | "transient" | null = null;
+  if (canEmailDealer && route) {
     d.channel = "dealer_email";
     try {
       await transport.sendEmail({ to: route, subject: `MatchRV inquiry: ${unit.title} (stock ${unit.stockNumber ?? "n/a"})`, text: dealerEmailText(i), replyTo: i.preview.shopper.email });
       d.dealerEmailAccepted = true;
       i.status = "delivered";
-      i.statusDetail = `Emailed to ${unit.dealer.name}. "Delivered" means the dealership's mail server accepted it; it does not mean anyone has read or answered it yet.`;
+      i.statusDetail = deliveredDetail(unit.dealer.name);
+      d.retryState = "succeeded";
+      d.nextRetryAt = null;
     } catch (err) {
-      d.error = `dealer_email_failed: ${err instanceof Error ? err.message : String(err)}`;
+      dealerFailure = classifyDeliveryFailure(redactDeliveryError(err));
+      d.error = `dealer_email_failed: ${redactDeliveryError(err)}`;
     }
   }
   if (i.status === "delivered") {
@@ -457,24 +562,140 @@ async function deliver(i: DealerInquiry, unit: CanonicalUnit): Promise<void> {
     return;
   }
   // No direct route (or it failed): queue for MatchRV to forward and alert ops.
+  // Reaching ops is not proof the dealer received the inquiry.
   d.channel = "matchrv_forward";
-  const firstName = i.preview.shopper.name.split(" ")[0];
-  await transport.notifyOps({
-    title: "MatchRV inquiry to forward",
-    body: `${i.id}: ${firstName} asked about ${unit.title} (stock ${unit.stockNumber ?? "n/a"}) at ${unit.dealer.name}, ${unit.dealer.city} ${unit.dealer.state}. Full contact details in the ops inbox / GET /api/inquiries/ops/${i.id}.`,
-  }).then(() => { d.opsNotified.ntfy = true; }, (err) => { d.error = [d.error, `ntfy_failed: ${err instanceof Error ? err.message : err}`].filter(Boolean).join("; "); });
-  if (transport.emailConfigured()) {
-    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward inquiry ${i.id} to ${unit.dealer.name}`, text: `Forward to: ${unit.dealer.name}, ${unit.dealer.city} ${unit.dealer.state} (${unit.dealer.website ?? unit.provenance.dealerDomain})\n\n${dealerEmailText(i)}`, replyTo: i.preview.shopper.email })
-      .then(() => { d.opsNotified.email = true; }, (err) => { d.error = [d.error, `ops_email_failed: ${err instanceof Error ? err.message : err}`].filter(Boolean).join("; "); });
+  await transport.notifyOps({ title: "MatchRV inquiry to forward", body: opsForwardPushBody(i) }).then(() => { d.opsNotified.ntfy = true; }, (err) => {
+    opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
+    d.error = [d.error, `ntfy_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
+  });
+  if (emailOn) {
+    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward inquiry ${i.id} to ${unit.dealer.name}`, text: opsForwardEmailText(i, unit.provenance.dealerDomain ?? null), replyTo: i.preview.shopper.email })
+      .then(() => { d.opsNotified.email = true; }, (err) => {
+        opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
+        d.error = [d.error, `ops_email_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
+      });
   }
   if (d.opsNotified.ntfy || d.opsNotified.email) {
     i.status = "queued_for_matchrv";
-    i.statusDetail = `Queued: MatchRV does not have a direct connection to ${unit.dealer.name}, so the MatchRV team was alerted and will forward this inquiry. It has NOT reached the dealership yet.`;
-  } else {
-    i.status = "failed";
-    i.statusDetail = `Not delivered: MatchRV could not reach ${unit.dealer.name} or its own team right now. The shopper should contact the dealership directly${unit.dealer.website ? ` (${unit.dealer.website})` : ""}. The request is kept for MatchRV to retry.`;
+    i.queuedAt = new Date(now).toISOString();
+    i.statusDetail = queuedDetail(unit.dealer.name);
+    d.retryState = "succeeded";
+    d.nextRetryAt = null;
+    return;
   }
+  i.status = "failed";
+  i.statusDetail = failedDetail(unit.dealer.name, unit.dealer.website);
+  const failure = dealerFailure === "transient" || opsFailure === "transient" ? "transient" : "permanent";
+  scheduleInitialFailure(i, now, failure);
 }
+
+export type AuthorizedRetryOutcome = "delivered" | "queued" | "transient" | "permanent" | "skipped";
+
+/**
+ * Replay the delivery authorized on the original confirmed send.
+ * Ops-queue leads are never turned into a dealer email, even if a route appears later.
+ * Dealer leads go back to the stored address, not the current route table.
+ */
+export async function attemptAuthorizedRetry(i: DealerInquiry, now: number, stillFailed: () => boolean): Promise<AuthorizedRetryOutcome> {
+  if (!stillFailed()) return "skipped";
+  const auth = i.delivery.authorized;
+  if (!auth) return "skipped";
+  const d = i.delivery;
+  let dealerFailure: "permanent" | "transient" | null = null;
+  let opsFailure: "permanent" | "transient" | null = null;
+  if (auth.kind === "dealer_email" && auth.dealerEmail && !d.dealerEmailAccepted) {
+    if (!stillFailed()) return "skipped";
+    try {
+      await transport.sendEmail({
+        to: auth.dealerEmail,
+        subject: `MatchRV inquiry: ${i.preview.unit.title} (stock ${i.preview.unit.stockNumber ?? "n/a"})`,
+        text: dealerEmailText(i),
+        replyTo: i.preview.shopper.email,
+      });
+      d.dealerEmailAccepted = true;
+      if (!stillFailed()) return "skipped";
+      d.channel = "dealer_email";
+      d.error = null;
+      i.status = "delivered";
+      i.statusDetail = deliveredDetail(i.preview.dealer.name);
+      await transport.notifyOps({
+        title: "MatchRV inquiry delivered",
+        body: `${i.id}: ${i.preview.unit.title} -> ${i.preview.dealer.name} (${i.preview.dealer.city}, ${i.preview.dealer.state}). Delivered by email.`,
+      }).then(() => { d.opsNotified.ntfy = true; }, () => {});
+      return "delivered";
+    } catch (err) {
+      dealerFailure = classifyDeliveryFailure(redactDeliveryError(err));
+      d.error = `dealer_email_failed: ${redactDeliveryError(err)}`;
+    }
+  }
+  if (!stillFailed()) return "skipped";
+  if (!d.opsNotified.ntfy && !d.opsNotified.email) {
+    const pushOn = transport.opsPushConfigured();
+    const emailOn = transport.emailConfigured();
+    if (!pushOn && !emailOn) return dealerFailure === "permanent" ? "permanent" : "transient";
+    if (pushOn) {
+      if (!stillFailed()) return "skipped";
+      try {
+        await transport.notifyOps({ title: "MatchRV inquiry to forward", body: opsForwardPushBody(i) });
+        d.opsNotified.ntfy = true;
+      } catch (err) {
+        opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
+        d.error = [d.error, `ntfy_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
+      }
+    }
+    if (!stillFailed()) return "skipped";
+    if (emailOn) {
+      try {
+        await transport.sendEmail({
+          to: OPS_EMAIL,
+          subject: `[MatchRV] Forward inquiry ${i.id} to ${i.preview.dealer.name}`,
+          text: opsForwardEmailText(i, auth.dealerDomain),
+          replyTo: i.preview.shopper.email,
+        });
+        d.opsNotified.email = true;
+      } catch (err) {
+        opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
+        d.error = [d.error, `ops_email_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
+      }
+    }
+  }
+  if (!stillFailed()) return "skipped";
+  if (d.opsNotified.ntfy || d.opsNotified.email) {
+    if (i.status !== "delivered") {
+      d.channel = "matchrv_forward";
+      i.status = "queued_for_matchrv";
+      i.queuedAt = new Date(now).toISOString();
+      i.statusDetail = queuedDetail(i.preview.dealer.name);
+    }
+    return i.status === "delivered" ? "delivered" : "queued";
+  }
+  if (dealerFailure === "transient" || opsFailure === "transient") return "transient";
+  return "permanent";
+}
+
+/** Age and exhaustion alerts. No shopper name, contact, message, or payment numbers. */
+export async function emitOpsAlert(msg: { title: string; body: string }): Promise<"sent" | "unconfigured" | "failed"> {
+  const push = transport.opsPushConfigured();
+  const email = transport.emailConfigured();
+  if (!push && !email) return "unconfigured";
+  let sent = false;
+  if (push) {
+    try { await transport.notifyOps({ title: msg.title, body: msg.body }); sent = true; }
+    catch { /* the mailbox may still be up */ }
+  }
+  if (email) {
+    try { await transport.sendEmail({ to: OPS_EMAIL, subject: msg.title, text: msg.body }); sent = true; }
+    catch { /* counted below */ }
+  }
+  return sent ? "sent" : "failed";
+}
+
+export function listStoredInquiries(): DealerInquiry[] {
+  load();
+  return [...inquiries.values()];
+}
+
+export function persistInquiriesSync(): void { persistSync(); }
 
 // ── Status / ops ───────────────────────────────────────────────────────────
 
@@ -518,7 +739,8 @@ export function opsUpdate(id: string, update: { status?: "delivered" | "queued_f
   load();
   const i = inquiries.get(id);
   if (!i || i.dryRun) return null;
-  if (update.status) i.status = update.status;
+  // Forwarded is sticky: a generic status edit must not downgrade a confirmed forward.
+  if (update.status && i.status !== "forwarded") i.status = update.status;
   if (typeof update.test === "boolean") i.test = update.test;
   if (update.statusDetail) i.statusDetail = clean(update.statusDetail).slice(0, 500);
   if (update.dealerReply) i.dealerReply = { text: clean(update.dealerReply).slice(0, 4000), receivedAt: new Date().toISOString(), recordedBy: "matchrv_ops" };
@@ -526,8 +748,49 @@ export function opsUpdate(id: string, update: { status?: "delivered" | "queued_f
   return i;
 }
 
+/**
+ * Explicit ops confirmation that this lead was sent to the dealership.
+ * Copying the forward text does not call this. A failed call leaves status unchanged.
+ */
+export function confirmInquiryForwarded(id: string, now = Date.now()): { ok: true; inquiry: DealerInquiry } | { ok: false; code: "not_found" | "not_forwardable" } {
+  load();
+  const i = inquiries.get(id);
+  if (!i) return { ok: false, code: "not_found" };
+  if (i.status === "forwarded" && i.forwarded) return { ok: true, inquiry: i };
+  if (isTestInquiry(i) || i.dryRun || i.status === "dry_run") return { ok: false, code: "not_forwardable" };
+  if (i.status !== "queued_for_matchrv" && i.status !== "failed") return { ok: false, code: "not_forwardable" };
+  i.status = "forwarded";
+  i.forwarded = { at: new Date(now).toISOString(), by: "matchrv_ops" };
+  i.statusDetail = `Forwarded: a MatchRV operator confirmed this inquiry was sent to ${i.preview.dealer.name}. It has left MatchRV. This does not mean the dealership has read or answered it.`;
+  i.delivery.nextRetryAt = null;
+  if (i.delivery.retryState === "active") i.delivery.retryState = "stopped";
+  persistSync();
+  return { ok: true, inquiry: i };
+}
+
 /** Test hooks. */
 export function __setTransport(t: InquiryTransport | null): void { transport = t ?? defaultTransport; }
 export function __setRoutes(r: Record<string, string>): void { routes = r; }
 export function __resetInquiries(): void { inquiries.clear(); byNonce.clear(); hits.clear(); loaded = true; }
 export function __inquiryCount(): number { return inquiries.size; }
+export function __exportInquiries(): DealerInquiry[] { return structuredClone([...inquiries.values()]); }
+export function __importInquiries(rows: DealerInquiry[]): void {
+  inquiries.clear();
+  byNonce.clear();
+  loaded = true;
+  for (const row of structuredClone(rows)) {
+    inquiries.set(row.id, row);
+    if (row.nonce) byNonce.set(row.nonce, row.id);
+  }
+}
+export function __setPersistenceForTests(enabled: boolean, filePath?: string): void {
+  persistenceEnabled = enabled;
+  storePathOverride = filePath ?? null;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+}
+export function __reloadPersistedInquiries(): void {
+  inquiries.clear();
+  byNonce.clear();
+  loaded = false;
+  load();
+}

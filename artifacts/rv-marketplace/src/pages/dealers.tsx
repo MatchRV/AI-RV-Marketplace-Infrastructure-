@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
 import { trackEvent } from "@/lib/analytics";
+import { posthog } from "@/lib/posthog";
 import { clearDealerSession, getDealerSession, upgradeDealerTier, type DealerTier } from "@/lib/dealer-auth";
 
 const BASE = import.meta.env.BASE_URL || "/";
@@ -267,7 +268,12 @@ export function Dealers() {
   }
 
   function handleUpgradeConfirm(newTier: DealerTier) {
+    const previousTier = tier;
     upgradeDealerTier(newTier);
+    posthog.capture("dealer_tier_upgraded", {
+      previous_tier: previousTier,
+      new_tier: newTier,
+    });
     const updated = getDealerSession();
     setDealerSessionState(updated);
     setUpgradeTarget(null);

@@ -114,30 +114,13 @@ SHOPPER_FIT_PATH=/var/data/shopper-fit.json
 OUTBOUND_CLICKS_PATH=/var/data/outbound-clicks.jsonl
 ```
 
-`/etc/systemd/system/matchrv.service`:
+Do not paste a unit from this page and do not run `systemctl enable` or `systemctl start` from it. The reviewed files are `prepare-staging.sh` and `matchrv-staging-isolation-check.sh`. The prepare script writes `/etc/matchrv.env` and `/etc/systemd/system/matchrv.service` only after the data disk UUID is `0b11bb49-dae0-4f36-bfe2-04e057025376`, the filesystem is ext4, `var-data.mount` is active, user `matchrv` is not root, and `artifacts/api-server/dist/index.cjs` matches the off-VM build. It refuses a different existing file. It does not start the service.
 
-```
-[Unit]
-Description=MatchRV staging (no public cutover)
-After=network-online.target
-Wants=network-online.target
-ConditionPathIsMountPoint=/var/data
+The unit uses `PrivateNetwork=yes` ([systemd.exec](https://www.freedesktop.org/software/systemd/man/systemd.exec.html)). That gives the process a network namespace whose only device is loopback, so a listen on every interface is not a listen in the host namespace. The same page says this implies `PrivateMounts=` and remounts `/sys`. It does not move the release directory or `/var/data`. `MemoryMax=1500M` and `MemorySwapMax=0` are a staging cap for the current free memory. They are not a production capacity result. `Restart=no`. There is no `[Install]` section.
 
-[Service]
-Type=simple
-User=matchrv
-Group=matchrv
-WorkingDirectory=/opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3
-EnvironmentFile=/etc/matchrv.env
-ExecStart=/usr/local/bin/node artifacts/api-server/dist/index.cjs
-Restart=on-failure
-RestartSec=3
+The VPC view showed public ICMP, 22, and 3389, plus internal `10.128.0.0/9`. It did not show a public 80, 443, or 8080 rule. `compute.organizations.listAssociations` was denied, so inherited policies are unknown. That view is not proof port 8080 is closed. Do not grant IAM to learn the answer, and do not open a firewall rule. The private namespace is the control for this phase. Outbound network is also absent, which is acceptable while Anthropic and the other delivery keys stay unset. A later full AI test is a separate gate.
 
-[Install]
-WantedBy=multi-user.target
-```
-
-`ConditionPathIsMountPoint` refuses to start when `/var/data` is a plain directory on the boot disk. It does not check the disk name. Before `systemctl enable --now matchrv`, `findmnt` must still show the data disk. The runtime user owns `/var/data`. The process is not root.
+After a separate decision to start, run the isolation check. It does not start the service. If the host network namespace is the service namespace, the host has a TCP 8080 listener, or `nsenter -t PID -n curl http://127.0.0.1:8080/api/healthz` fails, the check stops the service. An SSH local forward to host port 8080 does not reach this unit.
 
 Side effects this env avoids, from the code at the pinned commit:
 
@@ -146,19 +129,7 @@ Side effects this env avoids, from the code at the pinned commit:
 - Unset PostHog key makes `activeConfig()` return null.
 - Inquiry mail runs only inside `sendInquiry` when `dry_run` is false and SMTP or Gmail is configured. Do not call `send_dealer_inquiry` or `GET /api/out` on this host.
 
-Smoke from an SSH local forward, not from the public address:
-
-```bash
-ssh -L 18080:127.0.0.1:8080 VM_SSH_USER@34.171.66.221
-curl -fsS http://127.0.0.1:18080/api/healthz
-curl -fsS 'http://127.0.0.1:18080/api/listings?limit=1'
-curl -fsS http://127.0.0.1:18080/api/search/filters
-curl -fsS http://127.0.0.1:18080/api/swipe/deck -H 'content-type: application/json' -d '{"rvType":"travel_trailer","zip":"98402"}'
-curl -fsS http://127.0.0.1:18080/api/agent/search -H 'content-type: application/json' -d '{"constraints":{"rvTypes":["travel_trailer"],"location":{"place":"Tacoma, WA","radiusMiles":50}},"limit":3}'
-curl -sS -o /tmp/outfitter.json -w '%{http_code}\n' http://127.0.0.1:18080/api/outfitter/chat -H 'content-type: application/json' -d '{"messages":[{"role":"user","content":"hello"}]}'
-```
-
-Expect health `{"status":"ok"}`, listings HTTP 200, filters HTTP 200, swipe HTTP 200 with `cards`, agent search HTTP 200, outfitter HTTP 503. Then the two MCP posts from Task 5, aimed at `http://127.0.0.1:18080/mcp`, with no `mcp-session-id`. Expect server name `matchrv` and a `search_rvs` `shortlist`. Journal must include `db: none` and `scraper cron disabled`, and must not include `Scrape scheduler active` or `Hourly batch starting`.
+Smoke only inside the service network namespace, after the isolation check has passed. Use `nsenter -t "$PID" -n curl` against `http://127.0.0.1:8080`. Do not curl the host address and do not publish port 8080. Expect health `{"status":"ok"}`, listings HTTP 200, filters HTTP 200, swipe HTTP 200 with `cards`, agent search HTTP 200, outfitter HTTP 503. MCP `initialize` should name `matchrv`, and `search_rvs` should return a shortlist. The journal should include `db: none` and `scraper cron disabled`, and should not include `Scrape scheduler active` or `Hourly batch starting`.
 
 `/var/data` may gain files only if something writes. These read calls left the sandbox directory empty. If `dealer-inquiries.json` or `outbound-clicks.jsonl` appears, stop. Do not load the 2:48 PM archive. Do not call a delivering inquiry.
 

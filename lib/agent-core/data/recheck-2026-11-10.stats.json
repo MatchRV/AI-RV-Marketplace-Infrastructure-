@@ -1,0 +1,231 @@
+{
+ "final": {
+  "builtAt": "2026-11-10T15:54:57.000Z",
+  "base_units": 135134,
+  "out_units": 132661,
+  "removed_or_held": 2473,
+  "added": 0,
+  "lastSeen_refreshed": 84798,
+  "price_changed": 8250,
+  "other_field_changes": {
+   "dealer": 199,
+   "condition": 1272,
+   "rvType": 35
+  },
+  "tacoma_held": 0
+ },
+ "windowsAfter": {
+  "builtAt": "2026-11-10T15:54:57.000Z",
+  "loaded": 132661,
+  "passing_non_stale_rules": 132626,
+  "windows": {
+   "14": {
+    "eligible": 118311,
+    "domains": 724,
+    "locations": 1461,
+    "states": 49,
+    "cutoff_PT": "2026-10-27 08:54 PDT"
+   },
+   "21": {
+    "eligible": 118541,
+    "domains": 729,
+    "locations": 1466,
+    "states": 49,
+    "cutoff_PT": "2026-10-20 08:54 PDT"
+   },
+   "30": {
+    "eligible": 122979,
+    "domains": 729,
+    "locations": 1497,
+    "states": 49,
+    "cutoff_PT": "2026-10-11 08:54 PDT"
+   },
+   "45": {
+    "eligible": 130395,
+    "domains": 746,
+    "locations": 1545,
+    "states": 49,
+    "cutoff_PT": "2026-09-26 08:54 PDT"
+   }
+  }
+ },
+ "windowsBaseAtBuiltAt": {
+  "builtAt": "2026-11-10T15:54:57.000Z",
+  "loaded": 135134,
+  "passing_non_stale_rules": 135101,
+  "windows": {
+   "14": {
+    "eligible": 110037,
+    "domains": 723,
+    "locations": 1458,
+    "states": 49,
+    "cutoff_PT": "2026-10-27 08:54 PDT"
+   },
+   "21": {
+    "eligible": 110267,
+    "domains": 728,
+    "locations": 1463,
+    "states": 49,
+    "cutoff_PT": "2026-10-20 08:54 PDT"
+   },
+   "30": {
+    "eligible": 120640,
+    "domains": 728,
+    "locations": 1494,
+    "states": 49,
+    "cutoff_PT": "2026-10-11 08:54 PDT"
+   },
+   "45": {
+    "eligible": 132676,
+    "domains": 746,
+    "locations": 1544,
+    "states": 49,
+    "cutoff_PT": "2026-09-26 08:54 PDT"
+   }
+  }
+ },
+ "waBefore": {
+  "14": {
+   "total": 110037,
+   "WA": 4725,
+   "WA_domains": 42,
+   "domains": 723
+  },
+  "30": {
+   "total": 120640,
+   "WA": 4740,
+   "WA_domains": 42,
+   "domains": 728
+  },
+  "WA_loaded": 5805
+ },
+ "waAfter": {
+  "14": {
+   "total": 118311,
+   "WA": 4700,
+   "WA_domains": 42,
+   "domains": 724
+  },
+  "30": {
+   "total": 122979,
+   "WA": 4715,
+   "WA_domains": 42,
+   "domains": 729
+  },
+  "WA_loaded": 5780
+ },
+ "failedDealers": {
+  "dealers": 795,
+  "dealers_with_pages_read": 568,
+  "with_problem": 212,
+  "units_at_problem_dealers": 59387,
+  "no_sitemap_urls": 151,
+  "bot_walled": 14,
+  "no_unit_like": 18
+ },
+ "csoFixes": {
+  "cond": {
+   "stage": "cond",
+   "steps": {
+    "confirmed_new": 4761,
+    "no_heading_no_url_unchanged": 722,
+    "confirmed_used": 791,
+    "used->new": 12
+   },
+   "changes": 12,
+   "storesCreated": 0,
+   "byDomain": {
+    "ronhooverrvs.com": 11,
+    "campersinn.com": 1
+   }
+  },
+  "lots": {
+   "stage": "lots",
+   "steps": {
+    "lot_moved": 42,
+    "interstate": 34,
+    "bad_page_lot": 10,
+    "same_state": 8
+   },
+   "changes": 42,
+   "storesCreated": 1,
+   "byDomain": {
+    "petesrvindy.com": 8,
+    "campersinn.com": 5,
+    "bluecompassrv.com": 4,
+    "wadesrv.com": 4,
+    "bishs.com": 3,
+    "petesrv.com": 2,
+    "gorvconnection.com": 2,
+    "beckleysrvs.com": 2,
+    "meyersrvsuperstores.com": 2,
+    "funtownrv.com": 2,
+    "airstreamofnewhampshire.com": 1,
+    "coltonrv.com": 1,
+    "camperliquidators.com": 1,
+    "petesrvmidatlantic.com": 1,
+    "campersunlimited.net": 1,
+    "apachecamping.com": 1,
+    "parrisrv.com": 1,
+    "airstreamoftampafl.com": 1
+   }
+  },
+  "unknown": {
+   "stage": "unknown",
+   "steps": {
+    "unknown_city": 1986,
+    "no_page_left_unknown": 1585,
+    "page_states_no_lot": 78,
+    "filled": 131,
+    "filled_by_schema.org PostalAddress": 131,
+    "state_conflict_left_unknown": 192
+   },
+   "changes": 131,
+   "storesCreated": 0,
+   "byDomain": {
+    "kunesrv.com": 82,
+    "southhillrv.com": 49
+   }
+  }
+ },
+ "interact": {
+  "price_unverified": 129,
+  "dead_sold": 57,
+  "sale_pending": 641,
+  "dead_page_gone": 1,
+  "on_order": 2,
+  "price_conflict_large": 4
+ },
+ "otherDealers": {
+  "heldByReason": {
+   "dead_sold": 139,
+   "sale_pending": 123,
+   "price_unverified": 445,
+   "price_conflict_large": 6
+  },
+  "steps": {
+   "fetch_bot_wall_403": 12,
+   "fetch_error_500": 552,
+   "fetch_bot_wall_429": 1,
+   "fetch_error_None": 20,
+   "fetch_bot_wall_200": 1,
+   "page_not_matched": 40352,
+   "refreshed": 21179,
+   "identity_unconfirmed_no_change": 736,
+   "several_sale_labelled_prices_price_left": 69,
+   "unit_claimed_by_several_pages": 38,
+   "no_price_on_page_price_left": 107,
+   "vin_conflict_no_change": 15,
+   "unit_fresher_than_page": 445
+  }
+ },
+ "campingWorld": {
+  "lastSeen_only": 2888,
+  "lastSeen_refreshed_any": 5656,
+  "price_changed": 2094,
+  "lot_moved": 42,
+  "condition_filled": 1271,
+  "removed_total": 926,
+  "removed_dead_page_gone": 926
+ }
+}

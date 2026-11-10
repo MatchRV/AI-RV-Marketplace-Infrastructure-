@@ -13,33 +13,38 @@ export const SITE = {
 } as const;
 
 /**
- * Inventory numbers shown on the marketing pages.
- *
- * The RV counts are fallbacks: pages show them until the live total arrives
- * from GET /api/listings?limit=1 (see hooks/use-inventory-total.ts), and keep
- * them when that request fails. Dealer, store, and state counts have no live
- * source, so update them and `networkAsOf` here.
+ * RV type slugs accepted by GET /api/listings?type=.
+ * Counts for these types are never stored here — they come from that API.
+ */
+export const INVENTORY_TYPES = [
+  "travel_trailer",
+  "fifth_wheel",
+  "class_c",
+  "toy_hauler",
+  "class_a",
+  "class_b",
+  "truck_camper",
+  "popup_camper",
+] as const;
+
+export type InventoryType = (typeof INVENTORY_TYPES)[number];
+
+/**
+ * Dealer, store, and state coverage. These are not the live RV total and
+ * have no listings-API source, so they stay dated. RV unit counts are read
+ * live from GET /api/listings (see hooks/use-inventory-total.ts).
  */
 export const INVENTORY = {
-  rvs: 131_718,
-  rvsAsOf: "November 9, 2026",
   dealers: 517,
   stores: 841,
   states: 49,
   networkAsOf: "October 19, 2026",
-  byType: {
-    travel_trailer: 79_198,
-    fifth_wheel: 21_383,
-    class_c: 10_084,
-    toy_hauler: 7_871,
-    class_a: 6_325,
-    class_b: 4_732,
-    truck_camper: 1_376,
-    popup_camper: 749,
-  },
 } as const;
 
-export type InventoryType = keyof typeof INVENTORY.byType;
+/** Shown until the live listings total arrives, and when that request fails. */
+export const RV_COUNT_PLACEHOLDER = "\u2014";
+export const RV_COUNT_LIVE_STATUS = "RV count is live from MatchRV inventory.";
+export const RV_COUNT_UNAVAILABLE_STATUS = "Live RV count is unavailable right now.";
 
 const numberFormat = new Intl.NumberFormat("en-US");
 export const formatCount = (value: number) => numberFormat.format(value);

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { Router } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
 import { PricingNote } from "../src/components/site/blocks";
@@ -16,6 +16,7 @@ import { Privacy } from "../src/pages/privacy";
 import { Terms } from "../src/pages/terms";
 import { McpSetup } from "../src/pages/mcp-setup";
 import { MCP_ENDPOINT, MCP_JSON_CONFIG } from "../src/config/mcp";
+import { RV_COUNT_PLACEHOLDER, RV_COUNT_UNAVAILABLE_STATUS } from "../src/config/site";
 
 function render(component: React.ReactNode, path = "/") {
   return renderToStaticMarkup(<HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>);
@@ -76,6 +77,23 @@ describe("dealer website conversion and public routes", () => {
     expect(html).toContain('href="/swipe"');
     expect(html).toContain("Swipe to find");
     expect(html).not.toMatch(/tinder|dating/i);
+  });
+  it("leaves RV counts blank until the live listings total arrives", () => {
+    const placeholder = `<dd data-rv-count="total">${RV_COUNT_PLACEHOLDER}</dd>`;
+    const status = `<span data-rv-count-status="total">${RV_COUNT_UNAVAILABLE_STATUS}</span>`;
+    for (const [path, component] of [["/", <DealerHome/>], ["/shop", <Shop/>], ["/mcp-setup", <McpSetup/>]] as const) {
+      const html = renderToString(<HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>);
+      expect(html).toContain(placeholder);
+      expect(html).toContain(status);
+      expect(html).not.toMatch(/131[,_]?718/);
+      expect(html).not.toMatch(/79[,_]?198/);
+      expect(html).not.toContain("150,000");
+      expect(html).not.toContain("128,174");
+      expect(html).not.toContain("129,000");
+    }
+    const shop = render(<Shop/>, "/shop");
+    expect(shop).toContain(`<strong data-rv-count="travel_trailer">${RV_COUNT_PLACEHOLDER}</strong>`);
+    expect(shop).toContain(`<strong data-rv-count="popup_camper">${RV_COUNT_PLACEHOLDER}</strong>`);
   });
   it("keeps the comparison source-backed and distinct from an actual AI recommendation", () => {
     const html = render(<VisibilitySolution/>, "/visibility-solution");

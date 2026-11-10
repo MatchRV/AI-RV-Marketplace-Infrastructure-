@@ -9,7 +9,7 @@ import { SITE } from "@/config/site";
 
 export function DealerHome() {
   return <SiteLayout nav="dealer" home>
-    <SEO title="AI Visibility for RV Dealerships" description="Find what AI can read on your lot, fix the gaps, and keep your RV inventory ready for AI discovery. Start with a free Visibility Snapshot." canonical="/"/>
+    <SEO title="AI Visibility for RV Dealerships" description="See whether AI can read your dealership’s inventory, find the missing details, and get a prioritized plan to improve it. Start with a free Visibility Snapshot." canonical="/"/>
     {/* ───────────── Hero ───────────── */}
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero__media" aria-hidden="true">
@@ -21,7 +21,7 @@ export function DealerHome() {
         <div className="hero__copy">
           <p className="eyebrow eyebrow--live">AI visibility for RV dealerships</p>
           <h1 id="hero-title" className="display"><span className="line"><span>Make your inventory</span></span> <span className="line"><span><em>part of the answer.</em></span></span></h1>
-          <p className="lead hero__lead">Find what AI can read on your lot. Fix the gaps. Keep your inventory ready for AI discovery.</p>
+          <p className="lead hero__lead">See whether AI can read your dealership’s inventory, find the missing details, and get a prioritized plan to improve it.</p>
           <div className="hero__actions">
             <a className="btn btn--primary btn--lg" href="#request-report">Get my free snapshot <Icon name="arrow"/></a>
             <Link className="btn btn--ghost btn--lg" href="/visibility-report">See a sample report</Link>

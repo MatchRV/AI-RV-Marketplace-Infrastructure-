@@ -100,6 +100,42 @@ export function getSnapshotListingById(id: string): ListingRow | undefined {
   return getListingRows().find((r) => String(r.id) === id);
 }
 
+/** Types the marketing site asks for with GET /api/listings?type=. */
+export const SNAPSHOT_COUNT_TYPES = [
+  "class_a",
+  "class_b",
+  "class_c",
+  "travel_trailer",
+  "fifth_wheel",
+  "toy_hauler",
+  "popup_camper",
+  "truck_camper",
+] as const;
+
+export type SnapshotInventoryCounts = {
+  total: number;
+  byType: Record<(typeof SNAPSHOT_COUNT_TYPES)[number], number>;
+};
+
+/**
+ * One pass over the same photo-bearing rows GET /api/listings counts.
+ * `total` matches `querySnapshotListings({ limit: "1" }).total`.
+ * `byType[type]` matches `querySnapshotListings({ limit: "1", type }).total`.
+ */
+export function snapshotInventoryCounts(): SnapshotInventoryCounts {
+  const byType = Object.fromEntries(SNAPSHOT_COUNT_TYPES.map((type) => [type, 0])) as SnapshotInventoryCounts["byType"];
+  let total = 0;
+  for (const row of getListingRows()) {
+    if (!hasPhotos(row)) continue;
+    total += 1;
+    const type = String(row.type ?? "");
+    if (Object.prototype.hasOwnProperty.call(byType, type)) {
+      byType[type as keyof typeof byType] += 1;
+    }
+  }
+  return { total, byType };
+}
+
 export function snapshotSearchFilters() {
   const rows = getListingRows().filter(hasPhotos);
   const types = new Set<string>();

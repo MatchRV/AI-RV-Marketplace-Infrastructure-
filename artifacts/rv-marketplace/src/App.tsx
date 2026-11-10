@@ -6,7 +6,7 @@ import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
-import { DealerHome, VisibilityReport } from "@/pages/dealer-home";
+import { DealerHome } from "@/pages/dealer-home";
 import { registerMatchrvTools } from "@/agent/webmcp";
 import { registerNavigate } from "@/agent/session";
 
@@ -16,7 +16,9 @@ import { registerNavigate } from "@/agent/session";
 const BookReportCall = lazy(() => import("@/pages/book").then(m => ({ default: m.BookReportCall })));
 const Browse = lazy(() => import("@/pages/browse").then(m => ({ default: m.Browse })));
 const McpSetup = lazy(() => import("@/pages/mcp-setup").then(m => ({ default: m.McpSetup })));
-const DealerAdvertising = lazy(() => import("@/pages/dealer-advertising").then(m => ({ default: m.DealerAdvertising })));
+const VisibilityReport = lazy(() => import("@/pages/visibility-report").then(m => ({ default: m.VisibilityReport })));
+const VisibilitySolution = lazy(() => import("@/pages/visibility-solution").then(m => ({ default: m.VisibilitySolution })));
+const LotAI = lazy(() => import("@/pages/lotai").then(m => ({ default: m.LotAI })));
 const Shop = lazy(() => import("@/pages/shop").then(m => ({ default: m.Shop })));
 const ListingDetail = lazy(() => import("@/pages/listing-detail").then(m => ({ default: m.ListingDetail })));
 const Outfitter = lazy(() => import("@/pages/outfitter").then(m => ({ default: m.Outfitter })));
@@ -197,7 +199,10 @@ function AppRouter() {
       <Route path="/book" component={BookReportCall} />
       <Route path="/shop" component={Shop} />
       <Route path="/swipe" component={Swipe} />
-      <Route path="/advertising" component={DealerAdvertising} />
+      <Route path="/visibility-solution" component={VisibilitySolution} />
+      <Route path="/lotai" component={LotAI} />
+      {/* The ChatGPT advertising page was retired; old links land on the page that replaced it. */}
+      <Route path="/advertising">{() => <Redirect to="/visibility-solution" replace />}</Route>
       <Route path="/mcp-setup" component={McpSetup} />
       <Route path="/answers" component={AnswerEngine} />
       <Route path="/browse/:slug?" component={Browse} />

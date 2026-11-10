@@ -53,7 +53,7 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 
 ## Data
 
-- Dealer network: 150,000 RVs across the dealer network (517 dealers, 841 stores, 49 states), as of October 19, 2026. This is the total listed across the network before de-duplication and quality cleaning.
+- Live RV inventory: {{LIVE_RV_COUNT}}. This is the current total from GET /api/listings (https://matchrv.com/api/listings?limit=1), the same count shown on the website. It changes as listings change. The served copy at https://matchrv.com/llms.txt replaces this token with the live total. Dealer, store, and state coverage is a separate figure, not that live total: 517 dealers, 841 stores, 49 states, as of October 19, 2026.
 - What a shopper can search depends on the surface. Listing pages show stored units that have a photo. ChatGPT search_rvs uses that stored snapshot except records held for age, an implausible price, or a known category conflict. The in-page WebMCP tool search_inventory is stricter: it also requires a published price, length, and sleeps, and a published weight on towables. A motorhome is not withheld only because a towable weight was never published. A missing spec stays unknown. A unit whose lot cannot be resolved is left out of a city search; it is not placed nearby. `/api/agent/meta` field `searchableUnits` is that stricter in-page count, not the listing total and not the ChatGPT corpus.
 - Provenance: every critical spec is a fact with a source and a confidence. Sources are `dealer_listing` (structured field in the dealer's listing), `derived_text` (parsed from the dealer's description), `derived_model_code` (decoded from the manufacturer floorplan code, e.g. "26BH"), `reference_table` (MatchRV-curated reference data such as tow ratings), `computed` (deterministic math over known facts) and `learned` (confirmed by a shopper or dealer).
 - Unknown stays unknown: a spec MatchRV cannot source is returned as null with no source, never estimated. Agents should say "the dealer doesn't publish this" rather than guess.
@@ -65,7 +65,7 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 - [Dealer AI Visibility](https://matchrv.com/): how AI shopping assistants see a dealership and its inventory
 - [For Dealers](https://matchrv.com/for-dealers): services overview
 - [AI Visibility Report examples](https://matchrv.com/visibility-report): completed report examples
-- [ChatGPT advertising](https://matchrv.com/advertising): managed ChatGPT ads (beta pilot)
+- [Visibility Solution](https://matchrv.com/visibility-solution): why dealers go unseen in AI answers, and how MatchRV fixes it
 - [Book a call](https://matchrv.com/book): scope and next steps
 
 Services (scope and service terms are confirmed before enrollment):

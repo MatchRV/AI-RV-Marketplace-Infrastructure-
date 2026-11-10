@@ -12,10 +12,11 @@ const prerenderDir = resolve(root, "dist/prerender");
 const shell = await readFile(resolve(dist, "index.html"), "utf8");
 const pages = [
   ["/mcp-setup", "/src/pages/mcp-setup.tsx", "McpSetup", "mcp-setup"],
-  ["/advertising", "/src/pages/dealer-advertising.tsx", "DealerAdvertising", "advertising"],
+  ["/visibility-solution", "/src/pages/visibility-solution.tsx", "VisibilitySolution", "visibility-solution"],
+  ["/lotai", "/src/pages/lotai.tsx", "LotAI", "lotai"],
   ["/", "/src/pages/dealer-home.tsx", "DealerHome", "home"],
   ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers"],
-  ["/visibility-report", "/src/pages/dealer-home.tsx", "VisibilityReport", "visibility-report"],
+  ["/visibility-report", "/src/pages/visibility-report.tsx", "VisibilityReport", "visibility-report"],
   ["/about", "/src/pages/about.tsx", "About", "about"],
   ["/contact", "/src/pages/contact.tsx", "Contact", "contact"],
   ["/privacy", "/src/pages/privacy.tsx", "Privacy", "privacy"],
@@ -39,7 +40,8 @@ try {
         React.createElement(Router, { hook: () => [path, () => {}] },
           React.createElement(component))),
     );
-    const bodyStart = rendered.indexOf('<div class="matchrv-brand"');
+    // Page bodies start at the layout root: SiteLayout (mrv-site) or the older BrandLayout.
+    const bodyStart = rendered.search(/<div class="(?:mrv-site|matchrv-brand)[ "]/);
     if (bodyStart < 0) throw new Error(`Missing page body for ${path}`);
     const metadata = rendered.slice(0, bodyStart);
     const body = rendered.slice(bodyStart);

@@ -16,6 +16,7 @@ import {
   renderCoreSitemap,
   renderUnitSitemapPage,
 } from "./lib/sitemap";
+import { renderLiveLlmsTxt, withLiveInventory } from "./lib/live-inventory";
 
 const app: Express = express();
 // Render terminates TLS one proxy hop ahead of this service. Use the real
@@ -74,6 +75,28 @@ app.use(opsLeadsPage);
 app.get("/terms-and-conditions", (_req: Request, res: Response) => res.redirect(301, "/terms"));
 app.get("/tow-match", (_req: Request, res: Response) => res.redirect(301, "/tow-guide"));
 app.get("/buyer-guides", (_req: Request, res: Response) => res.redirect(301, "/guides"));
+// /advertising was replaced by /visibility-solution. Permanent, before the SPA
+// shell, so clients that do not run JavaScript still leave the old URL.
+app.get(["/advertising", "/advertising/"], (_req: Request, res: Response) => {
+  res.redirect(301, "/visibility-solution");
+});
+
+// llms.txt names the live listings total. Registered before express.static so
+// the built file's placeholder is not served as-is.
+app.get("/llms.txt", async (_req: Request, res: Response) => {
+  try {
+    const body = await renderLiveLlmsTxt();
+    if (body == null) {
+      res.status(404).type("text/plain").send("llms.txt not found");
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.type("text/plain; charset=utf-8").send(body);
+  } catch (err) {
+    console.error("[llms] render failed:", err);
+    res.status(503).type("text/plain").send("llms.txt unavailable");
+  }
+});
 
 // OpenAI plugin-directory domain verification. The submission portal supplies
 // a token; set OPENAI_APPS_CHALLENGE on the production MCP service to that
@@ -228,12 +251,14 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
   // The dealer visibility homepage works with both database and snapshot deployments.
   app.use(express.static(webDist, { maxAge: "1h", index: false }));
 
-  app.get(/^\/(?!api\/).*/, (req: Request, res: Response) => {
+  const liveCountPaths = new Set(["/", "/shop", "/mcp-setup"]);
+  app.get(/^\/(?!api\/).*/, async (req: Request, res: Response) => {
     const prerenderedPages: Record<string, string> = {
       "/": "home",
       "/for-dealers": "for-dealers",
       "/visibility-report": "visibility-report",
-      "/advertising": "advertising",
+      "/visibility-solution": "visibility-solution",
+      "/lotai": "lotai",
       "/mcp-setup": "mcp-setup",
       "/about": "about",
       "/contact": "contact",
@@ -241,11 +266,17 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       "/terms": "terms",
       "/book": "book",
     };
+    const sendPage = async (html: string, status = 200) => {
+      if (liveCountPaths.has(req.path)) res.setHeader("Cache-Control", "public, max-age=60");
+      const body = await withLiveInventory(html);
+      res.status(status).type("html").send(body);
+    };
+
     const prerenderedName = prerenderedPages[req.path];
     if (prerenderedName) {
       const prerenderedPath = resolvePath(webDist, "..", "prerender", `${prerenderedName}.html`);
       if (existsSync(prerenderedPath)) {
-        res.type("html").send(readFileSync(prerenderedPath, "utf-8"));
+        await sendPage(readFileSync(prerenderedPath, "utf-8"));
         return;
       }
     }
@@ -268,17 +299,13 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       const html = injectListingIntoShell(indexHtml, unit, unitId);
       // Unknown id: still return the SPA shell (client route works) with noindex;
       // use 404 status so crawlers don't index ghosts.
-      res.status(unit ? 200 : 404).type("html").send(html);
+      await sendPage(html, unit ? 200 : 404);
       return;
     }
 
     // The swipe deck is a pilot surface: keep it out of search indexes for now.
     if (req.path === "/swipe" || req.path.startsWith("/swipe/")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
-    if (demo) {
-      res.type("html").send(indexHtml);
-    } else {
-      res.type("html").send(shellTemplate);
-    }
+    await sendPage(demo ? indexHtml : shellTemplate);
   });
   console.log(`[startup] serving built web app from ${webDist}${demo ? " (snapshot mode)" : ""}`);
 }

@@ -1947,8 +1947,8 @@
           "maxLength": 80
         },
         "limit": {
-          "description": "Shortlist size. Default 3 best fits; use more (max 10) only when the shopper asks to see more.",
-          "default": 3,
+          "description": "Shortlist size. Default is a full page of 10 fits; pass a smaller limit only when the shopper asks to see fewer.",
+          "default": 10,
           "type": "integer",
           "minimum": 1,
           "maximum": 10

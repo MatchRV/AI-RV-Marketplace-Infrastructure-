@@ -331,7 +331,7 @@ agent tool layer:
 The public agent endpoint remains:
 
 ```
-https://matchrv-mcp.onrender.com/mcp
+https://matchrv.com/mcp
 ```
 
 ChatGPT/Claude/Gemini/Grok should use the MCP read tools directly. The web UI

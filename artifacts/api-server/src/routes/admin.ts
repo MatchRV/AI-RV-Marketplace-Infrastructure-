@@ -13,10 +13,37 @@ import {
   writeScrapeStatus,
   DATA_DIR,
 } from "../lib/sync-from-scraper";
+import { dataDirFreezeStatus, freezeDataDir, unfreezeDataDir } from "../services/data-dir-freeze";
 
 const router: IRouter = Router();
 const ADMIN_KEY = process.env.ADMIN_KEY;
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../../..");
+
+function dataDirKeyOk(header: string | string[] | undefined): boolean {
+  const key = process.env.ADMIN_KEY;
+  return Boolean(key) && header === key;
+}
+
+router.get("/admin/data-dir", (req, res) => {
+  if (!dataDirKeyOk(req.headers["x-admin-key"])) { res.status(403).json({ error: "Forbidden" }); return; }
+  res.setHeader("Cache-Control", "no-store");
+  res.json(dataDirFreezeStatus());
+});
+
+router.post("/admin/data-dir", async (req, res) => {
+  if (!dataDirKeyOk(req.headers["x-admin-key"])) { res.status(403).json({ error: "Forbidden" }); return; }
+  res.setHeader("Cache-Control", "no-store");
+  const action = req.body && typeof req.body === "object" ? (req.body as { action?: unknown }).action : undefined;
+  if (action === "freeze") {
+    res.json(await freezeDataDir());
+    return;
+  }
+  if (action === "unfreeze") {
+    res.json(unfreezeDataDir());
+    return;
+  }
+  res.status(400).json({ error: "bad_action", guidance: 'POST JSON {"action":"freeze"} or {"action":"unfreeze"}. GET this path for status.' });
+});
 
 function adminAuth(req: { headers: Record<string, string | string[] | undefined> }, res: { status: (n: number) => { json: (o: unknown) => void } }, next: () => void) {
   if (!ADMIN_KEY || req.headers["x-admin-key"] !== ADMIN_KEY) {

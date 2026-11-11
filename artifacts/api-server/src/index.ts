@@ -8,6 +8,7 @@ import { autoImportIfEmpty } from "./lib/auto-import";
 import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { shouldStartEnrichmentCron, startEnrichmentCron } from "./services/listing-enrichment";
 import { startInquirySafetySweep } from "./services/inquiry-safety";
+import { installDataDirShutdownHandlers } from "./services/data-dir-freeze";
 import { warmInventory } from "./services/agent-inventory";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
@@ -97,6 +98,9 @@ function startScraperCron() {
 process.on("unhandledRejection", (reason) => {
   console.error("[process] unhandled promise rejection (process kept alive):", reason);
 });
+
+// Flush debounced data-dir saves on a clean stop. SIGKILL cannot run this.
+installDataDirShutdownHandlers();
 
 async function start() {
   if (DB_MODE === "none") {

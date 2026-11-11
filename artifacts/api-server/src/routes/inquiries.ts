@@ -4,6 +4,7 @@ import {
   confirmInquiryForwarded, getInquiryStatus, opsGet, opsKeyValid, opsList, opsUpdate, prepareInquiry, rateLimit, sendInquiry,
 } from "../services/dealer-inquiries";
 import { runInquirySafetySweep } from "../services/inquiry-safety";
+import { DATA_DIR_FROZEN_GUIDANCE, DATA_DIR_FROZEN_RETRY_AFTER_SECONDS, isDataDirFrozen } from "../services/data-dir-freeze";
 
 /**
  * Dealer inquiry HTTP API (same service the MCP tools use).
@@ -21,6 +22,14 @@ import { runInquirySafetySweep } from "../services/inquiry-safety";
 const router: IRouter = Router();
 const requester = (req: Request) => `ip:${req.ip ?? "unknown"}`;
 
+function refuseFrozen(res: Response): boolean {
+  if (!isDataDirFrozen()) return false;
+  res.setHeader("Retry-After", String(DATA_DIR_FROZEN_RETRY_AFTER_SECONDS));
+  res.setHeader("Cache-Control", "no-store");
+  res.status(503).json({ error: "writes_frozen", retryable: true, guidance: DATA_DIR_FROZEN_GUIDANCE });
+  return true;
+}
+
 router.post("/inquiries", async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   if (typeof body.confirmation_token === "string") {
@@ -34,6 +43,12 @@ router.post("/inquiries", async (req: Request, res: Response) => {
       lookupUnit: (id) => getInventory().byId.get(id),
     });
     if (!result.ok) {
+      if (result.code === "writes_frozen") {
+        res.setHeader("Retry-After", String(DATA_DIR_FROZEN_RETRY_AFTER_SECONDS));
+        res.setHeader("Cache-Control", "no-store");
+        res.status(503).json({ error: result.code, guidance: result.guidance, retryable: true });
+        return;
+      }
       res.status(result.code === "rate_limited" ? 429 : result.code === "not_confirmed" ? 400 : result.code === "unit_unavailable" ? 404 : 400).json({ error: result.code, guidance: result.guidance });
       return;
     }
@@ -64,6 +79,7 @@ function requireOps(req: Request, res: Response): boolean {
 router.get("/inquiries/ops", (req: Request, res: Response) => { if (requireOps(req, res)) res.json({ inquiries: opsList() }); });
 router.post("/inquiries/ops/sweep", async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
+  if (refuseFrozen(res)) return;
   const result = await runInquirySafetySweep();
   res.json(result);
 });
@@ -75,10 +91,12 @@ router.get("/inquiries/ops/:id", (req: Request, res: Response) => {
 });
 router.post("/inquiries/ops/:id", (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
+  if (refuseFrozen(res)) return;
   const b = (req.body ?? {}) as Record<string, unknown>;
   if (b.action === "confirm_forward") {
     const confirmed = confirmInquiryForwarded(String(req.params.id));
     if (!confirmed.ok) {
+      if (confirmed.code === "writes_frozen") { refuseFrozen(res); return; }
       res.status(confirmed.code === "not_found" ? 404 : 409).json({ error: confirmed.code });
       return;
     }

@@ -51,6 +51,7 @@ import { OUTFITTER_GUIDANCE, SWIPE_BASICS_GUIDANCE, SWIPE_OR_CHAT_CHOICES, SWIPE
 import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekScope, recallVehicle, resolveScope, writableScope } from "./services/learned-store";
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
+import { DATA_DIR_FROZEN_GUIDANCE, DataDirFrozenError, isDataDirFrozen } from "./services/data-dir-freeze";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 import { observeMcpFetch } from "./services/product-analytics";
 
@@ -655,10 +656,17 @@ function buildMatchRvServer(): McpServer {
       const wantsVehicle = Boolean(input.vehicle && (input.tow_rating_lbs != null || input.payload_lbs != null));
       const wantsUnit = Boolean(input.unit_id && input.field && input.value !== undefined);
       if (!wantsVehicle && !wantsUnit) return textResult({ error: "nothing_to_learn", guidance: "Pass vehicle + tow_rating_lbs/payload_lbs, or unit_id + field + value." }, true);
+      if (isDataDirFrozen()) return textResult({ error: "writes_frozen", retryable: true, sent: false, guidance: DATA_DIR_FROZEN_GUIDANCE }, true);
       let scope = resolveScope(ctx, input.session_key);
       let issuedKey: string | null = null;
       if (scope.source === "none") { issuedKey = newSessionKey(); scope = resolveScope(null, issuedKey); }
-      const memory = writableScope(scope);
+      let memory: ReturnType<typeof writableScope>;
+      try {
+        memory = writableScope(scope);
+      } catch (err) {
+        if (err instanceof DataDirFrozenError) return textResult({ error: "writes_frozen", retryable: true, sent: false, guidance: DATA_DIR_FROZEN_GUIDANCE }, true);
+        throw err;
+      }
       const scopeInfo = { scope: scope.source, ...(issuedKey ? { session_key: issuedKey, sessionKeyGuidance: "Pass this session_key on later MatchRV calls in this conversation so the fact is recalled. Do not share it." } : {}) };
       if (wantsVehicle) {
         const rec = memory.learnVehicle(input.vehicle!, { towRatingLbs: input.tow_rating_lbs ?? null, payloadLbs: input.payload_lbs ?? null }, input.source ?? "customer-stated");
@@ -1085,7 +1093,7 @@ function buildMatchRvServer(): McpServer {
         fitHint: recallFit(scope) ?? null,
         lookupUnit: (id) => getInventory().byId.get(id),
       });
-      if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false }, true);
+      if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false, ...(result.code === "writes_frozen" ? { retryable: true } : {}) }, true);
       return textResult({
         inquiry_id: result.inquiry.inquiryId,
         ...(result.duplicate ? { duplicate: true, guidance: "The shopper already sent this RV's dealership an inquiry in the last 24 hours, so it was not sent again." } : { status_token: result.statusToken }),

@@ -12,15 +12,15 @@
 
 ## Global Constraints
 
-- Documentation only. No provisioning, billing edits, purchases, deploys, DNS changes, certificate issuance, SSH key generation, or key registration.
-- Do not modify runtime code, `render.yaml`, or workflows in this pull request. The write-freeze the final copy needs is a separate, still-unapproved code change.
+- No provisioning, billing edits, purchases, deploys, DNS changes, certificate issuance, SSH key generation, or key registration from this runbook.
+- The write freeze lives in the API process. Operate it with "Write freeze" below. Do not change `render.yaml` from that procedure.
 - Base commit for the behavior described here: `15b9c9604d27c33d031ba65183ead958039043a3`.
 - Do not print secrets, contact fields, archive bodies, or key material. Private env export stays outside git.
 - Placeholder tokens such as `REPO_URL` and `APPROVED_SHA` must be replaced with real values before any command is run. Do not execute a command that still contains placeholders or angle brackets.
 
 ## Plain English
 
-The live site keeps shopper notes on a Render disk. Nothing from that disk has been copied off. Copying it while the site is still accepting writes can miss a file or catch a file halfway through a save. Render's shell exists only while the instance is running, so suspending the service first makes the copy impossible. The app has no switch that stops writes and then flushes them. Until that switch exists, there is no consistent final copy and no safe rollback.
+The live site keeps shopper notes on a Render disk. Copying that disk while saves are still landing can miss a file or catch a file halfway through a save. The process can freeze those saves without exiting: an admin call flushes the debounced writes, then refuses new durable writes, and a status call reports when nothing is still pending. Shopper reads, search, and MCP tools keep working. A confirmed dealer inquiry during the freeze is refused before it is sent or stored, with a retryable error, so the shopper can send the same preview again after the freeze lifts. SIGTERM and SIGINT flush pending saves and then exit. SIGKILL does not. Render's shell exists only while the instance is running, so the freeze has to leave the process up. H1 stays open until that procedure has been used for the final copy.
 
 The machine in this plan is one virtual machine with its own HTTPS certificate, checked against the name `matchrv.com` before the public address changes. A Google load balancer is not part of this plan. The hourly prices below are public list prices gathered for this document. They are not an account quote. The e2-small target was later approved; the credit's SKU scope is still not.
 
@@ -28,9 +28,9 @@ The machine in this plan is one virtual machine with its own HTTPS certificate, 
 
 These stay open. Do not describe the plan as ready while any of them is open.
 
-- [ ] **H1 Write freeze.** Final copy and rollback are blocked. `dealer-inquiries.ts`, `learned-store.ts`, and `shopper-fit.ts` save on a 300ms or 400ms timer via `writeFileSync`. `outbound-clicks.ts` appends immediately. Nothing handles `SIGTERM` or otherwise flushes those timers. Stopping the process drops accepted writes that have not been written yet. Render SSH and the dashboard shell attach only to a running instance and close on restart ([Render SSH](https://render.com/docs/ssh)). A suspended or stopped instance cannot be copied. There is no documented Render control that freezes HTTP writes and leaves the shell up. Repeating a tar until the inquiry count is stable does not freeze session memory, shopper fit, or clicks, and it does not close the gap between the end of the copy and suspend. The missing piece is an in-app freeze, under its own approval: reject new mutations, flush the timers, keep the process running so SSH still works, and report freeze state without printing records. Until that code exists, every copy is crash-consistent only.
+- [ ] **H1 Write freeze.** Final copy and rollback stay blocked until the live process is frozen with the procedure in "Write freeze" and the copy is verified. `dealer-inquiries.ts`, `learned-store.ts`, and `shopper-fit.ts` still save on a 300ms or 400ms timer. `outbound-clicks.ts` still appends immediately. SIGTERM and SIGINT flush those timers before exit. SIGKILL does not. Render SSH and the dashboard shell attach only to a running instance and close on restart ([Render SSH](https://render.com/docs/ssh)). A suspended or stopped instance cannot be copied. Repeating a tar until the inquiry count is stable does not cover session memory, shopper fit, or clicks. The freeze keeps the process running, flushes the timers, refuses new durable writes, and reports state without printing records.
 - [ ] **H2 TLS before cutover.** ChatGPT uses `https://matchrv.com`. Cutover is blocked until that name verifies against the VM address with a publicly trusted certificate. The route is DNS-01 plus a reverse proxy on the VM, not a load balancer. Issuing the certificate needs a DNS TXT record, which is a separate approval (G-DNS). No certificate and no DNS record are created here.
-- [ ] **H3 Backup.** A desktop copy of the live Render `/var/data` was verified at 2:48 PM PST on Nov 8, 2026: four files, `dealer-inquiries` with 4 records, `learned-facts`, `shopper-fit`, and one outbound-click line. `session-memory.json` was absent. That copy is not a write-frozen final copy. Runtime env values and the git inventory snapshot were not in it. A denied desktop SSH login still does not prove the Render account has no other keys. This pull request registers none.
+- [ ] **H3 Backup.** A desktop copy of the live Render `/var/data` was verified at 2:48 PM PST on Nov 8, 2026: four files, `dealer-inquiries` with 4 records, `learned-facts`, `shopper-fit`, and one outbound-click line. `session-memory.json` was absent. That copy is crash-consistent. A restorable backup of the writer follows "Write freeze": freeze, GET until `frozen` is true and `pending` is false, then copy. Unfreeze only to resume writes on that same process. Runtime env values and the git inventory snapshot were not in the Nov 8 copy. A denied desktop SSH login still does not prove the Render account has no other keys. This pull request registers none.
 - [ ] **H4 Billing.** The console was independently read as billing account `01E001-C07D15-6638A4`, appearing open, with 2000 USD available at 100 percent from Mar 19, 2026 through Mar 19, 2028. This agent did not open that console. Which SKUs the credit pays is still unconfirmed, so the credit is not yet proof it covers Compute Engine, disk, or IPv4. Do not create a second billing account. Reopening a closed account would still bill every linked project.
 - [ ] **H5 Memory headroom.** e2-small is the approved runtime target. A 2 GiB cgroup was not enforceable in the sandbox that ran the build (permission denied on `memory.max`; the parent limit was 15,706,882,048 bytes). Sampled peaks there: API build about 469 MiB RSS, web build about 1371 MiB RSS, server VmHWM about 1459 MiB after the smoke calls. That is not proof the VM's 2 GiB cap will hold the build and the OS together. If the VM build is OOM-killed, build off the box and copy `dist`. Do not resize the machine from this document.
 
@@ -147,7 +147,7 @@ Smoke only inside the service network namespace, after the isolation check has p
 | `OUTBOUND_CLICKS_PATH` | `outbound-clicks.jsonl` | `GET /api/out` appends a line immediately |
 | `CURATED_FACTS_PATH` | `data/curated-facts.json` in the repo | read-only |
 
-`sendInquiry` persists with `.filter((i) => !i.dryRun)`. A dry run is memory-only. It does not prove the disk. `INQUIRY_DRY_RUN` forces that path. `prepareInquiry` does not write the store.
+`sendInquiry` persists with `.filter((i) => !i.dryRun)`. A dry run is memory-only. It does not prove the disk. `INQUIRY_DRY_RUN` forces that path. `prepareInquiry` does not write the store. Those four durable writes go through the freeze gate in "Write freeze". JSON files are replaced via a temp file and `rename`. The click log is still one appended line.
 
 `search_rvs` does not write when `resolveScope` returns `id: null` (no OpenAI subject, no OpenAI session, no `mcp-session-id`, no `session_key`). A preflight search must omit those or it will write `shopper-fit.json`.
 
@@ -156,6 +156,44 @@ Smoke only inside the service network namespace, after the isolation check has p
 `app.listen(port)` does not pass a host, so Node listens on every interface. The guest firewall and the VPC firewall must expose 443 only. Do not publish the Node port.
 
 `render.yaml` sets `DISABLE_DB=1` and `LEARNED_FACTS_PATH=/var/data/learned-facts.json`. `DATABASE_URL` wins over `DISABLE_DB` in `lib/db/src/index.ts`. Leave `DATABASE_URL` unset. Observed process RSS on Render was about 643–716 MiB, and the snapshot gzip trailer is 521,508,319 bytes. That is why 1 GB is too small at runtime. It is not a measurement of a compile.
+
+## Write freeze
+
+Use this on the running process that owns `/var/data`. It does not restart the process, and it does not change DNS. The admin key is the existing `ADMIN_KEY` (`x-admin-key`). Export it in the operator shell from the private env store. Do not print it, and do not run these commands under shell trace (`set -x`).
+
+The route is open when `DISABLE_DB=1`. It does not read the database and the response has no records.
+
+- `POST /api/admin/data-dir` with `{"action":"freeze"}` waits for an inquiry delivery that already started, flushes every pending debounced save, then refuses new durable writes.
+- `GET /api/admin/data-dir` returns `frozen`, `pending`, and `pendingWriters`. `pendingWriters` is a list of store names. Copy only when `frozen` is true and `pending` is false.
+- `POST /api/admin/data-dir` with `{"action":"unfreeze"}` accepts durable writes again.
+
+From a shell that can reach the process (the Render service shell, or loopback on the VM). `PORT` is the process port.
+
+```bash
+curl -fsS -X POST "http://127.0.0.1:${PORT}/api/admin/data-dir" \
+  -H "content-type: application/json" \
+  -H "x-admin-key: ${ADMIN_KEY}" \
+  -d '{"action":"freeze"}'
+curl -fsS "http://127.0.0.1:${PORT}/api/admin/data-dir" \
+  -H "x-admin-key: ${ADMIN_KEY}"
+```
+
+A quiet freeze looks like `{"frozen":true,"pending":false,"pendingWriters":[]}`. If `pending` is true, wait and GET again, or POST freeze again. Do not start the copy while `pending` is true. Do not send SIGTERM, SIGINT, or restart the process until the copy is finished and verified. A restart comes back unfrozen and will accept writes onto the disk being copied. A clean SIGTERM or SIGINT flushes pending debounced writes and then exits. SIGKILL skips that flush.
+
+What keeps working: shopper reads, search, and the MCP tools. `search_rvs` does not update `shopper-fit.json` during the freeze. `GET /api/out` still redirects and does not append a click line.
+
+Lead submissions during the freeze are refused before delivery and before they are stored. `send_dealer_inquiry` and a confirmed `POST /api/inquiries` return `writes_frozen`, `retryable: true`, and, on HTTP, status 503 with `Retry-After: 120`. Nothing is emailed, nothing is queued in memory for later, and the confirmation token stays unused. The shopper retries the same send after unfreeze. Preview (`prepare_dealer_inquiry`, and a POST without `confirmation_token`) still works. Ops edits, forward confirmation, and the inquiry safety sweep also come back `writes_frozen` and do not change the inquiry file. `teach_outfitter` returns the same error and does not change session memory. A dry-run inquiry stays memory-only and does not rewrite the inquiry file.
+
+Unfreeze resumes writes on this process. Unfreeze after the copy has started makes that copy incomplete. After a verified copy, leave this process frozen until it is no longer the writer. Unfreeze is the abort path when the copy is discarded and this process should take shopper writes again.
+
+```bash
+curl -fsS -X POST "http://127.0.0.1:${PORT}/api/admin/data-dir" \
+  -H "content-type: application/json" \
+  -H "x-admin-key: ${ADMIN_KEY}" \
+  -d '{"action":"unfreeze"}'
+```
+
+Expect `"frozen":false`. A missing or wrong `x-admin-key` is HTTP 403. The staging tarball pinned in the install section is an older SHA and does not include this route. Jonathan names `APPROVED_SHA`. Do not retarget that install from this paragraph.
 
 ## Who owns what
 
@@ -190,7 +228,7 @@ An alerts-only budget does not cap spending ([budgets](https://docs.cloud.google
 Migration of the current core does not wait on Supabase. A paused Supabase export is separate preservation work. It is not required for `DISABLE_DB=1`, and it is not done.
 
 - [ ] **G1 Billing.** e2-small is approved. The account appears open and the 2000 USD credit is visible. SKU coverage for Compute Engine, disk, and in-use IPv4 is still not copied from the Credits page. That line stays open.
-- [ ] **G2 Crash-consistent copy.** The 2:48 PM four-file copy exists and is labeled crash-consistent, not frozen. A later frozen copy still waits on H1. Env values are still not in a private store.
+- [ ] **G2 Crash-consistent copy.** The 2:48 PM four-file copy exists and is labeled crash-consistent. A later frozen copy uses "Write freeze" and still waits on H1 until that copy is verified. Env values are still not in a private store.
 - [ ] **G3 Private env.** Copy names and values from the Render dashboard into a private store. Do not commit them. Do not print them.
 - [ ] **G-DNS.** Jonathan approves a DNS-01 TXT record for `matchrv.com` at the DNS provider. This is not approval to change A or AAAA records.
 - [ ] **G5 Shell identity.** A future backup uses a key Jonathan registers himself, on a running instance, per [Render SSH](https://render.com/docs/ssh). Not in this pull request.
@@ -275,7 +313,7 @@ curl -fsS http://127.0.0.1:FIXTURE_PORT/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"teach_outfitter","arguments":{"vehicle":"2099 Test Hauler XLT","tow_rating_lbs":9100,"payload_lbs":1420}}}'
 ```
 
-Wait at least one second. The timer is 400ms, and a kill does not flush it. `session-memory.json` under the fixture directory must parse as an object. Print the key count only. Reboot. The service must come back because of the boot design in Task 2, and the fixture file's per-file SHA-256 must match. If the process is absent after reboot, the boot design failed. Stop.
+Wait at least one second, or stop the fixture with SIGTERM or SIGINT. Those signals flush the 400ms session-memory timer before exit. SIGKILL does not. `session-memory.json` under the fixture directory must parse as an object. Print the key count only. Reboot. The service must come back because of the boot design in Task 2, and the fixture file's per-file SHA-256 must match. If the process is absent after reboot, the boot design failed. Stop.
 
 Then delete `/var/data/fixture-run` before unpacking production data. The pre-reboot manifest for production files excludes this fixture directory. Do not compare a re-packed tar to the original archive hash. gzip timestamps and member order change that hash. Compare per-file SHA-256.
 
@@ -336,13 +374,13 @@ curl --resolve matchrv.com:443:VM_IP https://matchrv.com/mcp \
 
 After these reads, the per-file SHA-256 of the production tree must match the manifest from before the reads. If `shopper-fit.json` or `outbound-clicks.jsonl` changed, a write leaked into the production process. Stop.
 
-**Cutover is blocked by H1 and H2.** When both are closed, the order is: freeze on Render while the process stays up, flush, stream every affected file, verify per-file SHA-256 on the private copy and again on the VM, confirm the VM is the only writer, then change A and AAAA. Suspend is not the freeze. Suspend removes SSH, so it cannot come before the frozen copy. Do not delete Render. Overlap cost continues until Jonathan later approves stopping it.
+**Cutover is blocked by H1 and H2.** When both are closed, the order is: run "Write freeze" on Render while the process stays up, GET until `pending` is false, stream every affected file, verify per-file SHA-256 on the private copy and again on the VM, confirm the VM is the only writer, then change A and AAAA. Leave the Render process frozen until it is no longer the writer. Suspend is not the freeze. Suspend removes SSH, so it cannot come before the frozen copy. Do not delete Render. Overlap cost continues until Jonathan later approves stopping it.
 
 ### Task 6: Rollback
 
-Rollback is blocked by the same freeze. On the VM, `systemctl stop` without a flush drops the 300ms and 400ms timers. The freeze has to reject writes and flush first. Then copy every affected file to the private machine and verify per-file SHA-256.
+Rollback is blocked by the same freeze. On the VM, `systemctl stop` sends SIGTERM, and the process flushes debounced writes before it exits. Freeze first anyway, and copy only after GET reports `pending: false`, because a stop ends the process. Then copy every affected file to the private machine and verify per-file SHA-256.
 
-Render must be running to receive files, and it must already be frozen so resume does not accept new shopper writes during the copy. Copy the frozen tree into the resolved paths, including overrides. Verify the on-disk per-file SHA-256 matches the frozen manifest. Only then point DNS back and lift the freeze on Render. Leave the VM stopped as a writer. "Decide whether to copy" is not a restore. A partial copy with both sides writable loses records.
+Render must be running to receive files, and it must already be frozen so resume does not accept new shopper writes during the copy. Copy the frozen tree into the resolved paths, including overrides. Verify the on-disk per-file SHA-256 matches the frozen manifest. Only then point DNS back and unfreeze Render with `{"action":"unfreeze"}`. Leave the VM stopped as a writer. "Decide whether to copy" is not a restore. A partial copy with both sides writable loses records.
 
 ## Acceptance for a later execution
 
@@ -358,4 +396,4 @@ All of these, or the run is not accepted:
 
 ## Out of scope
 
-Supabase export (separate preservation, not a blocker for this core), new Postgres, Clerk restore, Cloud Run, a load balancer, changing MCP tool schemas, implementing the write freeze in this pull request, registering SSH keys, and running any command above.
+Supabase export (separate preservation, not a blocker for this core), new Postgres, Clerk restore, Cloud Run, a load balancer, changing MCP tool schemas, registering SSH keys, and running any command above.

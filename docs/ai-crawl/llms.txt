@@ -17,8 +17,7 @@ MatchRV serves two audiences. Shoppers (and the AI assistants working for them) 
 
 ## MCP Endpoint
 
-- Public MCP server (Streamable HTTP, no sign-in required): https://matchrv-mcp.onrender.com/mcp
-- Same server on the main domain: https://matchrv.com/mcp
+- Public MCP server (Streamable HTTP, no sign-in required): https://matchrv.com/mcp
 - Server name `matchrv`, MCP protocol version 2025-06-18. Clients should send `Accept: application/json, text/event-stream`.
 - [MCP setup guide](https://matchrv.com/mcp-setup): how to connect ChatGPT, Claude and other MCP clients
 

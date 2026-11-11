@@ -52,10 +52,7 @@
       "@id": "https://matchrv.com/mcp#api",
       "name": "MatchRV MCP server",
       "description": "Public Model Context Protocol (Streamable HTTP) server for searching, comparing and tow-checking normalized dealer RV inventory. No sign-in required.",
-      "url": "https://matchrv-mcp.onrender.com/mcp",
-      "sameAs": [
-        "https://matchrv.com/mcp"
-      ],
+      "url": "https://matchrv.com/mcp",
       "documentation": "https://matchrv.com/mcp-setup",
       "provider": {
         "@id": "https://matchrv.com/#org"

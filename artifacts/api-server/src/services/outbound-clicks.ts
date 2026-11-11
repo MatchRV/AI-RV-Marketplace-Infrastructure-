@@ -8,13 +8,15 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { dataDirAcceptsWrites } from "./data-dir-freeze";
 
 export interface OutboundClick { at: string; unitId: string; dealerId: string; dealerName: string; host: string; from: string }
 
 const recent: OutboundClick[] = [];
 const byDealer = new Map<string, { dealerName: string; clicks: number }>();
 let loaded = false;
-const persistenceEnabled = () => process.env.NODE_ENV !== "test" && !process.env.VITEST;
+let persistenceOverride: boolean | null = null;
+const persistenceEnabled = () => persistenceOverride ?? (process.env.NODE_ENV !== "test" && !process.env.VITEST);
 
 export function clicksPath(): string {
   if (process.env.OUTBOUND_CLICKS_PATH) return resolve(process.env.OUTBOUND_CLICKS_PATH);
@@ -49,6 +51,10 @@ function load() {
 export function recordOutboundClick(c: Omit<OutboundClick, "at">, now = new Date()): OutboundClick {
   load();
   const click: OutboundClick = { at: now.toISOString(), ...c };
+  if (!dataDirAcceptsWrites()) {
+    console.log("[out] data dir frozen; click not recorded");
+    return click;
+  }
   remember(click);
   console.log(`[out] ${click.from} ${click.unitId} -> ${click.host} (${click.dealerName})`);
   if (persistenceEnabled()) {
@@ -72,3 +78,4 @@ export function outboundSummary() {
 
 /** Test helper. */
 export function resetOutboundClicks() { recent.length = 0; byDealer.clear(); loaded = true; }
+export function __setClickPersistenceForTests(on: boolean | null): void { persistenceOverride = on; }

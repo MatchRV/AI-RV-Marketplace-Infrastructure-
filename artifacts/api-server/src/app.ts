@@ -183,12 +183,20 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 // routes work, and classic /api/listings + /api/search/filters are also served
 // from the same inventory snapshot. Other marketplace endpoints that need a
 // real DB still answer 503 rather than a generic 500.
+/** Paths that answer when DISABLE_DB=1. The write-freeze route must stay up in that mode. */
+export function apiPathAllowedWithoutDatabase(method: string, path: string): boolean {
+  if (path === "/admin/data-dir") return true;
+  if (/^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries|swipe|out)(\/|$)/.test(path)) return true;
+  if (method === "POST" && (path === "/analytics/event" || path === "/analytics/product" || path === "/dealer-tools/quick-report" || path === "/dealer-tools/quick-report/email")) return true;
+  if (method === "GET" && (path === "/dealer-tools/quick-report/status" || path.startsWith("/dealer-tools/quick-report/pdf/"))) return true;
+  return false;
+}
+
 if (DB_MODE === "none") {
   // listings + search/filters: served from inventory snapshot when DB is off
   // (see routes/listings.ts + services/snapshot-listings.ts).
-  const DB_FREE = /^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries|swipe|out)(\/|$)/;
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
-    if (DB_FREE.test(req.path) || (req.method === "POST" && (req.path === "/analytics/event" || req.path === "/analytics/product" || req.path === "/dealer-tools/quick-report" || req.path === "/dealer-tools/quick-report/email")) || (req.method === "GET" && (req.path === "/dealer-tools/quick-report/status" || req.path.startsWith("/dealer-tools/quick-report/pdf/")))) return next();
+    if (apiPathAllowedWithoutDatabase(req.method, req.path)) return next();
     res.status(503).json({
       error: "database_disabled",
       message:

@@ -60,7 +60,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(search.choices[1].url).toContain('price_max=35000');
   }, 60000);
 
-  it('never re-asks: covered steps walk the list once, in order, then shows exactly 3', async () => {
+  it('never re-asks: covered steps walk the list once, in order, then shows a full page', async () => {
     let args: Record<string, any> = { ...COUPLE_FACTS };
     const asked: string[] = [];
     let ready: any = null;
@@ -87,7 +87,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(ready.nextQuestion.id).toBe('trips');
     const d = await call('search_rvs', args);
     expect(d.status).toBe('shortlist');
-    expect(d.results.length).toBeLessThanOrEqual(3);
+    expect(d.results.length).toBeLessThanOrEqual(10);
     expect(d.appliedConstraints.prefer).toContain('outdoor_kitchen');
     expect(d.roadToSale.missingForProducts).toContain('trips');
   }, 90000);
@@ -136,7 +136,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     const skip = await call('search_rvs', { query: 'travel trailer near Tacoma', shopper_requested_results_now: true, shopper_words: 'Skip the questions, just show me what you have' });
     expect(skip.status).toBe('shortlist');
     expect(skip.results.length).toBeGreaterThan(0);
-    expect(skip.results.length).toBeLessThanOrEqual(3);
+    expect(skip.results.length).toBeLessThanOrEqual(10);
     expect(skip.roadToSale.waived).toBe(true);
     expect(ids(skip.roadToSale.resumeQuestions)).toEqual(['use']);
   }, 90000);
@@ -152,11 +152,11 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(hi.nextQuestion.id).toBe('rv_type');
   }, 60000);
 
-  it('complete answers return a shortlist of exactly 3 model lines, with no match count in what the model sees', async () => {
+  it('complete answers return a full page of fits, with no match count in what the model sees', async () => {
     const { r, d } = await callRaw('search_rvs', COMPLETE);
     expect(d.status).toBe('shortlist');
-    expect(d.results).toHaveLength(3);
-    expect(d.shortlist.size).toBe(3);
+    expect(d.results).toHaveLength(10);
+    expect(d.shortlist.size).toBe(10);
     expect(d.funnel).toBeUndefined();
     expect(d.coverage.units_in_area).toBeUndefined();
     expect(d.coverage.nationwide_total).toBeUndefined();
@@ -166,7 +166,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     expect(typeof r._meta['matchrv/internal'].funnel.verifiedMatches).toBe('number');
     for (const row of d.results) expect(row.towFit).toMatch(/verify tow fit/);
     const lines = d.results.map((x: any) => x.title.toLowerCase().replace(/^(19|20)\d\d\s+/, '').split(/\s+/).slice(0, -1).join(' '));
-    expect(new Set(lines).size).toBe(3);
+    expect(new Set(lines).size).toBeGreaterThanOrEqual(3);
     const more = await call('search_rvs', { ...COMPLETE, limit: 6 });
     expect(more.results.length).toBeLessThanOrEqual(6);
     expect(more.results.length).toBeGreaterThan(3);
@@ -183,7 +183,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     const d = await call('search_rvs', { ...GT, towed_vehicle: 'nothing', no_length_limit: true, make: 'Tiffin', model: 'Allegro RED', location: 'Tacoma, WA', radius_miles: 150, party_size: 2, payment_method: 'cash', declined_questions: ['payment'] });
     expect(d.status).toBe('shortlist');
     expect(d.results.length).toBeGreaterThan(0);
-    expect(d.results.length).toBeLessThanOrEqual(3);
+    expect(d.results.length).toBeLessThanOrEqual(10);
     for (const row of d.results) expect(row.series).toBe('Allegro RED');
   }, 60000);
 
@@ -201,7 +201,7 @@ describe('MCP 2.2.7 interview gate (fit facts + covered steps) + shortlist', () 
     const props = Object.keys(search.inputSchema.properties);
     expect(props).toEqual(expect.arrayContaining(['party_size', 'tow_vehicle', 'towed_vehicle', 'length_max_ft', 'no_length_limit', 'payment_method', 'use_type', 'desired_features', 'covered_steps', 'declined_questions', 'budget_max_usd', 'shopper_requested_results_now', 'shopper_words']));
     for (const gone of ['discovery_waived', 'force_search', 'time_off', 'co_buyer_involved', 'owners', 'has_trade_in', 'trade_description', 'trade_reason', 'planned_trips', 'party_notes', 'activities', 'message']) expect(props).not.toContain(gone);
-    expect(search.inputSchema.properties.limit.default).toBe(3);
+    expect(search.inputSchema.properties.limit.default).toBe(10);
     const d = await call('search_rvs', { query: 'travel trailer' });
     expect(JSON.stringify(d.nextQuestions)).not.toMatch(/golden/i);
     expect(PRODUCT_SELECTION).toContain(d.nextQuestions[0].id);

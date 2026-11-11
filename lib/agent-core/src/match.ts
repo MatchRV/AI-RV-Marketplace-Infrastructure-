@@ -381,6 +381,13 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   for (const f of c.mustHave ?? []) {
     const v = featureValue(unit, f);
     const source = featureSource(unit, f);
+    // A towable BH / double-bunk floorplan code is the manufacturer's label.
+    // It passes a bunkhouse requirement. Other inferred features stay unverified,
+    // and a null bunkhouse stays out of the verified tier.
+    if (f === "bunkhouse" && v === true && source === "derived_model_code") {
+      hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "pass", "manufacturer floorplan code", source));
+      continue;
+    }
     if (v === null || (v === true && (source === "derived_model_code" || source === "computed"))) {
       unknowns.push(f);
       hardChecks.push(check(`has ${FEATURE_LABELS[f]}`, "unknown", v === null ? "unknown — dealer listing doesn't say" : "inferred; confirm with dealer", source));

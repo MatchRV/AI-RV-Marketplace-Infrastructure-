@@ -59,7 +59,7 @@ describe('MCP 2.2.5: interview tools take only RV-fit facts (OpenAI scan)', () =
     expect(ready.readyForProducts).toBe(true);
     const s = await call('search_rvs', all);
     expect(s.status).toBe('shortlist');
-    expect(s.results.length).toBeLessThanOrEqual(3);
+    expect(s.results.length).toBeLessThanOrEqual(10);
   }, 60000);
 
   it('the couple/cash facts still get exactly one question (use); stray rapport answers are ignored, not used', async () => {

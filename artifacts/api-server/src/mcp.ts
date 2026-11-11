@@ -110,7 +110,7 @@ const searchInput = z.object({
   shopper_requested_results_now: z.boolean().optional().describe("ONLY true when the shopper literally asked to skip the questions and see RVs now (e.g. \"just show me\"). Never set it on your own. Requires shopper_words; the server checks them."),
   shopper_words: z.string().max(200).optional().describe("Only with shopper_requested_results_now: the shopper's exact words asking to skip the questions (e.g. \"just show me\"). Nothing else."),
   session_key: z.string().max(80).optional().describe("Optional. Opaque key returned by teach_outfitter, to recall facts this shopper confirmed."),
-  limit: z.number().int().min(1).max(10).optional().default(3).describe("Shortlist size. Default 3 best fits; use more (max 10) only when the shopper asks to see more."),
+  limit: z.number().int().min(1).max(10).optional().default(10).describe("Shortlist size. Default is a full page of 10 fits; pass a smaller limit only when the shopper asks to see fewer."),
 });
 
 const profileInput = z.object({
@@ -549,8 +549,8 @@ function mcpSchema<T extends z.ZodType>(schema: T) {
   };
 }
 
-/** Shortlist size when the shopper hasn't asked for more. */
-export const SHORTLIST_DEFAULT = 3;
+/** Shortlist size when the shopper hasn't asked for fewer. A full page, not a 3-card sample. */
+export const SHORTLIST_DEFAULT = 10;
 
 export const ASK_DONT_ASSUME =
   "ASK, DON'T ASSUME. MatchRV returned no RVs because Product Selection questions are still open. Ask nextQuestion (exactly ONE question this turn, word for word including its short reason for asking) in one short, friendly, honest message and wait for the answer. Never re-ask anything in knownSummary, and never fill a missing answer with a guess: not who's going ('family' is not a number), not the tow vehicle or what's towed behind, not a length requirement, not the budget or how they'll pay, and not new vs. used. Don't mention how many RVs might match. Only the shopper literally asking to skip the questions skips them.";
@@ -923,7 +923,7 @@ function buildMatchRvServer(): McpServer {
               ? "What does the yellow payload sticker inside your driver's door say ('combined weight of occupants and cargo should never exceed ___ lbs')? That turns this preliminary fit into a real one."
               : null,
           },
-          outfitterGuidance: "Briefly confirm what the shopper told you, then present this shortlist (up to three best fits). Explain each pick in lifestyle terms: why it fits how they camp, plus its tradeoff. Flag every unknown (sleeps=null, towFit='verify tow fit', unknown fields) as not published instead of filling it in. Never pad the list, and never mention a total match count. Tow verdicts are preliminary until payload/exact rating is known. Road to the Sale step 4: once they like a unit, ask whether they'd like to contact the dealership; if yes, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. REFINE: " + REFINE_RULE + " WALKTHROUGH: when they're interested in a unit, offer 'Want to see a walkthrough video of the inside?' and share its walkthrough.url. If walkthrough.kind is model_search, say it shows the same model, not this exact unit (walkthrough.label). VIN lookup is unavailable through MCP.",
+          outfitterGuidance: "Briefly confirm what the shopper told you, then present this shortlist (a full page, up to 10 fits). Explain each pick in lifestyle terms: why it fits how they camp, plus its tradeoff. Flag every unknown (sleeps=null, towFit='verify tow fit', unknown fields) as not published instead of filling it in. Never pad the list, and never mention a total match count. Tow verdicts are preliminary until payload/exact rating is known. Road to the Sale step 4: once they like a unit, ask whether they'd like to contact the dealership; if yes, use prepare_dealer_inquiry and get their explicit approval before send_dealer_inquiry. REFINE: " + REFINE_RULE + " WALKTHROUGH: when they're interested in a unit, offer 'Want to see a walkthrough video of the inside?' and share its walkthrough.url. If walkthrough.kind is model_search, say it shows the same model, not this exact unit (walkthrough.label). VIN lookup is unavailable through MCP.",
           nextStep: `Present the shortlist and its unknowns honestly. ${makeModelSummary ? "They named a make/model: never pad the list with other brands or series. " : ""}Don't say how many RVs matched in total. ${road.waived && (road.resumeQuestions.length || road.nextQuestions.length) ? "They asked to skip the questions, so after the results, come back to roadToSale.resumeQuestions, one question per turn. " : road.nextQuestions.length ? "Then ask roadToSale.nextQuestions, one per turn, never an interrogation. " : ""}${refine.suggested ? `These results look thin (${refine.reason}), so ask refine.ask and change one thing at a time. ` : "If they don't like these, ask refine.ask and change one thing at a time. "}Offer each unit's walkthrough when they show interest (model_search = same model, not this unit). Do not claim a hitch rating verifies towing capacity. Do not widen limits without explicit permission.`,
         }, false, internal);
       } catch (error) {

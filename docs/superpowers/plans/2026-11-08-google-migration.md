@@ -69,16 +69,13 @@ findmnt -T /var/data -n -o FSTYPE,SOURCE,TARGET
 
 `TARGET` must be `/var/data` and `SOURCE` must be the data disk (the by-id path for `matchrv-core-data`), not the boot disk. Then:
 
-```bash
-curl -fsSL -o /tmp/node-v22.22.0-linux-x64.tar.xz https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
-echo '9aa8e9d2298ab68c600bd6fb86a6c13bce11a4eca1ba9b39d79fa021755d7c37  /tmp/node-v22.22.0-linux-x64.tar.xz' | sha256sum -c -
-sudo tar -C /usr/local --strip-components=1 -xJf /tmp/node-v22.22.0-linux-x64.tar.xz
-node -v   # v22.22.0
-sudo corepack enable
-sudo corepack prepare pnpm@10.33.0 --activate
-```
+Node 22.22.0 from that official archive is already installed on the VM, and `sudo corepack enable` already linked `corepack` and `pnpm` under `/usr/local/bin`. Do not extract Node again. Do not run `sudo corepack prepare`.
 
-The checksum is the `node-v22.22.0-linux-x64.tar.xz` line from `https://nodejs.org/dist/v22.22.0/SHASUMS256.txt`, read while writing this document.
+`sudo corepack prepare pnpm@10.33.0 --activate` writes pnpm only into root's Corepack home (`/root/.cache/node/corepack` when sudo sets `HOME=/root`). The shell shim `/usr/local/lib/node_modules/corepack/dist/pnpm.js` then runs as the calling user. With no `package.json` above the working directory and no last-known-good file in that user's home, Corepack 0.34.0 asks the registry for the `latest` dist-tag. On Nov 9, 2026 that tag was pnpm 12.18.0, and the shim's default `COREPACK_ENABLE_DOWNLOAD_PROMPT` is `1`, so a terminal asks before downloading `pnpm-12.18.0.tgz`. The `corepack` command itself defaults that prompt to `0`, so root's prepare of 10.33.0 does not ask. Answering `n` still records 12.18.0 in that user's `lastKnownGood.json` before the download aborts. That is not an installed pnpm, and it is the wrong version.
+
+The pinned commit's `package.json` says `"packageManager": "pnpm@10.33.0"` and has no `devEngines`. Inside that checkout, the same shim selects 10.33.0 even if the user's last-known-good file says 12.18.0. `COREPACK_DEFAULT_TO_LATEST=0` is not the pin: this Corepack build's internal default is pnpm 10.13.1. Do not set `COREPACK_INTEGRITY_KEYS=0`.
+
+Activate 10.33.0 as `matchrv`, in the extracted source, after the snapshot check below. `pnpm --version` must print `10.33.0`. If a prompt appears, the URL must be `pnpm-10.33.0.tgz` before anyone answers `y`. If the URL contains `12.18.0`, answer `n` and stop. Do not run bare `pnpm` from `/tmp`.
 
 ```bash
 sudo useradd --system --create-home --shell /usr/sbin/nologin matchrv || true
@@ -90,11 +87,16 @@ sudo chown -R matchrv:matchrv /opt/matchrv /var/data
 sudo -u matchrv bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && sha256sum lib/agent-core/data/inventory.snapshot.json.gz && gzip -t lib/agent-core/data/inventory.snapshot.json.gz'
 ```
 
-Stop if the SHA-256 is not `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Then, still as `matchrv`, from that directory, the same build `render.yaml` uses:
+Stop if the SHA-256 is not `afffb9bf17cd38f60deaa2475076af7bf88767f800f45135519d6964f94fe00d`. Then, as `matchrv`, from that directory:
 
 ```bash
-pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..."
-pnpm run build:web && pnpm run build:api
+sudo -u matchrv -H bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && /usr/local/bin/corepack prepare pnpm@10.33.0 --activate && /usr/local/bin/pnpm --version'
+```
+
+Stop unless that prints `10.33.0` and does not offer `pnpm-12.18.0.tgz`. The same user and directory then run the build `render.yaml` uses. The VM had about 1.5 GiB free when this was written, and a sandbox web build peaked near 1371 MiB RSS with no 2 GiB cap, so this build can be OOM-killed:
+
+```bash
+sudo -u matchrv -H bash -lc 'cd /opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3 && pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." && pnpm run build:web && pnpm run build:api'
 ```
 
 If the kernel OOM-kills that build, stop. Build those two commands on another machine from this same tarball and copy `artifacts/api-server/dist` and `artifacts/rv-marketplace/dist` into the checkout. Do not check out a newer `main`.
@@ -112,30 +114,15 @@ SHOPPER_FIT_PATH=/var/data/shopper-fit.json
 OUTBOUND_CLICKS_PATH=/var/data/outbound-clicks.jsonl
 ```
 
-`/etc/systemd/system/matchrv.service`:
+Do not paste a unit from this page and do not run `systemctl enable` or `systemctl start` from it. The reviewed files are `prepare-staging.sh` and `matchrv-staging-isolation-check.sh`. The prepare script writes `/etc/matchrv.env` and `/etc/systemd/system/matchrv.service` only after the data disk UUID is `0b11bb49-dae0-4f36-bfe2-04e057025376`, the filesystem is ext4, `var-data.mount` is active, user `matchrv` is not root, and `artifacts/api-server/dist/index.cjs` matches the off-VM build. It refuses a different existing file. It does not start the service.
 
-```
-[Unit]
-Description=MatchRV staging (no public cutover)
-After=network-online.target
-Wants=network-online.target
-ConditionPathIsMountPoint=/var/data
+The unit's pre-start guard is `/usr/bin/findmnt` with `--source UUID=0b11bb49-dae0-4f36-bfe2-04e057025376`, `--mountpoint /var/data`, and `--types ext4` together. It is not a shell snippet. systemd expands `$` variables and `%` specifiers in `ExecStartPre=` before the program runs ([systemd.service](https://www.freedesktop.org/software/systemd/man/systemd.service.html)), so a line that contains `$out` or `printf %s` would not reach `/bin/sh` intact. A non-zero findmnt status fails the unit. There is no `-` prefix. The command runs as `matchrv` because `User=` applies to `ExecStartPre=` unless the line is prefixed with `+`.
 
-[Service]
-Type=simple
-User=matchrv
-Group=matchrv
-WorkingDirectory=/opt/matchrv/AI-RV-Marketplace-Infrastructure--15b9c9604d27c33d031ba65183ead958039043a3
-EnvironmentFile=/etc/matchrv.env
-ExecStart=/usr/local/bin/node artifacts/api-server/dist/index.cjs
-Restart=on-failure
-RestartSec=3
+The unit uses `PrivateNetwork=yes` ([systemd.exec](https://www.freedesktop.org/software/systemd/man/systemd.exec.html)). That gives the process a network namespace whose only device is loopback, so a listen on every interface is not a listen in the host namespace. The same page says this implies `PrivateMounts=` and remounts `/sys`. It does not move the release directory or `/var/data`. `MemoryMax=1500M` and `MemorySwapMax=0` are a staging cap for the current free memory. They are not a production capacity result. `Restart=no`. There is no `[Install]` section.
 
-[Install]
-WantedBy=multi-user.target
-```
+The VPC view showed public ICMP, 22, and 3389, plus internal `10.128.0.0/9`. It did not show a public 80, 443, or 8080 rule. `compute.organizations.listAssociations` was denied, so inherited policies are unknown. That view is not proof port 8080 is closed. Do not grant IAM to learn the answer, and do not open a firewall rule. The private namespace is the control for this phase. Outbound network is also absent, which is acceptable while Anthropic and the other delivery keys stay unset. A later full AI test is a separate gate.
 
-`ConditionPathIsMountPoint` refuses to start when `/var/data` is a plain directory on the boot disk. It does not check the disk name. Before `systemctl enable --now matchrv`, `findmnt` must still show the data disk. The runtime user owns `/var/data`. The process is not root.
+After a separate decision to start, run the isolation check. It does not start the service. If the host network namespace is the service namespace, the host has a TCP 8080 listener, or `nsenter -t PID -n curl http://127.0.0.1:8080/api/healthz` fails, the check stops the service. An SSH local forward to host port 8080 does not reach this unit.
 
 Side effects this env avoids, from the code at the pinned commit:
 
@@ -144,19 +131,7 @@ Side effects this env avoids, from the code at the pinned commit:
 - Unset PostHog key makes `activeConfig()` return null.
 - Inquiry mail runs only inside `sendInquiry` when `dry_run` is false and SMTP or Gmail is configured. Do not call `send_dealer_inquiry` or `GET /api/out` on this host.
 
-Smoke from an SSH local forward, not from the public address:
-
-```bash
-ssh -L 18080:127.0.0.1:8080 VM_SSH_USER@34.171.66.221
-curl -fsS http://127.0.0.1:18080/api/healthz
-curl -fsS 'http://127.0.0.1:18080/api/listings?limit=1'
-curl -fsS http://127.0.0.1:18080/api/search/filters
-curl -fsS http://127.0.0.1:18080/api/swipe/deck -H 'content-type: application/json' -d '{"rvType":"travel_trailer","zip":"98402"}'
-curl -fsS http://127.0.0.1:18080/api/agent/search -H 'content-type: application/json' -d '{"constraints":{"rvTypes":["travel_trailer"],"location":{"place":"Tacoma, WA","radiusMiles":50}},"limit":3}'
-curl -sS -o /tmp/outfitter.json -w '%{http_code}\n' http://127.0.0.1:18080/api/outfitter/chat -H 'content-type: application/json' -d '{"messages":[{"role":"user","content":"hello"}]}'
-```
-
-Expect health `{"status":"ok"}`, listings HTTP 200, filters HTTP 200, swipe HTTP 200 with `cards`, agent search HTTP 200, outfitter HTTP 503. Then the two MCP posts from Task 5, aimed at `http://127.0.0.1:18080/mcp`, with no `mcp-session-id`. Expect server name `matchrv` and a `search_rvs` `shortlist`. Journal must include `db: none` and `scraper cron disabled`, and must not include `Scrape scheduler active` or `Hourly batch starting`.
+Smoke only inside the service network namespace, after the isolation check has passed. Use `nsenter -t "$PID" -n curl` against `http://127.0.0.1:8080`. Do not curl the host address and do not publish port 8080. Expect health `{"status":"ok"}`, listings HTTP 200, filters HTTP 200, swipe HTTP 200 with `cards`, agent search HTTP 200, outfitter HTTP 503. MCP `initialize` should name `matchrv`, and `search_rvs` should return a shortlist. The journal should include `db: none` and `scraper cron disabled`, and should not include `Scrape scheduler active` or `Hourly batch starting`.
 
 `/var/data` may gain files only if something writes. These read calls left the sandbox directory empty. If `dealer-inquiries.json` or `outbound-clicks.jsonl` appears, stop. Do not load the 2:48 PM archive. Do not call a delivering inquiry.
 

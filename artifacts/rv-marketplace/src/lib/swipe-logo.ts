@@ -1,37 +1,34 @@
-/** Light wordmark file. Opaque art sits in a wide transparent margin. */
-export const LIGHT_LOGO = { width: 1536, height: 1024 };
-/** Opaque pixels of matchrv-logo-light.png (stroke included). */
-export const LIGHT_LOGO_ART = { x: 337, y: 351, right: 1250, bottom: 618 };
-
-export interface SwipeLogoFrame {
-  frame: { width: number; height: number };
-  img: { width: number; height: number; left: number; top: number };
-}
-
 /**
- * Header crop of the light wordmark. Padding stays outside the stroke so the
- * swoosh is not sliced by overflow:hidden.
+ * Swipe header wordmark.
+ *
+ * matchrv-logo-light.png is a 1536×1024 canvas. The artwork is a small
+ * region in the middle, so the header used to reveal it by shifting the
+ * file inside an overflow:hidden window. That window sat on the swoosh
+ * stroke. After the file is scaled down, the outline is a fraction of a
+ * pixel, so the clip reads as a cut-off, squashed mark.
+ *
+ * matchrv-logo-wordmark.png is the same artwork with only a few pixels of
+ * transparent padding. The header shows that file with object-fit: contain
+ * and does not crop it.
  */
-export function swipeLogoFrame(displayHeight = 40, pad = 24): SwipeLogoFrame {
-  const x = LIGHT_LOGO_ART.x - pad;
-  const y = LIGHT_LOGO_ART.y - pad;
-  const w = LIGHT_LOGO_ART.right - LIGHT_LOGO_ART.x + pad * 2;
-  const h = LIGHT_LOGO_ART.bottom - LIGHT_LOGO_ART.y + pad * 2;
-  const imgW = Math.round(LIGHT_LOGO.width * (displayHeight / h));
-  const scale = imgW / LIGHT_LOGO.width;
-  return {
-    frame: { width: Math.round(w * scale), height: Math.round(h * scale) },
-    img: { width: imgW, height: Math.round(LIGHT_LOGO.height * scale), left: Math.round(-x * scale), top: Math.round(-y * scale) },
-  };
+export const SWIPE_WORDMARK = {
+  src: "/matchrv-logo-wordmark.png",
+  /** Intrinsic pixels of the trimmed file, padding included. */
+  width: 931,
+  height: 284,
+  /** CSS pixels. Width follows the file's aspect ratio. */
+  displayHeight: 48,
+} as const;
+
+export interface WordmarkBox {
+  width: number;
+  height: number;
 }
 
-/** Source rectangle shown inside the header window. */
-export function visibleLogoSource(frame: SwipeLogoFrame = swipeLogoFrame()) {
-  const scale = frame.img.width / LIGHT_LOGO.width;
+/** Display box that preserves the trimmed file's aspect ratio. */
+export function swipeWordmarkBox(displayHeight = SWIPE_WORDMARK.displayHeight): WordmarkBox {
   return {
-    x: -frame.img.left / scale,
-    y: -frame.img.top / scale,
-    right: (-frame.img.left + frame.frame.width) / scale,
-    bottom: (-frame.img.top + frame.frame.height) / scale,
+    width: Math.round(displayHeight * SWIPE_WORDMARK.width / SWIPE_WORDMARK.height),
+    height: displayHeight,
   };
 }

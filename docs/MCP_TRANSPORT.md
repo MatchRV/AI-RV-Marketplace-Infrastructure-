@@ -2,8 +2,8 @@
 
 ## Endpoint
 
-Stateless Streamable HTTP MCP endpoint at `POST /mcp` on the `matchrv-mcp` Render service:
-`https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` once the domain points at the same service).
+Stateless Streamable HTTP MCP endpoint at `POST /mcp`:
+`https://matchrv.com/mcp`.
 It uses the MCP TypeScript SDK v2 `createMcpHandler` per-request server factory and the Node adapter `toNodeHandler`. `serverInfo.version` is `2.2.7`.
 
 ## Tools
@@ -20,6 +20,8 @@ See the annotation table in `OPENAI_PLUGIN_SUBMISSION.md`. In summary:
 ## Dealer inquiries
 
 `services/dealer-inquiries.ts` plus `routes/inquiries.ts` (`POST /api/inquiries`, `GET /api/inquiries/:id`, ops-only `/api/inquiries/ops*`). The preview is stateless: an HMAC-signed token carries the exact preview, so the preview step has no side effects. Delivery goes to an opted-in dealer by email (`data/dealer-inquiry-routes.json`), else to the MatchRV ops queue with an ntfy/email alert, else the status is `failed`. Dry run: `dry_run: true` or `INQUIRY_DRY_RUN=1`.
+
+While the data directory is frozen (`POST /api/admin/data-dir` with `{"action":"freeze"}` and `x-admin-key`), a confirmed `send_dealer_inquiry` or `POST /api/inquiries` is refused before anything is sent or stored. The tool error is `writes_frozen` with `retryable: true` and `sent: false`. The HTTP response is 503 with `Retry-After: 120`. The confirmation token stays unused. Preview still works. `teach_outfitter` returns the same error. Search and the other read tools keep working; `search_rvs` does not update shopper-fit during the freeze, and `GET /api/out` still redirects without appending a click. See the migration runbook section "Write freeze".
 
 Environment: `NTFY_TOPIC` / `NTFY_URL`, `GMAIL_USER` + `GMAIL_APP_PASSWORD` or `SMTP_HOST` + `SMTP_FROM` (+ `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE`), `INQUIRY_OPS_EMAIL` (default sales@matchrv.com), `INQUIRY_OPS_KEY`, `INQUIRY_SIGNING_SECRET`, `INQUIRY_DRY_RUN`, `INQUIRY_RETENTION_DAYS`, `INQUIRIES_PATH`, `DEALER_INQUIRY_ROUTES` / `DEALER_INQUIRY_ROUTES_PATH`, `INQUIRY_SAFETY_SWEEP` (set to `1` to run the in-process queued-lead sweep every 10 minutes; off by default), `SESSION_MEMORY_PATH`, `SESSION_MEMORY_TTL_DAYS`, `CURATED_FACTS_PATH`.
 

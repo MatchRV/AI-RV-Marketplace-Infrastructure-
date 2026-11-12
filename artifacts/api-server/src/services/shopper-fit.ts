@@ -18,8 +18,9 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { dataDirAcceptsWrites, registerDataWriter } from "./data-dir-freeze";
 import type { MemoryScope } from "./learned-store";
 
 const FIT_TTL_MS = Number(process.env.SHOPPER_FIT_TTL_DAYS ?? 30) * 24 * 60 * 60 * 1000;
@@ -175,6 +176,7 @@ interface FitEntry { fit: ShopperFit; touchedAt: number }
 const fits = new Map<string, FitEntry>();
 let loaded = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let diskDirty = false;
 let persistenceEnabled = process.env.NODE_ENV !== "test" && !process.env.VITEST;
 
 function storePath(): string {
@@ -211,24 +213,38 @@ function sweep(): void {
   }
 }
 
-function persistSoon(): void {
-  if (!persistenceEnabled || saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    const out: Record<string, FitEntry> = {};
-    for (const [id, e] of fits) out[id] = e;
-    try {
-      const p = storePath();
-      mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, JSON.stringify(out));
-    } catch (err) {
-      console.warn("[shopper-fit] could not persist:", err instanceof Error ? err.message : err);
-    }
-  }, 400);
+function persistSync(): void {
+  if (!persistenceEnabled) return;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  const out: Record<string, FitEntry> = {};
+  for (const [id, e] of fits) out[id] = e;
+  try {
+    const p = storePath();
+    mkdirSync(dirname(p), { recursive: true });
+    const tmp = `${p}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(out));
+    renameSync(tmp, p);
+    diskDirty = false;
+  } catch (err) {
+    diskDirty = true;
+    console.warn("[shopper-fit] could not persist:", err instanceof Error ? err.message : err);
+  }
 }
+function persistSoon(): void {
+  if (!persistenceEnabled) return;
+  diskDirty = true;
+  if (!dataDirAcceptsWrites()) return;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => { saveTimer = null; persistSync(); }, 400);
+}
+function fitPending(): boolean {
+  return persistenceEnabled && (diskDirty || saveTimer != null);
+}
+registerDataWriter({ name: "shopper-fit", pending: fitPending, flush: persistSync });
 
 /** Remember the latest fit facts for this shopper scope (from search_rvs). No-op without a scope or empty fit. */
 export function rememberFit(scope: MemoryScope, raw: ShopperFit | undefined): void {
+  if (!dataDirAcceptsWrites()) return;
   if (!scope.id || !raw) return;
   load();
   const next = sanitizeFit(raw);
@@ -256,5 +272,14 @@ export function fitFingerprint(): string {
   return createHash("sha256").update(parts.join("|")).digest("hex");
 }
 
-export function __resetShopperFit(): void { fits.clear(); loaded = true; }
-export function __enableFitPersistence(on: boolean): void { persistenceEnabled = on; }
+export function __resetShopperFit(): void {
+  fits.clear();
+  loaded = true;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  diskDirty = false;
+}
+export function __enableFitPersistence(on: boolean): void {
+  persistenceEnabled = on;
+  if (!on && saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  if (!on) diskDirty = false;
+}

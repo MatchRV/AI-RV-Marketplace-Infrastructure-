@@ -38,6 +38,8 @@ describe("served llms.txt", () => {
     expect(text).not.toContain("129,000");
     expect(text).not.toContain("/advertising");
     expect(text).toContain("https://matchrv.com/visibility-solution");
+    expect(text).toContain("https://matchrv.com/mcp");
+    expect(text).not.toContain("onrender.com");
     expect(text).toContain("GET /api/listings");
     // This suite has no ready database, so the file must not invent a count.
     expect(text).toContain("unavailable for this response");

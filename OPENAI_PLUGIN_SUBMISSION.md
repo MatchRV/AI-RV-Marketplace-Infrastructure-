@@ -27,8 +27,7 @@ MatchRV helps shoppers turn real-world RV requirements into structured inventory
 
 **URL type:** Universal
 
-**Production MCP server URL:** `https://matchrv-mcp.onrender.com/mcp` (Render service `matchrv-mcp`, auto-deployed from `main`).
-After the domain move, `https://matchrv.com/mcp` points at this same service and is the URL to submit; until then, scan the onrender URL. Both serve identical code.
+**Production MCP server URL:** `https://matchrv.com/mcp`.
 
 **Authentication:** None (public shopping workflow). Memory and inquiries are scoped without accounts (see Data handling).
 

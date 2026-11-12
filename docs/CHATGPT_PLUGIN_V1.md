@@ -1,6 +1,6 @@
 # MatchRV ChatGPT Plugin V1
 
-Status: superseded by v2.2.7. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv-mcp.onrender.com/mcp` (and `https://matchrv.com/mcp` after the domain move; same service).
+Status: superseded by v2.2.7. The authoritative tool list, annotations, endpoint and data handling are in `OPENAI_PLUGIN_SUBMISSION.md`. Production endpoint: `https://matchrv.com/mcp`.
 
 ## Product goal
 

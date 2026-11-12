@@ -22,8 +22,9 @@
  */
 
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { dataDirAcceptsWrites, DataDirFrozenError, isDataDirFrozen, registerDataWriter } from "./data-dir-freeze";
 import { LearnedStore, type CanonicalUnit, type LearnedVehicle } from "@workspace/agent-core";
 
 const SESSION_TTL_MS = Number(process.env.SESSION_MEMORY_TTL_DAYS ?? 30) * 24 * 60 * 60 * 1000;
@@ -40,6 +41,7 @@ let curated: LearnedStore | null = null;
 const scopes = new Map<string, { store: LearnedStore; touchedAt: number }>();
 let scopesLoaded = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let diskDirty = false;
 let persistenceEnabled = process.env.NODE_ENV !== "test" && !process.env.VITEST;
 
 /** Shared, curated, read-only facts. */
@@ -122,6 +124,7 @@ export function peekScope(scope: MemoryScope): LearnedStore | null {
 
 /** Writable store for a scope. ONLY write-annotated tools may call this. */
 export function writableScope(scope: MemoryScope): LearnedStore {
+  if (isDataDirFrozen()) throw new DataDirFrozenError();
   if (!scope.id) throw new Error("no_memory_scope");
   loadScopes();
   let s = scopes.get(scope.id);
@@ -156,23 +159,46 @@ export function memoryFingerprint(): string {
   return createHash("sha256").update(parts.join("|")).digest("hex");
 }
 
-function persistSoon(): void {
-  if (!persistenceEnabled || saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    const out: Record<string, unknown> = {};
-    for (const [id, s] of scopes) out[id] = { touchedAt: s.touchedAt, data: s.store.serialize() };
-    try {
-      const p = sessionFilePath();
-      mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, JSON.stringify(out));
-    } catch (err) {
-      console.warn("[learning] could not persist session memory:", err instanceof Error ? err.message : err);
-    }
-  }, 400);
+function persistSync(): void {
+  if (!persistenceEnabled) return;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  const out: Record<string, unknown> = {};
+  for (const [id, s] of scopes) out[id] = { touchedAt: s.touchedAt, data: s.store.serialize() };
+  try {
+    const p = sessionFilePath();
+    mkdirSync(dirname(p), { recursive: true });
+    const tmp = `${p}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(out));
+    renameSync(tmp, p);
+    diskDirty = false;
+  } catch (err) {
+    diskDirty = true;
+    console.warn("[learning] could not persist session memory:", err instanceof Error ? err.message : err);
+  }
 }
+function persistSoon(): void {
+  if (!persistenceEnabled) return;
+  diskDirty = true;
+  if (!dataDirAcceptsWrites()) return;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => { saveTimer = null; persistSync(); }, 400);
+}
+function sessionPending(): boolean {
+  return persistenceEnabled && (diskDirty || saveTimer != null);
+}
+registerDataWriter({ name: "session-memory", pending: sessionPending, flush: persistSync });
 
 /** Test hooks. */
-export function __resetMemory(): void { scopes.clear(); curated = null; scopesLoaded = true; }
+export function __resetMemory(): void {
+  scopes.clear();
+  curated = null;
+  scopesLoaded = true;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  diskDirty = false;
+}
 export function __setCurated(store: LearnedStore): void { curated = store; }
-export function __enablePersistence(on: boolean): void { persistenceEnabled = on; }
+export function __enablePersistence(on: boolean): void {
+  persistenceEnabled = on;
+  if (!on && saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  if (!on) diskDirty = false;
+}

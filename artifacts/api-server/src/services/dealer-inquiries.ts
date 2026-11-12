@@ -40,6 +40,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { beginDurableWrite, dataDirAcceptsWrites, endDurableWrite, DATA_DIR_FROZEN_GUIDANCE, isDataDirFrozen, registerDataWriter } from "./data-dir-freeze";
 import type { CanonicalUnit } from "@workspace/agent-core";
 import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
 import { recordInquiryOutcome } from "./product-analytics";
@@ -268,6 +269,7 @@ const byNonce = new Map<string, string>();
 let loaded = false;
 let persistenceEnabled = process.env.NODE_ENV !== "test" && !process.env.VITEST;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let diskDirty = false;
 
 let storePathOverride: string | null = null;
 function storePath(): string {
@@ -301,12 +303,23 @@ function persistSync(): void {
     const tmp = `${p}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify([...inquiries.values()].filter((i) => !i.dryRun)));
     renameSync(tmp, p);
-  } catch (err) { console.warn("[inquiries] could not persist store:", err instanceof Error ? err.message : err); }
+    diskDirty = false;
+  } catch (err) {
+    diskDirty = true;
+    console.warn("[inquiries] could not persist store:", err instanceof Error ? err.message : err);
+  }
 }
 function persistSoon(): void {
-  if (!persistenceEnabled || saveTimer) return;
+  if (!persistenceEnabled) return;
+  diskDirty = true;
+  if (!dataDirAcceptsWrites()) return;
+  if (saveTimer) return;
   saveTimer = setTimeout(() => { saveTimer = null; persistSync(); }, 300);
 }
+function inquiriesPending(): boolean {
+  return persistenceEnabled && (diskDirty || saveTimer != null);
+}
+registerDataWriter({ name: "dealer-inquiries", pending: inquiriesPending, flush: persistSync });
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
 
@@ -360,7 +373,7 @@ let transport: InquiryTransport = defaultTransport;
 
 export type SendResult =
   | { ok: true; inquiry: PublicInquiry; statusToken: string; duplicate: boolean }
-  | { ok: false; code: "not_confirmed" | "invalid_token" | "expired_token" | "unit_unavailable" | "rate_limited"; guidance: string };
+  | { ok: false; code: "not_confirmed" | "invalid_token" | "expired_token" | "unit_unavailable" | "rate_limited" | "writes_frozen"; guidance: string };
 
 export async function sendInquiry(args: {
   confirmationToken: string; confirmed: boolean; dryRun?: boolean;
@@ -389,8 +402,14 @@ export async function sendInquiry(args: {
     }
     return result;
   };
+  const durable = args.confirmed === true && !(Boolean(args.dryRun) || forceDryRun());
+  if (durable && !beginDurableWrite()) {
+    return note({ ok: false, code: "writes_frozen", guidance: DATA_DIR_FROZEN_GUIDANCE });
+  }
+  try {
   const now = args.now ?? Date.now();
-  load(); purge();
+  load();
+  if (dataDirAcceptsWrites()) purge();
   if (args.confirmed !== true) return note({ ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." });
   const v = verifyToken(args.confirmationToken, now);
   if (!v.ok) return note({ ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." });
@@ -434,8 +453,11 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
   }
   inquiries.set(inquiry.id, inquiry);
   byNonce.set(inquiry.nonce, inquiry.id);
-  persistSoon();
+  if (durable || dataDirAcceptsWrites()) persistSoon();
   return note({ ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false });
+  } finally {
+    if (durable) endDurableWrite();
+  }
 }
 
 function dealerEmailText(i: DealerInquiry): string {
@@ -695,7 +717,11 @@ export function listStoredInquiries(): DealerInquiry[] {
   return [...inquiries.values()];
 }
 
-export function persistInquiriesSync(): void { persistSync(); }
+export function persistInquiriesSync(): void {
+  if (!persistenceEnabled) return;
+  if (!dataDirAcceptsWrites()) { diskDirty = true; return; }
+  persistSync();
+}
 
 // ── Status / ops ───────────────────────────────────────────────────────────
 
@@ -719,7 +745,8 @@ function toPublic(i: DealerInquiry): PublicInquiry {
 
 /** Status lookup. Returns null for unknown id OR wrong token (never reveals existence). */
 export function getInquiryStatus(id: string, statusToken: string): PublicInquiry | null {
-  load(); purge();
+  load();
+  if (dataDirAcceptsWrites()) purge();
   const i = inquiries.get(id);
   if (!i || typeof statusToken !== "string") return null;
   const a = Buffer.from(i.statusTokenHash); const b = Buffer.from(hashToken(statusToken));
@@ -734,8 +761,9 @@ export function opsKeyValid(header: string | undefined): boolean {
   return got.length === exp.length && timingSafeEqual(got, exp);
 }
 export function opsGet(id: string): DealerInquiry | null { load(); return inquiries.get(id) ?? null; }
-export function opsList(): DealerInquiry[] { load(); purge(); return [...inquiries.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200); }
+export function opsList(): DealerInquiry[] { load(); if (dataDirAcceptsWrites()) purge(); return [...inquiries.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200); }
 export function opsUpdate(id: string, update: { status?: "delivered" | "queued_for_matchrv" | "failed"; statusDetail?: string; dealerReply?: string; test?: boolean }): DealerInquiry | null {
+  if (isDataDirFrozen()) return null;
   load();
   const i = inquiries.get(id);
   if (!i || i.dryRun) return null;
@@ -752,7 +780,8 @@ export function opsUpdate(id: string, update: { status?: "delivered" | "queued_f
  * Explicit ops confirmation that this lead was sent to the dealership.
  * Copying the forward text does not call this. A failed call leaves status unchanged.
  */
-export function confirmInquiryForwarded(id: string, now = Date.now()): { ok: true; inquiry: DealerInquiry } | { ok: false; code: "not_found" | "not_forwardable" } {
+export function confirmInquiryForwarded(id: string, now = Date.now()): { ok: true; inquiry: DealerInquiry } | { ok: false; code: "not_found" | "not_forwardable" | "writes_frozen" } {
+  if (isDataDirFrozen()) return { ok: false, code: "writes_frozen" };
   load();
   const i = inquiries.get(id);
   if (!i) return { ok: false, code: "not_found" };
@@ -787,6 +816,7 @@ export function __setPersistenceForTests(enabled: boolean, filePath?: string): v
   persistenceEnabled = enabled;
   storePathOverride = filePath ?? null;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  diskDirty = false;
 }
 export function __reloadPersistedInquiries(): void {
   inquiries.clear();

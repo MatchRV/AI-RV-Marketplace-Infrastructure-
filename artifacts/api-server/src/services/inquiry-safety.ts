@@ -20,6 +20,7 @@ import {
   persistInquiriesSync,
   type DealerInquiry,
 } from "./dealer-inquiries";
+import { beginDurableWrite, endDurableWrite } from "./data-dir-freeze";
 import {
   MAX_DELIVERY_RETRIES,
   QUEUED_ALERT_24H_MS,
@@ -205,8 +206,17 @@ async function sweepBody(now: number): Promise<SafetySweepResult> {
 let chain: Promise<unknown> = Promise.resolve();
 
 /** One sweep. Concurrent calls queue behind each other so a lead is claimed once. */
+const emptySweep = (): SafetySweepResult => ({ alertsSent: [], alertsDeferred: [], retries: [] });
+
 export function runInquirySafetySweep(now = Date.now()): Promise<SafetySweepResult> {
-  const run = chain.then(() => sweepBody(now));
+  const run = chain.then(async () => {
+    if (!beginDurableWrite()) return emptySweep();
+    try {
+      return await sweepBody(now);
+    } finally {
+      endDurableWrite();
+    }
+  });
   chain = run.then(() => undefined, () => undefined);
   return run;
 }

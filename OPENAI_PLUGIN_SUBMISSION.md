@@ -1,6 +1,6 @@
 # MatchRV — OpenAI / Meta App Submission Package (v2.2.7)
 
-Status: **Submission candidate v2.2.7 — eleven MCP tools.** This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.7`). If a scan shows anything different, fix the server and rescan; do not paper over it here. Not yet submitted.
+Status: **Live in ChatGPT since November 3, 2026 — v2.2.7, eleven MCP tools.** Changes to tool names, input schemas, descriptions or annotations need a new OpenAI review before they ship; confirm the current resubmission rules in the OpenAI Platform dashboard first. This document must match what the production MCP server advertises (`serverInfo.version` = `2.2.7`). If a scan shows anything different, fix the server and rescan; do not paper over it here.
 
 Submission type: With MCP (remote MCP-only)
 Publisher: MatchRV Inc. (use verified business identity in OpenAI Platform)

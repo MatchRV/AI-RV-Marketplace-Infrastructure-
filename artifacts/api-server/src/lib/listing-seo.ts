@@ -161,6 +161,12 @@ export function buildListingBodySummary(unit: CanonicalUnit): string {
   ];
   if (unit.sleeps.value != null) parts.push(`<p>Sleeps: ${escapeHtml(String(unit.sleeps.value))}</p>`);
   if (unit.lengthFt.value != null) parts.push(`<p>Length: ${escapeHtml(String(unit.lengthFt.value))} ft</p>`);
+  // Freshness, stated plainly: what the dealer's site showed and when MatchRV
+  // last saw it. Unknown status prints nothing (never "available").
+  const statusText = unit.status === "available" ? "Listed as available" : unit.status === "pending" ? "Listed as sale pending" : unit.status === "removed" ? "No longer listed" : null;
+  const seenOn = /^\d{4}-\d{2}-\d{2}/.test(unit.provenance.lastSeenAt ?? "") ? unit.provenance.lastSeenAt.slice(0, 10) : null;
+  if (statusText && seenOn) parts.push(`<p>Availability: ${escapeHtml(statusText)} on the dealer's site when MatchRV last saw it on <time datetime="${escapeHtml(seenOn)}">${escapeHtml(seenOn)}</time>. Confirm with the dealership.</p>`);
+  else if (seenOn) parts.push(`<p>Last seen on the dealer's site: <time datetime="${escapeHtml(seenOn)}">${escapeHtml(seenOn)}</time>. Confirm availability with the dealership.</p>`);
   parts.push(`<p><a href="${escapeHtml(listingCanonicalUrl(unit.id))}">View on MatchRV</a></p>`);
   return `<div id="matchrv-crawler-summary" data-unit-id="${escapeHtml(unit.id)}">${parts.join("")}</div>`;
 }

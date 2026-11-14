@@ -1,0 +1,36 @@
+/**
+ * Pages whose HTML is written to dist/prerender/{file}.html and served
+ * instead of the empty SPA shell. `file` must match prerender-marketing.mjs.
+ */
+export const PRERENDER_PAGES: ReadonlyArray<{ path: string; file: string }> = [
+  { path: "/", file: "home" },
+  { path: "/for-dealers", file: "for-dealers" },
+  { path: "/visibility-report", file: "visibility-report" },
+  { path: "/visibility-solution", file: "visibility-solution" },
+  { path: "/lotai", file: "lotai" },
+  { path: "/shop", file: "shop" },
+  { path: "/mcp-setup", file: "mcp-setup" },
+  { path: "/about", file: "about" },
+  { path: "/contact", file: "contact" },
+  { path: "/privacy", file: "privacy" },
+  { path: "/terms", file: "terms" },
+  { path: "/book", file: "book" },
+  { path: "/tow-guide", file: "tow-guide" },
+  { path: "/answers", file: "answers" },
+  { path: "/outfitter", file: "outfitter" },
+  { path: "/match", file: "match" },
+  { path: "/dealer-tools", file: "dealer-tools" },
+  { path: "/dealers/chatgpt-advertising", file: "dealers-chatgpt-advertising" },
+  { path: "/find-the-right-rv-for-your-tow-vehicle", file: "find-the-right-rv" },
+  { path: "/guides/best-rvs-for-full-time-living", file: "guides-best-rvs-for-full-time-living" },
+  { path: "/guides/rv-cost-guide", file: "guides-rv-cost-guide" },
+  { path: "/guides/tow-vehicle-guide", file: "guides-tow-vehicle-guide" },
+  { path: "/guides/travel-trailer-vs-fifth-wheel", file: "guides-travel-trailer-vs-fifth-wheel" },
+  { path: "/rv-financing", file: "rv-financing" },
+  { path: "/rv-financing/what-credit-score-do-you-need-to-buy-an-rv", file: "rv-financing-credit-score" },
+  { path: "/rv-financing/bad-credit-rv-financing", file: "rv-financing-bad-credit" },
+  { path: "/rv-financing/rv-loan-calculator", file: "rv-financing-loan-calculator" },
+  { path: "/rv-financing/find-rvs-by-monthly-payment", file: "rv-financing-monthly-payment" },
+  { path: "/rv-financing/rv-pre-approval-before-shopping", file: "rv-financing-pre-approval" },
+  { path: "/rv-financing/used-rv-financing", file: "rv-financing-used" },
+];

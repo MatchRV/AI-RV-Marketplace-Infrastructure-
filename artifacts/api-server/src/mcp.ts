@@ -44,6 +44,7 @@ import {
   type CanonicalUnit,
   type UnitMatch,
 } from "@workspace/agent-core";
+import { resolveCatalogUnitId } from "./lib/listing-public-id";
 import { getScreenedInventory } from "./services/screened-inventory";
 function getInventory() { return getScreenedInventory(); }
 
@@ -991,9 +992,12 @@ function buildMatchRvServer(): McpServer {
     },
     async ({ unit_id, session_key }, ctx) => {
       const inv = getInventory();
-      const raw = inv.byId.get(unit_id);
+      // Accept the public slug used in the sitemap as well as the stored id.
+      // Schema and description are unchanged; this only resolves the lookup.
+      const resolved = resolveCatalogUnitId(unit_id);
+      const raw = inv.byId.get(resolved);
       const unit = raw ? applyMemoryToUnit(resolveScope(ctx, session_key), raw) : raw;
-      if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
+      if (!unit) return textResult({ error: inv.quarantined.has(resolved) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(resolved), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
       const walkthrough = walkthroughFor(unit);
       return textResult({ unit, availability: unitAvailability(unit, inv.snapshot.builtAt), ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });

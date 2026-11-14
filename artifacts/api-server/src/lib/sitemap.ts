@@ -1,6 +1,7 @@
 /**
  * Dynamic sitemap index + paginated unit sitemaps (MAT-32).
  */
+import { publicListingId } from "@workspace/agent-core";
 import { CORE_SITEMAP_URLS } from "./sitemap-core-urls";
 import { getInventory } from "../services/agent-inventory";
 
@@ -67,6 +68,13 @@ ${urls.join("\n")}
 `;
 }
 
+export function unitSitemapLoc(unitId: string): string {
+  // Encode only characters that break XML/URL paths; keep : for readability.
+  // URL-shaped ids are replaced with a stable slug first. Every other id
+  // is passed through unchanged, so those locs stay byte-identical.
+  return `${SITE}/listing/${encodeURI(publicListingId(unitId))}`;
+}
+
 export function renderUnitSitemapPage(page: number): string | null {
   if (!Number.isInteger(page) || page < 1) return null;
   const units = sitemapUnits();
@@ -76,8 +84,7 @@ export function renderUnitSitemapPage(page: number): string | null {
   const slice = units.slice(start, start + UNITS_PER_SITEMAP);
   const urls = slice.map((u) => {
     const lastmod = (u.provenance.lastSeenAt || "").slice(0, 10) || new Date().toISOString().slice(0, 10);
-    // Encode only characters that break XML/URL paths; keep : for readability.
-    const loc = `${SITE}/listing/${encodeURI(u.id)}`;
+    const loc = unitSitemapLoc(u.id);
     return `  <url>
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${escapeXml(lastmod)}</lastmod>

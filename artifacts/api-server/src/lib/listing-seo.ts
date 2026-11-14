@@ -2,7 +2,7 @@
  * Crawler-readable unit page injection (MAT-32 lite).
  * Same HTML for humans and bots — no UA sniffing / cloaking.
  */
-import type { CanonicalUnit } from "@workspace/agent-core";
+import { publicListingId, type CanonicalUnit } from "@workspace/agent-core";
 import { isBoilerplateDescription } from "./description-boilerplate";
 
 const SITE = "https://matchrv.com";
@@ -64,7 +64,8 @@ function condition(unit: CanonicalUnit): string {
 
 export function listingCanonicalUrl(unitId: string): string {
   // Keep colon ids readable in paths (browsers + our SPA accept them).
-  return `${SITE}/listing/${unitId}`;
+  // publicListingId is a no-op except for ids that embed a dealer URL.
+  return `${SITE}/listing/${publicListingId(unitId)}`;
 }
 
 export function buildUnitJsonLd(unit: CanonicalUnit): Record<string, unknown> {
@@ -172,7 +173,9 @@ export function buildListingBodySummary(unit: CanonicalUnit): string {
 }
 
 export function buildUnknownListingHead(unitId: string): string {
-  const url = listingCanonicalUrl(unitId);
+  // Unknown ids stay on the URL that was requested. Do not mint a slug for
+  // a unit MatchRV does not have.
+  const url = `${SITE}/listing/${unitId}`;
   return [
     `<title>Listing not found | MatchRV</title>`,
     `<meta name="robots" content="noindex" />`,

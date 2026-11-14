@@ -495,7 +495,7 @@ export function Match() {
     await sendMessage(text);
   };
 
-  const reportReady = !isGeneratingReport && !!sessionStorage.getItem("matchrv_report");
+  const reportReady = !isGeneratingReport && typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("matchrv_report");
 
   return (
     <Layout>

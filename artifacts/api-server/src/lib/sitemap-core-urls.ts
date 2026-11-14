@@ -2,8 +2,9 @@
  * Public pages that belong to the current MatchRV website.
  *
  * Keep this list intentionally small. Legacy marketplace, campground, guide,
- * finance, sell, and inventory-detail routes must not be advertised to search
- * engines just because the SPA can still render them.
+ * finance, and sell routes must not be advertised to search engines just
+ * because the SPA can still render them. Unit pages (/listing/{id}) are
+ * advertised separately through the paginated unit sitemaps in sitemap.ts.
  */
 export const CORE_SITEMAP_URLS: string[] = [
   "https://matchrv.com/",

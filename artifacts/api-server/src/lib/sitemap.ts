@@ -16,8 +16,17 @@ function escapeXml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Units advertised to crawlers: everything except units the dealer has taken
+ * down. The sitemap carries only the MatchRV listing URL and a date — never
+ * how or where MatchRV got the record.
+ */
+function sitemapUnits() {
+  return getInventory().units.filter((u) => u.status !== "removed");
+}
+
 export function unitSitemapPageCount(): number {
-  const n = getInventory().units.length;
+  const n = sitemapUnits().length;
   return Math.max(1, Math.ceil(n / UNITS_PER_SITEMAP));
 }
 
@@ -28,6 +37,13 @@ export function renderSitemapIndex(): string {
     <loc>${SITE}/sitemaps/core.xml</loc>
     <lastmod>${lastmod}</lastmod>
   </sitemap>`);
+  const pages = unitSitemapPageCount();
+  for (let i = 1; i <= pages; i++) {
+    entries.push(`  <sitemap>
+    <loc>${SITE}/sitemaps/units-${i}.xml</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`);
+  }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries.join("\n")}
@@ -53,7 +69,7 @@ ${urls.join("\n")}
 
 export function renderUnitSitemapPage(page: number): string | null {
   if (!Number.isInteger(page) || page < 1) return null;
-  const { units } = getInventory();
+  const units = sitemapUnits();
   const pages = Math.max(1, Math.ceil(units.length / UNITS_PER_SITEMAP));
   if (page > pages) return null;
   const start = (page - 1) * UNITS_PER_SITEMAP;

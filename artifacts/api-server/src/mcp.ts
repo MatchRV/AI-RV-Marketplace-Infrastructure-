@@ -607,6 +607,35 @@ function towFitFlag(m: UnitMatch | undefined, o: { towVehicleGiven: boolean; tow
   return {};
 }
 
+/**
+ * Availability as MatchRV last saw it, in one place. MatchRV reads dealer
+ * sites on a schedule; it does not hold live stock, so this never says a unit
+ * is available "now" — only what the dealer's page showed and when.
+ */
+export function unitAvailability(unit: CanonicalUnit, snapshotBuiltAt: string | null | undefined, now: Date = new Date()): Record<string, unknown> {
+  const seenMs = Date.parse(unit.provenance.lastSeenAt ?? "");
+  const daysSinceLastSeen = Number.isFinite(seenMs) ? Math.max(0, Math.floor((now.getTime() - seenMs) / 86_400_000)) : null;
+  const needsDealerConfirmation = unit.status !== "available" || daysSinceLastSeen === null || daysSinceLastSeen > 2;
+  const seenOn = Number.isFinite(seenMs) ? unit.provenance.lastSeenAt.slice(0, 10) : null;
+  const listingUrl = /^https?:\/\//i.test(unit.provenance.listingUrl ?? "") ? unit.provenance.listingUrl : null;
+  return {
+    status: unit.status,
+    lastSeenAt: Number.isFinite(seenMs) ? unit.provenance.lastSeenAt : null,
+    daysSinceLastSeen,
+    snapshotBuiltAt: snapshotBuiltAt ?? null,
+    dealerListingUrl: listingUrl ?? null,
+    needsDealerConfirmation,
+    guidance:
+      unit.status === "available"
+        ? `The dealer's site listed this RV as available when MatchRV last saw it${seenOn ? ` on ${seenOn}` : ""}. That is not a live stock check: say when it was last seen, and tell the shopper to confirm with the dealership (prepare_dealer_inquiry, only if they ask to contact the dealer).`
+        : unit.status === "pending"
+          ? `The dealer's site showed this RV as sale pending or on hold${seenOn ? ` on ${seenOn}` : ""}. Say so, and tell the shopper only the dealership can confirm whether it is still obtainable.`
+          : unit.status === "removed"
+            ? "This RV is no longer on the dealer's site as far as MatchRV can tell. Do not present it as available."
+            : "The dealer does not publish availability for this RV. Say it is unknown; only the dealership can confirm.",
+  };
+}
+
 export const MCP_VERSION = "2.2.7";
 
 function buildMatchRvServer(): McpServer {
@@ -967,7 +996,7 @@ function buildMatchRvServer(): McpServer {
       if (!unit) return textResult({ error: inv.quarantined.has(unit_id) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(unit_id), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
       const walkthrough = walkthroughFor(unit);
-      return textResult({ unit, ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      return textResult({ unit, availability: unitAvailability(unit, inv.snapshot.builtAt), ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
     },
   );
 

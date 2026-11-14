@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { availability, buildUnitJsonLd } from "../src/lib/listing-seo";
+import { availability, buildListingBodySummary, buildUnitJsonLd } from "../src/lib/listing-seo";
 
 const snapshotPath = new URL("../../../lib/agent-core/data/inventory.snapshot.json", import.meta.url);
 const snapshot = JSON.parse(
@@ -30,5 +30,24 @@ describe("unit page JSON-LD availability (unknown stays unknown)", () => {
   it("keeps available → InStock and removed → OutOfStock", () => {
     expect(offerOf(withStatus("available")).availability).toBe("https://schema.org/InStock");
     expect(offerOf(withStatus("removed")).availability).toBe("https://schema.org/OutOfStock");
+  });
+});
+
+describe("unit page crawler summary freshness", () => {
+  it("says when MatchRV last saw an available unit and never claims live stock", () => {
+    const u = withStatus("available");
+    u.provenance.lastSeenAt = "2026-11-10T04:47:46.000Z";
+    const html = buildListingBodySummary(u);
+    expect(html).toContain(`Listed as available on the dealer's site when MatchRV last saw it on <time datetime="2026-11-10">2026-11-10</time>`);
+    expect(html).toContain("Confirm with the dealership.");
+    expect(html).not.toMatch(/in stock|available now/i);
+  });
+
+  it("prints no availability claim for unknown status, only the last-seen date", () => {
+    const u = withStatus("unknown");
+    u.provenance.lastSeenAt = "2026-11-10T04:47:46.000Z";
+    const html = buildListingBodySummary(u);
+    expect(html).not.toContain("Listed as available");
+    expect(html).toContain("Last seen on the dealer's site");
   });
 });

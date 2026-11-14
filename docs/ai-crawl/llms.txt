@@ -75,7 +75,7 @@ Services (scope and service terms are confirmed before enrollment):
 - AI Dominance + Managed ChatGPT Ads: everything in AI Inventory Syndication plus managed ChatGPT sponsored campaigns, subject to platform eligibility; ad spend is additional and paid directly to OpenAI. ChatGPT ads are in beta with a small pilot group of dealers.
 - Ongoing services are scoped and priced on a call with Jonathan Kitchel; MatchRV does not publish monthly service prices. [Find a time on Jonathan's calendar](https://calendar.app.google/NyJzyheJ7nWM1wJa6). Booking a call does not start a subscription or authorize a charge.
 
-Roadmap: MatchRV submitted its ChatGPT app (built on this MCP server) to OpenAI for review on October 22, 2026; it is not yet listed in the ChatGPT app directory. Deeper ChatGPT plugin integration for shoppers and dealers is planned for 2027.
+ChatGPT: MatchRV's ChatGPT app (built on this MCP server) has been officially available in ChatGPT since November 3, 2026. Roadmap: deeper ChatGPT plugin integration for shoppers and dealers is planned for 2027.
 
 ## Contact
 

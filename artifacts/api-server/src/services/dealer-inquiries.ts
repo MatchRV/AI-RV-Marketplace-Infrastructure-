@@ -214,13 +214,22 @@ interface TokenPayload { u: string; n: string; e: string | null; p: string | nul
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const sign = (body: string) => createHmac("sha256", signingSecret).update(body).digest("base64url");
 
+/** The unit's own dealer listing page, when the snapshot has one and it is a plain http(s) URL. */
+export function unitListingUrl(unit: CanonicalUnit): string | null {
+  const url = unit.provenance.listingUrl;
+  return typeof url === "string" && /^https?:\/\/[^\s<>"']+$/i.test(url) && url.length <= 600 ? url : null;
+}
+
 export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, message: string, paymentEstimate: PaymentEstimate | null = null): InquiryPreview {
   const route = dealerRoute(unit.dealer.id);
+  const stockUrl = unitListingUrl(unit);
   return {
     unit: {
       id: unit.id, title: unit.title, vin: unit.vin, stockNumber: unit.stockNumber, priceUsd: unit.priceUsd.value, condition: unit.condition,
-      stockUrl: null,
-      stockUrlNote: `MatchRV's snapshot does not store a per-unit listing URL; the dealership website is ${unit.dealer.website ?? unit.provenance.dealerDomain}.`,
+      stockUrl,
+      stockUrlNote: stockUrl
+        ? `The dealer's own listing page for this RV, last seen by MatchRV on ${unit.provenance.lastSeenAt.slice(0, 10)}. The dealer may have changed or removed it since.`
+        : `MatchRV's snapshot does not store a per-unit listing URL for this RV; the dealership website is ${unit.dealer.website ?? unit.provenance.dealerDomain}.`,
     },
     dealer: { id: unit.dealer.id, name: unit.dealer.name, city: unit.dealer.city, state: unit.dealer.state, website: unit.dealer.website },
     shopper: contact,
@@ -465,7 +474,8 @@ function dealerEmailText(i: DealerInquiry): string {
   const fitLines = formatFitLines(i.fit);
   return [
     `New shopper inquiry via MatchRV (ref ${i.id})`, "",
-    `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`, "",
+    `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`,
+    ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []), "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`, "",
     ...(fitLines.length ? ["Shopper fit (stated during MatchRV interview):", ...fitLines, ""] : []),
     "Message:", i.preview.message, "",
@@ -486,6 +496,7 @@ export function formatInquiryForwardText(i: DealerInquiry): string {
     `A shopper asked about this RV through MatchRV (ref ${i.id}).`,
     `RV: ${u.title}`,
     `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Listed price: ${price}`,
+    ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []),
     "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`,
     "",

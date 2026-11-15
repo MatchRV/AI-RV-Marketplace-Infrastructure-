@@ -34,6 +34,12 @@ export interface QualityOptions {
   /** Snapshot build time. Without it the stale-listing rule is not applied. */
   referenceTime?: Date;
   staleAfterDays?: number;
+  /**
+   * `built_at` (default) measures age against the snapshot build and keeps the
+   * existing issue text. `wall` is only passed by the request-time recheck when
+   * INVENTORY_FRESHNESS_WALL_CLOCK is on.
+   */
+  clock?: "built_at" | "wall";
 }
 
 /**
@@ -71,7 +77,9 @@ export function inventoryQualityIssues(unit: CanonicalUnit, opts: QualityOptions
     // Unknown last-seen counts as stale: freshness can't be shown.
     if (age === null || age > maxAge) {
       const seen = age === null ? "unknown" : unit.provenance.lastSeenAt.slice(0, 10);
-      issues.push(`[${STALE_LISTING_REASON}] Dealer listing last seen ${seen}, more than ${maxAge} days before this inventory snapshot was built (${opts.referenceTime.toISOString().slice(0, 10)}); it may have sold. Withheld until a fresh inventory pull sees it again.`);
+      const whenOn = opts.referenceTime.toISOString().slice(0, 10);
+      const when = opts.clock === "wall" ? `this check (${whenOn})` : `this inventory snapshot was built (${whenOn})`;
+      issues.push(`[${STALE_LISTING_REASON}] Dealer listing last seen ${seen}, more than ${maxAge} days before ${when}; it may have sold. Withheld until a fresh inventory pull sees it again.`);
     }
   }
   const name = `${unit.title} ${unit.model} ${unit.trim ?? ""}`;
@@ -91,14 +99,27 @@ export function inventoryQualityIssues(unit: CanonicalUnit, opts: QualityOptions
 }
 
 /** MCP-only view. Never mutates the original snapshot or website index. */
-export function screenMcpInventory(original: InventoryIndex, opts: { staleAfterDays?: number } = {}) {
+export function screenMcpInventory(original: InventoryIndex, opts: {
+  staleAfterDays?: number;
+  /** Overrides the snapshot builtAt clock. Omit to keep the builtAt rule. */
+  referenceTime?: Date;
+  clock?: "built_at" | "wall";
+  /**
+   * Freshness anchor for the stale check only. The returned units are still the
+   * originals. Omit to judge `provenance.lastSeenAt` (today's rule).
+   */
+  anchor?: (unit: CanonicalUnit) => string | null;
+} = {}) {
   const quarantined = new Map<string, string[]>();
   const builtAt = Date.parse(original.snapshot?.builtAt ?? "");
-  const referenceTime = Number.isFinite(builtAt) ? new Date(builtAt) : undefined;
+  const referenceTime = opts.referenceTime ?? (Number.isFinite(builtAt) ? new Date(builtAt) : undefined);
   const staleAfterDays = opts.staleAfterDays ?? STALE_LISTING_MAX_AGE_DAYS;
   const heldBackByReason: Record<string, number> = { [STALE_LISTING_REASON]: 0, [PRICE_FLOOR_REASON]: 0, [CATEGORY_CONFLICT_REASON]: 0 };
   const units = original.units.filter(unit => {
-    const issues = inventoryQualityIssues(unit, { referenceTime, staleAfterDays });
+    const judged = opts.anchor
+      ? { ...unit, provenance: { ...unit.provenance, lastSeenAt: opts.anchor(unit) ?? "" } }
+      : unit;
+    const issues = inventoryQualityIssues(judged, { referenceTime, staleAfterDays, clock: opts.clock });
     if (issues.length) {
       quarantined.set(unit.id, issues);
       for (const reason of new Set(issues.map(i => /^\[([a-z_]+)\]/.exec(i)?.[1] ?? "other"))) heldBackByReason[reason] = (heldBackByReason[reason] ?? 0) + 1;
@@ -116,7 +137,9 @@ export function screenMcpInventory(original: InventoryIndex, opts: { staleAfterD
       quarantinedUnits: quarantined.size,
       heldBackByReason,
       staleListing: { reason: STALE_LISTING_REASON, maxAgeDays: staleAfterDays, measuredFrom: referenceTime?.toISOString() ?? null, applied: Boolean(referenceTime) },
-      notice: `Records with identified category conflicts, prices below class plausibility floors, or dealer listings not seen within ${staleAfterDays} days of the snapshot build are withheld pending source review. Screening is limited; remaining records are not independently verified dealer facts.`,
+      notice: opts.clock === "wall"
+        ? `Records with identified category conflicts, prices below class plausibility floors, or dealer listings not seen within ${staleAfterDays} days of this check are withheld pending source review. Screening is limited; remaining records are not independently verified dealer facts.`
+        : `Records with identified category conflicts, prices below class plausibility floors, or dealer listings not seen within ${staleAfterDays} days of the snapshot build are withheld pending source review. Screening is limited; remaining records are not independently verified dealer facts.`,
     },
   };
 }

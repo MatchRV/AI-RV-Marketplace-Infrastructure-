@@ -27,9 +27,11 @@ describe("unit page JSON-LD availability (unknown stays unknown)", () => {
     expect(JSON.stringify(buildUnitJsonLd(withStatus("pending")))).not.toContain("PreOrder");
   });
 
-  it("keeps available → InStock and removed → OutOfStock", () => {
+  it("keeps available → InStock, sold → SoldOut, and removed → OutOfStock", () => {
     expect(offerOf(withStatus("available")).availability).toBe("https://schema.org/InStock");
+    expect(offerOf(withStatus("sold")).availability).toBe("https://schema.org/SoldOut");
     expect(offerOf(withStatus("removed")).availability).toBe("https://schema.org/OutOfStock");
+    expect(buildListingBodySummary(withStatus("sold"))).toContain("Listed as sold");
   });
 });
 

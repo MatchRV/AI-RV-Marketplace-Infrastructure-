@@ -8,6 +8,7 @@ import router from "./routes";
 import { matchRvMcpNodeHandler } from "./mcp";
 import { getMcpDocsHtml } from "./lib/mcp-docs";
 import opsLeadsPage from "./routes/ops-leads-page";
+import productFeed from "./routes/product-feed";
 import { DB_MODE } from "@workspace/db";
 import { getInventory } from "./services/agent-inventory";
 import { injectListingIntoShell } from "./lib/listing-seo";
@@ -212,6 +213,10 @@ if (DB_MODE === "none") {
 }
 
 app.use("/api", router);
+
+// Key-protected product feed (404 unless PRODUCT_FEED_KEY is set). Before
+// express.static and the SPA catch-all so a bad key gets a real 404.
+app.use(productFeed);
 
 // ── Dynamic sitemaps (must be registered BEFORE express.static so a leftover
 //    public/sitemap.xml cannot shadow them) ─────────────────────────────────

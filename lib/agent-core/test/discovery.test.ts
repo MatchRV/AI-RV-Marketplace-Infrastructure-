@@ -148,6 +148,37 @@ describe("tongue weight + payload", () => {
     expect(t).toEqual({ lowLbs: 390, highLbs: 585, basis: "GVWR × 10–15%" });
   });
 
+  it("uses 15-25% pin weight for a fifth wheel, not the 10-15% tongue range", () => {
+    const fw = unit({ rv_type: "Fifth Wheel", gvwr: 14000, dry_weight: 11000 });
+    expect(fw.rvType).toBe("fifth_wheel");
+    const t = estimateTongueRange(fw);
+    expect(t).toMatchObject({ lowLbs: 2100, highLbs: 3500 });
+    expect(t!.basis).toContain("15–25%");
+    // A 3,000-lb payload looked fine at 10-15% (2,100 lbs high end); it does not at 25%.
+    const fit = evaluatePayloadFit(fw, { truckPayloadLbs: 3000, passengersLbs: 300, cargoLbs: 0 });
+    expect(fit.verdict).toBe("exceeds");
+    expect(fit.detail).toContain("pin");
+  });
+
+  it("never reports a confident payload fit from dry weight alone", () => {
+    const u = unit({ gvwr: undefined, dry_weight: 5516 });
+    expect(u.gvwrLbs.value).toBeNull();
+    const fit = evaluatePayloadFit(u, { truckPayloadLbs: 3000, passengersLbs: 300, cargoLbs: 100 });
+    expect(fit.verdict).toBe("tight");
+    expect(fit.detail).toContain("dry weight only");
+    // Over the limit at dry weight is still over.
+    expect(evaluatePayloadFit(u, { truckPayloadLbs: 1000, passengersLbs: 300, cargoLbs: 100 }).verdict).toBe("exceeds");
+  });
+
+  it("treats the published empty hitch weight as a floor for the loaded estimate", () => {
+    const u = unit({ gvwr: 3900, dry_weight: 2995 });
+    u.hitchWeightLbs = { value: 650, source: "dealer_listing", confidence: "high" };
+    const t = estimateTongueRange(u)!;
+    expect(t.lowLbs).toBe(650);
+    expect(t.highLbs).toBe(650);
+    expect(t.basis).toContain("650");
+  });
+
   it("fails payload when tongue + people/cargo exceeds the door sticker", () => {
     const u = unit({ gvwr: 3900, dry_weight: 2995 });
     const fit = evaluatePayloadFit(u, { truckPayloadLbs: 1000, passengersLbs: 400, cargoLbs: 200 });

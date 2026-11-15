@@ -156,6 +156,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
       card.appendChild(top);
       card.appendChild(el("h2", null, u.title || "(unit)"));
       var dl = el("dl");
+      addRow(dl, "Request", i.preview && i.preview.request ? i.preview.request.label : null);
       addRow(dl, "Shopper", s.name);
       addRow(dl, "Email", s.email, s.email ? "mailto:" + s.email : null);
       addRow(dl, "Phone", s.phone, s.phone ? "tel:" + String(s.phone).replace(/[^0-9+]/g, "") : null);

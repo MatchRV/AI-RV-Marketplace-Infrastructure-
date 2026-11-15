@@ -413,8 +413,23 @@ export function lifestyleFit(u: CanonicalUnit, sherpa: NonNullable<Constraints["
 export function estimateTongueRange(u: CanonicalUnit): { lowLbs: number; highLbs: number; basis: string } | null {
   const loaded = u.gvwrLbs.value ?? u.dryWeightLbs.value;
   if (loaded == null) return null;
-  const basis = u.gvwrLbs.value != null ? "GVWR × 10–15%" : "dry weight × 10–15% (GVWR unpublished — loaded tongue will run higher)";
-  return { lowLbs: Math.round(loaded * 0.10), highLbs: Math.round(loaded * 0.15), basis };
+  // A fifth wheel carries 15–25% of its weight on the pin, in the truck bed;
+  // a bumper-pull trailer carries 10–15% on the tongue.
+  const fifthWheel = u.rvType === "fifth_wheel";
+  const [lowPct, highPct, pctLabel] = fifthWheel ? [0.15, 0.25, "15–25%"] as const : [0.10, 0.15, "10–15%"] as const;
+  const part = fifthWheel ? "pin" : "tongue";
+  let basis = u.gvwrLbs.value != null ? `GVWR × ${pctLabel}` : `dry weight × ${pctLabel} (GVWR unpublished — loaded ${part} will run higher)`;
+  let lowLbs = Math.round(loaded * lowPct);
+  let highLbs = Math.round(loaded * highPct);
+  // The published hitch weight is the EMPTY number, so the loaded figure
+  // cannot be below it: use it as a floor when it is higher than the estimate.
+  const hitch = u.hitchWeightLbs.value;
+  if (hitch != null && hitch > lowLbs) {
+    lowLbs = hitch;
+    if (hitch > highLbs) highLbs = hitch;
+    basis += `; published empty hitch weight ${hitch.toLocaleString()} lbs used as the floor`;
+  }
+  return { lowLbs, highLbs, basis };
 }
 
 export interface PayloadFit {
@@ -444,13 +459,19 @@ export function evaluatePayloadFit(
         : "Trailer loaded weight unknown — tongue weight cannot be estimated.",
     };
   }
+  const part = u.rvType === "fifth_wheel" ? "pin" : "tongue";
+  // Dry weight is the EMPTY trailer. Without a published GVWR the loaded
+  // tongue/pin weight is understated, so this can never be a confident fit.
+  const dryOnly = u.gvwrLbs.value == null;
+  const dryNote = dryOnly ? ` Based on dry weight only (GVWR unpublished): the loaded ${part} weight will be higher, so this is not a confirmed fit.` : "";
   const worst = tongue.highLbs + peopleAndCargo;
   const remaining = sherpa.truckPayloadLbs - worst;
-  if (worst <= sherpa.truckPayloadLbs * 0.9) {
-    return { verdict: "fits", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo leaves ~${remaining} lbs of your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload.` };
+  const shared = { tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining };
+  if (worst <= sherpa.truckPayloadLbs * 0.9 && !dryOnly) {
+    return { verdict: "fits", ...shared, detail: `Est. ${part} ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo leaves ~${remaining} lbs of your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload.` };
   }
   if (worst <= sherpa.truckPayloadLbs) {
-    return { verdict: "tight", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo is within your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload, but tight (~${remaining} lbs spare at the high end).` };
+    return { verdict: "tight", ...shared, detail: `Est. ${part} ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo is within your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload, but tight (~${remaining} lbs spare at the high end).${dryNote}` };
   }
-  return { verdict: "exceeds", tongueLowLbs: tongue.lowLbs, tongueHighLbs: tongue.highLbs, peopleAndCargoLbs: peopleAndCargo, remainingAfterTongueLbs: remaining, detail: `Est. tongue ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo exceeds your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload by ~${Math.abs(remaining)} lbs at the high end.` };
+  return { verdict: "exceeds", ...shared, detail: `Est. ${part} ${tongue.lowLbs}–${tongue.highLbs} lbs + ${peopleAndCargo} lbs people/cargo exceeds your ${sherpa.truckPayloadLbs.toLocaleString()}-lb payload by ~${Math.abs(remaining)} lbs at the high end.${dryOnly ? ` That is from dry weight alone; loaded, the ${part} weight will be higher still.` : ""}` };
 }

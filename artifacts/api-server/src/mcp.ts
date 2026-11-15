@@ -54,6 +54,7 @@ import { applyMemory, applyMemoryToUnit, getCuratedStore, newSessionKey, peekSco
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
 import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
 import { DATA_DIR_FROZEN_GUIDANCE, DataDirFrozenError, isDataDirFrozen } from "./services/data-dir-freeze";
+import { towMatch } from "./lib/tow-match";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 import { observeMcpFetch } from "./services/product-analytics";
 
@@ -634,7 +635,7 @@ export function unitAvailability(unit: CanonicalUnit, snapshotBuiltAt: string | 
     needsDealerConfirmation,
     guidance:
       unit.status === "available"
-        ? `The dealer's site listed this RV as available when MatchRV last saw it${seenOn ? ` on ${seenOn}` : ""}. That is not a live stock check: say when it was last seen, and tell the shopper to confirm with the dealership (prepare_dealer_inquiry, only if they ask to contact the dealer).`
+        ? `The dealer's site listed this RV as available when MatchRV last saw it${seenOn ? ` on ${seenOn}` : ""}. That is not a live stock check: say when it was last seen, and tell the shopper to confirm with the dealership (prepare_dealer_inquiry, only if they ask to contact the dealer; their message can ask the dealer to confirm it is still available or to hold it).`
         : unit.status === "pending"
           ? `The dealer's site showed this RV as sale pending or on hold${seenOn ? ` on ${seenOn}` : ""}. Say so, and tell the shopper only the dealership can confirm whether it is still obtainable.`
           : unit.status === "sold"
@@ -1122,7 +1123,7 @@ function buildMatchRvServer(): McpServer {
       const resolution = vehicle
         ? resolveTowVehicle(vehicle, learnedVehicle?.towRatingLbs != null && explicitResolution?.statedRatingLbs == null ? { towRatingLbs: learnedVehicle.towRatingLbs, confirmations: learnedVehicle.confirmations, source: learnedVehicle.source } : null)
         : null;
-      const fits = [];
+      const fits: (ReturnType<typeof evaluateTowFit> & { unit_id: string; title: string })[] = [];
       const motorhomeTow = [];
       for (const id of unit_ids) {
         const unit = inv.byId.get(id);
@@ -1144,8 +1145,15 @@ function buildMatchRvServer(): McpServer {
             return { unit_id: id, title: unit.title, ...evaluatePayloadFit(unit, { truckPayloadLbs: truck_payload_lbs, passengersLbs: passengers_lbs ?? null, cargoLbs: cargo_lbs ?? null }), ...(projection ? { inventory_state: projection } : {}) };
           })
         : [];
+      // One combined answer per RV, worst first, from the same two checks.
+      const order = ["over_limit", "depends_on_truck_configuration", "not_yet_confirmed", "clears_checked_limits_tight", "clears_checked_limits_with_margin", "not_towable"];
+      const matches = resolution || payloadFits.length
+        ? unit_ids.map((id, idx) => towMatch(inv.byId.get(id)!, resolution ? fits[idx] : null, payloadFits.length ? payloadFits[idx] : null, { ratingIsExact: Boolean(resolution && (resolution.statedRatingLbs != null || resolution.learned)) }))
+            .sort((a, b) => order.indexOf(a.answer) - order.indexOf(b.answer))
+        : [];
       return textResult({
-        ...(payloadFits.length ? { payloadFits, payloadNote: "Tongue estimated at 10-15% of GVWR (loaded), not the published empty hitch weight. Payload usually runs out before tow rating." } : {}),
+        ...(matches.length ? { towMatch: matches, towMatchNote: "towMatch is the one-line answer per RV to 'can my truck tow this?', worst first. It combines the tow-rating and payload checks below using the weights published for that RV. 'clears_checked_limits' means only that; never tell the shopper it is safe, and always pass on stillToConfirm." } : {}),
+        ...(payloadFits.length ? { payloadFits, payloadNote: "Loaded tongue weight is estimated at 10-15% of GVWR for a bumper-pull trailer and pin weight at 15-25% for a fifth wheel, never below the published empty hitch weight. When the dealer does not publish GVWR the estimate uses dry weight and is understated, so it is never reported as a confident fit. Payload usually runs out before tow rating." } : {}),
         ...(resolution ? { resolution, fits } : {}),
         ...(motorhomeTow.length ? { motorhomeTow } : {}),
         safetyNotice: "Verify the exact vehicle configuration, weighed coach and axle loads, GVWR/GCWR, hitch and tongue limits, passengers and cargo before towing. Engine horsepower and torque do not override any weight limit.",
@@ -1187,7 +1195,8 @@ function buildMatchRvServer(): McpServer {
         ...(projection ? { inventory_state: projection } : {}),
         confirmation_token: prepared.confirmationToken,
         expiresAt: prepared.expiresAt,
-        next: "Show this full preview to the shopper. Only if they explicitly approve sending it, call send_dealer_inquiry with this confirmation_token and confirmed=true. If they want changes, call prepare_dealer_inquiry again.",
+        next: "Show this full preview to the shopper. Only if they explicitly approve sending it, call send_dealer_inquiry with this confirmation_token and confirmed=true. If they want changes, call prepare_dealer_inquiry again."
+          + (prepared.preview.request?.type === "hold_request" ? " This is a hold REQUEST: tell the shopper what preview.request.note says, and never say the RV is held or reserved unless the dealership confirms it." : ""),
       });
     },
   );

@@ -120,8 +120,52 @@ export interface InquiryPreview {
   message: string;
   /** Present only when the shopper ticked "Share my payment numbers with the dealer". */
   paymentEstimate?: PaymentEstimate | null;
+  /** What the shopper is asking for, read from their own message. Absent on inquiries stored before this field existed. */
+  request?: InquiryRequest;
   delivery: { channel: "dealer_email" | "matchrv_forward"; explanation: string };
   sendsNothingYet: true;
+}
+
+export type InquiryRequestType = "hold_request" | "availability_check" | "general";
+export interface InquiryRequest { type: InquiryRequestType; label: string; note: string }
+
+/**
+ * Read the request type from the shopper's own words. A hold wins over an
+ * availability question when a message asks for both.
+ */
+export function classifyInquiryRequest(message: string): InquiryRequestType {
+  const m = (message ?? "").toLowerCase();
+  // "hold"/"reserve" must be aimed at the RV ("hold it", "reserve this one"), so "what does the tank hold" is not a hold.
+  if (/\b(?:hold|reserve)\s+(?:it|this|that|one|onto|the\s+(?:rv|unit|trailer|camper|coach|motorhome|fifth wheel))\b|\bon hold\b|\b(?:place|put|request|get|want|like|need) (?:a|the) hold\b|\breservation\b|\bset (?:it|this|that|the rv) aside\b|\bput (?:down )?a deposit\b|\btake (?:it|this|that) off the market\b/.test(m)) return "hold_request";
+  if (/\bavailab(?:le|ility)\b|\bin stock\b|\bstill (?:for sale|there|on (?:the|your) lot|have)\b|\b(?:been|already) sold\b/.test(m)) return "availability_check";
+  return "general";
+}
+
+export function inquiryRequest(message: string, dealerName: string): InquiryRequest {
+  const type = classifyInquiryRequest(message);
+  if (type === "hold_request") {
+    return {
+      type, label: "Hold request",
+      note: `This asks ${dealerName} to hold the RV. It is a request only: MatchRV cannot place, confirm or guarantee a hold. Only the dealership can, on its own terms, and it may ask for a deposit. The RV can still sell to someone else until the dealership confirms the hold with the shopper.`,
+    };
+  }
+  if (type === "availability_check") {
+    return {
+      type, label: "Availability check",
+      note: `This asks ${dealerName} to confirm the RV is still available. Only the dealership's answer is current; MatchRV's listing shows what the dealer's site said when MatchRV last saw it.`,
+    };
+  }
+  return { type, label: "Inquiry", note: "A general question for the dealership." };
+}
+
+/** Request type for any inquiry, including ones stored before `request` existed. */
+function requestOf(p: InquiryPreview): InquiryRequest {
+  return p.request ?? inquiryRequest(p.message, p.dealer.name);
+}
+/** Subject / alert wording: "inquiry", "hold request" or "availability check". */
+function requestNoun(p: InquiryPreview): string {
+  const t = requestOf(p).type;
+  return t === "hold_request" ? "hold request" : t === "availability_check" ? "availability check" : "inquiry";
 }
 
 export interface DealerInquiry {
@@ -235,6 +279,7 @@ export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, messa
     shopper: contact,
     message,
     ...(paymentEstimate ? { paymentEstimate } : {}),
+    request: inquiryRequest(message, unit.dealer.name),
     delivery: route
       ? { channel: "dealer_email", explanation: `${unit.dealer.name} accepts MatchRV inquiries by email. After you confirm, MatchRV emails this exact message and your contact details to the dealership.` }
       : { channel: "matchrv_forward", explanation: `MatchRV does not have a direct inquiry connection with ${unit.dealer.name}. After you confirm, MatchRV stores the inquiry and its team forwards it to the dealership; the status will say queued until then.` },
@@ -473,7 +518,9 @@ function dealerEmailText(i: DealerInquiry): string {
   const s = i.preview.shopper; const u = i.preview.unit;
   const fitLines = formatFitLines(i.fit);
   return [
-    `New shopper inquiry via MatchRV (ref ${i.id})`, "",
+    `New shopper ${requestNoun(i.preview)} via MatchRV (ref ${i.id})`, "",
+    ...(requestOf(i.preview).type === "hold_request" ? ["The shopper is asking you to HOLD this RV. MatchRV has not promised a hold; whether to hold it, and on what terms, is your decision. Please confirm with the shopper directly.", ""] : []),
+    ...(requestOf(i.preview).type === "availability_check" ? ["The shopper is asking whether this RV is still available.", ""] : []),
     `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`,
     ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []), "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`, "",
@@ -491,9 +538,13 @@ export function formatInquiryForwardText(i: DealerInquiry): string {
   const fitLines = formatFitLines(i.fit);
   return [
     `To: ${d.name} (${d.city}, ${d.state})${d.website ? ` ${d.website}` : ""}`,
-    `Subject: MatchRV shopper inquiry: ${u.title} (stock ${u.stockNumber ?? "n/a"})`,
+    `Subject: MatchRV shopper ${requestNoun(p)}: ${u.title} (stock ${u.stockNumber ?? "n/a"})`,
     "",
-    `A shopper asked about this RV through MatchRV (ref ${i.id}).`,
+    requestOf(p).type === "hold_request"
+      ? `A shopper is asking you to hold this RV, through MatchRV (ref ${i.id}). MatchRV has not promised a hold; that decision and its terms are yours.`
+      : requestOf(p).type === "availability_check"
+        ? `A shopper is asking whether this RV is still available, through MatchRV (ref ${i.id}).`
+        : `A shopper asked about this RV through MatchRV (ref ${i.id}).`,
     `RV: ${u.title}`,
     `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Listed price: ${price}`,
     ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []),
@@ -529,7 +580,9 @@ function opsForwardPushBody(i: DealerInquiry): string {
   const firstName = i.preview.shopper.name.split(" ")[0];
   const u = i.preview.unit;
   const d = i.preview.dealer;
-  return `${i.id}: ${firstName} asked about ${u.title} (stock ${u.stockNumber ?? "n/a"}) at ${d.name}, ${d.city} ${d.state}. Full contact details in the ops inbox / GET /api/inquiries/ops/${i.id}.`;
+  const t = requestOf(i.preview).type;
+  const verb = t === "hold_request" ? "asked the dealer to HOLD" : t === "availability_check" ? "asked if still available:" : "asked about";
+  return `${i.id}: ${firstName} ${verb} ${u.title} (stock ${u.stockNumber ?? "n/a"}) at ${d.name}, ${d.city} ${d.state}. Full contact details in the ops inbox / GET /api/inquiries/ops/${i.id}.`;
 }
 
 function opsForwardEmailText(i: DealerInquiry, dealerDomain: string | null): string {
@@ -579,7 +632,7 @@ async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()):
   if (canEmailDealer && route) {
     d.channel = "dealer_email";
     try {
-      await transport.sendEmail({ to: route, subject: `MatchRV inquiry: ${unit.title} (stock ${unit.stockNumber ?? "n/a"})`, text: dealerEmailText(i), replyTo: i.preview.shopper.email });
+      await transport.sendEmail({ to: route, subject: `MatchRV ${requestNoun(i.preview)}: ${unit.title} (stock ${unit.stockNumber ?? "n/a"})`, text: dealerEmailText(i), replyTo: i.preview.shopper.email });
       d.dealerEmailAccepted = true;
       i.status = "delivered";
       i.statusDetail = deliveredDetail(unit.dealer.name);
@@ -602,7 +655,7 @@ async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()):
     d.error = [d.error, `ntfy_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
   });
   if (emailOn) {
-    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward inquiry ${i.id} to ${unit.dealer.name}`, text: opsForwardEmailText(i, unit.provenance.dealerDomain ?? null), replyTo: i.preview.shopper.email })
+    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward ${requestNoun(i.preview)} ${i.id} to ${unit.dealer.name}`, text: opsForwardEmailText(i, unit.provenance.dealerDomain ?? null), replyTo: i.preview.shopper.email })
       .then(() => { d.opsNotified.email = true; }, (err) => {
         opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
         d.error = [d.error, `ops_email_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
@@ -641,7 +694,7 @@ export async function attemptAuthorizedRetry(i: DealerInquiry, now: number, stil
     try {
       await transport.sendEmail({
         to: auth.dealerEmail,
-        subject: `MatchRV inquiry: ${i.preview.unit.title} (stock ${i.preview.unit.stockNumber ?? "n/a"})`,
+        subject: `MatchRV ${requestNoun(i.preview)}: ${i.preview.unit.title} (stock ${i.preview.unit.stockNumber ?? "n/a"})`,
         text: dealerEmailText(i),
         replyTo: i.preview.shopper.email,
       });
@@ -681,7 +734,7 @@ export async function attemptAuthorizedRetry(i: DealerInquiry, now: number, stil
       try {
         await transport.sendEmail({
           to: OPS_EMAIL,
-          subject: `[MatchRV] Forward inquiry ${i.id} to ${i.preview.dealer.name}`,
+          subject: `[MatchRV] Forward ${requestNoun(i.preview)} ${i.id} to ${i.preview.dealer.name}`,
           text: opsForwardEmailText(i, auth.dealerDomain),
           replyTo: i.preview.shopper.email,
         });

@@ -3,6 +3,7 @@
  * Used when DB_MODE === "none" (DISABLE_DB=1) so /browse and /api/listings
  * are not empty on the Render starter box that cannot run PGlite.
  */
+import { resolveCatalogUnitId } from "../lib/listing-public-id";
 import { getListingRows, type ListingRow } from "./outfitter-inventory";
 
 export type ListingQuery = Record<string, string | undefined>;
@@ -97,7 +98,8 @@ export function querySnapshotListings(q: ListingQuery): {
 }
 
 export function getSnapshotListingById(id: string): ListingRow | undefined {
-  return getListingRows().find((r) => String(r.id) === id);
+  const resolved = resolveCatalogUnitId(id);
+  return getListingRows().find((r) => String(r.id) === resolved);
 }
 
 /** Types the marketing site asks for with GET /api/listings?type=. */

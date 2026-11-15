@@ -29,7 +29,9 @@ interface SEOProps {
 export function SEO({ title, description, canonical, ogImage, jsonLd, noIndex, breadcrumbs, faqs, type = "website" }: SEOProps) {
   const fullTitle = title ? `${title.replace(/\s*[—|]\s*MatchRV(?: for Dealers)?$/, "")} — ${SITE_NAME}` : SITE_NAME;
   const image = ogImage || DEFAULT_OG_IMAGE;
-  const canonicalUrl = canonical ? `${BASE_URL}${canonical}` : undefined;
+  const canonicalUrl = canonical
+    ? (/^https?:\/\//i.test(canonical) ? canonical : `${BASE_URL}${canonical.startsWith("/") ? canonical : `/${canonical}`}`)
+    : undefined;
 
   const baseSchemas = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 

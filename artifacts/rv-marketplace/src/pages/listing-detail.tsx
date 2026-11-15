@@ -1,3 +1,4 @@
+import { publicListingId } from "@workspace/agent-core";
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
@@ -353,9 +354,10 @@ export function ListingDetail() {
     return [{ date: format(d, "MMM d"), price: p.price }];
   }) ?? [];
 
+  const publicId = publicListingId(String(listing.id));
   const listingUrl = typeof window !== "undefined"
-    ? `${window.location.origin}${import.meta.env.BASE_URL}listing/${listing.id}`
-    : `https://matchrv.com/listing/${listing.id}`;
+    ? `${window.location.origin}${import.meta.env.BASE_URL}listing/${publicId}`
+    : `https://matchrv.com/listing/${publicId}`;
 
   const siteOrigin = typeof window !== "undefined"
     ? `${window.location.origin}${import.meta.env.BASE_URL}`

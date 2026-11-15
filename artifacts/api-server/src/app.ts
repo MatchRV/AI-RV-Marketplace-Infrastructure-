@@ -11,6 +11,8 @@ import opsLeadsPage from "./routes/ops-leads-page";
 import { DB_MODE } from "@workspace/db";
 import { getInventory } from "./services/agent-inventory";
 import { injectListingIntoShell } from "./lib/listing-seo";
+import { decideListingRequest } from "./lib/listing-public-id";
+import { PRERENDER_PAGES } from "./lib/prerender-pages";
 import {
   renderSitemapIndex,
   renderCoreSitemap,
@@ -261,19 +263,9 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
 
   const liveCountPaths = new Set(["/", "/shop", "/mcp-setup"]);
   app.get(/^\/(?!api\/).*/, async (req: Request, res: Response) => {
-    const prerenderedPages: Record<string, string> = {
-      "/": "home",
-      "/for-dealers": "for-dealers",
-      "/visibility-report": "visibility-report",
-      "/visibility-solution": "visibility-solution",
-      "/lotai": "lotai",
-      "/mcp-setup": "mcp-setup",
-      "/about": "about",
-      "/contact": "contact",
-      "/privacy": "privacy",
-      "/terms": "terms",
-      "/book": "book",
-    };
+    const prerenderedPages: Record<string, string> = Object.fromEntries(
+      PRERENDER_PAGES.map((page) => [page.path, page.file]),
+    );
     const sendPage = async (html: string, status = 200) => {
       if (liveCountPaths.has(req.path)) res.setHeader("Cache-Control", "public, max-age=60");
       const body = await withLiveInventory(html);
@@ -298,13 +290,25 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
       } catch {
         /* keep raw */
       }
-      let unit = null;
+      let decision: ReturnType<typeof decideListingRequest> = { unitId: null, redirect: null };
       try {
-        unit = getInventory().byId.get(unitId) ?? null;
+        decision = decideListingRequest(unitId);
       } catch (err) {
         console.warn("[listing-seo] inventory unavailable:", err);
       }
-      const html = injectListingIntoShell(indexHtml, unit, unitId);
+      if (decision.redirect) {
+        res.redirect(301, decision.redirect);
+        return;
+      }
+      let unit = null;
+      if (decision.unitId) {
+        try {
+          unit = getInventory().byId.get(decision.unitId) ?? null;
+        } catch (err) {
+          console.warn("[listing-seo] inventory unavailable:", err);
+        }
+      }
+      const html = injectListingIntoShell(indexHtml, unit, decision.unitId ?? unitId);
       // Unknown id: still return the SPA shell (client route works) with noindex;
       // use 404 status so crawlers don't index ghosts.
       await sendPage(html, unit ? 200 : 404);

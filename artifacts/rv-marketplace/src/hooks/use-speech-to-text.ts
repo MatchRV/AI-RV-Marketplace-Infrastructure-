@@ -8,7 +8,9 @@ export type SpeechStatus = "idle" | "listening" | "unsupported";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SpeechRecognitionAPI: any =
-  (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null;
+  typeof window === "undefined"
+    ? null
+    : (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null;
 
 export function useSpeechToText({ onResult }: UseSpeechToTextOptions) {
   const [status, setStatus] = useState<SpeechStatus>(

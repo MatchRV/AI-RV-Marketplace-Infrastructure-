@@ -286,8 +286,9 @@ export function normalizeRecord(
     : "used";
 
   const statusRaw = String(rec.inventory_status ?? "").toLowerCase();
+  // `removed` is not a dealer state: a gone page is rejected above via `_removed_at` and leaves the active set.
   const status: CanonicalUnit["status"] =
-    statusRaw === "available" ? "available" : statusRaw === "pending" ? "pending" : "unknown";
+    statusRaw === "available" ? "available" : statusRaw === "pending" ? "pending" : statusRaw === "sold" ? "sold" : "unknown";
 
   const lastSeen = toStr(rec._last_seen) ?? toStr(rec.last_seen_at) ?? toStr(rec.scraped_at);
   const firstSeen = toStr(rec._first_seen) ?? lastSeen;

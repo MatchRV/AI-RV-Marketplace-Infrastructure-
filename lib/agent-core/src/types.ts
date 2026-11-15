@@ -20,6 +20,12 @@ export type FactSource =
 
 export type Confidence = "high" | "medium" | "low";
 
+/**
+ * How an InventoryState observation was confirmed. Closed set for the freshness
+ * projection. This is not `FactSource` and not a lead `source`.
+ */
+export type InventoryVerifiedVia = "listing_page" | "recheck" | "marketcheck";
+
 /** A fact with provenance. `value: null` means genuinely unknown. */
 export interface Fact<T> {
   value: T | null;
@@ -124,7 +130,11 @@ export interface CanonicalUnit {
    *  carries this flag. Absent = not stated. */
   destinationTrailer?: true;
   condition: Condition;
-  status: "available" | "pending" | "removed" | "unknown";
+  /**
+   * Dealer-stated availability. `removed` is legacy: the unit has left the active
+   * set, and it is not an InventoryState value. `sold` is the dealer sold label.
+   */
+  status: "available" | "pending" | "sold" | "removed" | "unknown";
 
   priceUsd: Fact<number>; // asking price (sale price when the dealer lists one)
   msrpUsd: Fact<number>;
@@ -174,6 +184,13 @@ export interface CanonicalUnit {
     harvestMethod?: string;
     /** What lastSeenAt measures, e.g. "marketcheck_last_seen_at" (MarketCheck's last crawl of the dealer listing) or "harvested_at". */
     lastSeenBasis?: string;
+    /**
+     * Optional explicit freshness anchor. Absent on the committed snapshot.
+     * When missing, readers project it from `lastSeenAt`. Never written by a request.
+     */
+    verifiedAt?: string;
+    /** Optional explicit confirmation path. Absent on the committed snapshot; readers project it from harvest method. */
+    verifiedVia?: InventoryVerifiedVia;
   };
 }
 

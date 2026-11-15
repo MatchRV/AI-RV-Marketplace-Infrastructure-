@@ -46,6 +46,7 @@ import {
 } from "@workspace/agent-core";
 import { resolveCatalogUnitId } from "./lib/listing-public-id";
 import { getScreenedInventory } from "./services/screened-inventory";
+import { inventoryFreshnessRecheckEnabled, listingDelta, recheckForRecommend, withheldToolPayload } from "./services/inventory-state-freshness";
 function getInventory() { return getScreenedInventory(); }
 
 import { OUTFITTER_GUIDANCE, SWIPE_BASICS_GUIDANCE, SWIPE_OR_CHAT_CHOICES, SWIPE_OR_CHAT_DESCRIPTION, SWIPE_OR_CHAT_GUIDANCE, SWIPE_OR_CHAT_OFFER, SWIPE_URL } from "./services/outfitter-guidance";
@@ -432,7 +433,12 @@ function mergeConstraints(...parts: Array<Partial<Constraints> | Constraints | u
 }
 
 /** All searches start with the nationwide corpus; the engine applies location filters. */
-function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] { return getInventory().units; }
+function candidateUnits(_locationPlace: string | undefined): CanonicalUnit[] {
+  // Flag off: the memoized screened snapshot (builtAt clock, applied once).
+  // Flag on: a fresh index read, screened again. No dealer fetch.
+  if (inventoryFreshnessRecheckEnabled()) return recheckForRecommend().units;
+  return getInventory().units;
+}
 
 const LATER_STEPS = new Set(["use", "activities", "vacation", "who_going", "buyers", "trade", "towing", "storage", "trips", "area"]);
 const TYPE_QUESTION = {
@@ -631,7 +637,9 @@ export function unitAvailability(unit: CanonicalUnit, snapshotBuiltAt: string | 
         ? `The dealer's site listed this RV as available when MatchRV last saw it${seenOn ? ` on ${seenOn}` : ""}. That is not a live stock check: say when it was last seen, and tell the shopper to confirm with the dealership (prepare_dealer_inquiry, only if they ask to contact the dealer).`
         : unit.status === "pending"
           ? `The dealer's site showed this RV as sale pending or on hold${seenOn ? ` on ${seenOn}` : ""}. Say so, and tell the shopper only the dealership can confirm whether it is still obtainable.`
-          : unit.status === "removed"
+          : unit.status === "sold"
+            ? `The dealer's site listed this RV as sold${seenOn ? ` on ${seenOn}` : ""}. Do not present it for sale.`
+            : unit.status === "removed"
             ? "This RV is no longer on the dealer's site as far as MatchRV can tell. Do not present it as available."
             : "The dealer does not publish availability for this RV. Say it is unknown; only the dealership can confirm.",
   };
@@ -902,12 +910,38 @@ function buildMatchRvServer(): McpServer {
         const corpus = applyMemory(scope, candidateUnits(place));
         const outcome = runSearch(corpus, constraints, learnedTow);
         const shortlistSize = Math.min(10, Math.max(1, input.limit ?? SHORTLIST_DEFAULT));
-        const ranked = diversifyShortlist(shortlistOrder(outcome.results), shortlistSize);
+        let ranked = diversifyShortlist(shortlistOrder(outcome.results), shortlistSize);
+        // Second index read, immediately before rows are returned. Flag off skips it.
+        const fresh = inventoryFreshnessRecheckEnabled() ? recheckForRecommend() : null;
+        const projections = new Map<string, ReturnType<NonNullable<typeof fresh>["project"]>>();
+        const deltas = new Map<string, NonNullable<ReturnType<typeof listingDelta>>>();
+        if (fresh) {
+          const rebuilt: UnitMatch[] = [];
+          for (const match of ranked) {
+            const current = fresh.byId.get(match.unit.id);
+            if (!current) continue;
+            const delta = listingDelta(match.unit, current);
+            if (delta) deltas.set(current.id, delta);
+            const projection = fresh.project(current);
+            if (projection) projections.set(current.id, projection);
+            rebuilt.push({ ...match, unit: applyMemoryToUnit(scope, current) });
+          }
+          ranked = rebuilt;
+        }
         const compact = compactSearchResult({ ...outcome, results: ranked }, shortlistSize);
         const towable = isTowableSearch(profile) || Boolean(profile.rvTypes?.some((t) => (TOWED_RV_TYPES as readonly string[]).includes(t)));
         const shortlist = (compact.results as Record<string, unknown>[]).map((row, i) => {
-          const walkthrough = ranked[i] ? walkthroughFor(ranked[i].unit) : null;
-          return { ...row, ...towFitFlag(ranked[i], { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }), ...(walkthrough ? { walkthrough } : {}) };
+          const match = ranked[i];
+          const walkthrough = match ? walkthroughFor(match.unit) : null;
+          const projection = match ? projections.get(match.unit.id) : undefined;
+          const delta = match ? deltas.get(match.unit.id) : undefined;
+          return {
+            ...row,
+            ...towFitFlag(match, { towVehicleGiven: Boolean(constraints.towVehicle), towVehicleUnknown, towable }),
+            ...(walkthrough ? { walkthrough } : {}),
+            ...(projection ? { inventory_state: projection } : {}),
+            ...(delta ? { listing_changed: delta } : {}),
+          };
         });
         const compactCoverage = (compact as Record<string, any>).coverage ?? {};
         const refine = refineHint({
@@ -919,7 +953,7 @@ function buildMatchRvServer(): McpServer {
         });
         const { funnel, coverage, note: _note, results: _r, ...rest } = compact as Record<string, any>;
         const makeModelSummary = wantsMakeModel ? makeModelCount(corpus, constraints) : null;
-        const inventoryQuality = getInventory().inventoryQuality;
+        const inventoryQuality = fresh ? fresh.inventoryQuality : getInventory().inventoryQuality;
         const ms = Math.round(performance.now() - t0);
         // Totals stay out of the shopper-facing payload (the model sees
         // content + structuredContent). They ride in _meta for the widget/logs.
@@ -991,6 +1025,30 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_id, session_key }, ctx) => {
+      if (inventoryFreshnessRecheckEnabled()) {
+        const fresh = recheckForRecommend();
+        // Slug resolution reads the committed snapshot. Skip it when this id is
+        // already in the recheck index so a fixture never loads that file.
+        const resolved = fresh.byId.has(unit_id) || fresh.withheld.has(unit_id) ? unit_id : resolveCatalogUnitId(unit_id);
+        const raw = fresh.byId.get(resolved);
+        if (!raw) {
+          const held = fresh.withheld.get(resolved);
+          if (held) return textResult(withheldToolPayload(held), true);
+          return textResult({ error: "unit_not_found", guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
+        }
+        const unit = applyMemoryToUnit(resolveScope(ctx, session_key), raw);
+        const projection = fresh.project(raw);
+        const powertrainAndTowing = powertrainReport(unit);
+        const walkthrough = walkthroughFor(unit);
+        return textResult({
+          unit,
+          availability: unitAvailability(unit, fresh.snapshot.builtAt),
+          ...(projection ? { inventory_state: projection } : {}),
+          ...(powertrainAndTowing ? { powertrainAndTowing } : {}),
+          ...(walkthrough ? { walkthrough } : {}),
+          dataset: { builtAt: fresh.snapshot.builtAt, note: fresh.snapshot.datasetNote },
+        });
+      }
       const inv = getInventory();
       // Accept the public slug used in the sitemap as well as the stored id.
       // Schema and description are unchanged; this only resolves the lookup.
@@ -1015,14 +1073,29 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ unit_ids, constraints, session_key }, ctx) => {
-      const inv = getInventory();
+      const fresh = inventoryFreshnessRecheckEnabled() ? recheckForRecommend() : null;
+      const inv = fresh ?? getInventory();
       const scope = resolveScope(ctx, session_key);
       const units = unit_ids.map((id) => { const u = inv.byId.get(id); return u ? applyMemoryToUnit(scope, u) : u; });
       const missing = unit_ids.filter((_id, index) => !units[index]);
-      if (missing.length) return textResult({ error: "unit_not_found", unit_ids: missing }, true);
+      if (missing.length) {
+        if (fresh) {
+          return textResult({
+            error: "unit_not_current",
+            unit_ids: missing,
+            withheld: missing.map((id) => {
+              const held = fresh.withheld.get(id);
+              return held ? { unit_id: id, ...withheldToolPayload(held) } : { unit_id: id, error: "unit_not_found" };
+            }),
+            guidance: "One or more RVs are not in the current recommendable set. Do not present a withheld RV for sale.",
+          }, true);
+        }
+        return textResult({ error: "unit_not_found", unit_ids: missing }, true);
+      }
       try {
         const typedUnits = units.filter((u): u is NonNullable<typeof u> => Boolean(u));
-        return textResult({ comparison: compareUnits(typedUnits, cleanConstraints(constraints)), units: typedUnits });
+        const inventory_state = fresh ? typedUnits.map((unit) => fresh.project(unit)).filter((row) => row != null) : null;
+        return textResult({ comparison: compareUnits(typedUnits, cleanConstraints(constraints)), units: typedUnits, ...(inventory_state ? { inventory_state } : {}) });
       } catch (error) {
         return textResult({ error: "compare_failed", detail: error instanceof Error ? error.message : String(error) }, true);
       }
@@ -1040,7 +1113,8 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ vehicle, unit_ids, trailer_weight_lbs, trailer_tongue_lbs, coach_loaded_weight_lbs, truck_payload_lbs, passengers_lbs, cargo_lbs, session_key }, ctx) => {
-      const inv = getInventory();
+      const fresh = inventoryFreshnessRecheckEnabled() ? recheckForRecommend() : null;
+      const inv = fresh ?? getInventory();
       // READ-ONLY: a rating stated here is used for this answer only, never stored.
       const scope = resolveScope(ctx, session_key);
       const explicitResolution = vehicle ? resolveTowVehicle(vehicle) : null;
@@ -1052,14 +1126,22 @@ function buildMatchRvServer(): McpServer {
       const motorhomeTow = [];
       for (const id of unit_ids) {
         const unit = inv.byId.get(id);
-        if (!unit) return textResult({ error: "unit_not_found", unit_id: id }, true);
-        if (resolution) fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title });
-        if (trailer_weight_lbs) motorhomeTow.push({ ...evaluateMotorhomeTow(unit, trailer_weight_lbs, { tongueLbs: trailer_tongue_lbs, coachLoadedLbs: coach_loaded_weight_lbs }), title: unit.title });
+        if (!unit) {
+          if (fresh) {
+            const held = fresh.withheld.get(id);
+            if (held) return textResult({ ...withheldToolPayload(held), unit_id: id }, true);
+          }
+          return textResult({ error: "unit_not_found", unit_id: id }, true);
+        }
+        const projection = fresh?.project(unit) ?? null;
+        if (resolution) fits.push({ ...evaluateTowFit(unit, resolution), unit_id: id, title: unit.title, ...(projection ? { inventory_state: projection } : {}) });
+        if (trailer_weight_lbs) motorhomeTow.push({ ...evaluateMotorhomeTow(unit, trailer_weight_lbs, { tongueLbs: trailer_tongue_lbs, coachLoadedLbs: coach_loaded_weight_lbs }), title: unit.title, ...(projection ? { inventory_state: projection } : {}) });
       }
       const payloadFits = truck_payload_lbs != null
         ? unit_ids.map((id) => {
             const unit = inv.byId.get(id)!;
-            return { unit_id: id, title: unit.title, ...evaluatePayloadFit(unit, { truckPayloadLbs: truck_payload_lbs, passengersLbs: passengers_lbs ?? null, cargoLbs: cargo_lbs ?? null }) };
+            const projection = fresh?.project(unit) ?? null;
+            return { unit_id: id, title: unit.title, ...evaluatePayloadFit(unit, { truckPayloadLbs: truck_payload_lbs, passengersLbs: passengers_lbs ?? null, cargoLbs: cargo_lbs ?? null }), ...(projection ? { inventory_state: projection } : {}) };
           })
         : [];
       return textResult({
@@ -1087,13 +1169,22 @@ function buildMatchRvServer(): McpServer {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async (input) => {
-      const unit = getInventory().byId.get(input.unit_id);
-      if (!unit) return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
+      const fresh = inventoryFreshnessRecheckEnabled() ? recheckForRecommend() : null;
+      const unit = fresh ? fresh.byId.get(input.unit_id) : getInventory().byId.get(input.unit_id);
+      if (!unit) {
+        if (fresh) {
+          const held = fresh.withheld.get(input.unit_id);
+          if (held) return textResult(withheldToolPayload(held), true);
+        }
+        return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
+      }
       const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message });
       if (!prepared.ok) return textResult({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
+      const projection = fresh?.project(unit) ?? null;
       return textResult({
         status: "preview_only_nothing_sent",
         preview: prepared.preview,
+        ...(projection ? { inventory_state: projection } : {}),
         confirmation_token: prepared.confirmationToken,
         expiresAt: prepared.expiresAt,
         next: "Show this full preview to the shopper. Only if they explicitly approve sending it, call send_dealer_inquiry with this confirmation_token and confirmed=true. If they want changes, call prepare_dealer_inquiry again.",
@@ -1124,7 +1215,7 @@ function buildMatchRvServer(): McpServer {
         scope: scope.id,
         analyticsSource: "mcp",
         fitHint: recallFit(scope) ?? null,
-        lookupUnit: (id) => getInventory().byId.get(id),
+        lookupUnit: (id) => inventoryFreshnessRecheckEnabled() ? recheckForRecommend().byId.get(id) : getInventory().byId.get(id),
       });
       if (!result.ok) return textResult({ error: result.code, guidance: result.guidance, sent: false, ...(result.code === "writes_frozen" ? { retryable: true } : {}) }, true);
       return textResult({

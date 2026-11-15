@@ -100,6 +100,8 @@ describe("normalizeRecord", () => {
   it("rejects removed, typeless, and implausible records with reasons", () => {
     const removed = normalizeRecord("k", { ...baseRecord, _removed_at: "2026-05-01" });
     expect("reject" in removed && removed.reject.reason).toBe("removed_from_dealer_site");
+    const sold = normalizeRecord("k", { ...baseRecord, inventory_status: "sold" });
+    expect("unit" in sold && sold.unit.status).toBe("sold");
     const typeless = normalizeRecord("k", { ...baseRecord, rv_type: null, title: "Selkirk RV" });
     expect("reject" in typeless && typeless.reject.reason).toBe("unresolvable_rv_type");
     const badPrice = normalizeRecord("k", { ...baseRecord, price: 500, sale_price: null });

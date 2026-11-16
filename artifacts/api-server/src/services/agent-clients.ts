@@ -23,8 +23,13 @@ import { DataDirFrozenError, isDataDirFrozen } from "./data-dir-freeze";
 export type AgentScope = "read" | "inquiry";
 export const AGENT_SCOPES: readonly AgentScope[] = ["read", "inquiry"];
 
-export interface AgentClientLimits { requestsPerMinute: number; inquiriesPerHour: number }
-export const DEFAULT_AGENT_LIMITS: AgentClientLimits = { requestsPerMinute: 120, inquiriesPerHour: 30 };
+export interface AgentClientLimits {
+  requestsPerMinute: number;
+  inquiriesPerHour: number;
+  /** Unit records (search rows, details, compared units) served per UTC day on /mcp/v1. */
+  unitsPerDay: number;
+}
+export const DEFAULT_AGENT_LIMITS: AgentClientLimits = { requestsPerMinute: 120, inquiriesPerHour: 30, unitsPerDay: 5000 };
 
 export interface AgentClient {
   id: string;
@@ -85,7 +90,8 @@ function persist(): void {
 
 function toPublic(c: AgentClient): PublicAgentClient {
   const { keyHash: _keyHash, ...rest } = c;
-  return { ...rest, lastUsedOn: lastUsed.get(c.id) ?? null };
+  // Keys stored before a limit existed get its default.
+  return { ...rest, limits: { ...DEFAULT_AGENT_LIMITS, ...rest.limits }, lastUsedOn: lastUsed.get(c.id) ?? null };
 }
 
 function cleanLimits(raw: unknown): AgentClientLimits {
@@ -95,6 +101,7 @@ function cleanLimits(raw: unknown): AgentClientLimits {
   return {
     requestsPerMinute: int(r.requestsPerMinute, 1, 6000, DEFAULT_AGENT_LIMITS.requestsPerMinute),
     inquiriesPerHour: int(r.inquiriesPerHour, 0, 1000, DEFAULT_AGENT_LIMITS.inquiriesPerHour),
+    unitsPerDay: int(r.unitsPerDay, 0, 1_000_000, DEFAULT_AGENT_LIMITS.unitsPerDay),
   };
 }
 

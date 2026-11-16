@@ -1,5 +1,6 @@
 import { runSearch, type CanonicalUnit, type Constraints, type Fact } from "@workspace/agent-core";
 import { getInventory } from "./agent-inventory";
+import { getScreenedInventory } from "./screened-inventory";
 
 const published = (fact: Fact<number>) => fact.value !== null && fact.value > 0 && (fact.source === "dealer_listing" || fact.source === "derived_text");
 /** Motorhomes are not towables. A missing GVWR/dry weight stays unknown; it does not hide the coach. */
@@ -25,7 +26,8 @@ export function isSearchReady(unit: CanonicalUnit): boolean {
     unit.images.some(usablePhotoUrl);
 }
 
-export const readyUnits = () => getInventory().units.filter(isSearchReady);
+/** Complete listings from the screened inventory (records held for age, price or a category conflict are not searchable). */
+export const readyUnits = () => getScreenedInventory().units.filter(isSearchReady);
 const photoCache = new Map<string, { expires: number; ok: boolean }>();
 
 export async function checkPhoto(url: string): Promise<boolean> {

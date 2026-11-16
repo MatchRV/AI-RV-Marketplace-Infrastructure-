@@ -21,7 +21,7 @@ and billing flag all agree.
 All ops routes need `Authorization: Bearer <INQUIRY_OPS_KEY>`.
 
 ```
-POST /api/attribution/ops/clients             {"name":"Acme Trip Planner","scopes":["read","inquiry"],"limits":{"requestsPerMinute":120,"inquiriesPerHour":30}}
+POST /api/attribution/ops/clients             {"name":"Acme Trip Planner","scopes":["read","inquiry"],"limits":{"requestsPerMinute":120,"inquiriesPerHour":30,"unitsPerDay":5000}}
 GET  /api/attribution/ops/clients
 POST /api/attribution/ops/clients/<id>/revoke
 ```
@@ -30,6 +30,7 @@ POST /api/attribution/ops/clients/<id>/revoke
 - Partners send it as `Authorization: Bearer <key>` (or `X-MatchRV-Key`). An optional `X-MatchRV-Session`
   header ties one conversation's calls together.
 - Scopes: `read` (default) and `inquiry` (may send dealer inquiries).
+- The same key works on the partner endpoint `/mcp/v1`, where it is required. See `docs/MCP_V1.md`.
 - Revoking is immediate and permanent. To rotate, create a new key, move the partner over, revoke the old one.
 - On `/mcp` a missing or rejected key never blocks a request. A rejected key gets the response header
   `X-MatchRV-Key-Status: rejected` and is counted as unverified or anonymous.

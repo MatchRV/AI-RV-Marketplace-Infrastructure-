@@ -6,6 +6,7 @@ import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { matchRvMcpNodeHandler } from "./mcp";
+import { matchRvMcpV1NodeHandler } from "./mcp-v1";
 import { getMcpDocsHtml } from "./lib/mcp-docs";
 import opsLeadsPage from "./routes/ops-leads-page";
 import { DB_MODE } from "@workspace/db";
@@ -60,6 +61,8 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 app.all("/mcp", matchRvMcpNodeHandler);
+// Keyed endpoint for third-party agents. A separate server: nothing here changes /mcp. 404 until AGENT_V1_ENABLED is set.
+app.all("/mcp/v1", matchRvMcpV1NodeHandler);
 // Public MCP documentation (static, server-rendered HTML; no JS). Registered
 // before express.static and the SPA catch-all so crawlers get real content.
 app.get(["/mcp-docs", "/mcp-docs/"], async (_req: Request, res: Response) => {

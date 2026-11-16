@@ -26,7 +26,15 @@ import {
   toInputSchema,
   type Constraints,
 } from "@workspace/agent-core";
-import { getInventory } from "../services/agent-inventory";
+import { getInventory as getFullInventory } from "../services/agent-inventory";
+import { getScreenedInventory } from "../services/screened-inventory";
+
+/**
+ * Unit lookups use the screened inventory, the same view /mcp and /mcp/v1 serve: listings held back for age,
+ * an implausible price or a category conflict are not returned here either. /agent/meta still reports the
+ * full snapshot totals.
+ */
+const getInventory = () => getScreenedInventory();
 import { readyUnits, searchReadyInventory, SEARCHABLE_UNITS_NOTE } from "../services/search-ready";
 import { agentMetricsSnapshot, timedAgentOp } from "../services/agent-metrics";
 import { liveDealerInventoryStatus, normalizeDealerDomain } from "../services/dealer-inventory-status";
@@ -65,7 +73,7 @@ const searchBody = z.object({
 // ── Meta / observability ───────────────────────────────────────────────────
 
 router.get("/agent/meta", (_req: Request, res: Response) => {
-  const inv = getInventory();
+  const inv = getFullInventory();
   res.json({
     dataset: {
       units: inv.units.length,

@@ -1148,7 +1148,13 @@ function buildMatchRvServer(): McpServer {
       // One combined answer per RV, worst first, from the same two checks.
       const order = ["over_limit", "depends_on_truck_configuration", "not_yet_confirmed", "clears_checked_limits_tight", "clears_checked_limits_with_margin", "not_towable"];
       const matches = resolution || payloadFits.length
-        ? unit_ids.map((id, idx) => towMatch(inv.byId.get(id)!, resolution ? fits[idx] : null, payloadFits.length ? payloadFits[idx] : null, { ratingIsExact: Boolean(resolution && (resolution.statedRatingLbs != null || resolution.learned)) }))
+        ? unit_ids.map((id, idx) => {
+            const unit = inv.byId.get(id)!;
+            const match = towMatch(unit, resolution ? fits[idx] : null, payloadFits.length ? payloadFits[idx] : null, { ratingIsExact: Boolean(resolution && (resolution.statedRatingLbs != null || resolution.learned)) });
+            // Same additive projection as fits/payloadFits; only present with INVENTORY_STATE_FRESHNESS on.
+            const projection = fresh?.project(unit) ?? null;
+            return projection ? { ...match, inventory_state: projection } : match;
+          })
             .sort((a, b) => order.indexOf(a.answer) - order.indexOf(b.answer))
         : [];
       return textResult({

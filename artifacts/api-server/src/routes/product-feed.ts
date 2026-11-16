@@ -1,14 +1,17 @@
 /**
  * Key-protected product feed for OpenAI's merchant portal ("hosted URL" delivery).
  *
- *   GET /feeds/openai-products.jsonl?key=…        JSON Lines
- *   GET /feeds/openai-products.jsonl.gz?key=…     the same, gzip file
- *   GET /feeds/openai-products.meta.json?key=…    row counts, for checking a delivery
- *   GET /feeds/{key}/openai-products.jsonl[.gz]   same feed, key in the path
+ *   GET /feeds/openai-products.jsonl          JSON Lines
+ *   GET /feeds/openai-products.jsonl.gz       the same, gzip file
+ *   GET /feeds/openai-products.meta.json      row counts, for checking a delivery
+ *
+ * Every request must send `Authorization: Bearer <PRODUCT_FEED_KEY>`. The key is
+ * never accepted in the path or the query string: URLs end up in request logs
+ * (ours and Render's access log), headers do not.
  *
  * The feed is the whole inventory in one file, so it is off until
- * PRODUCT_FEED_KEY is set (every path answers 404), and a wrong key also
- * answers 404 so the URL does not reveal that a feed exists.
+ * PRODUCT_FEED_KEY is set (every path answers 404), and a missing or wrong key
+ * also answers 404 so the URL does not reveal that a feed exists.
  * Responses are never cached: a shared cache must not serve the file to a
  * request that did not present the key.
  */
@@ -17,7 +20,9 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 import { Router, type Request, type Response } from "express";
+import type { CanonicalUnit } from "@workspace/agent-core";
 import { emptyFeedStats, feedLines, feedStats } from "../lib/product-feed";
+import { inventoryFreshnessRecheckEnabled, recheckForRecommend } from "../services/inventory-state-freshness";
 import { getScreenedInventory } from "../services/screened-inventory";
 
 const router = Router();
@@ -33,9 +38,25 @@ export function feedKeyValid(presented: unknown, configured = process.env.PRODUC
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function presentedKey(req: Request): unknown {
-  const fromPath = req.params.key;
-  return (Array.isArray(fromPath) ? fromPath[0] : fromPath) ?? req.query.key;
+/** The key from `Authorization: Bearer <key>`. Nothing else is read: not the path, not the query string. */
+export function presentedKey(req: Pick<Request, "get">): string | undefined {
+  const m = /^Bearer[ \t]+(\S+)[ \t]*$/i.exec(req.get("authorization") ?? "");
+  return m?.[1];
+}
+
+/**
+ * The units the feed publishes. With INVENTORY_STATE_FRESHNESS on, this is the
+ * request-time recheck the MCP tools use, so units MCP holds back (unknown
+ * dealer state, sold, left the active set, stale by the recheck's clock) are
+ * held back here too. With it off, the process-start screened inventory, as before.
+ */
+export function feedInventory(): { units: readonly CanonicalUnit[]; snapshot?: { builtAt?: string } | null } {
+  if (inventoryFreshnessRecheckEnabled()) {
+    const fresh = recheckForRecommend();
+    return { units: fresh.units, snapshot: fresh.snapshot };
+  }
+  const inv = getScreenedInventory();
+  return { units: inv.units, snapshot: inv.snapshot };
 }
 
 function guard(req: Request, res: Response): boolean {
@@ -48,7 +69,7 @@ function guard(req: Request, res: Response): boolean {
 
 async function sendFeed(req: Request, res: Response, gzip: boolean): Promise<void> {
   if (!guard(req, res)) return;
-  const inv = getScreenedInventory();
+  const inv = feedInventory();
   const builtAt = Date.parse(inv.snapshot?.builtAt ?? "");
   if (Number.isFinite(builtAt)) res.setHeader("Last-Modified", new Date(builtAt).toUTCString());
   const source = Readable.from(feedLines(inv.units, emptyFeedStats()));
@@ -70,21 +91,26 @@ async function sendFeed(req: Request, res: Response, gzip: boolean): Promise<voi
 
 function sendMeta(req: Request, res: Response): void {
   if (!guard(req, res)) return;
-  const inv = getScreenedInventory();
+  const inv = feedInventory();
   res.json({
     format: "OpenAI product feed, JSON Lines",
     schema: "https://developers.openai.com/commerce/specs/file-upload/products",
     inventoryBuiltAt: inv.snapshot?.builtAt ?? null,
+    inventoryRecheck: inventoryFreshnessRecheckEnabled(),
     ...feedStats(inv.units),
-    note: "Price and availability are what each dealer's site showed when MatchRV last saw the unit. Rows missing a price, image, brand or title are left out, as are units the dealer has taken down.",
+    note: "Price and availability are what each dealer's site showed when MatchRV last saw the unit. Rows missing a price, image, brand or title are left out, as are units the dealer has taken down or marked sold.",
   });
 }
 
 router.get("/feeds/openai-products.jsonl", (req, res) => void sendFeed(req, res, false));
 router.get("/feeds/openai-products.jsonl.gz", (req, res) => void sendFeed(req, res, true));
 router.get("/feeds/openai-products.meta.json", sendMeta);
-router.get("/feeds/:key/openai-products.jsonl", (req, res) => void sendFeed(req, res, false));
-router.get("/feeds/:key/openai-products.jsonl.gz", (req, res) => void sendFeed(req, res, true));
-router.get("/feeds/:key/openai-products.meta.json", sendMeta);
+// Anything else under /feeds/ (including the old /feeds/<key>/… form) is a plain 404,
+// not the website's page fallback.
+router.all(/^\/feeds(?:\/|$)/i, (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  res.status(404).type("text/plain").send("not found");
+});
 
 export default router;

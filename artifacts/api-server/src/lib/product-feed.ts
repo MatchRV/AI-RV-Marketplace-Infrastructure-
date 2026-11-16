@@ -14,7 +14,7 @@ import type { CanonicalUnit } from "@workspace/agent-core";
 import { listingCanonicalUrl } from "./listing-seo";
 import { dealerDisplayName } from "./unit-insights";
 
-export type FeedSkipReason = "removed" | "no_price" | "no_image" | "no_brand" | "no_title";
+export type FeedSkipReason = "removed" | "sold" | "no_price" | "no_image" | "no_brand" | "no_title";
 
 export interface ProductFeedRow {
   item_id: string;
@@ -75,6 +75,9 @@ function factualDescription(unit: CanonicalUnit, seller: string): string {
 
 export function buildFeedRow(unit: CanonicalUnit): { row: ProductFeedRow } | { skip: FeedSkipReason } {
   if (unit.status === "removed") return { skip: "removed" };
+  // A sold unit is not offered for sale, whatever flags are on. Without this it
+  // would fall through to availability "unknown".
+  if (unit.status === "sold") return { skip: "sold" };
   const title = plain(unit.title ?? "", 150);
   if (!title) return { skip: "no_title" };
   const brand = plain(unit.make ?? "", 70);
@@ -123,7 +126,7 @@ export function* feedLines(units: Iterable<CanonicalUnit>, stats?: FeedStats): G
 }
 
 export function emptyFeedStats(): FeedStats {
-  return { rows: 0, skipped: { removed: 0, no_price: 0, no_image: 0, no_brand: 0, no_title: 0 }, availability: { in_stock: 0, out_of_stock: 0, unknown: 0 } };
+  return { rows: 0, skipped: { removed: 0, sold: 0, no_price: 0, no_image: 0, no_brand: 0, no_title: 0 }, availability: { in_stock: 0, out_of_stock: 0, unknown: 0 } };
 }
 
 export function feedStats(units: Iterable<CanonicalUnit>): FeedStats {

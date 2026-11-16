@@ -283,6 +283,25 @@ describe("replayable freshness fixtures", () => {
     expect(preview.data.error).toBe("unit_sold");
   });
 
+  it("adds inventory_state to each towMatch entry only when the recheck is on", async () => {
+    enableRecheck();
+    const subject = unit({ id: "fixture:tow-match", title: "2018 Jayco Fixture Flight 21B", status: "available" });
+    useInventoryIndexSource(scripted([asIndex([subject])]));
+    const on = await tool("evaluate_tow_fit", { vehicle: "F-150 rated 11,000 lbs", unit_ids: [subject.id], truck_payload_lbs: 2000 });
+    expect(on.result.isError).toBeFalsy();
+    expect(on.data.towMatch).toHaveLength(1);
+    expect(on.data.towMatch[0].unit_id).toBe(subject.id);
+    expect(on.data.towMatch[0].inventory_state).toMatchObject({ state: "available", freshness: "current" });
+
+    delete process.env.INVENTORY_STATE_FRESHNESS;
+    resetInventoryIndexSource();
+    const { getScreenedInventory } = await import("../src/services/screened-inventory");
+    const real = getScreenedInventory().units.find((row) => row.rvType === "travel_trailer")!;
+    const off = await tool("evaluate_tow_fit", { vehicle: "F-150 rated 11,000 lbs", unit_ids: [real.id], truck_payload_lbs: 2000 });
+    expect(off.data.towMatch).toHaveLength(1);
+    expect(off.data.towMatch[0].inventory_state).toBeUndefined();
+  });
+
   it("uses the re-read price and status, not the first retrieval", async () => {
     enableRecheck();
     const firstUnit = unit({ id: "fixture:price-change", title: "2018 Jayco Fixture Flight 21B", priceUsd: fact(42000), status: "available" });

@@ -175,11 +175,20 @@ const AI_CRAWLERS = [
   "Applebot-Extended", "CCBot",
 ];
 
+/**
+ * Path as written to the crawler log. Anything under /feeds/ is cut to the
+ * prefix: feed URLs are key-protected, and no secret-looking path segment
+ * should ever reach a log line.
+ */
+export function loggablePath(path: string): string {
+  return /^\/feeds(?:\/|$)/i.test(path) ? "/feeds/[redacted]" : path;
+}
+
 app.use((req: Request, _res: Response, next: NextFunction) => {
   const ua = req.get("user-agent") || "";
   const matched = AI_CRAWLERS.find(bot => ua.toLowerCase().includes(bot.toLowerCase()));
   if (matched) {
-    console.log(`[ai-crawler] ${matched} — ${req.method} ${req.path} — ${new Date().toISOString()}`);
+    console.log(`[ai-crawler] ${matched} — ${req.method} ${loggablePath(req.path)} — ${new Date().toISOString()}`);
   }
   next();
 });

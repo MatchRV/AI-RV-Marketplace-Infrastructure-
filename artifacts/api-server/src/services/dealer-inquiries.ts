@@ -132,12 +132,17 @@ export interface InquiryRequest { type: InquiryRequestType; label: string; note:
 /**
  * Read the request type from the shopper's own words. A hold wins over an
  * availability question when a message asks for both.
+ *
+ * "On hold" alone is not a request: "Is it on hold?" asks about the unit's
+ * status. It counts as a hold request only after a verb asking the dealer to
+ * do it ("put it on hold", "place this unit on hold", "keep it on hold for me"),
+ * within the same sentence. Any other "on hold" is an availability check.
  */
 export function classifyInquiryRequest(message: string): InquiryRequestType {
   const m = (message ?? "").toLowerCase();
   // "hold"/"reserve" must be aimed at the RV ("hold it", "reserve this one"), so "what does the tank hold" is not a hold.
-  if (/\b(?:hold|reserve)\s+(?:it|this|that|one|onto|the\s+(?:rv|unit|trailer|camper|coach|motorhome|fifth wheel))\b|\bon hold\b|\b(?:place|put|request|get|want|like|need) (?:a|the) hold\b|\breservation\b|\bset (?:it|this|that|the rv) aside\b|\bput (?:down )?a deposit\b|\btake (?:it|this|that) off the market\b/.test(m)) return "hold_request";
-  if (/\bavailab(?:le|ility)\b|\bin stock\b|\bstill (?:for sale|there|on (?:the|your) lot|have)\b|\b(?:been|already) sold\b/.test(m)) return "availability_check";
+  if (/\b(?:hold|reserve)\s+(?:it|this|that|one|onto|the\s+(?:rv|unit|trailer|camper|coach|motorhome|fifth wheel))\b|\b(?:put|place|keep)\b[^.?!\n]{0,40}?\bon hold\b|\b(?:place|put|request|get|want|like|need) (?:a|the) hold\b|\breservation\b|\bset (?:it|this|that|the rv) aside\b|\bput (?:down )?a deposit\b|\btake (?:it|this|that) off the market\b/.test(m)) return "hold_request";
+  if (/\bavailab(?:le|ility)\b|\bin stock\b|\bstill (?:for sale|there|on (?:the|your) lot|have)\b|\b(?:been|already) sold\b|\bon hold\b/.test(m)) return "availability_check";
   return "general";
 }
 

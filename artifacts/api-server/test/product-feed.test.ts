@@ -1,16 +1,49 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { gunzipSync } from "node:zlib";
-import type { CanonicalUnit } from "@workspace/agent-core";
-import app from "../src/app";
+import type { CanonicalUnit, InventoryIndex } from "@workspace/agent-core";
+import app, { loggablePath } from "../src/app";
 import { buildFeedRow, feedLines, feedStats } from "../src/lib/product-feed";
-import { feedKeyValid } from "../src/routes/product-feed";
+import { feedInventory, feedKeyValid, presentedKey } from "../src/routes/product-feed";
+import { resetInventoryIndexSource, useInventoryIndexSource } from "../src/services/inventory-index-source";
 import { getScreenedInventory } from "../src/services/screened-inventory";
 
 const units = () => getScreenedInventory().units as CanonicalUnit[];
 const good = () => structuredClone(units().find((u) => u.status === "available" && (u.priceUsd.value ?? 0) > 0 && /^https:/.test(u.images[0] ?? "") && u.make)!);
 const KEY = "test-feed-key-0123456789abcdef";
+const bearer = (key: string) => ({ headers: { Authorization: `Bearer ${key}` } });
+
+/** An in-memory index of real units, so the freshness recheck never reads the committed snapshot's state. */
+function fixtureIndex(rows: CanonicalUnit[], builtAt: string): InventoryIndex {
+  const byState = new Map<string, CanonicalUnit[]>();
+  for (const row of rows) {
+    const key = (row.dealer.state || "??").toUpperCase();
+    byState.set(key, [...(byState.get(key) ?? []), row]);
+  }
+  return {
+    snapshot: { schemaVersion: 1, builtAt, datasetNote: "product feed fixture", stats: { rawRecords: rows.length, units: rows.length, dealers: 1, rejections: {} }, units: rows },
+    units: rows,
+    byId: new Map(rows.map((row) => [row.id, row])),
+    byState,
+  } as InventoryIndex;
+}
+
+/** Four copies of a good unit, one per dealer state: current available, unknown, sold, and stale. */
+function freshnessFixture() {
+  const builtAt = "2026-10-30T00:00:00.000Z";
+  const make = (id: string, status: CanonicalUnit["status"], seen: string) => {
+    const u = good();
+    u.id = `fixture:${id}`;
+    u.status = status;
+    u.provenance = { ...u.provenance, firstSeenAt: "2026-08-01T00:00:00.000Z", lastSeenAt: seen, verifiedAt: seen };
+    return u;
+  };
+  const current = "2026-10-25T00:00:00.000Z";
+  const old = "2026-08-15T00:00:00.000Z";
+  const rows = [make("available", "available", current), make("unknown", "unknown", current), make("sold", "sold", current), make("stale", "available", old)];
+  return fixtureIndex(rows, builtAt);
+}
 
 describe("product feed rows (OpenAI product feed schema)", () => {
   it("carries every required field in the documented format", () => {
@@ -30,6 +63,16 @@ describe("product feed rows (OpenAI product feed schema)", () => {
     expect(r.title.length).toBeLessThanOrEqual(150);
     expect(r.description.length).toBeLessThanOrEqual(5000);
     expect(r.description).not.toMatch(/<[a-z]/i);
+  });
+
+  it("a sold unit is left out with a sold reason, never sent as unknown", () => {
+    const u = good();
+    u.status = "sold";
+    expect(buildFeedRow(u)).toEqual({ skip: "sold" });
+    const s = feedStats([u, good()]);
+    expect(s.skipped.sold).toBe(1);
+    expect(s.rows).toBe(1);
+    expect(s.availability.unknown).toBe(0);
   });
 
   it("unknown availability stays unknown; pending is not in stock; removed is left out", () => {
@@ -91,6 +134,62 @@ describe("product feed key", () => {
     expect(feedKeyValid(undefined, KEY)).toBe(false);
     expect(feedKeyValid(KEY, KEY)).toBe(true);
   });
+
+  it("is read only from an Authorization: Bearer header", () => {
+    const req = (h: string | undefined) => ({ get: (name: string) => (name.toLowerCase() === "authorization" ? h : undefined) }) as Parameters<typeof presentedKey>[0];
+    expect(presentedKey(req(`Bearer ${KEY}`))).toBe(KEY);
+    expect(presentedKey(req(`bearer ${KEY}`))).toBe(KEY);
+    expect(presentedKey(req(KEY))).toBeUndefined();
+    expect(presentedKey(req(`Basic ${KEY}`))).toBeUndefined();
+    expect(presentedKey(req(`Bearer ${KEY} extra`))).toBeUndefined();
+    expect(presentedKey(req(undefined))).toBeUndefined();
+  });
+
+  it("the crawler log never prints a /feeds path", () => {
+    expect(loggablePath(`/feeds/${KEY}/openai-products.jsonl`)).toBe("/feeds/[redacted]");
+    expect(loggablePath("/feeds/openai-products.jsonl")).toBe("/feeds/[redacted]");
+    expect(loggablePath("/FEEDS/x")).toBe("/feeds/[redacted]");
+    expect(loggablePath("/listing/abc")).toBe("/listing/abc");
+    expect(loggablePath("/feedsomething")).toBe("/feedsomething");
+  });
+});
+
+describe("product feed inventory follows INVENTORY_STATE_FRESHNESS", () => {
+  afterEach(() => {
+    delete process.env.INVENTORY_STATE_FRESHNESS;
+    delete process.env.INVENTORY_FRESHNESS_WALL_CLOCK;
+    resetInventoryIndexSource();
+  });
+
+  it("with the flag off, uses the process-start screened inventory, as before", () => {
+    delete process.env.INVENTORY_STATE_FRESHNESS;
+    useInventoryIndexSource({ readIndex: () => freshnessFixture() });
+    expect(feedInventory().units).toBe(getScreenedInventory().units);
+  });
+
+  it("with the flag on, publishes only what the MCP recheck would recommend", () => {
+    process.env.INVENTORY_STATE_FRESHNESS = "1";
+    useInventoryIndexSource({ readIndex: () => freshnessFixture() });
+    const inv = feedInventory();
+    expect(inv.units.map((u) => u.id)).toEqual(["fixture:available"]);
+    expect(inv.snapshot?.builtAt).toBe("2026-10-30T00:00:00.000Z");
+    const s = feedStats(inv.units);
+    expect(s.rows).toBe(1);
+    expect(s.availability).toEqual({ in_stock: 1, out_of_stock: 0, unknown: 0 });
+  });
+
+  it("with the flag on and the wall clock on, a unit stale by today's date is left out", () => {
+    process.env.INVENTORY_STATE_FRESHNESS = "1";
+    process.env.INVENTORY_FRESHNESS_WALL_CLOCK = "1";
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2027-01-15T00:00:00.000Z"));
+      useInventoryIndexSource({ readIndex: () => freshnessFixture() });
+      expect(feedInventory().units).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("product feed endpoints", () => {
@@ -109,22 +208,23 @@ describe("product feed endpoints", () => {
 
   it("answers 404 everywhere when no key is configured", async () => {
     delete process.env.PRODUCT_FEED_KEY;
-    for (const path of ["/feeds/openai-products.jsonl", "/feeds/openai-products.jsonl.gz", "/feeds/openai-products.meta.json", `/feeds/openai-products.jsonl?key=${KEY}`, `/feeds/${KEY}/openai-products.jsonl`]) {
-      const res = await fetch(`${base}${path}`);
+    for (const path of ["/feeds/openai-products.jsonl", "/feeds/openai-products.jsonl.gz", "/feeds/openai-products.meta.json"]) {
+      const res = await fetch(`${base}${path}`, bearer(KEY));
       expect(res.status).toBe(404);
       expect(res.headers.get("cache-control")).toContain("no-store");
     }
   });
 
-  it("answers 404 for a missing or wrong key, and serves the feed for the right one", async () => {
+  it("answers 404 for a missing or wrong key, and serves the feed for the right Bearer key", async () => {
     process.env.PRODUCT_FEED_KEY = KEY;
     expect((await fetch(`${base}/feeds/openai-products.jsonl`)).status).toBe(404);
-    expect((await fetch(`${base}/feeds/openai-products.jsonl?key=wrong-key-wrong-key-wrong-key`)).status).toBe(404);
+    expect((await fetch(`${base}/feeds/openai-products.jsonl`, bearer("wrong-key-wrong-key-wrong-key"))).status).toBe(404);
 
-    const meta = await (await fetch(`${base}/feeds/openai-products.meta.json?key=${KEY}`)).json() as { rows: number };
+    const meta = await (await fetch(`${base}/feeds/openai-products.meta.json`, bearer(KEY))).json() as { rows: number; skipped: Record<string, number> };
     expect(meta.rows).toBeGreaterThan(1000);
+    expect(meta.skipped).toHaveProperty("sold");
 
-    const res = await fetch(`${base}/feeds/${KEY}/openai-products.jsonl.gz`);
+    const res = await fetch(`${base}/feeds/openai-products.jsonl.gz`, bearer(KEY));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toContain("no-store");
     expect(res.headers.get("x-robots-tag")).toContain("noindex");
@@ -134,9 +234,35 @@ describe("product feed endpoints", () => {
     expect(first.item_id).toBeTruthy();
     expect(new Set(lines.map((l) => (JSON.parse(l) as { item_id: string }).item_id)).size).toBe(lines.length);
 
-    const plainRes = await fetch(`${base}/feeds/openai-products.jsonl?key=${KEY}`);
+    const plainRes = await fetch(`${base}/feeds/openai-products.jsonl`, bearer(KEY));
     expect(plainRes.status).toBe(200);
     expect(plainRes.headers.get("content-type")).toContain("ndjson");
     await plainRes.body?.cancel();
+  });
+
+  it("does not accept the key in the query string or the path", async () => {
+    process.env.PRODUCT_FEED_KEY = KEY;
+    for (const path of [`/feeds/openai-products.jsonl?key=${KEY}`, `/feeds/openai-products.meta.json?key=${KEY}`, `/feeds/${KEY}/openai-products.jsonl`, `/feeds/${KEY}/openai-products.jsonl.gz`, `/feeds/${KEY}/openai-products.meta.json`]) {
+      const res = await fetch(`${base}${path}`);
+      expect(res.status).toBe(404);
+      expect(res.headers.get("cache-control")).toContain("no-store");
+      expect(await res.text()).toBe("not found");
+    }
+  });
+
+  it("with INVENTORY_STATE_FRESHNESS on, the served feed is the recheck's units", async () => {
+    process.env.PRODUCT_FEED_KEY = KEY;
+    process.env.INVENTORY_STATE_FRESHNESS = "1";
+    useInventoryIndexSource({ readIndex: () => freshnessFixture() });
+    try {
+      const body = await (await fetch(`${base}/feeds/openai-products.jsonl`, bearer(KEY))).text();
+      const ids = body.trimEnd().split("\n").map((l) => (JSON.parse(l) as { item_id: string }).item_id);
+      expect(ids).toEqual(["fixture:available"]);
+      const meta = await (await fetch(`${base}/feeds/openai-products.meta.json`, bearer(KEY))).json() as { rows: number; inventoryRecheck: boolean };
+      expect(meta).toMatchObject({ rows: 1, inventoryRecheck: true });
+    } finally {
+      delete process.env.INVENTORY_STATE_FRESHNESS;
+      resetInventoryIndexSource();
+    }
   });
 });

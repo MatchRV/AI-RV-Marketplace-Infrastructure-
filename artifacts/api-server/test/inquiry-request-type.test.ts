@@ -19,6 +19,21 @@ describe("inquiry request type, read from the shopper's own message", () => {
     }
   });
 
+  it("a question about whether the unit is on hold is an availability check, not a hold request", () => {
+    for (const m of ["Is it on hold?", "Is this unit on hold or still available?", "Is the trailer already on hold?", "Is this one on hold by someone else?"]) {
+      expect(classifyInquiryRequest(m)).toBe("availability_check");
+    }
+    const p = buildPreview(unit(), contact, "Is it on hold?");
+    expect(p.request!.type).toBe("availability_check");
+    expect(formatInquiryForwardText({ id: "inq_test", preview: p } as DealerInquiry)).not.toContain("hold request");
+  });
+
+  it("an actual request to hold stays a hold request, including 'on hold' phrasing", () => {
+    for (const m of ["Please put it on hold.", "Can you hold it for me?", "Could you place this unit on hold until Saturday?", "Can you keep it on hold for me?", "Is it on hold? If not, please put it on hold for me."]) {
+      expect(classifyInquiryRequest(m)).toBe("hold_request");
+    }
+  });
+
   it("does not mistake ordinary words for a hold", () => {
     for (const m of ["How many gallons does the holding tank take?", "What does the fresh tank hold... sorry, holds?", "Is this good for a household of five?", "What is your best out-the-door price?"]) {
       expect(classifyInquiryRequest(m)).not.toBe("hold_request");

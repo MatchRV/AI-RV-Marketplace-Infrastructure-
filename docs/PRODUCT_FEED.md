@@ -11,22 +11,30 @@ The feed is the whole inventory in one file, so it is off by default.
 
 1. Generate a key of at least 24 characters, for example `openssl rand -hex 24`.
 2. Set it as `PRODUCT_FEED_KEY` on the production service (Render → Environment).
-3. Check the row counts: `https://matchrv.com/feeds/openai-products.meta.json?key=<key>`
+3. Check the row counts:
+   `curl -H "Authorization: Bearer <key>" https://matchrv.com/feeds/openai-products.meta.json`
 
 Until the key is set, and for any request with a missing or wrong key, every
 feed URL answers 404.
 
+The key is accepted **only** in an `Authorization: Bearer <key>` header. It is
+never read from the path or the query string, because URLs are written to
+request logs (including Render's access log) and headers are not. Any other
+path under `/feeds/` answers 404, and the AI-crawler log line prints every
+`/feeds/…` path as `/feeds/[redacted]`.
+
 ## URLs
+
+All three need `Authorization: Bearer <key>`.
 
 | URL | What |
 | --- | --- |
-| `/feeds/openai-products.jsonl?key=<key>` | JSON Lines |
-| `/feeds/openai-products.jsonl.gz?key=<key>` | the same file, gzipped |
-| `/feeds/openai-products.meta.json?key=<key>` | row counts and skip reasons |
-| `/feeds/<key>/openai-products.jsonl[.gz]` | same feed with the key in the path, for a fetcher that drops query strings |
+| `/feeds/openai-products.jsonl` | JSON Lines |
+| `/feeds/openai-products.jsonl.gz` | the same file, gzipped |
+| `/feeds/openai-products.meta.json` | row counts and skip reasons |
 
 Responses are sent `Cache-Control: private, no-store`. To rotate the key, change
-`PRODUCT_FEED_KEY` and update the URL in the merchant portal.
+`PRODUCT_FEED_KEY` and update the token in the merchant portal.
 
 ## What a row contains
 
@@ -44,19 +52,35 @@ Rules:
 - **Availability:** `available` → `in_stock`; `pending` (sale pending or on
   hold) → `out_of_stock`; unknown → `unknown`. Unknown is never sent as in stock.
 - **Left out, not padded:** units with no price, no image, no brand or no title,
-  and units the dealer has taken down.
+  units the dealer has taken down, and units marked sold.
 - **No source information:** nothing in a row says how or where MatchRV got the
   record.
 - **Checkout is off** (`is_eligible_checkout: false`). MatchRV does not sell RVs.
-- The feed uses the same screened inventory as the ChatGPT app, so stale
-  listings and implausible prices held back there are held back here.
+- **Which units:** with `INVENTORY_STATE_FRESHNESS` off, the feed uses the
+  screened inventory computed at process start (stale listings by snapshot
+  date, implausible prices and category conflicts held back), the same set
+  `search_rvs` and `get_rv` use with that flag off. With the flag on, it uses
+  the same request-time recheck the MCP tools use (`recheckForRecommend()`), so
+  units MCP holds back are held back here too: unknown dealer state, sold, left
+  the active set, and stale by the recheck's clock (wall-clock when
+  `INVENTORY_FRESHNESS_WALL_CLOCK` is also on). `meta.json` reports which mode
+  served it as `inventoryRecheck`.
 
 ## Submitting to OpenAI
 
 This part is done by a person in OpenAI's Business Hub; the code cannot do it.
 See [Submit product feeds](https://developers.openai.com/commerce/guides/submit-product-feeds):
 claim the business, verify identity, choose United States / USD, then pick the
-hosted HTTPS URL delivery method and paste the feed URL.
+hosted HTTPS URL delivery method and give it the feed URL
+(`https://matchrv.com/feeds/openai-products.jsonl.gz`) with the key as a Bearer
+token.
+
+**Unconfirmed:** OpenAI's public docs do not say whether hosted-URL delivery
+can send an `Authorization` header (or any credential). If the portal only
+takes a bare URL, this feed cannot be fetched by it as built. Do not put the
+key back in the URL to work around that; use manual upload or SFTP delivery
+instead (download the file with the header and upload it), or decide on a
+different access scheme first.
 
 Two things to settle with OpenAI before relying on it:
 

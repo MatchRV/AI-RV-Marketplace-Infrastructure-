@@ -17,7 +17,9 @@ import {
   renderSitemapIndex,
   renderCoreSitemap,
   renderUnitSitemapPage,
+  renderHubSitemap,
 } from "./lib/sitemap";
+import { parseHubPath, renderHubPage } from "./lib/inventory-hubs";
 import { renderLiveLlmsTxt, withLiveInventory } from "./lib/live-inventory";
 
 const app: Express = express();
@@ -188,7 +190,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 /** Paths that answer when DISABLE_DB=1. The write-freeze route must stay up in that mode. */
 export function apiPathAllowedWithoutDatabase(method: string, path: string): boolean {
   if (path === "/admin/data-dir") return true;
-  if (/^\/(agent|healthz|outfitter|webmcp|listings|search|inquiries|swipe|out)(\/|$)/.test(path)) return true;
+  if (/^\/(agent|healthz|outfitter|webmcp|listings|listing-insights|search|inquiries|swipe|out)(\/|$)/.test(path)) return true;
   if (method === "POST" && (path === "/analytics/event" || path === "/analytics/product" || path === "/dealer-tools/quick-report" || path === "/dealer-tools/quick-report/email")) return true;
   if (method === "GET" && (path === "/dealer-tools/quick-report/status" || path.startsWith("/dealer-tools/quick-report/pdf/"))) return true;
   return false;
@@ -236,6 +238,54 @@ app.get("/sitemaps/units-:page.xml", (req: Request, res: Response) => {
   } catch (err) {
     console.error("[sitemap] units page failed:", err);
     res.status(503).type("text/plain").send("sitemap unavailable");
+  }
+});
+
+app.get("/sitemaps/hubs.xml", (_req: Request, res: Response) => {
+  try {
+    res.type("application/xml").send(renderHubSitemap());
+  } catch (err) {
+    console.error("[sitemap] hubs failed:", err);
+    res.status(503).type("text/plain").send("sitemap unavailable");
+  }
+});
+
+// Shopping hubs (/rvs/{state}[/{type}[/under-{price}]]): server-rendered,
+// standalone HTML. A known hub shape with too few units is a real 404.
+const HUB_NOT_FOUND =
+  '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Not found | MatchRV</title><p>No listings here yet. <a href="/shop">Shop RVs on MatchRV</a>.</p>';
+app.get(/^\/rvs(\/.*)?$/, (req: Request, res: Response) => {
+  // The SPA has no /rvs routes, so anything that isn't a hub is a real 404
+  // rather than the shell's soft 404.
+  if (!parseHubPath(req.path)) {
+    res.status(404).type("html").send(HUB_NOT_FOUND);
+    return;
+  }
+  if (req.path.length > 1 && req.path.endsWith("/")) {
+    res.redirect(301, req.path.slice(0, -1));
+    return;
+  }
+  const rawPage = typeof req.query.page === "string" ? req.query.page : undefined;
+  const page = rawPage === undefined ? 1 : /^[1-9]\d{0,3}$/.test(rawPage) ? Number(rawPage) : NaN;
+  if (!Number.isFinite(page)) {
+    res.status(404).type("html").send(HUB_NOT_FOUND);
+    return;
+  }
+  if (rawPage === "1") {
+    res.redirect(301, req.path);
+    return;
+  }
+  try {
+    const html = renderHubPage(req.path, page);
+    if (!html) {
+      res.status(404).type("html").send(HUB_NOT_FOUND);
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.type("html").send(html);
+  } catch (err) {
+    console.error("[hubs] render failed:", err);
+    res.status(503).type("text/plain").send("temporarily unavailable");
   }
 });
 

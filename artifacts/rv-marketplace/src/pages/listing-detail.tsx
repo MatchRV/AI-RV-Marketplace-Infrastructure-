@@ -2,6 +2,7 @@ import { publicListingId } from "@workspace/agent-core";
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
+import { ListingInsights, useListingInsights } from "@/components/listing-insights";
 import { useGetListing, useTowMatch } from "@workspace/api-client-react";
 import type { TowMatchResponse } from "@workspace/api-client-react";
 import { Input } from "@/components/ui-elements";
@@ -132,6 +133,9 @@ export function ListingDetail() {
   })();
   const listingPathId = encodeURIComponent(rawListingId) as unknown as number;
   const { data: listing, isLoading } = useGetListing(listingPathId, { query: { enabled: rawListingId.length > 0, queryKey: ["/api/listing", rawListingId] } });
+  // MatchRV's own analysis of this unit (price context, tow check, similar units, SEO title):
+  // the same content the server renders into the HTML for crawlers.
+  const { data: insights } = useListingInsights(rawListingId);
   const towMutation = useTowMatch();
   const [towForm, setTowForm] = useState({ make: "", model: "", year: "" });
   const [towResult, setTowResult] = useState<TowMatchResponse | null>(null);
@@ -446,16 +450,19 @@ export function ListingDetail() {
     ? Math.round((listing.dealSavings / listing.marketValue) * 100)
     : 0;
 
+  const hasServerUnitJsonLd = typeof document !== "undefined" && Boolean(document.getElementById("matchrv-unit-jsonld"));
   const listingDescription = `${listing.condition === "new" ? "New" : "Used"} ${listing.year} ${listing.make} ${listing.model} ${formatRvType(listing.type)} for sale${listing.location ? ` in ${listing.location}` : ""}. ${listing.price ? `Priced at $${listing.price.toLocaleString()}.` : ""} ${aboutText ? aboutText.slice(0, 100) + "…" : "View photos and specs on MatchRV."}`.slice(0, 160);
 
   return (
     <Layout>
       <SEO
-        title={`${listing.year} ${listing.make} ${listing.model} for Sale`}
-        description={listingDescription}
+        title={insights?.seo.title ?? `${listing.year} ${listing.make} ${listing.model} for Sale`}
+        description={insights?.seo.description ?? listingDescription}
         canonical={listingUrl}
         ogImage={photos[0]}
-        jsonLd={[vehicleSchema, breadcrumbSchema]}
+        // The server already put the unit's Product/Vehicle and breadcrumb JSON-LD in the HTML.
+        // Adding a second, different copy gives Google two conflicting product entities.
+        jsonLd={hasServerUnitJsonLd ? [] : [vehicleSchema, breadcrumbSchema]}
       />
       {/* Header breadcrumb */}
       <div className="bg-background border-b border-[#E2E8F0]">
@@ -645,6 +652,8 @@ export function ListingDetail() {
                 <p className="text-[#3b4949] leading-relaxed whitespace-pre-line">{aboutText}</p>
               </div>
             )}
+
+            {insights && <ListingInsights insights={insights} />}
 
             {/* Features */}
             {listing.features && listing.features.length > 0 && (

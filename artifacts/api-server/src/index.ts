@@ -1,4 +1,6 @@
 import { spawn } from "child_process";
+import { warmUnitIndexability } from "./lib/unit-insights";
+import { listHubUrls } from "./lib/inventory-hubs";
 import { resolve } from "path";
 import { existsSync } from "fs";
 import { DB_MODE, ensureDbReady } from "@workspace/db";
@@ -143,6 +145,14 @@ async function start() {
     } else {
       console.log("[startup] scraper cron disabled (embedded db or scraper script not present)");
     }
+    // Unit-page index decisions and shopping hubs: computed in slices after
+    // listen so sitemap, hub and listing requests don't pay for them cold.
+    void warmUnitIndexability()
+      .then((n) => {
+        const hubs = listHubUrls().length;
+        console.log(`[seo] ${n} indexable unit pages, ${hubs} shopping hubs`);
+      })
+      .catch((err) => console.warn("[seo] warm failed (pages compute lazily):", err));
     if (!startInquirySafetySweep()) {
       console.log("[inquiry-safety] sweep off (set INQUIRY_SAFETY_SWEEP=1 to check queued leads every 10 minutes). No extra service is started.");
     }

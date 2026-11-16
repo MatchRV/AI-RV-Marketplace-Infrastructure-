@@ -4,6 +4,7 @@ import { getInventory } from "../src/services/agent-inventory";
 import { buildPreview, formatInquiryForwardText, unitListingUrl, type DealerInquiry } from "../src/services/dealer-inquiries";
 import { unitAvailability } from "../src/mcp";
 import { countUrlsInXml, renderSitemapIndex, renderUnitSitemapPage, unitSitemapPageCount, UNITS_PER_SITEMAP } from "../src/lib/sitemap";
+import { isIndexableUnit } from "../src/lib/unit-insights";
 
 const units = () => getInventory().units as CanonicalUnit[];
 const contact = { name: "Test Shopper", email: "shopper@example.com", phone: null };
@@ -75,16 +76,18 @@ describe("get_rv availability block", () => {
 });
 
 describe("sitemap advertises unit pages without saying where records came from", () => {
-  it("index lists core plus every unit page", () => {
+  it("index lists core, hubs, plus every unit page", () => {
     const xml = renderSitemapIndex();
     const pages = unitSitemapPageCount();
     expect(xml).toContain("https://matchrv.com/sitemaps/core.xml");
+    expect(xml).toContain("https://matchrv.com/sitemaps/hubs.xml");
     for (let i = 1; i <= pages; i++) expect(xml).toContain(`https://matchrv.com/sitemaps/units-${i}.xml`);
-    expect(countUrlsInXml(xml)).toBe(pages + 1);
+    expect(countUrlsInXml(xml)).toBe(pages + 2);
   });
 
-  it("unit pages cover every unit that is not removed, within the per-file limit", () => {
-    const expected = units().filter((u) => u.status !== "removed").length;
+  it("unit pages cover every indexable unit that is not removed, within the per-file limit", () => {
+    const expected = units().filter((u) => u.status !== "removed" && isIndexableUnit(u)).length;
+    expect(expected).toBeGreaterThan(0);
     let total = 0;
     for (let i = 1; i <= unitSitemapPageCount(); i++) {
       const n = countUrlsInXml(renderUnitSitemapPage(i)!);
@@ -102,7 +105,8 @@ describe("sitemap advertises unit pages without saying where records came from",
     // Unit ids hold dealer domains and towns (e.g. "mechanicsville"), so check everything outside <loc>.
     expect(xml.replace(/<loc>[^<]*<\/loc>/g, "")).not.toMatch(/marketcheck|harvest|scrap|csv|feed|dealer_website|sourceKind|lastSeenBasis/i);
     const tags = new Set([...xml.matchAll(/<([a-z]+)[ >]/g)].map((m) => m[1]));
-    expect([...tags].sort()).toEqual(["changefreq", "lastmod", "loc", "url", "urlset"]);
+    // changefreq is gone: Google ignores it.
+    expect([...tags].sort()).toEqual(["lastmod", "loc", "url", "urlset"]);
   });
 });
 

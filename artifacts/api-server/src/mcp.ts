@@ -56,6 +56,8 @@ import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit
 import { DATA_DIR_FROZEN_GUIDANCE, DataDirFrozenError, isDataDirFrozen } from "./services/data-dir-freeze";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
 import { observeMcpFetch } from "./services/product-analytics";
+import { boundClientId, currentAttribution } from "./services/attribution";
+import { attributeMcpFetch } from "./services/mcp-attribution";
 
 const OPT = "Optional. Pass only what the shopper actually said.";
 const FEATURES = ["bunkhouse", "outdoor_kitchen", "solar", "solar_prep", "lithium", "generator", "four_season", "two_entry_doors"] as const;
@@ -555,6 +557,16 @@ function mcpSchema<T extends z.ZodType>(schema: T) {
       },
     },
   };
+}
+
+/**
+ * Address used to rate-limit an unkeyed sender. Cloudflare's own header first:
+ * the first X-Forwarded-For entry is whatever the caller typed.
+ */
+function callerAddress(req: Request | undefined): string {
+  const fromEdge = req?.headers.get("cf-connecting-ip")?.trim();
+  if (fromEdge) return fromEdge;
+  return req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
 }
 
 /** Shortlist size when the shopper hasn't asked for fewer. A full page, not a 3-card sample. */
@@ -1178,7 +1190,7 @@ function buildMatchRvServer(): McpServer {
         }
         return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
       }
-      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message });
+      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message }, undefined, { clientId: boundClientId(currentAttribution()) });
       if (!prepared.ok) return textResult({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
       const projection = fresh?.project(unit) ?? null;
       return textResult({
@@ -1211,9 +1223,10 @@ function buildMatchRvServer(): McpServer {
         confirmationToken: input.confirmation_token,
         confirmed: input.confirmed,
         dryRun: input.dry_run,
-        requesterKey: scope.id ? `scope:${scope.id}` : `ip:${(ctx as { http?: { req?: Request } }).http?.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"}`,
+        requesterKey: scope.id ? `scope:${scope.id}` : `ip:${callerAddress((ctx as { http?: { req?: Request } }).http?.req)}`,
         scope: scope.id,
         analyticsSource: "mcp",
+        attribution: currentAttribution(),
         fitHint: recallFit(scope) ?? null,
         lookupUnit: (id) => inventoryFreshnessRecheckEnabled() ? recheckForRecommend().byId.get(id) : getInventory().byId.get(id),
       });
@@ -1252,7 +1265,7 @@ const matchRvMcpServer = createMcpHandler(() => buildMatchRvServer());
 const matchRvMcpFetch = matchRvMcpServer.fetch.bind(matchRvMcpServer);
 matchRvMcpServer.fetch = ((input: Request | string, init?: RequestInit) => {
   const request = input instanceof Request ? input : new Request(input, init);
-  return observeMcpFetch(request, matchRvMcpFetch);
+  return observeMcpFetch(request, (req) => attributeMcpFetch(req, matchRvMcpFetch, { surface: "mcp", dealerFor: (id) => getInventory().byId.get(id)?.dealer.id ?? null }));
 }) as typeof matchRvMcpServer.fetch;
 export const matchRvMcpHandler = matchRvMcpServer;
 export const matchRvMcpNodeHandler = toNodeHandler(matchRvMcpHandler);

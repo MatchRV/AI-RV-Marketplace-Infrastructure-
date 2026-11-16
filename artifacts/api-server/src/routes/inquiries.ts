@@ -5,6 +5,7 @@ import {
 } from "../services/dealer-inquiries";
 import { runInquirySafetySweep } from "../services/inquiry-safety";
 import { DATA_DIR_FROZEN_GUIDANCE, DATA_DIR_FROZEN_RETRY_AFTER_SECONDS, isDataDirFrozen } from "../services/data-dir-freeze";
+import { ANONYMOUS_CONTEXT } from "../services/attribution";
 
 /**
  * Dealer inquiry HTTP API (same service the MCP tools use).
@@ -40,6 +41,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
       requesterKey: requester(req),
       scope: null,
       analyticsSource: "website",
+      attribution: { ...ANONYMOUS_CONTEXT, surface: "website" },
       lookupUnit: (id) => getInventory().byId.get(id),
     });
     if (!result.ok) {
@@ -49,7 +51,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
         res.status(503).json({ error: result.code, guidance: result.guidance, retryable: true });
         return;
       }
-      res.status(result.code === "rate_limited" ? 429 : result.code === "not_confirmed" ? 400 : result.code === "unit_unavailable" ? 404 : 400).json({ error: result.code, guidance: result.guidance });
+      res.status(result.code === "rate_limited" ? 429 : result.code === "client_mismatch" || result.code === "client_not_permitted" ? 403 : result.code === "not_confirmed" ? 400 : result.code === "unit_unavailable" ? 404 : 400).json({ error: result.code, guidance: result.guidance });
       return;
     }
     res.status(result.duplicate ? 200 : 201).json({ inquiry: result.inquiry, statusToken: result.duplicate ? null : result.statusToken, duplicate: result.duplicate, statusUrl: `/api/inquiries/${result.inquiry.inquiryId}` });

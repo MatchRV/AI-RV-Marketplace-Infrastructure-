@@ -11,6 +11,8 @@ import { seedEmbeddedFromSnapshot } from "./lib/seed-embedded";
 import { shouldStartEnrichmentCron, startEnrichmentCron } from "./services/listing-enrichment";
 import { startInquirySafetySweep } from "./services/inquiry-safety";
 import { installDataDirShutdownHandlers } from "./services/data-dir-freeze";
+import { signingSecretSource } from "./services/dealer-inquiries";
+import { startStorageMonitor } from "./services/storage-monitor";
 import { warmInventory } from "./services/agent-inventory";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
@@ -153,6 +155,13 @@ async function start() {
         console.log(`[seo] ${n} indexable unit pages, ${hubs} shopping hubs`);
       })
       .catch((err) => console.warn("[seo] warm failed (pages compute lazily):", err));
+    // Resolve the inquiry signing secret now (logged by source, never by value) and watch the private data files.
+    try {
+      signingSecretSource();
+    } catch (err) {
+      console.warn("[inquiries] signing secret check failed:", err instanceof Error ? err.name : "error");
+    }
+    startStorageMonitor();
     if (!startInquirySafetySweep()) {
       console.log("[inquiry-safety] sweep off (set INQUIRY_SAFETY_SWEEP=1 to check queued leads every 10 minutes). No extra service is started.");
     }

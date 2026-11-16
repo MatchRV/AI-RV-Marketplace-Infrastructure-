@@ -45,6 +45,8 @@ import type { CanonicalUnit } from "@workspace/agent-core";
 import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
 import { recordInquiryOutcome } from "./product-analytics";
 import { DELIVERY_RETRY_BACKOFF_MS } from "./inquiry-safety-policy";
+import { dataDir, writeFileAtomic } from "./atomic-file";
+import { boundClientId, inquiryAttribution, recordAttributionEvent, type AttributionContext, type InquiryAttribution } from "./attribution";
 export type { ShopperFit };
 
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed" | "forwarded";
@@ -146,6 +148,8 @@ export interface DealerInquiry {
   test?: boolean;
   /** RV-fit facts the shopper stated (budget, tow vehicle, …). Ops/dealer only; never in PublicInquiry or ntfy. */
   fit?: ShopperFit;
+  /** Which integration this lead came through. Ops and reports only; never in PublicInquiry, dealer email or ntfy. */
+  attribution?: InquiryAttribution;
 }
 
 export interface InquiryTransport {
@@ -161,7 +165,61 @@ export interface InquiryTransport {
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 const RETENTION_MS = Number(process.env.INQUIRY_RETENTION_DAYS ?? 90) * 24 * 60 * 60 * 1000;
-const signingSecret = process.env.INQUIRY_SIGNING_SECRET || randomBytes(32).toString("hex");
+
+/**
+ * Secret that signs confirmation tokens and derives status tokens.
+ *
+ *   env        INQUIRY_SIGNING_SECRET is set: used as is.
+ *   data_dir   not set: a secret generated once and kept in the data directory
+ *              (0600), so previews survive a restart or deploy without any
+ *              configuration change.
+ *   ephemeral  not set and the data directory is not writable (or tests): a
+ *              per-process secret, as before. A restart invalidates previews
+ *              that have not been sent yet.
+ */
+export type SigningSecretSource = "env" | "data_dir" | "ephemeral";
+let signing: { secret: string; source: SigningSecretSource } | null = null;
+let signingSecretFileEnabled = process.env.NODE_ENV !== "test" && !process.env.VITEST;
+let signingSecretPathOverride: string | null = null;
+const signingSecretPath = () => signingSecretPathOverride ?? resolve(dataDir(), "inquiry-signing-secret");
+function resolveSigningSecret(): { secret: string; source: SigningSecretSource } {
+  const fromEnv = process.env.INQUIRY_SIGNING_SECRET;
+  if (fromEnv) return { secret: fromEnv, source: "env" };
+  if (signingSecretFileEnabled) {
+    const p = signingSecretPath();
+    try {
+      if (existsSync(p)) {
+        const stored = readFileSync(p, "utf8").trim();
+        if (/^[a-f0-9]{64}$/.test(stored)) return { secret: stored, source: "data_dir" };
+        console.warn("[inquiries] stored signing secret is malformed; replacing it");
+      }
+      if (dataDirAcceptsWrites() && !isDataDirFrozen()) {
+        const fresh = randomBytes(32).toString("hex");
+        writeFileAtomic(p, fresh);
+        return { secret: fresh, source: "data_dir" };
+      }
+    } catch (err) {
+      console.warn("[inquiries] could not read or create the signing secret file:", err instanceof Error ? (err as NodeJS.ErrnoException).code ?? err.name : "error");
+    }
+  }
+  return { secret: randomBytes(32).toString("hex"), source: "ephemeral" };
+}
+function signingSecret(): string {
+  if (!signing) {
+    signing = resolveSigningSecret();
+    if (signing.source === "ephemeral" && process.env.NODE_ENV === "production") {
+      console.warn("[inquiries] signing secret is per-process: pending previews will not survive a restart. Set INQUIRY_SIGNING_SECRET or give the service a writable data directory.");
+    } else if (process.env.NODE_ENV === "production") {
+      console.log(`[inquiries] signing secret source: ${signing.source}`);
+    }
+  }
+  return signing.secret;
+}
+/** Where the signing secret comes from. Never returns the secret. */
+export function signingSecretSource(): SigningSecretSource {
+  signingSecret();
+  return signing!.source;
+}
 const OPS_EMAIL = process.env.INQUIRY_OPS_EMAIL || "sales@matchrv.com";
 export const forceDryRun = () => /^(1|true|yes)$/i.test(process.env.INQUIRY_DRY_RUN ?? "");
 
@@ -210,9 +268,15 @@ export function validateContact(input: { name?: string; email?: string | null; p
 
 // ── Preview + confirmation token (stateless) ───────────────────────────────
 
-interface TokenPayload { u: string; n: string; e: string | null; p: string | null; m: string; pe?: PaymentEstimate | null; exp: number; nonce: string; f?: ShopperFit }
+interface TokenPayload {
+  u: string; n: string; e: string | null; p: string | null; m: string; pe?: PaymentEstimate | null; exp: number; nonce: string; f?: ShopperFit;
+  /** Verified client id the preview was prepared by. Absent for unkeyed callers. Only that identity may send it. */
+  c?: string;
+}
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
-const sign = (body: string) => createHmac("sha256", signingSecret).update(body).digest("base64url");
+const sign = (body: string) => createHmac("sha256", signingSecret()).update(body).digest("base64url");
+/** Status token for an inquiry, derived from the preview's nonce so a repeated send returns the same one. */
+const statusTokenFor = (nonce: string) => `ist_${createHmac("sha256", signingSecret()).update(`status:${nonce}`).digest("base64url")}`;
 
 /** The unit's own dealer listing page, when the snapshot has one and it is a plain http(s) URL. */
 export function unitListingUrl(unit: CanonicalUnit): string | null {
@@ -246,6 +310,8 @@ export function prepareInquiry(
   unit: CanonicalUnit,
   input: { name?: string; email?: string | null; phone?: string | null; message?: string; fit?: unknown; paymentEstimate?: unknown },
   now = Date.now(),
+  /** Bind the preview to a verified client. Omitted or null: an unkeyed caller. */
+  binding: { clientId?: string | null } = {},
 ):
   | { ok: true; preview: InquiryPreview; confirmationToken: string; expiresAt: string; fit?: ShopperFit }
   | { ok: false; errors: ValidationError[] } {
@@ -253,7 +319,7 @@ export function prepareInquiry(
   if (!v.ok) return v;
   const fit = sanitizeFit(input.fit);
   const pe = cleanPaymentEstimate(input.paymentEstimate);
-  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, ...(pe ? { pe } : {}), exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url"), ...(fit ? { f: fit } : {}) };
+  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, ...(pe ? { pe } : {}), exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url"), ...(fit ? { f: fit } : {}), ...(binding.clientId ? { c: binding.clientId } : {}) };
   const body = b64(JSON.stringify(payload));
   return { ok: true, preview: buildPreview(unit, v.contact, v.message, pe), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString(), ...(fit ? { fit } : {}) };
 
@@ -339,8 +405,9 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   global: { max: 300, windowMs: 60 * 60 * 1000 },
   preview: { max: 60, windowMs: 60 * 60 * 1000 },
 };
-export function rateLimit(kind: keyof typeof LIMITS, key: string, now = Date.now()): boolean {
-  const { max, windowMs } = LIMITS[kind];
+export function rateLimit(kind: keyof typeof LIMITS, key: string, now = Date.now(), maxOverride?: number): boolean {
+  const { windowMs } = LIMITS[kind];
+  const max = maxOverride ?? LIMITS[kind].max;
   const id = `${kind}:${key}`;
   const list = (hits.get(id) ?? []).filter((t) => t > now - windowMs);
   if (list.length >= max) { hits.set(id, list); return false; }
@@ -381,10 +448,10 @@ let transport: InquiryTransport = defaultTransport;
 // ── Send ───────────────────────────────────────────────────────────────────
 
 export type SendResult =
-  | { ok: true; inquiry: PublicInquiry; statusToken: string; duplicate: boolean }
-  | { ok: false; code: "not_confirmed" | "invalid_token" | "expired_token" | "unit_unavailable" | "rate_limited" | "writes_frozen"; guidance: string };
+  | { ok: true; inquiry: PublicInquiry; statusToken: string; duplicate: boolean; /** This preview had already been sent; nothing was sent again. */ replayed?: boolean }
+  | { ok: false; code: "not_confirmed" | "invalid_token" | "expired_token" | "unit_unavailable" | "rate_limited" | "writes_frozen" | "client_mismatch" | "client_not_permitted"; guidance: string };
 
-export async function sendInquiry(args: {
+interface SendArgs {
   confirmationToken: string; confirmed: boolean; dryRun?: boolean;
   requesterKey: string; scope: string | null;
   /** Fit facts recalled from this shopper's interview scope (ChatGPT path). Token fit wins when present. */
@@ -392,16 +459,39 @@ export async function sendInquiry(args: {
   lookupUnit: (id: string) => CanonicalUnit | undefined;
   /** Where this send was accepted. Omitted callers stay "unknown" rather than guessed. */
   analyticsSource?: "mcp" | "website" | "unknown";
+  /** Who is sending. A verified client may only send previews it prepared, and unkeyed callers only unbound ones. */
+  attribution?: AttributionContext | null;
   /** Clock for createdAt and the delivery attempt. Defaults to Date.now(). */
   now?: number;
-}): Promise<SendResult> {
+}
+
+/** Sends that have passed every check and are being delivered, by preview nonce. */
+const inFlight = new Map<string, Promise<SendResult>>();
+
+/** The stored result for a preview that was already sent, or null. Never delivers anything. */
+function replayOf(nonce: string): SendResult | null {
+  const id = byNonce.get(nonce);
+  const existing = id ? inquiries.get(id) : undefined;
+  if (!existing) return null;
+  const token = statusTokenFor(nonce);
+  // Inquiries stored before status tokens were derived keep their original random token, which cannot be shown again.
+  const same = existing.statusTokenHash === hashToken(token);
+  return { ok: true, inquiry: toPublic(existing), statusToken: same ? token : "(use the status token from the first send)", duplicate: !same, replayed: true };
+}
+
+/**
+ * Send a previewed inquiry. Idempotent per preview: the first confirmed call
+ * delivers it; any later or concurrent call with the same token returns that
+ * same inquiry and status token, and delivers nothing.
+ */
+export async function sendInquiry(args: SendArgs): Promise<SendResult> {
   const note = (result: SendResult): SendResult => {
     try {
       recordInquiryOutcome({
         source: args.analyticsSource ?? "unknown",
         status: result.ok ? result.inquiry.status : result.code,
         channel: result.ok ? result.inquiry.deliveryChannel : "none",
-        duplicate: result.ok ? result.duplicate : false,
+        duplicate: result.ok ? result.duplicate || result.replayed === true : false,
         dryRun: result.ok ? result.inquiry.dryRun : false,
         listingId: result.ok ? result.inquiry.unit.id : undefined,
         dealerId: result.ok ? result.inquiry.dealer.id : undefined,
@@ -416,30 +506,59 @@ export async function sendInquiry(args: {
     return note({ ok: false, code: "writes_frozen", guidance: DATA_DIR_FROZEN_GUIDANCE });
   }
   try {
-  const now = args.now ?? Date.now();
-  load();
-  if (dataDirAcceptsWrites()) purge();
-  if (args.confirmed !== true) return note({ ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." });
-  const v = verifyToken(args.confirmationToken, now);
-  if (!v.ok) return note({ ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." });
-  const p = v.payload;
-  const existingId = byNonce.get(p.nonce);
-  if (existingId && inquiries.get(existingId)) {
-    const existing = inquiries.get(existingId)!;
-    return note({ ok: false, code: "invalid_token", guidance: `This preview was already sent (inquiry ${existing.id}, status ${existing.status}). It is not sent twice; use the status tool with the status token from the first send.` });
+    const now = args.now ?? Date.now();
+    load();
+    if (dataDirAcceptsWrites()) purge();
+    if (args.confirmed !== true) return note({ ok: false, code: "not_confirmed", guidance: "Show the shopper the preview and only call again with confirmed=true after they explicitly say to send it." });
+    const v = verifyToken(args.confirmationToken, now);
+    if (!v.ok) return note({ ok: false, code: v.code, guidance: v.code === "expired_token" ? "The preview expired (30 minutes). Prepare a new preview and confirm it with the shopper again." : "Unknown or altered confirmation token. Prepare a new preview." });
+    const p = v.payload;
+    // Identity check comes before the replay lookup, so a token in the wrong hands cannot read back the stored inquiry.
+    const caller = boundClientId(args.attribution);
+    if ((p.c ?? null) !== caller) {
+      recordAttributionEvent(args.attribution ?? null, "inquiry_client_mismatch", null);
+      return note({ ok: false, code: "client_mismatch", guidance: "This preview was prepared under a different client identity. Only the API key that prepared a preview can send it, and a preview prepared without a key cannot be sent with one. Nothing was sent; prepare a new preview." });
+    }
+    if (caller && !args.attribution?.scopes.includes("inquiry")) {
+      return note({ ok: false, code: "client_not_permitted", guidance: "This API key is not allowed to send dealer inquiries. Nothing was sent." });
+    }
+    const replay = replayOf(p.nonce);
+    if (replay) return note(replay);
+    const running = inFlight.get(p.nonce);
+    if (running) {
+      const first = await running;
+      return first.ok ? { ...first, replayed: true } : first;
+    }
+    const job = performSend(args, p, now, durable);
+    inFlight.set(p.nonce, job);
+    try {
+      return note(await job);
+    } finally {
+      inFlight.delete(p.nonce);
+    }
+  } finally {
+    if (durable) endDurableWrite();
   }
+}
+
+async function performSend(args: SendArgs, p: TokenPayload, now: number, durable: boolean): Promise<SendResult> {
   const unit = args.lookupUnit(p.u);
-  if (!unit || unit.status === "removed") return note({ ok: false, code: "unit_unavailable", guidance: "This RV is no longer in MatchRV's inventory snapshot. Nothing was sent." });
+  if (!unit || unit.status === "removed") return { ok: false, code: "unit_unavailable", guidance: "This RV is no longer in MatchRV's inventory snapshot. Nothing was sent." };
   const dryRun = Boolean(args.dryRun) || forceDryRun();
   const contactKey = (p.e ?? p.p ?? "").toLowerCase();
-  if (!rateLimit("requester", args.requesterKey) || !rateLimit("contact", contactKey) || !rateLimit("global", "all")) {
-    return note({ ok: false, code: "rate_limited", guidance: "Too many inquiries were sent recently from this conversation or contact. Nothing was sent; try again later or contact the dealership directly." });
+  // A verified client spends its own hourly budget and never the shared one, so no partner can use up sends for everyone else.
+  const partner = boundClientId(args.attribution);
+  const requesterOk = partner
+    ? rateLimit("requester", `client:${partner}`, undefined, args.attribution?.limits?.inquiriesPerHour)
+    : rateLimit("requester", args.requesterKey);
+  if (!requesterOk || !rateLimit("contact", contactKey) || (!partner && !rateLimit("global", "all"))) {
+    return { ok: false, code: "rate_limited", guidance: "Too many inquiries were sent recently from this conversation or contact. Nothing was sent; try again later or contact the dealership directly." };
   }
 
   const contact: InquiryContact = { name: p.n, email: p.e, phone: p.p };
-const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.pe) : null);
+  const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.pe) : null);
   const fit = sanitizeFit(p.f) ?? sanitizeFit(args.fitHint) ?? undefined;
-  const statusToken = `ist_${randomBytes(18).toString("base64url")}`;
+  const statusToken = statusTokenFor(p.nonce);
   const inquiry: DealerInquiry = {
     id: `inq_${randomBytes(9).toString("base64url")}`,
     createdAt: new Date(now).toISOString(),
@@ -448,6 +567,7 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
     delivery: { channel: "none", attemptedAt: new Date(now).toISOString(), dealerEmailAccepted: false, opsNotified: { ntfy: false, email: false }, error: null },
     dealerReply: null,
     ...(fit ? { fit } : {}),
+    ...(args.attribution ? { attribution: inquiryAttribution(args.attribution, unit.id, now) } : {}),
   };
   // Duplicate guard: same contact + unit within 24h returns a duplicate notice instead of resending.
   const dup = [...inquiries.values()].find((i) => !i.dryRun && !dryRun && i.preview.unit.id === unit.id && (i.preview.shopper.email ?? i.preview.shopper.phone ?? "").toLowerCase() === contactKey && now - Date.parse(i.createdAt) < 24 * 60 * 60 * 1000 && i.status !== "failed");
@@ -456,17 +576,21 @@ const preview = buildPreview(unit, contact, p.m, p.pe ? cleanPaymentEstimate(p.p
     inquiry.status = "dry_run";
     inquiry.statusDetail = "Dry run: validated and recorded for testing. Nothing was sent to the dealership or to MatchRV staff.";
   } else if (dup) {
-    return note({ ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true });
+    return { ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true };
   } else {
-    await deliver(inquiry, unit, now);
+    // Reserve the nonce before the first await so nothing else can deliver this preview.
+    byNonce.set(inquiry.nonce, inquiry.id);
+    try {
+      await deliver(inquiry, unit, now);
+    } catch (err) {
+      byNonce.delete(inquiry.nonce);
+      throw err;
+    }
   }
   inquiries.set(inquiry.id, inquiry);
   byNonce.set(inquiry.nonce, inquiry.id);
   if (durable || dataDirAcceptsWrites()) persistSoon();
-  return note({ ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false });
-  } finally {
-    if (durable) endDurableWrite();
-  }
+  return { ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false };
 }
 
 function dealerEmailText(i: DealerInquiry): string {
@@ -809,6 +933,11 @@ export function confirmInquiryForwarded(id: string, now = Date.now()): { ok: tru
 }
 
 /** Test hooks. */
+export function __setSigningSecretFileForTests(enabled: boolean, filePath?: string): void {
+  signingSecretFileEnabled = enabled;
+  signingSecretPathOverride = filePath ?? null;
+  signing = null;
+}
 export function __setTransport(t: InquiryTransport | null): void { transport = t ?? defaultTransport; }
 export function __setRoutes(r: Record<string, string>): void { routes = r; }
 export function __resetInquiries(): void { inquiries.clear(); byNonce.clear(); hits.clear(); loaded = true; }

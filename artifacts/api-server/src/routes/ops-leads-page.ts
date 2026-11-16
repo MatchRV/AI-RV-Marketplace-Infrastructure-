@@ -79,6 +79,13 @@ export const OPS_LEADS_HTML = `<!doctype html>
     var name = (i.preview && i.preview.shopper && i.preview.shopper.name) || "";
     return i.dryRun === true || i.status === "dry_run" || i.test === true || /\\bTEST\\b/.test(name);
   }
+  function sourceLabel(a) {
+    if (!a) return "Not recorded";
+    if (a.billingGrade === true && a.tier === "verified_partner" && a.clientId) return "Partner: " + (a.clientName || a.clientId) + " (API key, verified)";
+    if (a.tier === "unverified_host") return (a.hostLabel === "chatgpt_app" ? "ChatGPT app" : (a.hostLabel || "Host")) + " (unverified label, not billable)";
+    if (a.surface === "website") return "matchrv.com";
+    return "Anonymous MCP caller (unverified)";
+  }
   function fmtPrice(v) { return typeof v === "number" ? "$" + v.toLocaleString() : "n/a"; }
   function fitLines(fit) {
     if (!fit || typeof fit !== "object") return [];
@@ -165,6 +172,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
       addRow(dl, "Listed price", fmtPrice(u.priceUsd));
       addRow(dl, "Listing", u.stockUrl ? "Dealer page" : null, safeHref(u.stockUrl));
       addRow(dl, "Delivery", (i.delivery && i.delivery.channel) || "-");
+      addRow(dl, "Came through", sourceLabel(i.attribution));
       addRow(dl, "Status note", i.statusDetail);
       if (i.dealerReply) addRow(dl, "Dealer reply", i.dealerReply.text);
       if (p.paymentEstimate) {

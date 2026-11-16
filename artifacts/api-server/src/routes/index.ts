@@ -20,6 +20,7 @@ import shopOutfitterRouter from "./shop-outfitter";
 import inquiriesRouter from "./inquiries";
 import swipeRouter from "./swipe";
 import productAnalyticsRouter from "./product-analytics";
+import attributionRouter from "./attribution";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(dealerToolsRouter);
 router.use(inquiriesRouter);
 router.use(swipeRouter);
 router.use(productAnalyticsRouter);
+router.use(attributionRouter);
 
 export default router;

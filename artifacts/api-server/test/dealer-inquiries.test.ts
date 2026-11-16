@@ -87,8 +87,8 @@ describe('two-step flow (service)', () => {
     expect(getInquiryStatus(r.inquiry.inquiryId, r.statusToken)?.status).toBe('delivered');
     expect(getInquiryStatus(r.inquiry.inquiryId, 'ist_wrongtoken_wrongtoken')).toBeNull();
     expect(r.inquiry.dealerReply).toBeNull();
-    // Re-using the same confirmation token never sends twice.
-    expect(await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, requesterKey: 't', scope: null, lookupUnit })).toMatchObject({ ok: false });
+    // Re-using the same confirmation token never sends twice: it returns the first result again.
+    expect(await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, requesterKey: 't', scope: null, lookupUnit })).toMatchObject({ ok: true, replayed: true, statusToken: r.statusToken, inquiry: { inquiryId: r.inquiry.inquiryId } });
     expect(mock.sent.emails.length).toBe(1);
   });
   it('no dealer route → queued_for_matchrv; the ntfy alert carries no shopper contact details or message', async () => {

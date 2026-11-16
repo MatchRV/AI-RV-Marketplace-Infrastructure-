@@ -190,7 +190,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 /** Paths that answer when DISABLE_DB=1. The write-freeze route must stay up in that mode. */
 export function apiPathAllowedWithoutDatabase(method: string, path: string): boolean {
   if (path === "/admin/data-dir") return true;
-  if (/^\/(agent|healthz|outfitter|webmcp|listings|listing-insights|search|inquiries|swipe|out)(\/|$)/.test(path)) return true;
+  if (/^\/(agent|healthz|outfitter|webmcp|listings|listing-insights|search|inquiries|swipe|out|attribution)(\/|$)/.test(path)) return true;
   if (method === "POST" && (path === "/analytics/event" || path === "/analytics/product" || path === "/dealer-tools/quick-report" || path === "/dealer-tools/quick-report/email")) return true;
   if (method === "GET" && (path === "/dealer-tools/quick-report/status" || path.startsWith("/dealer-tools/quick-report/pdf/"))) return true;
   return false;

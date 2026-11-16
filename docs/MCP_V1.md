@@ -78,6 +78,10 @@ missing from it.
 
 ## Turning it on
 
+0. Confirm the data licence for every source allows serving its listings to third-party agents. About
+   18,100 of the 122,800 served units were read through MarketCheck, whose published terms restrict
+   redistribution and name removal. Responses currently reword that name out of spec notes; change
+   `scrubCollector` in `src/mcp-v1.ts` if the agreed wording is different.
 1. Merge and deploy with `AGENT_V1_ENABLED` unset. `/mcp/v1` answers 404.
 2. Create a key for yourself and one per partner (see `docs/AGENT_ATTRIBUTION.md`).
 3. Set `AGENT_V1_ENABLED=1`. Changing the variable restarts the service. Unset it to turn the endpoint off again.

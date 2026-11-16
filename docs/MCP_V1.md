@@ -68,8 +68,13 @@ Set when the key is created (`POST /api/attribution/ops/clients`, `limits`):
 | `unitsPerDay` | 5000 |
 | `inquiriesPerHour` | 30 |
 
-The daily unit count resets at 00:00 UTC. Over the limit, unit tools return `quota_exceeded`; tow checks
-and inquiry tools keep working.
+The daily unit count resets at 00:00 UTC and is never exceeded: a search page is cut to the rows the key
+has left (`paging.shortened_by_quota`), and `get_unit` or `compare_units` is refused whole when it would go
+over. At the limit, unit tools return `quota_exceeded`; tow checks and inquiry tools keep working.
+
+The count is held in memory and refilled from the saved attribution counters after a restart. Those are
+flushed on a clean shutdown, so a deploy keeps the count. After a crash, up to five seconds of usage can be
+missing from it.
 
 ## Turning it on
 

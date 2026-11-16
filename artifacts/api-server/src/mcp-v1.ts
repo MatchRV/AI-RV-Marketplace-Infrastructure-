@@ -147,25 +147,36 @@ function ledger(clientId: string, now = new Date()) {
 
 const dailyLimit = (ctx: AttributionContext) => ctx.limits?.unitsPerDay ?? DEFAULT_AGENT_LIMITS.unitsPerDay;
 
-function quotaError(ctx: AttributionContext) {
+/** Unit records this key may still be served today. Never negative. */
+function unitsLeft(ctx: AttributionContext): number {
+  return Math.max(0, dailyLimit(ctx) - ledger(ctx.clientId!).units);
+}
+
+function quotaError(ctx: AttributionContext, needed = 1) {
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const left = unitsLeft(ctx);
   return result({
     error: "quota_exceeded",
-    detail: `This API key has used its ${dailyLimit(ctx)} unit records for today.`,
+    detail: left === 0
+      ? `This API key has used its ${dailyLimit(ctx)} unit records for today.`
+      : `This call needs ${needed} unit records and this API key has ${left} left of its ${dailyLimit(ctx)} for today.`,
+    units_left_today: left,
     resets_at: `${tomorrow}T00:00:00Z`,
     guidance: "Tow checks, inquiry tools and status lookups still work. Contact MatchRV to raise the limit.",
   }, true);
 }
 
-/** Null when the caller may be served; the error result otherwise. */
-function overQuota(ctx: AttributionContext) {
-  return ledger(ctx.clientId!).units >= dailyLimit(ctx) ? quotaError(ctx) : null;
+/**
+ * Take `units` from today's allowance, or take nothing and return false.
+ * Callers check and charge with no await in between, so two requests can
+ * never both spend the same remaining units: the limit is never exceeded.
+ */
+function charge(ctx: AttributionContext, units: number): boolean {
+  if (units > unitsLeft(ctx)) return false;
+  ledger(ctx.clientId!).units += units;
+  return true;
 }
-function charge(ctx: AttributionContext, units: number) {
-  const entry = ledger(ctx.clientId!);
-  entry.units += units;
-  return { used_today: entry.units, daily_limit: dailyLimit(ctx) };
-}
+const usageOf = (ctx: AttributionContext) => ({ used_today: ledger(ctx.clientId!).units, daily_limit: dailyLimit(ctx) });
 
 /** The verified caller. The HTTP layer already refused anything else; this keeps the handlers honest if it is ever bypassed. */
 function caller(): AttributionContext | null {
@@ -280,11 +291,13 @@ function buildV1Server(): McpServer {
     async (input) => {
       const ctx = caller();
       if (!ctx) return NO_CALLER();
-      const blocked = overQuota(ctx);
-      if (blocked) return blocked;
-      const limit = input.limit ?? 10;
+      const left = unitsLeft(ctx);
+      if (left === 0) return quotaError(ctx);
+      const asked = input.limit ?? 10;
+      // A page never holds more rows than the key has left today.
+      const limit = Math.min(asked, left);
       const offset = input.offset ?? 0;
-      if (offset + limit > V1_DEPTH_MAX) {
+      if (offset + asked > V1_DEPTH_MAX) {
         return result({ error: "paging_limit", detail: `offset + limit may not exceed ${V1_DEPTH_MAX}.`, guidance: "Narrow the search (type, price range, location, make) instead of paging further." }, true);
       }
       try {
@@ -294,10 +307,14 @@ function buildV1Server(): McpServer {
         const page = matches.slice(offset, offset + limit);
         const reachable = Math.min(matches.length, V1_DEPTH_MAX);
         const next = offset + page.length < reachable ? offset + page.length : null;
-        const usage = charge(ctx, page.length);
+        if (!charge(ctx, page.length)) return quotaError(ctx, page.length);
+        const usage = usageOf(ctx);
         return result({
           results: page.map((m) => searchRow(m, inv.builtAt)),
-          paging: { offset, returned: page.length, next_offset: next, depth_limit: V1_DEPTH_MAX },
+          paging: {
+            offset, returned: page.length, next_offset: next, depth_limit: V1_DEPTH_MAX,
+            ...(limit < asked ? { shortened_by_quota: true, note: `Returned ${page.length} of the ${asked} rows asked for: that is all this API key has left today.` } : {}),
+          },
           totals: {
             matched: matches.length,
             confirmed: outcome.funnel.passedHard,
@@ -336,13 +353,13 @@ function buildV1Server(): McpServer {
     async ({ unit_id }) => {
       const ctx = caller();
       if (!ctx) return NO_CALLER();
-      const blocked = overQuota(ctx);
-      if (blocked) return blocked;
+      if (unitsLeft(ctx) === 0) return quotaError(ctx);
       const inv = inventory();
       const unit = inv.byId.get(unit_id);
       if (!unit) return result({ error: "unit_not_found", guidance: "Use a unit_id returned by search_inventory. Units MatchRV is holding back for review are not served." }, true);
       const powertrain = powertrainReport(unit);
-      const usage = charge(ctx, 1);
+      if (!charge(ctx, 1)) return quotaError(ctx);
+      const usage = usageOf(ctx);
       return result({ unit: publicUnit(unit), availability: availabilityV1(unit, inv.builtAt), ...(powertrain ? { powertrain_and_towing: powertrain } : {}), usage });
     },
   );
@@ -358,8 +375,8 @@ function buildV1Server(): McpServer {
     async ({ unit_ids }) => {
       const ctx = caller();
       if (!ctx) return NO_CALLER();
-      const blocked = overQuota(ctx);
-      if (blocked) return blocked;
+      // All or nothing: a comparison with a unit missing is not a comparison.
+      if (unit_ids.length > unitsLeft(ctx)) return quotaError(ctx, unit_ids.length);
       const inv = inventory();
       const units = unit_ids.map((id) => inv.byId.get(id));
       const missing = unit_ids.filter((_id, i) => !units[i]);
@@ -367,8 +384,8 @@ function buildV1Server(): McpServer {
       try {
         const found = units as CanonicalUnit[];
         const comparison = compareUnits(found, {} as Constraints);
-        const usage = charge(ctx, found.length);
-        return result({ comparison, units: found.map(publicUnit), usage });
+        if (!charge(ctx, found.length)) return quotaError(ctx, found.length);
+        return result({ comparison, units: found.map(publicUnit), usage: usageOf(ctx) });
       } catch (error) {
         return result({ error: "compare_failed", detail: error instanceof Error ? error.message : String(error) }, true);
       }

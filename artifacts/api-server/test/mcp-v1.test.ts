@@ -275,20 +275,29 @@ describe('unit records', () => {
 });
 
 describe('daily unit quota', () => {
-  it('stops serving unit records at the limit, keeps tow checks working, and survives a restart', async () => {
+  it('never serves more unit records than the limit, keeps tow checks working, and survives a restart', async () => {
     const made = partner('Small Quota', { limits: { unitsPerDay: 12 } });
     const a = await tool('search_inventory', { rv_types: ['travel_trailer'], limit: 10 }, made.key);
     expect(a.data.usage).toEqual({ used_today: 10, daily_limit: 12 });
+    expect(a.data.paging.shortened_by_quota).toBeUndefined();
+    // Two left: a comparison of three is refused whole and spends nothing.
+    const three = a.data.results.slice(0, 3).map((r: any) => r.unit_id);
+    const refused = await tool('compare_units', { unit_ids: three }, made.key);
+    expect(refused.data).toMatchObject({ error: 'quota_exceeded', units_left_today: 2 });
+    // The next page is cut to what is left, and says so.
     const b = await tool('search_inventory', { rv_types: ['travel_trailer'], limit: 10, offset: 10 }, made.key);
-    expect(b.data.usage.used_today).toBe(20);
+    expect(b.isError).toBe(false);
+    expect(b.data.results).toHaveLength(2);
+    expect(b.data.paging).toMatchObject({ offset: 10, returned: 2, next_offset: 12, shortened_by_quota: true });
+    expect(b.data.usage).toEqual({ used_today: 12, daily_limit: 12 });
     const unitId = a.data.results[0].unit_id;
     for (const blocked of [
       await tool('search_inventory', { rv_types: ['travel_trailer'] }, made.key),
       await tool('get_unit', { unit_id: unitId }, made.key),
-      await tool('compare_units', { unit_ids: [unitId, a.data.results[1].unit_id] }, made.key),
+      await tool('compare_units', { unit_ids: three.slice(0, 2) }, made.key),
     ]) {
       expect(blocked.isError).toBe(true);
-      expect(blocked.data).toMatchObject({ error: 'quota_exceeded' });
+      expect(blocked.data).toMatchObject({ error: 'quota_exceeded', units_left_today: 0 });
       expect(blocked.data.resets_at).toMatch(/T00:00:00Z$/);
     }
     expect((await tool('evaluate_tow_fit', { unit_ids: [unitId], vehicle: 'Ford F-150' }, made.key)).isError).toBe(false);
@@ -299,6 +308,29 @@ describe('daily unit quota', () => {
     // Another key is unaffected.
     const other = partner('Fresh Quota');
     expect((await tool('get_unit', { unit_id: unitId }, other.key)).isError).toBe(false);
+  });
+
+  it('concurrent requests cannot spend the same remaining units', async () => {
+    const made = partner('Racing', { limits: { unitsPerDay: 37 } });
+    const calls = await Promise.all([
+      ...Array.from({ length: 8 }, (_, i) => tool('search_inventory', { rv_types: ['travel_trailer'], limit: 10, offset: i * 10 }, made.key)),
+      ...Array.from({ length: 6 }, () => tool('get_unit', { unit_id: getScreenedInventory().units[0].id }, made.key)),
+    ]);
+    let served = 0;
+    for (const c of calls) {
+      if (c.isError) { expect(c.data.error).toBe('quota_exceeded'); continue; }
+      served += c.data.results ? c.data.results.length : 1;
+      expect(c.data.usage.used_today).toBeLessThanOrEqual(37);
+    }
+    expect(served).toBe(37);
+    const after = await tool('search_inventory', { rv_types: ['travel_trailer'], limit: 1 }, made.key);
+    expect(after.data).toMatchObject({ error: 'quota_exceeded', units_left_today: 0 });
+  });
+
+  it('a zero limit serves no unit records at all', async () => {
+    const made = partner('Zero Units', { limits: { unitsPerDay: 0 } });
+    expect((await tool('search_inventory', {}, made.key)).data).toMatchObject({ error: 'quota_exceeded' });
+    expect((await tool('get_unit', { unit_id: getScreenedInventory().units[0].id }, made.key)).data).toMatchObject({ error: 'quota_exceeded' });
   });
 });
 

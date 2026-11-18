@@ -55,6 +55,8 @@ import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer
 import { fitFromToolInput, recallFit, rememberFit } from "./services/shopper-fit";
 import { DATA_DIR_FROZEN_GUIDANCE, DataDirFrozenError, isDataDirFrozen } from "./services/data-dir-freeze";
 import { SHOPPER_HTML, SHOPPER_URI } from "./ui/shopper";
+import { RV_CARDS_HTML, RV_CARDS_MIME, RV_CARDS_URI } from "./ui/rv-cards";
+import { buildCardsPayload, CARDS_META_KEY, photoOrigins, type RvCardsPayload } from "./lib/rv-cards";
 import { observeMcpFetch } from "./services/product-analytics";
 import { boundClientId, currentAttribution } from "./services/attribution";
 import { attributeMcpFetch } from "./services/mcp-attribution";
@@ -544,6 +546,30 @@ function textResult(payload: unknown, isError = false, meta?: Record<string, unk
   };
 }
 
+/**
+ * Add the RV card payload to a tool result's _meta. Text content and
+ * structuredContent are untouched, so non-UI clients see exactly what they did.
+ */
+function withCards<T extends { _meta?: Record<string, unknown>; isError?: boolean }>(result: T, payload: RvCardsPayload): T {
+  if (result.isError) return result;
+  return { ...result, _meta: { ...(result._meta ?? {}), [CARDS_META_KEY]: payload } };
+}
+
+const cardsUi = { ui: { resourceUri: RV_CARDS_URI, visibility: ["model", "app"] } };
+
+/** Listing-photo origins for the cards widget CSP, computed once per inventory snapshot. */
+const photoOriginCache = new WeakMap<object, string[]>();
+function cardPhotoOrigins(): string[] {
+  try {
+    const inv = getInventory();
+    let hit = photoOriginCache.get(inv.units);
+    if (!hit) photoOriginCache.set(inv.units, (hit = photoOrigins(inv.units)));
+    return hit;
+  } catch {
+    return [];
+  }
+}
+
 // The workspace's Zod 3.25 /v4 export predates Standard JSON Schema support.
 // Supply that interface for MCP v2 while retaining the shared validators.
 function mcpSchema<T extends z.ZodType>(schema: T) {
@@ -684,6 +710,15 @@ function buildMatchRvServer(): McpServer {
     contents: [{ uri: SHOPPER_URI, mimeType: "text/html;profile=mcp-app", text: SHOPPER_HTML, _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } }, "openai/ui": { availableDisplayModes: ["fullscreen"], preferredDisplayMode: "fullscreen" } } }],
   }));
 
+  // RV cards: a fixed renderer for _meta["matchrv/cards"] (results, compare, detail).
+  // Photos load from the dealer image hosts named in the inventory; nothing else.
+  server.registerResource("matchrv-rv-cards", RV_CARDS_URI, { title: "MatchRV RV cards", mimeType: RV_CARDS_MIME }, async () => {
+    const resourceDomains = cardPhotoOrigins();
+    return {
+      contents: [{ uri: RV_CARDS_URI, mimeType: RV_CARDS_MIME, text: RV_CARDS_HTML, _meta: { ui: { prefersBorder: false, csp: { connectDomains: [], resourceDomains } }, "openai/widgetDescription": "RV listing cards from MatchRV: search results, a side-by-side comparison, or one unit's details. Each card links to its MatchRV listing page." } }],
+    };
+  });
+
   server.registerTool(
     "teach_outfitter",
     {
@@ -818,11 +853,14 @@ function buildMatchRvServer(): McpServer {
       title: "Search and match RVs",
       description:
         "Search nationwide US MatchRV dealer inventory (Road to the Sale step 3). Pass make (e.g. \"Tiffin\") and model (series, e.g. \"Allegro RED\", \"Phaeton\", \"Allegro Bus\", \"Allegro Open Road\", \"Wayfarer\") whenever the shopper names them. They are hard filters, and the brand is reconciled from the listing title, so mislabelled dealer records are handled. model accepts several values; exclude_makes/exclude_models drop what they ruled out. Pass fuel_type ONLY when the shopper explicitly asks for gas or diesel. \"Motorhome\" means Class A, B or C. Inputs are RV-fit facts only (type, make/model, use category, desired features, party size, tow vehicle or towed vehicle, length limit, area and radius, budget with payment method), plus covered_steps / declined_questions: the interview steps already asked or declined, by name only. Conversation-only answers (time off, who's buying, a trade-in, planned trips) are never sent. Every input is optional. This tool never asks for names, contact details, income or credit, stores nothing, and contacts no one; contacting a dealer is a separate step that needs the shopper's explicit approval. ASK, DON'T ASSUME: pass only answers the shopper actually gave, and pass every one you have on each call. Until every interview step is covered (or declined), it returns status=needs_discovery with results=[] and exactly one nextQuestion (with its step and reason for asking); ask that one question and wait. A named make/model does not skip the questions. Skip only when the shopper literally asks: pass shopper_requested_results_now=true with their words in shopper_words; it shows results and returns resumeQuestions. Results are a shortlist of the 3 best fits from different model lines (limit up to 10 only when the shopper asks for more); never quote a total match count or how many of a model exist. Clarify ambiguous shopper needs, confirm approved flexibility, and preserve every hard constraint. State-wide location example: Florida; city-radius example: Tampa, FL. Pass location (city like \"Fife, WA\") to hard-filter by distance — never invent local matches from FL/AZ when the shopper asked for Washington. Also accept query (short search keywords like \"travel trailer sleeps 8\", not the shopper's message), sleeps_min, radius_miles, and structured constraints (priceMaxUsd, rvTypes, sleepsMin, lengthMinFt/lengthMaxFt, fuelType, horsepowerMin, torqueMinLbFt, trailerWeightLbs, trailerTongueLbs, coachLoadedWeightLbs). Use horsepowerMin/torqueMinLbFt only when the shopper states a minimum; use horsepowerPreferred/torquePreferredLbFt for \"preferred\". A minimum is never relaxed: an unknown rating is 'needs verification', never a match, and a lower rating is excluded. Motorhome rows include fuel, hp, torqueLbFt, hitchTowRatingLbs and gcwrLbs (null = not published). When budget or tow/use-case is known, results rank by fit (budget band + hitch/tow), not by nearest/cheapest. Heavy tow (race/enclosed/heavy trailer) excludes unpublished or zero hitch and Class B/camper vans; if local lots lack three passing units, say so and widen radius rather than padding. If coverage.no_local_matches, say there is no local inventory and offer to widen radius. coverage.expanded_for_coverage means the radius was widened to find three fits. Sleeps and other specs are published facts only (dealer listing or the manufacturer's spec for that exact floorplan, with sleepsSourceUrl / *_url); null = not published." + SWIPE_OR_CHAT_DESCRIPTION,
-      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
+      _meta: cardsUi,
       inputSchema: mcpSchema(searchInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async (input, ctx) => {
+      // Units shown as cards: set only when a shortlist is returned.
+      let cardUnits: CanonicalUnit[] = [];
+      const result = await (async () => {
       try {
         const t0 = performance.now();
         const parsedQuery = parseShopperText(input.query);
@@ -955,6 +993,7 @@ function buildMatchRvServer(): McpServer {
             ...(delta ? { listing_changed: delta } : {}),
           };
         });
+        cardUnits = shortlist.map((_row, i) => ranked[i]?.unit).filter((u): u is CanonicalUnit => Boolean(u));
         const compactCoverage = (compact as Record<string, any>).coverage ?? {};
         const refine = refineHint({
           shown: shortlist.length,
@@ -1023,6 +1062,9 @@ function buildMatchRvServer(): McpServer {
           true,
         );
       }
+      })();
+      const status = typeof result.structuredContent?.status === "string" ? result.structuredContent.status : undefined;
+      return withCards(result, buildCardsPayload("results", cardUnits, cardUnits.length ? {} : { status }));
     },
   );
 
@@ -1032,7 +1074,7 @@ function buildMatchRvServer(): McpServer {
       title: "Get RV details",
       description:
         "Get the full canonical MatchRV record for one unit returned by search_rvs, including dealer, specs, price, features, source/provenance, freshness, and explicit unknowns. Motorhomes include a powertrainAndTowing section (what powers it / what it can carry / what it can tow), each value with its status. Never invent missing specifications or assign an engine family's top rating to a unit.",
-      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
+      _meta: cardsUi,
       inputSchema: mcpSchema(getRvInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -1052,14 +1094,14 @@ function buildMatchRvServer(): McpServer {
         const projection = fresh.project(raw);
         const powertrainAndTowing = powertrainReport(unit);
         const walkthrough = walkthroughFor(unit);
-        return textResult({
+        return withCards(textResult({
           unit,
           availability: unitAvailability(unit, fresh.snapshot.builtAt),
           ...(projection ? { inventory_state: projection } : {}),
           ...(powertrainAndTowing ? { powertrainAndTowing } : {}),
           ...(walkthrough ? { walkthrough } : {}),
           dataset: { builtAt: fresh.snapshot.builtAt, note: fresh.snapshot.datasetNote },
-        });
+        }), buildCardsPayload("detail", [unit]));
       }
       const inv = getInventory();
       // Accept the public slug used in the sitemap as well as the stored id.
@@ -1070,7 +1112,7 @@ function buildMatchRvServer(): McpServer {
       if (!unit) return textResult({ error: inv.quarantined.has(resolved) ? "unit_quarantined" : "unit_not_found", issues: inv.quarantined.get(resolved), guidance: "Use an eligible unit_id returned by search_rvs. Withheld records need source review." }, true);
       const powertrainAndTowing = powertrainReport(unit);
       const walkthrough = walkthroughFor(unit);
-      return textResult({ unit, availability: unitAvailability(unit, inv.snapshot.builtAt), ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } });
+      return withCards(textResult({ unit, availability: unitAvailability(unit, inv.snapshot.builtAt), ...(powertrainAndTowing ? { powertrainAndTowing } : {}), ...(walkthrough ? { walkthrough } : {}), dataset: { builtAt: inv.snapshot.builtAt, note: inv.snapshot.datasetNote } }), buildCardsPayload("detail", [unit]));
     },
   );
 
@@ -1080,7 +1122,7 @@ function buildMatchRvServer(): McpServer {
       title: "Compare RVs",
       description:
         "Compare 2-4 MatchRV units side by side against the buyer's constraints. Keeps unknown values explicit and returns deterministic comparison evidence rather than guessed specifications.",
-      _meta: { ui: { resourceUri: SHOPPER_URI, visibility: ["model", "app"] } },
+      _meta: cardsUi,
       inputSchema: mcpSchema(compareInput),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -1107,7 +1149,7 @@ function buildMatchRvServer(): McpServer {
       try {
         const typedUnits = units.filter((u): u is NonNullable<typeof u> => Boolean(u));
         const inventory_state = fresh ? typedUnits.map((unit) => fresh.project(unit)).filter((row) => row != null) : null;
-        return textResult({ comparison: compareUnits(typedUnits, cleanConstraints(constraints)), units: typedUnits, ...(inventory_state ? { inventory_state } : {}) });
+        return withCards(textResult({ comparison: compareUnits(typedUnits, cleanConstraints(constraints)), units: typedUnits, ...(inventory_state ? { inventory_state } : {}) }), buildCardsPayload("compare", typedUnits));
       } catch (error) {
         return textResult({ error: "compare_failed", detail: error instanceof Error ? error.message : String(error) }, true);
       }

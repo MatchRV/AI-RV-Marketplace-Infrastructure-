@@ -20,7 +20,9 @@ import {
   renderUnitSitemapPage,
   renderHubSitemap,
 } from "./lib/sitemap";
-import { parseHubPath, renderHubPage } from "./lib/inventory-hubs";
+import { hubPageData, parseHubPath, renderHubPage } from "./lib/inventory-hubs";
+import { listingCanonicalUrl } from "./lib/listing-seo";
+import { MARKDOWN_CONTENT_TYPE, prefersMarkdown, renderHubMarkdown, renderListingMarkdown, renderNotFoundMarkdown } from "./lib/agent-markdown";
 import { renderLiveLlmsTxt, withLiveInventory } from "./lib/live-inventory";
 
 const app: Express = express();
@@ -250,6 +252,85 @@ app.get("/sitemaps/hubs.xml", (_req: Request, res: Response) => {
   } catch (err) {
     console.error("[sitemap] hubs failed:", err);
     res.status(503).type("text/plain").send("sitemap unavailable");
+  }
+});
+
+// ── Markdown for agents ─────────────────────────────────────────────────────
+// Unit pages and inventory hubs as clean Markdown when the request prefers
+// text/markdown (q-value aware) or uses the ".md" variant of the URL.
+// Everything else falls through untouched to the HTML handlers below; those
+// responses only gain `Vary: Accept` so caches keep the two apart.
+function sendMarkdown(res: Response, status: number, body: string, canonical: string | null): void {
+  res.status(status);
+  res.vary("Accept");
+  res.setHeader("Content-Type", MARKDOWN_CONTENT_TYPE);
+  if (canonical) res.setHeader("Link", `<${canonical}>; rel="canonical"`);
+  res.setHeader("Cache-Control", status === 200 ? "public, max-age=300" : "no-store");
+  res.send(body);
+}
+
+app.get(/^\/listing\/(.+)$/, (req: Request, res: Response, next: NextFunction) => {
+  const raw = req.path.slice("/listing/".length);
+  const variant = raw.endsWith(".md") && raw.length > 3;
+  if (!variant && !prefersMarkdown(req.get("accept"))) {
+    res.vary("Accept");
+    next();
+    return;
+  }
+  const decode = (s: string) => {
+    try {
+      return decodeURIComponent(s);
+    } catch {
+      return s;
+    }
+  };
+  let decision: ReturnType<typeof decideListingRequest>;
+  try {
+    decision = decideListingRequest(decode(variant ? raw.slice(0, -3) : raw));
+    // A stored id that really ends in ".md" is a unit page, not a variant.
+    if (variant && !decision.unitId && decideListingRequest(decode(raw)).unitId) {
+      res.vary("Accept");
+      next();
+      return;
+    }
+  } catch (err) {
+    console.warn("[listing-md] inventory unavailable:", err);
+    res.status(503).vary("Accept").type("text/plain").send("temporarily unavailable");
+    return;
+  }
+  if (decision.redirect) {
+    res.vary("Accept");
+    res.redirect(301, variant ? `${decision.redirect}.md` : decision.redirect);
+    return;
+  }
+  const unit = decision.unitId ? getInventory().byId.get(decision.unitId) ?? null : null;
+  if (!unit) {
+    sendMarkdown(res, 404, renderNotFoundMarkdown("listing"), null);
+    return;
+  }
+  sendMarkdown(res, 200, renderListingMarkdown(unit), listingCanonicalUrl(unit.id));
+});
+
+app.get(/^\/rvs(\/.*)?$/, (req: Request, res: Response, next: NextFunction) => {
+  const variant = req.path.endsWith(".md");
+  if (!variant && !prefersMarkdown(req.get("accept"))) {
+    res.vary("Accept");
+    next();
+    return;
+  }
+  const path = variant ? req.path.slice(0, -3) : req.path;
+  const rawPage = typeof req.query.page === "string" ? req.query.page : undefined;
+  const page = rawPage === undefined ? 1 : /^[1-9]\d{0,3}$/.test(rawPage) ? Number(rawPage) : NaN;
+  try {
+    const data = Number.isFinite(page) ? hubPageData(path, page) : null;
+    if (!data) {
+      sendMarkdown(res, 404, renderNotFoundMarkdown("page"), null);
+      return;
+    }
+    sendMarkdown(res, 200, renderHubMarkdown(data), data.url);
+  } catch (err) {
+    console.error("[hubs-md] render failed:", err);
+    res.status(503).vary("Accept").type("text/plain").send("temporarily unavailable");
   }
 });
 

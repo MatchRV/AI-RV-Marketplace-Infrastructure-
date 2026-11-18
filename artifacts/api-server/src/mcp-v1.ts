@@ -452,7 +452,7 @@ function buildV1Server(): McpServer {
         preview: prepared.preview,
         confirmation_token: prepared.confirmationToken,
         expires_at: prepared.expiresAt,
-        next: "Show this full preview to the shopper. Only if they approve sending it, call send_inquiry with this confirmation_token and shopper_approved=true. This token only works with the API key that prepared it.",
+        next: "Show this full preview to the shopper, with the price exactly as preview.unit.priceLabel and preview.unit.priceDisplay (\"Last listed price: $…\" or \"Price on request\"; not a quote). Only if they approve sending it, call send_inquiry with this confirmation_token and shopper_approved=true. This token only works with the API key that prepared it.",
       });
     },
   );

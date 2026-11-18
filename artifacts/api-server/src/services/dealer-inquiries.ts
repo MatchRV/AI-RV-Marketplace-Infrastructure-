@@ -43,6 +43,7 @@ import { dirname, resolve } from "node:path";
 import { beginDurableWrite, dataDirAcceptsWrites, endDurableWrite, DATA_DIR_FROZEN_GUIDANCE, isDataDirFrozen, registerDataWriter } from "./data-dir-freeze";
 import type { CanonicalUnit } from "@workspace/agent-core";
 import { formatFitLines, sanitizeFit, type ShopperFit } from "./shopper-fit";
+import { advertisablePrice } from "../lib/unit-insights";
 import { recordInquiryOutcome } from "./product-analytics";
 import { DELIVERY_RETRY_BACKOFF_MS } from "./inquiry-safety-policy";
 import { dataDir, writeFileAtomic } from "./atomic-file";
@@ -115,8 +116,27 @@ export function paymentEstimateLines(pe: PaymentEstimate | null | undefined): st
     `  Credit (shopper's estimate, no credit check): ${pe.creditRange ? CREDIT_RANGE_LABELS[pe.creditRange] : "-"}`,
   ];
 }
+/** Same wording as the RV cards: a listed price is what the dealer last showed, not a quote. */
+export const INQUIRY_PRICE_LABEL = "Last listed price";
+export const INQUIRY_PRICE_ON_REQUEST = "Price on request";
+
 export interface InquiryPreview {
-  unit: { id: string; title: string; vin: string | null; stockNumber: string | null; priceUsd: number | null; condition: string; stockUrl: string | null; stockUrlNote: string | null };
+  unit: {
+    id: string; title: string; vin: string | null; stockNumber: string | null;
+    /**
+     * The price that passes the website's public listing rule (advertisablePrice),
+     * else null. Before this rule it was the raw stored price; it is now null when
+     * that price is suppressed (e.g. the dealer's own text names a different price).
+     */
+    priceUsd: number | null;
+    condition: string; stockUrl: string | null; stockUrlNote: string | null;
+    /** Always "Last listed price". Optional only because inquiries stored before it lack it. */
+    priceLabel?: string;
+    /** "$48,995" or "Price on request". Show this, under priceLabel, rather than formatting priceUsd. */
+    priceDisplay?: string;
+    /** true when there is no price MatchRV will show: ask the dealer. */
+    priceOnRequest?: boolean;
+  };
   dealer: { id: string; name: string; city: string; state: string; website: string | null };
   shopper: InquiryContact;
   message: string;
@@ -284,12 +304,24 @@ export function unitListingUrl(unit: CanonicalUnit): string | null {
   return typeof url === "string" && /^https?:\/\/[^\s<>"']+$/i.test(url) && url.length <= 600 ? url : null;
 }
 
+const usdText = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+
+/** "Last listed price: $48,995" or "Price on request", for any stored preview (old ones lack the new fields). */
+export function inquiryPriceLine(u: InquiryPreview["unit"]): string {
+  return u.priceUsd != null && !u.priceOnRequest ? `${u.priceLabel ?? INQUIRY_PRICE_LABEL}: ${usdText(u.priceUsd)}` : INQUIRY_PRICE_ON_REQUEST;
+}
+
 export function buildPreview(unit: CanonicalUnit, contact: InquiryContact, message: string, paymentEstimate: PaymentEstimate | null = null): InquiryPreview {
   const route = dealerRoute(unit.dealer.id);
   const stockUrl = unitListingUrl(unit);
+  // The website's public listing rule: never show a stored price that fails it.
+  const price = advertisablePrice(unit);
   return {
     unit: {
-      id: unit.id, title: unit.title, vin: unit.vin, stockNumber: unit.stockNumber, priceUsd: unit.priceUsd.value, condition: unit.condition,
+      id: unit.id, title: unit.title, vin: unit.vin, stockNumber: unit.stockNumber, priceUsd: price, condition: unit.condition,
+      priceLabel: INQUIRY_PRICE_LABEL,
+      priceDisplay: price != null ? usdText(price) : INQUIRY_PRICE_ON_REQUEST,
+      priceOnRequest: price == null,
       stockUrl,
       stockUrlNote: stockUrl
         ? `The dealer's own listing page for this RV, last seen by MatchRV on ${unit.provenance.lastSeenAt.slice(0, 10)}. The dealer may have changed or removed it since.`
@@ -598,7 +630,7 @@ function dealerEmailText(i: DealerInquiry): string {
   const fitLines = formatFitLines(i.fit);
   return [
     `New shopper inquiry via MatchRV (ref ${i.id})`, "",
-    `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Price listed: ${u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a"}`,
+    `RV: ${u.title}`, `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   ${inquiryPriceLine(u)}`,
     ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []), "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`, "",
     ...(fitLines.length ? ["Shopper fit (stated during MatchRV interview):", ...fitLines, ""] : []),
@@ -611,7 +643,6 @@ function dealerEmailText(i: DealerInquiry): string {
 /** Plain-text block used by the ops inbox "Copy forward text" button and by dealer/ops email. */
 export function formatInquiryForwardText(i: DealerInquiry): string {
   const p = i.preview; const s = p.shopper; const u = p.unit; const d = p.dealer;
-  const price = u.priceUsd != null ? `$${u.priceUsd.toLocaleString()}` : "n/a";
   const fitLines = formatFitLines(i.fit);
   return [
     `To: ${d.name} (${d.city}, ${d.state})${d.website ? ` ${d.website}` : ""}`,
@@ -619,7 +650,7 @@ export function formatInquiryForwardText(i: DealerInquiry): string {
     "",
     `A shopper asked about this RV through MatchRV (ref ${i.id}).`,
     `RV: ${u.title}`,
-    `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   Listed price: ${price}`,
+    `Stock #: ${u.stockNumber ?? "n/a"}   VIN: ${u.vin ?? "n/a"}   ${inquiryPriceLine(u)}`,
     ...(u.stockUrl ? [`Listing: ${u.stockUrl}`] : []),
     "",
     `Shopper: ${s.name}`, `Email: ${s.email ?? "-"}`, `Phone: ${s.phone ?? "-"}`,

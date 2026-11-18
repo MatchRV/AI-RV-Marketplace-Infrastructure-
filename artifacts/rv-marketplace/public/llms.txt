@@ -58,6 +58,7 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 - Unknown stays unknown: a spec MatchRV cannot source is returned as null with no source, never estimated. Agents should say "the dealer doesn't publish this" rather than guess.
 - Freshness: each record carries when MatchRV first and last saw it on the dealer's website; `check_availability` reports staleness. Always confirm availability and price with the dealership.
 - Unit pages: https://matchrv.com/listing/{unit_id} with schema.org Product + Vehicle + Offer JSON-LD. Unit ids look like `vin:<VIN>` or `stk:<dealer>:<stock>`.
+- Markdown for agents: unit pages and the state/type inventory hubs (https://matchrv.com/rvs/{state}[/{type}]) return clean Markdown (title, price, dealer, key specs, canonical link; no site navigation) when requested with `Accept: text/markdown`, or at the same URL with `.md` appended (e.g. https://matchrv.com/listing/{unit_id}.md). Responses carry `Link: <canonical>; rel="canonical"`. Browsers get the normal HTML.
 
 ## For Dealers
 

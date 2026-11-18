@@ -187,6 +187,49 @@ export function hubPageCount(unitCount: number): number {
   return Math.max(1, Math.ceil(unitCount / HUB_PAGE_UNITS));
 }
 
+export interface HubPageData {
+  label: string;
+  /** Canonical URL of this page (with ?page=N past page 1). */
+  url: string;
+  page: number;
+  pages: number;
+  total: number;
+  dealers: number;
+  stateName: string;
+  /** Units on this page, in the same order as the HTML page. */
+  units: CanonicalUnit[];
+  prevUrl: string | null;
+  nextUrl: string | null;
+}
+
+/**
+ * The data behind one hub page (same units, order and paging as
+ * renderHubPage), for non-HTML renderings such as Markdown. Null exactly when
+ * renderHubPage would return null.
+ */
+export function hubPageData(path: string, page = 1): HubPageData | null {
+  const k = parseHubPath(path);
+  if (!k) return null;
+  const units = hubs().get(keyStr(k));
+  if (!units) return null;
+  const pages = hubPageCount(units.length);
+  if (!Number.isInteger(page) || page < 1 || page > pages) return null;
+  const first = `${SITE}${hubPath(k)}`;
+  const at = (n: number) => (n > 1 ? `${first}?page=${n}` : first);
+  return {
+    label: hubLabel(k),
+    url: at(page),
+    page,
+    pages,
+    total: units.length,
+    dealers: new Set(units.map((u) => u.dealer.id)).size,
+    stateName: US_STATES[k.state]!,
+    units: units.slice((page - 1) * HUB_PAGE_UNITS, page * HUB_PAGE_UNITS),
+    prevUrl: page > 1 ? at(page - 1) : null,
+    nextUrl: page < pages ? at(page + 1) : null,
+  };
+}
+
 /**
  * Rendered hub page, or null when the path is not a hub with enough units or
  * the page number is past the end. Every page links the next, so each

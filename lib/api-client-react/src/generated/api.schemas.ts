@@ -36,6 +36,52 @@ export const RvType = {
   truck_camper: "truck_camper",
 } as const;
 
+/**
+ * Dealer-stated availability as last seen. Not a live stock check.
+ */
+export type ListingAvailability =
+  (typeof ListingAvailability)[keyof typeof ListingAvailability];
+
+export const ListingAvailability = {
+  available: "available",
+  pending: "pending",
+  sold: "sold",
+  removed: "removed",
+  unknown: "unknown",
+} as const;
+
+/**
+ * Where one listing value came from.
+ */
+export interface FieldSource {
+  /**
+   * dealer_listing, manufacturer_spec, derived_text, derived_model_code, reference_table, computed or learned.
+   * @nullable
+   */
+  source: string | null;
+  /**
+   * high, medium or low.
+   * @nullable
+   */
+  confidence: string | null;
+  /** @nullable */
+  sourceUrl: string | null;
+  /** @nullable */
+  observedAt: string | null;
+}
+
+/**
+ * Per-field provenance. A null entry means the value is unknown. Null on the database deploy.
+ */
+export interface ListingSourceSummary {
+  price?: FieldSource | null;
+  lengthFt?: FieldSource | null;
+  dryWeightLbs?: FieldSource | null;
+  gvwrLbs?: FieldSource | null;
+  sleeps?: FieldSource | null;
+  slides?: FieldSource | null;
+}
+
 export interface Listing {
   id: number;
   title: string;
@@ -44,26 +90,87 @@ export interface Listing {
   year: number;
   type: RvType;
   price: number;
-  marketValue: number;
+  /**
+   * Independent market value. Null when unknown; never the asking price restated.
+   * @nullable
+   */
+  marketValue?: number | null;
   dealScore: DealScore;
-  dealSavings?: number;
+  /** @nullable */
+  dealSavings?: number | null;
   mileage?: number;
   length?: number;
   widthFt?: number;
   heightFt?: number;
-  slides?: number;
+  /**
+   * Slide-out count. Null when the dealer did not publish it.
+   * @nullable
+   */
+  slides?: number | null;
   location: string;
   state: string;
   dealerName: string;
   dealerId: number;
   images: string[];
-  daysOnMarket: number;
-  sleeps: number;
+  /**
+   * Dealer list-date age. Null when unknown; see firstSeenAt and daysSinceFirstSeen.
+   * @nullable
+   */
+  daysOnMarket?: number | null;
+  /**
+   * Sleeping capacity. Null when the dealer did not publish it (never assumed).
+   * @nullable
+   */
+  sleeps?: number | null;
   condition: string;
   isNew: boolean;
   isFeatured?: boolean;
   vin?: string;
   pricePerFoot?: number;
+  /**
+   * Overall length in feet. Null when unknown.
+   * @nullable
+   */
+  lengthFt?: number | null;
+  /**
+   * Unloaded (dry) weight in pounds. Null when unknown.
+   * @nullable
+   */
+  dryWeightLbs?: number | null;
+  /**
+   * Gross vehicle weight rating in pounds. Null when unknown.
+   * @nullable
+   */
+  gvwrLbs?: number | null;
+  /**
+   * The unit's own page on the dealer's website.
+   * @nullable
+   */
+  listingUrl?: string | null;
+  /**
+   * ISO time MatchRV first saw the unit on the dealer's site (not the dealer's list date).
+   * @nullable
+   */
+  firstSeenAt?: string | null;
+  /** @nullable */
+  daysSinceFirstSeen?: number | null;
+  /**
+   * ISO time MatchRV last saw the unit on the dealer's site.
+   * @nullable
+   */
+  lastSeenAt?: string | null;
+  /**
+   * ISO time availability was last verified (explicit verification, else lastSeenAt).
+   * @nullable
+   */
+  verifiedAt?: string | null;
+  /** @nullable */
+  daysSinceVerified?: number | null;
+  /** Dealer-stated availability as last seen. Not a live stock check. */
+  availability?: ListingAvailability;
+  /** True unless the dealer showed the unit available within the last 2 days. */
+  needsDealerConfirmation?: boolean;
+  sources?: ListingSourceSummary | null;
 }
 
 export interface PricePoint {

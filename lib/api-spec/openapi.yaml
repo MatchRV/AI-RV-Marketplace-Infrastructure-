@@ -545,17 +545,19 @@ components:
         price:
           type: number
         marketValue:
-          type: number
+          type: [number, 'null']
+          description: Independent market value. Null when unknown; never the asking price restated.
         dealScore:
           $ref: "#/components/schemas/DealScore"
         dealSavings:
-          type: number
+          type: [number, 'null']
         mileage:
           type: number
         length:
           type: number
         slides:
-          type: number
+          type: [number, 'null']
+          description: Slide-out count. Null when the dealer did not publish it.
         location:
           type: string
         state:
@@ -569,9 +571,11 @@ components:
           items:
             type: string
         daysOnMarket:
-          type: number
+          type: [number, 'null']
+          description: Dealer list-date age. Null when unknown; see firstSeenAt and daysSinceFirstSeen.
         sleeps:
-          type: number
+          type: [number, 'null']
+          description: Sleeping capacity. Null when the dealer did not publish it (never assumed).
         condition:
           type: string
         isNew:
@@ -582,6 +586,42 @@ components:
           type: string
         pricePerFoot:
           type: number
+        lengthFt:
+          type: [number, 'null']
+          description: Overall length in feet. Null when unknown.
+        dryWeightLbs:
+          type: [number, 'null']
+          description: Unloaded (dry) weight in pounds. Null when unknown.
+        gvwrLbs:
+          type: [number, 'null']
+          description: Gross vehicle weight rating in pounds. Null when unknown.
+        listingUrl:
+          type: [string, 'null']
+          description: The unit's own page on the dealer's website.
+        firstSeenAt:
+          type: [string, 'null']
+          description: ISO time MatchRV first saw the unit on the dealer's site (not the dealer's list date).
+        daysSinceFirstSeen:
+          type: [number, 'null']
+        lastSeenAt:
+          type: [string, 'null']
+          description: ISO time MatchRV last saw the unit on the dealer's site.
+        verifiedAt:
+          type: [string, 'null']
+          description: ISO time availability was last verified (explicit verification, else lastSeenAt).
+        daysSinceVerified:
+          type: [number, 'null']
+        availability:
+          type: string
+          enum: [available, pending, sold, removed, unknown]
+          description: Dealer-stated availability as last seen. Not a live stock check.
+        needsDealerConfirmation:
+          type: boolean
+          description: True unless the dealer showed the unit available within the last 2 days.
+        sources:
+          oneOf:
+            - $ref: "#/components/schemas/ListingSourceSummary"
+            - type: 'null'
       required:
         - id
         - title
@@ -590,17 +630,63 @@ components:
         - year
         - type
         - price
-        - marketValue
         - dealScore
         - location
         - state
         - dealerName
         - dealerId
         - images
-        - daysOnMarket
-        - sleeps
         - condition
         - isNew
+
+    FieldSource:
+      type: object
+      description: Where one listing value came from.
+      properties:
+        source:
+          type: [string, 'null']
+          description: dealer_listing, manufacturer_spec, derived_text, derived_model_code, reference_table, computed or learned.
+        confidence:
+          type: [string, 'null']
+          description: high, medium or low.
+        sourceUrl:
+          type: [string, 'null']
+        observedAt:
+          type: [string, 'null']
+      required:
+        - source
+        - confidence
+        - sourceUrl
+        - observedAt
+
+    ListingSourceSummary:
+      type: object
+      description: Per-field provenance. A null entry means the value is unknown. Null on the database deploy.
+      properties:
+        price:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
+        lengthFt:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
+        dryWeightLbs:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
+        gvwrLbs:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
+        sleeps:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
+        slides:
+          oneOf:
+            - $ref: "#/components/schemas/FieldSource"
+            - type: 'null'
 
     ListingDetail:
       allOf:

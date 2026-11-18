@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DealScore } from "./dealScore";
+import type { ListingAvailability } from "./listingAvailability";
+import type { ListingSourceSummary } from "./listingSourceSummary";
 import type { RvType } from "./rvType";
 
 export interface Listing {
@@ -16,22 +18,83 @@ export interface Listing {
   year: number;
   type: RvType;
   price: number;
-  marketValue: number;
+  /**
+   * Independent market value. Null when unknown; never the asking price restated.
+   * @nullable
+   */
+  marketValue?: number | null;
   dealScore: DealScore;
-  dealSavings?: number;
+  /** @nullable */
+  dealSavings?: number | null;
   mileage?: number;
   length?: number;
-  slides?: number;
+  /**
+   * Slide-out count. Null when the dealer did not publish it.
+   * @nullable
+   */
+  slides?: number | null;
   location: string;
   state: string;
   dealerName: string;
   dealerId: number;
   images: string[];
-  daysOnMarket: number;
-  sleeps: number;
+  /**
+   * Dealer list-date age. Null when unknown; see firstSeenAt and daysSinceFirstSeen.
+   * @nullable
+   */
+  daysOnMarket?: number | null;
+  /**
+   * Sleeping capacity. Null when the dealer did not publish it (never assumed).
+   * @nullable
+   */
+  sleeps?: number | null;
   condition: string;
   isNew: boolean;
   isFeatured?: boolean;
   vin?: string;
   pricePerFoot?: number;
+  /**
+   * Overall length in feet. Null when unknown.
+   * @nullable
+   */
+  lengthFt?: number | null;
+  /**
+   * Unloaded (dry) weight in pounds. Null when unknown.
+   * @nullable
+   */
+  dryWeightLbs?: number | null;
+  /**
+   * Gross vehicle weight rating in pounds. Null when unknown.
+   * @nullable
+   */
+  gvwrLbs?: number | null;
+  /**
+   * The unit's own page on the dealer's website.
+   * @nullable
+   */
+  listingUrl?: string | null;
+  /**
+   * ISO time MatchRV first saw the unit on the dealer's site (not the dealer's list date).
+   * @nullable
+   */
+  firstSeenAt?: string | null;
+  /** @nullable */
+  daysSinceFirstSeen?: number | null;
+  /**
+   * ISO time MatchRV last saw the unit on the dealer's site.
+   * @nullable
+   */
+  lastSeenAt?: string | null;
+  /**
+   * ISO time availability was last verified (explicit verification, else lastSeenAt).
+   * @nullable
+   */
+  verifiedAt?: string | null;
+  /** @nullable */
+  daysSinceVerified?: number | null;
+  /** Dealer-stated availability as last seen. Not a live stock check. */
+  availability?: ListingAvailability;
+  /** True unless the dealer showed the unit available within the last 2 days. */
+  needsDealerConfirmation?: boolean;
+  sources?: ListingSourceSummary | null;
 }

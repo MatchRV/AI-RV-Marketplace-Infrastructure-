@@ -125,7 +125,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
       "",
       "A shopper asked about this RV through MatchRV (ref " + i.id + ").",
       "RV: " + u.title,
-      "Stock #: " + (u.stockNumber || "n/a") + "   VIN: " + (u.vin || "n/a") + "   Listed price: " + fmtPrice(u.priceUsd),
+      "Stock #: " + (u.stockNumber || "n/a") + "   VIN: " + (u.vin || "n/a") + "   " + (typeof u.priceUsd === "number" ? "Last listed price: " + fmtPrice(u.priceUsd) : "Price on request"),
       "",
       "Shopper: " + s.name, "Email: " + (s.email || "-"), "Phone: " + (s.phone || "-"),
       ""
@@ -169,7 +169,7 @@ export const OPS_LEADS_HTML = `<!doctype html>
       addRow(dl, "Dealer", [d.name, [d.city, d.state].filter(Boolean).join(", ")].filter(Boolean).join(" — "));
       addRow(dl, "Dealer site", d.website, safeHref(d.website));
       addRow(dl, "Stock / VIN", (u.stockNumber || "n/a") + " / " + (u.vin || "n/a"));
-      addRow(dl, "Listed price", fmtPrice(u.priceUsd));
+      addRow(dl, "Last listed price", typeof u.priceUsd === "number" ? fmtPrice(u.priceUsd) : "Price on request");
       addRow(dl, "Listing", u.stockUrl ? "Dealer page" : null, safeHref(u.stockUrl));
       addRow(dl, "Delivery", (i.delivery && i.delivery.channel) || "-");
       addRow(dl, "Came through", sourceLabel(i.attribution));

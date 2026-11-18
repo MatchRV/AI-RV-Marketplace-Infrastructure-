@@ -233,3 +233,49 @@ describe('HTTP endpoint', () => {
     expect(mock.sent.emails.length + mock.sent.pushes.length).toBe(0);
   });
 });
+
+describe('preview price: public listing rule and "Last listed price"', () => {
+  // The dealer's own text names $36,900 / $29,900; the stored $13,900 matches neither.
+  const CONFLICT = 'Inventory Number: 2502C002 Year: 2018 Listing Price: $36,900 Reduced Price: $29,900';
+  const variant = (suffix: string, price: number, description: string | null) => {
+    const u = structuredClone(unit());
+    u.id = `${u.id}#price-${suffix}`; // own id: the snapshot's screen findings for the real unit do not apply
+    u.priceUsd = { value: price, source: 'dealer_listing', confidence: 'high' };
+    u.description = description;
+    return u;
+  };
+
+  it('suppressed price: preview says "Price on request" and never carries the stored number, through to the dealer email', async () => {
+    const u = variant('conflict', 13900, CONFLICT);
+    const p = prepareInquiry(u, shopper); if (!p.ok) throw new Error();
+    expect(p.preview.unit).toMatchObject({ priceUsd: null, priceLabel: 'Last listed price', priceDisplay: 'Price on request', priceOnRequest: true });
+    expect(JSON.stringify(p.preview)).not.toMatch(/13,?900/);
+    __setRoutes({ [u.dealer.id]: 'sales@dealer.example' });
+    const r = await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, requesterKey: 't-por', scope: null, lookupUnit: () => u });
+    if (!r.ok) throw new Error(r.code);
+    expect(mock.sent.emails[0].text).toContain('Price on request');
+    expect(mock.sent.emails[0].text).not.toMatch(/13,?900/);
+    const fwd = formatInquiryForwardText(opsGet(r.inquiry.inquiryId)!);
+    expect(fwd).toContain('Price on request');
+    expect(fwd).not.toMatch(/13,?900/);
+  });
+
+  it('advertisable price: preview and dealer text label it "Last listed price"', async () => {
+    const u = variant('ok', 48995, null);
+    const p = prepareInquiry(u, shopper); if (!p.ok) throw new Error();
+    expect(p.preview.unit).toMatchObject({ priceUsd: 48995, priceLabel: 'Last listed price', priceDisplay: '$48,995', priceOnRequest: false });
+    __setRoutes({ [u.dealer.id]: 'sales@dealer.example' });
+    const r = await sendInquiry({ confirmationToken: p.confirmationToken, confirmed: true, requesterKey: 't-llp', scope: null, lookupUnit: () => u });
+    if (!r.ok) throw new Error(r.code);
+    expect(mock.sent.emails[0].text).toContain('Last listed price: $48,995');
+    expect(formatInquiryForwardText(opsGet(r.inquiry.inquiryId)!)).toContain('Last listed price: $48,995');
+  });
+
+  it('prepare_dealer_inquiry tells the assistant to show the labelled price; tool names and schemas are unchanged', async () => {
+    const { data } = await tool('prepare_dealer_inquiry', { unit_id: unit().id, ...shopper });
+    expect(data.preview.unit.priceLabel).toBe('Last listed price');
+    expect(typeof data.preview.unit.priceDisplay).toBe('string');
+    expect(data.next).toContain('priceDisplay');
+    expect(data.next).toContain('confirm price and availability');
+  });
+});

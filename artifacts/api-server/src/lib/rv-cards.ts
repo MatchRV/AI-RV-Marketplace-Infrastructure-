@@ -18,6 +18,7 @@
  */
 import { publicListingId, type CanonicalUnit, type Fact } from "@workspace/agent-core";
 import { isBoilerplateDescription } from "./description-boilerplate";
+import { advertisablePrice } from "./unit-insights";
 
 export const CARDS_SCHEMA = "matchrv.rv-cards";
 export const CARDS_VERSION = 1;
@@ -42,7 +43,15 @@ export interface RvCardUnit {
   condition?: "new" | "used";
   /** Only for non-available states the shopper must see: pending, sold, removed. */
   status?: "pending" | "sold" | "removed";
+  /** The price that passes the website's public listing rule (advertisablePrice). Shown as "Last listed price". */
   priceUsd?: number;
+  /**
+   * true when there is no price MatchRV will show: the record has none, or the
+   * stored one failed the public listing rule (e.g. the dealer's own text names
+   * a different price). The widget shows "Price on request". Never set together
+   * with priceUsd. Omitted for sold and removed units.
+   */
+  priceOnRequest?: true;
   dealerName?: string;
   dealerLocation?: string;
   /** RV type code (travel_trailer, class_a, ...) and its display label. */
@@ -152,7 +161,10 @@ export function buildCardUnit(unit: CanonicalUnit, opts: CardOptions = {}): RvCa
   set(out, "model", cleanText(unit.model, 80));
   set(out, "condition", unit.condition === "new" || unit.condition === "used" ? unit.condition : undefined);
   set(out, "status", unit.status === "pending" || unit.status === "sold" || unit.status === "removed" ? unit.status : undefined);
-  set(out, "priceUsd", positive(unit.priceUsd, 5_000_000));
+  // The website's public listing rule: a stored price the dealer's own text
+  // contradicts, or that fails the inventory screen, is never shown.
+  set(out, "priceUsd", advertisablePrice(unit) ?? undefined);
+  if (out.priceUsd === undefined && out.status !== "sold" && out.status !== "removed") out.priceOnRequest = true;
   set(out, "dealerName", dealerName(unit.dealer?.name));
   set(out, "dealerLocation", cleanText([unit.dealer?.city, unit.dealer?.state].map((s) => (s ?? "").trim()).filter(Boolean).join(", "), 80));
   if (unit.rvType && RV_TYPE_LABELS[unit.rvType]) {

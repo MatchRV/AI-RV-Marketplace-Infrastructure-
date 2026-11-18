@@ -3,6 +3,7 @@ import vm from "node:vm";
 import type { CanonicalUnit } from "@workspace/agent-core";
 import { buildCardUnit, buildCardsPayload, cleanText, photoOrigins, safeUrl, CARDS_META_KEY } from "../src/lib/rv-cards";
 import { RV_CARDS_HTML, RV_CARDS_URI } from "../src/ui/rv-cards";
+import { advertisablePrice, priceConflictsWithDescription } from "../src/lib/unit-insights";
 
 const fact = <T>(value: T | null, source: string | null = value == null ? null : "dealer_listing") => ({ value, source, confidence: value == null ? null : "high" }) as any;
 
@@ -233,5 +234,62 @@ describe("RV cards widget", () => {
   it("applies the host theme", () => {
     const { html } = loadWidget({ theme: "dark", toolResponseMetadata: {} });
     expect(html.attrs["data-theme"]).toBe("dark");
+  });
+});
+
+// ── price: the website's public listing rule ────────────────────────────────
+
+describe("card price follows the public listing rule", () => {
+  // The dealer's own text names $36,900 / $29,900; the stored $13,900 matches neither.
+  const CONFLICT = "Inventory Number: 2502C002 Year: 2018 Listing Price: $36,900 Reduced Price: $29,900. Clean rear-bath couples coach with an island queen and a big pass-through storage bay.";
+  const conflicted = unit({ id: "stk:example.com:CONFLICT", title: "2018 Example Conflict 25RB", priceUsd: fact(13900), description: CONFLICT });
+  const priced = unit({ id: "stk:example.com:PRICED" });
+  const raw = /13,?900/;
+
+  it("the fixture really trips priceConflictsWithDescription / advertisablePrice", () => {
+    expect(priceConflictsWithDescription(conflicted)).toBe(true);
+    expect(advertisablePrice(conflicted)).toBeNull();
+    expect(advertisablePrice(priced)).toBe(48995);
+  });
+
+  it("payload never carries the suppressed stored price and says price on request", () => {
+    for (const view of ["results", "compare", "detail"] as const) {
+      const p = buildCardsPayload(view, [conflicted, priced]);
+      const card = p.units[0];
+      expect(card).not.toHaveProperty("priceUsd");
+      expect(card.priceOnRequest).toBe(true);
+      expect(JSON.stringify(p)).not.toMatch(raw);
+    }
+    const ok = buildCardUnit(priced);
+    expect(ok.priceUsd).toBe(48995);
+    expect(ok).not.toHaveProperty("priceOnRequest");
+    // No price at all also reads "Price on request" (website parity); sold/removed units carry neither.
+    expect(buildCardUnit(unit({ priceUsd: fact(null) })).priceOnRequest).toBe(true);
+    expect(buildCardUnit(unit({ priceUsd: fact(null), status: "sold" }))).not.toHaveProperty("priceOnRequest");
+  });
+
+  it("widget shows 'Price on request' (never the raw price) and labels real prices 'Last listed price' in all three views", () => {
+    for (const view of ["results", "compare", "detail"] as const) {
+      const units = view === "detail" ? [conflicted] : [conflicted, priced];
+      const { root } = loadWidget({ toolResponseMetadata: { [CARDS_META_KEY]: buildCardsPayload(view, units) } });
+      const text = root.textContent;
+      expect(text, view).toContain("Price on request");
+      expect(text, view).not.toMatch(raw);
+      if (view !== "detail") {
+        expect(text, view).toContain("Last listed price");
+        expect(text, view).toContain("$48,995");
+      }
+      const { root: one } = loadWidget({ toolResponseMetadata: { [CARDS_META_KEY]: buildCardsPayload(view, [priced]) } });
+      expect(one.textContent, view).toContain("Last listed price");
+      expect(one.textContent, view).not.toContain("Price on request");
+    }
+  });
+
+  it("a payload without the new flag (older server) shows no price line rather than guessing", () => {
+    const old = { ...buildCardsPayload("results", [conflicted]) };
+    old.units = old.units.map(({ priceOnRequest: _drop, ...u }) => u);
+    const { root } = loadWidget({ toolResponseMetadata: { [CARDS_META_KEY]: old } });
+    expect(root.textContent).not.toContain("Price on request");
+    expect(root.textContent).not.toMatch(raw);
   });
 });

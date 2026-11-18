@@ -497,7 +497,7 @@ export function ListingDetail() {
             </div>
             {priceAnalysis && (
               <div className="flex items-center md:justify-end gap-2 mt-1">
-                <span className="text-sm text-[#3b4949] line-through">{formatCurrency(listing.marketValue)} Est.</span>
+                <span className="text-sm text-[#3b4949] line-through">{formatCurrency(listing.marketValue ?? 0)} Est.</span>
                 <span className={`text-xs font-black px-3 py-1 rounded ${chip.bg} ${chip.text}`}>
                   {dealInfo.label}
                 </span>
@@ -594,7 +594,7 @@ export function ListingDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <SpecItem label="Length" value={listing.length ? `${listing.length} ft` : "Not listed"} />
               <SpecItem label="Sleeps" value={listing.sleeps ?? "Not listed"} />
-              <SpecItem label="Slides" value={listing.slides ?? 0} />
+              <SpecItem label="Slides" value={listing.slides ?? "Not listed"} />
               <SpecItem label="Dry Weight" value={listing.dryWeight ? `${formatNumber(listing.dryWeight)} lbs` : "Not listed"} />
               <SpecItem label="Generator" value={featureLabel(facts.generator)} />
               <SpecItem label="Solar" value={featureLabel(facts.solar)} />

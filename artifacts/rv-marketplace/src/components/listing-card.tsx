@@ -103,7 +103,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[
               { icon: <Maximize2 className="w-3.5 h-3.5" />, val: listing.length ? `${listing.length}'` : "—" },
-              { icon: <BedDouble className="w-3.5 h-3.5" />, val: `Sleeps ${listing.sleeps}` },
+              { icon: <BedDouble className="w-3.5 h-3.5" />, val: listing.sleeps != null ? `Sleeps ${listing.sleeps}` : "Sleeps —" },
               { icon: <Calendar className="w-3.5 h-3.5" />, val: String(listing.year) },
             ].map((s, i) => (
               <div key={i} className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#eef5f4] text-[#3b4949]">

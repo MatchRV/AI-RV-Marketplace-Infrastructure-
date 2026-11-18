@@ -120,8 +120,9 @@ function scoreFit(l: NormalizedListing, q: QuizAnswers): number {
   score += (3 - dealScoreRank(l.dealScore)) * 25;
   if (l.isFeatured) score += 5;
   const desiredSleeps = q.hasKids ? 6 : (q.travelers === "family" ? 5 : q.travelers === "couple" ? 2 : q.travelers === "solo" ? 1 : 4);
-  if (l.sleeps >= desiredSleeps) score += 15;
-  if (l.sleeps >= desiredSleeps + 2) score += 5;
+  // Unknown sleeping capacity earns no fit points (it is never assumed).
+  if (l.sleeps != null && l.sleeps >= desiredSleeps) score += 15;
+  if (l.sleeps != null && l.sleeps >= desiredSleeps + 2) score += 5;
   if (q.towCapacity && l.dryWeight && l.dryWeight * 1.15 <= q.towCapacity) score += 20;
   if (q.campingStyle === "boondocking" && (l.solar || l.generator)) score += 10;
   if (q.campingStyle === "full_hookup" && l.washerDryer) score += 5;
@@ -208,7 +209,7 @@ async function generateCopy(
 
   const picksSummary = picks.map((p) => {
     const l = p.listing;
-    return `[${p.tier.toUpperCase()}] ${l.year} ${l.make} ${l.model} — ${l.type} | $${l.price.toLocaleString()} | sleeps ${l.sleeps} | ${l.length ? `${l.length}ft | ` : ""}${l.dryWeight ? `${l.dryWeight}lb dry | ` : ""}deal: ${l.dealScore}${l.dealSavings > 0 ? ` ($${l.dealSavings.toLocaleString()} below market)` : ""} | ${l.location}`;
+    return `[${p.tier.toUpperCase()}] ${l.year} ${l.make} ${l.model} — ${l.type} | $${l.price.toLocaleString()} | sleeps ${l.sleeps ?? "unknown"} | ${l.length ? `${l.length}ft | ` : ""}${l.dryWeight ? `${l.dryWeight}lb dry | ` : ""}deal: ${l.dealScore}${l.dealSavings > 0 ? ` ($${l.dealSavings.toLocaleString()} below market)` : ""} | ${l.location}`;
   }).join("\n");
 
   const prompt = `You are a professional RV outfitter writing a personalized RV Match Report for someone who just told you about their camping lifestyle. You are NOT a salesperson — you're a trusted guide helping them understand which RVs fit their life.

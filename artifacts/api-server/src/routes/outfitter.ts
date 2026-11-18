@@ -1113,7 +1113,7 @@ router.post("/outfitter/chat", async (req, res) => {
       dealerId: r.dealer_id ?? r.dealerId,
       images: (r.images as string[]) ?? [],
       daysOnMarket: Number(r.days_on_market ?? r.daysOnMarket ?? 0),
-      sleeps: Number(r.sleeps ?? 2),
+      sleeps: r.sleeps == null ? null : Number(r.sleeps), // unknown stays null, never 2
       length: r.length,
       condition: r.condition,
       isNew: Boolean(r.is_new ?? r.isNew),
@@ -1177,7 +1177,7 @@ router.post("/outfitter/recommendations", async (req, res) => {
       dealerId: r.dealer_id,
       images: (r.images as string[]) ?? [],
       daysOnMarket: Number(r.days_on_market ?? 0),
-      sleeps: Number(r.sleeps ?? 2),
+      sleeps: r.sleeps == null ? null : Number(r.sleeps), // unknown stays null, never 2
       length: r.length,
       condition: r.condition,
       isNew: Boolean(r.is_new),

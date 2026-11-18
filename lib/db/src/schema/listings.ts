@@ -10,13 +10,15 @@ export const listingsTable = pgTable("listings", {
   year: integer("year").notNull(),
   type: text("type").notNull(),
   price: real("price").notNull(),
-  marketValue: real("market_value").notNull(),
+  // Nullable: no market-value model exists; unknown is NULL, never the price restated.
+  marketValue: real("market_value"),
   dealScore: text("deal_score").notNull().default("fair_deal"),
   dealSavings: real("deal_savings").default(0),
   mileage: integer("mileage"),
   length: real("length"),
   slides: integer("slides").default(0),
-  sleeps: integer("sleeps").notNull().default(2),
+  // Nullable, no default: unknown sleeping capacity is NULL, never assumed to be 2.
+  sleeps: integer("sleeps"),
   location: text("location").notNull(),
   state: text("state").notNull(),
   dealerName: text("dealer_name").notNull(),

@@ -4,8 +4,9 @@
  * work on a fresh clone with zero services.
  *
  * Honesty rules carried over from the agent layer: no fabricated market
- * values, deal scores, ratings, or days-on-market — marketValue mirrors the
- * asking price and dealer stats stay at schema defaults.
+ * values, deal scores, ratings, or days-on-market. Unknown market value,
+ * slides, and sleeps stay NULL (never the asking price, 0, or 2); dealer
+ * stats stay at schema defaults.
  */
 
 import { sql } from "drizzle-orm";
@@ -44,11 +45,11 @@ export async function seedEmbeddedFromSnapshot(): Promise<void> {
     year: u.year,
     type: u.rvType,
     price: u.priceUsd.value ?? 0,
-    marketValue: u.priceUsd.value ?? 0,
+    marketValue: null,
     dealSavings: 0,
     length: u.lengthFt.value,
-    slides: u.slideouts.value ?? 0,
-    sleeps: u.sleeps.value ?? 2,
+    slides: u.slideouts.value,
+    sleeps: u.sleeps.value,
     location: `${u.dealer.city}, ${u.dealer.state}`,
     state: u.dealer.state,
     dealerName: u.dealer.name,

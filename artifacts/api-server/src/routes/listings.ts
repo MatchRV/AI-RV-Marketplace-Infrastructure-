@@ -3,6 +3,8 @@ import { isBoilerplateDescription } from "../lib/description-boilerplate";
 import { db, listingsTable, dealersTable, DB_MODE } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, sql, inArray } from "drizzle-orm";
 import { getSnapshotListingById, querySnapshotListings } from "../services/snapshot-listings";
+import { getInventory } from "../services/agent-inventory";
+import { agentFieldsForRow, agentFieldsForUnit, daysSince } from "../services/listing-agent-fields";
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
@@ -34,11 +36,36 @@ function computeDealScore(price: number, marketValue: number): { dealScore: stri
   return { dealScore, dealSavings: Math.round(diff) };
 }
 
-function formatListing(row: Record<string, unknown>) {
+const numOrNull = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * The snapshot has no market-value model, so its market value is always null.
+ * A database row keeps a stored value only when it is an independent number
+ * (not the asking price restated); otherwise null.
+ */
+function independentMarketValue(row: Record<string, unknown>, price: number): number | null {
+  const mv = numOrNull(row.market_value ?? row.marketValue);
+  if (mv === null || mv <= 0 || !Number.isFinite(price) || Math.round(mv) === Math.round(price)) return null;
+  return mv;
+}
+
+/**
+ * One listing as /api/listings returns it. Unknown values are null, never
+ * invented: no default sleeps/slides, no market value restating the price, no
+ * placeholder days-on-market. Agent-grade fields (listingUrl, lastSeenAt,
+ * verifiedAt, availability, per-field sources, lengthFt/dryWeightLbs/gvwrLbs)
+ * are additive. On the snapshot deploy they come from the canonical unit; on
+ * the database deploy the table has no provenance, so they stay null/unknown.
+ */
+function formatListing(row: Record<string, unknown>, now: Date = new Date()) {
   const price = Number(row.price);
-  const marketValue = Number(row.market_value ?? row.marketValue ?? price);
-  const { dealScore, dealSavings } = computeDealScore(price, marketValue);
-  const length = Number(row.length) || undefined;
+  const length = numOrNull(row.length) || undefined;
+  const unit = DB_MODE === "none" ? getInventory().byId.get(String(row.id)) : undefined;
+  const agent = unit ? agentFieldsForUnit(unit, now) : agentFieldsForRow(row);
   return {
     id: row.id,
     title: row.title,
@@ -47,26 +74,29 @@ function formatListing(row: Record<string, unknown>) {
     year: row.year,
     type: row.type,
     price,
-    marketValue,
-    dealScore: (row.deal_score ?? row.dealScore ?? dealScore) as string,
-    dealSavings: Number(row.deal_savings ?? row.dealSavings ?? dealSavings),
+    marketValue: unit ? null : independentMarketValue(row, price),
+    dealScore: (row.deal_score ?? row.dealScore ?? "fair_deal") as string,
+    dealSavings: numOrNull(row.deal_savings ?? row.dealSavings),
     mileage: row.mileage ? Number(row.mileage) : undefined,
     length: length,
     widthFt: row.widthFt ? Number(row.widthFt) : undefined,
     heightFt: row.heightFt ? Number(row.heightFt) : undefined,
-    slides: Number(row.slides ?? 0),
-    sleeps: Number(row.sleeps ?? 2),
+    slides: numOrNull(row.slides),
+    sleeps: numOrNull(row.sleeps),
     location: row.location,
     state: row.state,
     dealerName: row.dealer_name ?? row.dealerName,
     dealerId: row.dealer_id ?? row.dealerId,
     images: (row.images as string[]) ?? [],
-    daysOnMarket: Number(row.days_on_market ?? row.daysOnMarket ?? 0),
+    // The dealer's list date is unknown; see firstSeenAt / daysSinceFirstSeen.
+    daysOnMarket: null,
     condition: row.condition ?? "used",
     isNew: Boolean(row.is_new ?? row.isNew),
     isFeatured: Boolean(row.is_featured ?? row.isFeatured),
     vin: row.vin,
     pricePerFoot: length ? Math.round(price / length) : undefined,
+    ...agent,
+    daysSinceFirstSeen: daysSince(agent.firstSeenAt, now),
   };
 }
 
@@ -80,7 +110,7 @@ router.get("/listings", async (req, res) => {
     if (DB_MODE === "none") {
       const { rows, total, offset, limit } = querySnapshotListings(q);
       return void res.json({
-        listings: rows.map(formatListing),
+        listings: rows.map((r) => formatListing(r)),
         total,
         offset,
         limit,
@@ -237,7 +267,7 @@ router.get("/listings", async (req, res) => {
     ]);
 
     res.json({
-      listings: rows.map(formatListing),
+      listings: rows.map((r) => formatListing(r)),
       total: Number(countResult[0]?.count ?? 0),
       offset,
       limit,
@@ -353,7 +383,7 @@ router.get("/listings/:id", async (req, res) => {
         yearsInBusiness: dealer.yearsInBusiness,
         totalListings: dealer.totalListings,
       } : null,
-      similarListings: similar.map(formatListing),
+      similarListings: similar.map((r) => formatListing(r)),
     };
 
     res.json(detail);

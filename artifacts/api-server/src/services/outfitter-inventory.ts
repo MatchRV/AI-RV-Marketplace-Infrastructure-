@@ -14,7 +14,7 @@
  * feed the ranking pipeline identical data.
  *
  * Honesty rules carried over unchanged: no fabricated market values, deal
- * scores, or days-on-market. Expanded inventory can lack photos or dealer
+ * scores, or days-on-market; unknown sleeps/slides/market value stay null. Expanded inventory can lack photos or dealer
  * coordinates; preserve empty photos and null coordinates without fabrication.
  */
 
@@ -37,11 +37,13 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
     year: u.year,
     type: u.rvType,
     price: u.priceUsd.value ?? 0,
-    market_value: u.priceUsd.value ?? 0,
+    // No market-value model exists: unknown, not the asking price restated.
+    market_value: null,
     deal_savings: 0,
     length: u.lengthFt.value,
-    slides: u.slideouts.value ?? 0,
-    sleeps: u.sleeps.value ?? 2,
+    // Unknown stays null: never a default slide count or sleeping capacity.
+    slides: u.slideouts.value,
+    sleeps: u.sleeps.value,
     location: `${u.dealer.city}, ${u.dealer.state}`,
     state: u.dealer.state,
     dealer_name: u.dealer.name,
@@ -71,7 +73,9 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
     longitude: u.dealer.lng,
     // Column defaults the database would supply (schema/listings.ts).
     deal_score: "fair_deal",
-    days_on_market: 0,
+    // The dealer's list date is not in the snapshot. Agents get firstSeenAt
+    // (when MatchRV first saw the unit) from /api/listings instead.
+    days_on_market: null,
     is_featured: false,
     // Not in the snapshot: unknown, not assumed.
     awning: null,

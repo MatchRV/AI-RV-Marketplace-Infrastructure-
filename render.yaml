@@ -20,7 +20,9 @@ services:
       corepack enable && corepack prepare pnpm@10.33.0 --activate &&
       pnpm install --filter "@workspace/api-server..." --filter "@workspace/rv-marketplace..." &&
       pnpm run build:web && pnpm run build:api
-    startCommand: node artifacts/api-server/dist/index.cjs
+    # When INVENTORY_GCS_ENABLED=1, fetch the latest Google Cloud inventory export (validated) before start;
+    # when off or on any failure the committed snapshot is used unchanged. The script always exits 0.
+    startCommand: node artifacts/api-server/scripts/fetch-gcs-snapshot.mjs; node artifacts/api-server/dist/index.cjs
     healthCheckPath: /api/healthz
     # Persistent disk so Outfitter learning (learned tow ratings, unit
     # facts) survives redeploys. Requires a paid instance; single-instance
@@ -40,3 +42,19 @@ services:
         value: "22.22.0"
       - key: DISABLE_DB
         value: "1"
+      # Google Cloud inventory export (read-only). OFF by default: with INVENTORY_GCS_ENABLED=0 the pre-start
+      # script exits immediately and the committed snapshot is served exactly as today. Turn on by setting it to 1
+      # only after GCP_SA_KEY_JSON is set. GCP_SA_KEY_JSON is a secret: set it in the Render dashboard
+      # (key for inv-render-reader@main-business-514122.iam.gserviceaccount.com, objectViewer on exports/ only).
+      - key: INVENTORY_GCS_ENABLED
+        value: "0"
+      - key: INVENTORY_GCS_BUCKET
+        value: main-business-514122-inventory
+      - key: INVENTORY_GCS_OBJECT
+        value: exports/inventory.snapshot.json.gz
+      - key: INVENTORY_SNAPSHOT_PATH
+        value: /var/data/inventory.snapshot.json.gz
+      - key: INVENTORY_MIN_UNITS
+        value: "100000"
+      - key: GCP_SA_KEY_JSON
+        sync: false

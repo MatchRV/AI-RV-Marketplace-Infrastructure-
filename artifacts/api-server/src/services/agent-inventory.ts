@@ -17,9 +17,19 @@ import {
 
 let index: InventoryIndex | null = null;
 
+/** INVENTORY_GCS_ENABLED=1|true turns on the Google Cloud export. Default off: the committed snapshot. */
+export function gcsSnapshotEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return ["1", "true"].includes((env.INVENTORY_GCS_ENABLED ?? "").trim().toLowerCase());
+}
+
 /** Probe both the tsx layout (src/services) and the CJS bundle layout (dist). Plain JSON wins locally; committed form is .gz (GitHub's 100MB limit). */
 function findSnapshot(): string {
   const here = import.meta.dirname;
+  // Optional, off by default: the Google Cloud export (gs://main-business-514122-inventory/exports/inventory.snapshot.json.gz),
+  // fetched and validated at start by scripts/fetch-gcs-snapshot.mjs. Same shape as the committed file. Used only when
+  // INVENTORY_GCS_ENABLED is 1/true and the fetched file exists; otherwise the committed file.
+  const override = gcsSnapshotEnabled() ? process.env.INVENTORY_SNAPSHOT_PATH : undefined;
+  if (override && existsSync(override)) return override;
   const candidates = [
     resolve(here, "../../../../lib/agent-core/data/inventory.snapshot.json"), // src/services
     resolve(here, "../../lib/agent-core/data/inventory.snapshot.json"), // dist bundle

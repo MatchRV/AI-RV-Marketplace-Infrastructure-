@@ -48,14 +48,24 @@ describe("outfitter snapshot inventory", () => {
 
   it("carries the column defaults the database would have applied", () => {
     expect(rows.every((r) => r.deal_score === "fair_deal")).toBe(true);
-    expect(rows.every((r) => r.days_on_market === 0)).toBe(true);
+    // Unknown, not a placeholder 0: the dealer's list date is not in the snapshot.
+    expect(rows.every((r) => r.days_on_market === null)).toBe(true);
     expect(rows.every((r) => r.is_featured === false)).toBe(true);
   });
 
   it("does not fabricate a market value or savings", () => {
-    // marketValue mirrors the asking price; nothing claims a discount.
-    expect(rows.every((r) => r.market_value === r.price)).toBe(true);
+    // No market-value model: unknown (null), never the asking price restated; nothing claims a discount.
+    expect(rows.every((r) => r.market_value === null)).toBe(true);
     expect(rows.every((r) => r.deal_savings === 0)).toBe(true);
+  });
+
+  it("leaves unpublished sleeps and slides null instead of defaulting them", () => {
+    const inv = getInventory();
+    for (const r of rows) {
+      const u = inv.byId.get(String(r.id))!;
+      expect(r.sleeps).toBe(u.sleeps.value);
+      expect(r.slides).toBe(u.slideouts.value);
+    }
   });
 
   it("preserves dealer coordinates, including unknown locations", () => {

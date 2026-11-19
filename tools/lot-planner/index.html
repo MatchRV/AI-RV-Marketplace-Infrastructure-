@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lot Planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: full-height map with a docked control panel (left on desktop, bottom sheet on phones). */
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --fg: #1b2420; --muted: #5d6b64; --line: #dde3df;
+  --accent: #1f6b4f; --accent-fg: #ffffff; --ok: #1f8a4c; --bad: #c2392f; --warn: #b7791f;
+  --lot: #ffd84d; --setback: #ff9f43; --home: #2ec4b6;
+  --display: "Space Grotesk", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111614; --panel: #171e1b; --fg: #e7ece9; --muted: #9aa8a1; --line: #2a3430;
+  --accent: #4fb38a; --accent-fg: #0d1411; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #111614; --panel: #171e1b; --fg: #e7ece9; --muted: #9aa8a1; --line: #2a3430;
+  --accent: #4fb38a; --accent-fg: #0d1411; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--body); }
+.app { display: grid; grid-template-columns: 360px 1fr; height: 100%; }
+aside { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 18px 28px; display: flex; flex-direction: column; gap: 18px; }
+#map { height: 100%; min-height: 300px; }
+h1 { font: 700 20px/1.2 var(--display); margin: 0; }
+h2 { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+p.lede { margin: 4px 0 0; color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; min-width: 0; }
+label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+input, select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button { font: 600 13px var(--body); border-radius: 6px; padding: 9px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.status { border-radius: 8px; padding: 12px; border: 1px solid var(--line); display: grid; gap: 6px; }
+.pill { display: inline-block; font: 700 12px var(--body); padding: 3px 9px; border-radius: 999px; color: #fff; }
+.pill.ok { background: var(--ok); } .pill.bad { background: var(--bad); } .pill.idle { background: var(--muted); }
+dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-variant-numeric: tabular-nums; }
+dt { color: var(--muted); } dd { margin: 0; text-align: right; font-weight: 600; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+#leadDone { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; white-space: pre-wrap; }
+.leaflet-container { font: inherit; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 55% 45%; }
+  aside { order: 2; border-right: 0; border-top: 1px solid var(--line);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .leaflet-zoom-anim .leaflet-zoom-animated { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <header>
+      <h1>Will it fit on your lot?</h1>
+      <p class="lede">Find your property, trace the lot line, and drop a tiny home, ADU or RV on it to check setbacks.</p>
+    </header>
+
+    <section>
+      <h2>1 · Find the property</h2>
+      <form id="searchForm" class="row">
+        <input id="addr" type="text" autocomplete="street-address" placeholder="Street address, city, state" value="Tacoma, WA">
+        <button class="primary" type="submit" style="flex:0 0 auto">Go</button>
+      </form>
+      <p class="hint" id="searchMsg">Search uses Esri's public geocoder, with OpenStreetMap as a fallback.</p>
+    </section>
+
+    <section>
+      <h2>2 · Trace the lot</h2>
+      <div class="row">
+        <button id="traceBtn" aria-pressed="false">Trace lot corners</button>
+        <button id="finishBtn" disabled>Finish</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+      <p class="hint">Click each property corner on the aerial photo, then Finish. Drag the yellow corners to adjust. Fence lines are a guide only; the legal line is on your county parcel map.</p>
+      <label>Setback from every lot line (ft)
+        <input id="setback" type="number" min="0" step="0.5" value="5">
+      </label>
+    </section>
+
+    <section>
+      <h2>3 · Place a structure</h2>
+      <label>Model
+        <select id="model">
+          <option value="8.5x20">Tiny home on wheels · 8.5 × 20 ft</option>
+          <option value="8.5x24" selected>Tiny home on wheels · 8.5 × 24 ft</option>
+          <option value="8.5x28">Tiny home on wheels · 8.5 × 28 ft</option>
+          <option value="13x39">Park model · 13 × 39 ft</option>
+          <option value="20x24">Detached ADU · 20 × 24 ft (480 sq ft)</option>
+          <option value="24x36">Detached ADU · 24 × 36 ft (864 sq ft)</option>
+          <option value="8.5x32">Travel trailer · 8.5 × 32 ft</option>
+          <option value="8.5x40">Class A motorhome · 8.5 × 40 ft</option>
+          <option value="custom">Custom size…</option>
+        </select>
+      </label>
+      <div class="row" id="customRow" hidden>
+        <label>Width (ft)<input id="cw" type="number" min="4" step="0.5" value="12"></label>
+        <label>Length (ft)<input id="cl" type="number" min="4" step="0.5" value="24"></label>
+      </div>
+      <label>Rotation <span id="rotVal" style="display:inline">0°</span>
+        <input id="rot" type="range" min="0" max="179" value="0">
+      </label>
+      <button id="placeBtn">Place in center of lot</button>
+      <p class="hint">Drag the white handle to move it.</p>
+    </section>
+
+    <section>
+      <h2>Fit check</h2>
+      <div class="status" aria-live="polite">
+        <div><span id="pill" class="pill idle">Trace a lot to start</span></div>
+        <dl>
+          <dt>Lot area</dt><dd id="lotArea">–</dd>
+          <dt>Structure footprint</dt><dd id="fpArea">–</dd>
+          <dt>Lot coverage (this structure)</dt><dd id="cover">–</dd>
+          <dt>Closest lot line</dt><dd id="clear">–</dd>
+        </dl>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--lot)"></i>Lot line</span>
+        <span><i class="sw" style="background:var(--setback)"></i>Setback</span>
+        <span><i class="sw" style="background:var(--home)"></i>Structure</span>
+      </div>
+      <p class="hint">Planning estimate only. Setbacks, height, utilities, easements and occupancy rules vary by city and zone; confirm with your local permitting office before buying or building.</p>
+    </section>
+
+    <section>
+      <h2>4 · Get a quote</h2>
+      <form id="leadForm" style="display:grid;gap:8px">
+        <input id="lname" required placeholder="Name" autocomplete="name">
+        <input id="lemail" required type="email" placeholder="Email" autocomplete="email">
+        <input id="lphone" type="tel" placeholder="Phone (optional)" autocomplete="tel">
+        <button class="primary" type="submit">Send my site plan</button>
+      </form>
+      <div id="leadDone" hidden></div>
+    </section>
+  </aside>
+  <div id="map" role="application" aria-label="Aerial map of the property"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* Configuration. Point LEAD_ENDPOINT at your CRM/webhook (HubSpot form, Zapier hook, your API) to receive leads. */
+const CONFIG = {
+  start: { lat: 47.2529, lng: -122.4443, zoom: 16 },   // Tacoma, WA
+  LEAD_ENDPOINT: null,
+};
+
+const FT = 0.3048, SQM_TO_SQFT = 10.7639;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const map = L.map('map', { zoomControl: true, maxZoom: 21 }).setView([CONFIG.start.lat, CONFIG.start.lng], CONFIG.start.zoom);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics'
+}).addTo(map);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 21, maxNativeZoom: 19, opacity: 0.7
+}).addTo(map);
+
+/* ---------- local planar projection (metres) around a fixed origin ---------- */
+let origin = null;
+function toXY(ll) {
+  const o = origin || ll;
+  return [(ll.lng - o.lng) * Math.cos(o.lat * Math.PI / 180) * 111320, (ll.lat - o.lat) * 110574];
+}
+function toLL([x, y]) {
+  const o = origin;
+  return L.latLng(o.lat + y / 110574, o.lng + x / (Math.cos(o.lat * Math.PI / 180) * 111320));
+}
+
+/* ---------- geometry helpers ---------- */
+const signedArea = p => p.reduce((s, a, i) => { const b = p[(i + 1) % p.length]; return s + a[0] * b[1] - b[0] * a[1]; }, 0) / 2;
+function pointInPoly([x, y], p) {
+  let inside = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [xi, yi] = p[i], [xj, yj] = p[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function segDistPt(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+  let t = L2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function segsCross(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+function segSegDist(a, b, c, d) {
+  if (segsCross(a, b, c, d)) return 0;
+  return Math.min(segDistPt(a, c, d), segDistPt(b, c, d), segDistPt(c, a, b), segDistPt(d, a, b));
+}
+/* Inward offset of a polygon (exact for convex lots, a close guide for typical concave ones). */
+function insetPoly(p, d) {
+  const ccw = signedArea(p) > 0, n = p.length, lines = [];
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    const nx = (ccw ? -dy : dy) / len * d, ny = (ccw ? dx : -dx) / len * d;
+    lines.push([[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny]]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [p1, p2] = lines[(i - 1 + n) % n], [p3, p4] = lines[i];
+    const den = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0]);
+    if (Math.abs(den) < 1e-9) { out.push(p3); continue; }
+    const t = ((p1[0] - p3[0]) * (p3[1] - p4[1]) - (p1[1] - p3[1]) * (p3[0] - p4[0])) / den;
+    out.push([p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])]);
+  }
+  return Math.abs(signedArea(out)) > 0 && Math.sign(signedArea(out)) === Math.sign(signedArea(p)) ? out : null;
+}
+
+/* ---------- state ---------- */
+let tracing = false, lotPts = [], lotMarkers = [], lotLayer = null, setbackLayer = null, traceLine = null;
+let fp = null; // { center: LatLng, w, l, rot }
+let fpLayer = null, fpHandle = null;
+const $ = id => document.getElementById(id);
+
+function vertexIcon() {
+  return L.divIcon({ className: '', iconSize: [14, 14],
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${css('--lot')};border:2px solid #222"></div>` });
+}
+function handleIcon() {
+  return L.divIcon({ className: '', iconSize: [22, 22],
+    html: '<div style="width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #222;box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:move"></div>' });
+}
+
+/* ---------- lot tracing ---------- */
+function setTracing(on) {
+  tracing = on;
+  $('traceBtn').setAttribute('aria-pressed', on);
+  $('finishBtn').disabled = !on;
+  map.getContainer().style.cursor = on ? 'crosshair' : '';
+  if (on) { clearLot(); map.doubleClickZoom.disable(); } else map.doubleClickZoom.enable();
+}
+function clearLot() {
+  lotMarkers.forEach(m => m.remove()); lotMarkers = []; lotPts = [];
+  [lotLayer, setbackLayer, traceLine].forEach(l => l && l.remove());
+  lotLayer = setbackLayer = traceLine = null; origin = null;
+  update();
+}
+function addVertex(ll) {
+  if (!origin) origin = ll;
+  const m = L.marker(ll, { draggable: true, icon: vertexIcon(), keyboard: false }).addTo(map);
+  const idx = lotPts.length;
+  m.on('drag', e => { lotPts[idx] = e.latlng; redrawLot(); });
+  lotMarkers.push(m); lotPts.push(ll);
+  redrawLot();
+}
+function redrawLot() {
+  [lotLayer, setbackLayer, traceLine].forEach(l => l && l.remove());
+  lotLayer = setbackLayer = traceLine = null;
+  if (tracing) {
+    if (lotPts.length > 1) traceLine = L.polyline(lotPts, { color: css('--lot'), weight: 3, dashArray: '6 6' }).addTo(map);
+  } else if (lotPts.length >= 3) {
+    lotLayer = L.polygon(lotPts, { color: css('--lot'), weight: 3, fillOpacity: 0.08, interactive: false }).addTo(map);
+    const sb = +$('setback').value * FT;
+    if (sb > 0) {
+      const inner = insetPoly(lotPts.map(toXY), sb);
+      if (inner) setbackLayer = L.polygon(inner.map(toLL), { color: css('--setback'), weight: 2, dashArray: '5 5', fill: false, interactive: false }).addTo(map);
+    }
+  }
+  drawFootprint();
+}
+map.on('click', e => { if (tracing) addVertex(e.latlng); });
+map.on('dblclick', () => { if (tracing && lotPts.length >= 3) finishLot(); });
+function finishLot() {
+  if (lotPts.length < 3) { $('pill').textContent = 'Click at least 3 corners'; return; }
+  setTracing(false); redrawLot();
+  if (!fp) placeFootprint();
+}
+$('traceBtn').onclick = () => setTracing(!tracing);
+$('finishBtn').onclick = finishLot;
+$('clearBtn').onclick = () => { setTracing(false); clearLot(); };
+$('setback').oninput = redrawLot;
+
+/* ---------- footprint ---------- */
+function modelSize() {
+  const v = $('model').value;
+  if (v === 'custom') return [+$('cw').value || 1, +$('cl').value || 1];
+  return v.split('x').map(Number);
+}
+function fpCornersXY() {
+  const c = toXY(fp.center), [w, l] = [fp.w * FT / 2, fp.l * FT / 2], a = fp.rot * Math.PI / 180;
+  return [[-w, -l], [w, -l], [w, l], [-w, l]].map(([x, y]) =>
+    [c[0] + x * Math.cos(a) - y * Math.sin(a), c[1] + x * Math.sin(a) + y * Math.cos(a)]);
+}
+function placeFootprint() {
+  const [w, l] = modelSize();
+  let center = map.getCenter();
+  if (lotPts.length >= 3) {
+    const xy = lotPts.map(toXY);
+    center = toLL([xy.reduce((s, p) => s + p[0], 0) / xy.length, xy.reduce((s, p) => s + p[1], 0) / xy.length]);
+  }
+  if (!origin) origin = center;
+  fp = { center, w, l, rot: +$('rot').value };
+  if (!fpHandle) {
+    fpHandle = L.marker(center, { draggable: true, icon: handleIcon(), keyboard: false, zIndexOffset: 1000 }).addTo(map);
+    fpHandle.on('drag', e => { fp.center = e.latlng; drawFootprint(); });
+  } else fpHandle.setLatLng(center);
+  drawFootprint();
+}
+function drawFootprint() {
+  if (fpLayer) { fpLayer.remove(); fpLayer = null; }
+  if (fp) {
+    const res = evaluate();
+    const color = res === null ? css('--home') : res.fits ? css('--home') : css('--bad');
+    fpLayer = L.polygon(fpCornersXY().map(toLL), { color, weight: 2, fillColor: color, fillOpacity: 0.45, interactive: false }).addTo(map);
+  }
+  update();
+}
+$('model').onchange = () => { $('customRow').hidden = $('model').value !== 'custom'; if (fp) { [fp.w, fp.l] = modelSize(); drawFootprint(); } };
+$('cw').oninput = $('cl').oninput = $('model').onchange;
+$('rot').oninput = () => { $('rotVal').textContent = $('rot').value + '°'; if (fp) { fp.rot = +$('rot').value; drawFootprint(); } };
+$('placeBtn').onclick = placeFootprint;
+
+/* ---------- fit evaluation ---------- */
+function evaluate() {
+  if (!fp || lotPts.length < 3 || tracing) return null;
+  const lot = lotPts.map(toXY), box = fpCornersXY(), sb = +$('setback').value * FT;
+  const inside = box.every(p => pointInPoly(p, lot));
+  let minD = Infinity;
+  for (let i = 0; i < 4; i++) for (let j = 0; j < lot.length; j++)
+    minD = Math.min(minD, segSegDist(box[i], box[(i + 1) % 4], lot[j], lot[(j + 1) % lot.length]));
+  const lotA = Math.abs(signedArea(lot)), fpA = fp.w * fp.l * FT * FT;
+  return { inside, minD, lotA, fpA, fits: inside && minD + 1e-6 >= sb, sb };
+}
+const fmtSqft = m2 => Math.round(m2 * SQM_TO_SQFT).toLocaleString() + ' sq ft';
+function update() {
+  const pill = $('pill'), r = evaluate();
+  $('lotArea').textContent = lotPts.length >= 3 && !tracing ? fmtSqft(Math.abs(signedArea(lotPts.map(toXY)))) : '–';
+  $('fpArea').textContent = fp ? Math.round(fp.w * fp.l).toLocaleString() + ' sq ft' : '–';
+  if (!r) {
+    pill.className = 'pill idle';
+    pill.textContent = tracing ? `Tracing: ${lotPts.length} corner${lotPts.length === 1 ? '' : 's'}` : lotPts.length < 3 ? 'Trace a lot to start' : 'Place a structure';
+    $('cover').textContent = $('clear').textContent = '–';
+    return;
+  }
+  $('cover').textContent = (100 * r.fpA / r.lotA).toFixed(1) + '%';
+  $('clear').textContent = r.inside ? (r.minD / FT).toFixed(1) + ' ft' : 'Outside lot';
+  pill.className = 'pill ' + (r.fits ? 'ok' : 'bad');
+  pill.textContent = !r.inside ? 'Crosses the lot line' : r.fits ? 'Fits within setbacks' : `Inside the ${(r.sb / FT)} ft setback`;
+}
+
+/* ---------- address search ---------- */
+$('searchForm').onsubmit = async e => {
+  e.preventDefault();
+  const q = $('addr').value.trim(); if (!q) return;
+  const msg = $('searchMsg'); msg.textContent = 'Searching…';
+  try {
+    let hit = null;
+    try {
+      const r = await fetch('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=1&SingleLine=' + encodeURIComponent(q));
+      const j = await r.json();
+      const c = j.candidates && j.candidates[0];
+      if (c) hit = { lat: c.location.y, lng: c.location.x, label: c.address, precise: c.score >= 90 && /PointAddress|StreetAddress|Subaddress/.test(c.attributes?.Addr_type || 'PointAddress') };
+    } catch (_) {}
+    if (!hit) {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+      const j = await r.json();
+      if (j[0]) hit = { lat: +j[0].lat, lng: +j[0].lon, label: j[0].display_name, precise: true };
+    }
+    if (!hit) { msg.textContent = 'No match. Add the city and state, or zoom the map to the property by hand.'; return; }
+    map.setView([hit.lat, hit.lng], hit.precise ? 20 : 15);
+    msg.textContent = 'Showing ' + hit.label + '. Now trace the lot corners.';
+  } catch (err) {
+    msg.textContent = 'Search is unavailable right now. Pan and zoom the map to the property instead.';
+  }
+};
+
+/* ---------- lead capture ---------- */
+$('leadForm').onsubmit = async e => {
+  e.preventDefault();
+  const r = evaluate();
+  const lead = {
+    name: $('lname').value, email: $('lemail').value, phone: $('lphone').value,
+    address: $('addr').value,
+    model: $('model').selectedOptions[0].textContent, size_ft: fp ? [fp.w, fp.l] : null, rotation_deg: fp ? fp.rot : null,
+    lot_sqft: r ? Math.round(r.lotA * SQM_TO_SQFT) : null,
+    closest_line_ft: r ? +(r.minD / FT).toFixed(1) : null, setback_ft: +$('setback').value,
+    fits: r ? r.fits : null,
+    lot_polygon: lotPts.map(p => [+p.lat.toFixed(7), +p.lng.toFixed(7)]),
+    footprint_center: fp ? [+fp.center.lat.toFixed(7), +fp.center.lng.toFixed(7)] : null,
+  };
+  const out = $('leadDone'); out.hidden = false;
+  if (CONFIG.LEAD_ENDPOINT) {
+    try {
+      const res = await fetch(CONFIG.LEAD_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lead) });
+      out.textContent = res.ok ? 'Thanks, your site plan was sent. We will be in touch.' : 'That did not go through (' + res.status + '). Please try again.';
+    } catch (_) { out.textContent = 'That did not go through. Check your connection and try again.'; }
+  } else {
+    out.textContent = 'No lead endpoint is set (CONFIG.LEAD_ENDPOINT). This is what would be sent:\n\n' + JSON.stringify(lead, null, 2);
+  }
+};
+
+update();
+</script>
+</body>
+</html>

@@ -57,6 +57,18 @@ async function loadInventoryCounts(): Promise<InventoryCounts> {
 
 /** Cached listings totals. Null when the inventory query fails. */
 export function getLiveInventoryCounts(): Promise<InventoryCounts | null> {
+  if (DB_MODE === "none") {
+    // Snapshot mode: the counts are memoised per loaded snapshot (O(1) after the first call), so
+    // skip the TTL and always report the snapshot being served, including right after a reload.
+    try {
+      const counts = snapshotInventoryCounts();
+      cache = { at: Date.now(), counts };
+      return Promise.resolve(counts);
+    } catch (err) {
+      console.error("[inventory-counts] load failed:", err);
+      return Promise.resolve(cache?.counts ?? null);
+    }
+  }
   if (cache && Date.now() - cache.at < TTL_MS) return Promise.resolve(cache.counts);
   if (!pending) {
     pending = loadInventoryCounts()
@@ -85,6 +97,7 @@ export function getLiveInventoryCounts(): Promise<InventoryCounts | null> {
 export function clearLiveInventoryCache(): void {
   cache = null;
   pending = null;
+  decorated = null;
 }
 
 /**
@@ -117,9 +130,29 @@ export function applyInventoryCounts(html: string, counts: InventoryCounts | nul
   return out;
 }
 
+/**
+ * Decorated pages for the counts last applied. Pages are a handful of fixed templates, so this
+ * stays small; it is dropped whenever the counts change (a snapshot reload or a new DB total).
+ */
+let decorated: { key: string; pages: Map<string, string> } | null = null;
+const DECORATED_MAX = 64;
+
+function decorateCached(html: string, counts: InventoryCounts | null): string {
+  if (!counts) return applyInventoryCounts(html, null);
+  const key = JSON.stringify(counts);
+  if (!decorated || decorated.key !== key) decorated = { key, pages: new Map() };
+  let out = decorated.pages.get(html);
+  if (out === undefined) {
+    out = applyInventoryCounts(html, counts);
+    if (decorated.pages.size >= DECORATED_MAX) decorated.pages.delete(decorated.pages.keys().next().value!);
+    decorated.pages.set(html, out);
+  }
+  return out;
+}
+
 export async function withLiveInventory(html: string): Promise<string> {
   try {
-    return applyInventoryCounts(html, await getLiveInventoryCounts());
+    return decorateCached(html, await getLiveInventoryCounts());
   } catch (err) {
     console.error("[inventory-counts] decorate failed:", err);
     return applyInventoryCounts(html, null);

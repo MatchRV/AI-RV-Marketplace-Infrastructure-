@@ -570,6 +570,11 @@ function cardPhotoOrigins(): string[] {
   }
 }
 
+/** Compute the cards widget photo origins for the current snapshot now (startup / reload warm). */
+export function warmCardPhotoOrigins(): number {
+  return cardPhotoOrigins().length;
+}
+
 // The workspace's Zod 3.25 /v4 export predates Standard JSON Schema support.
 // Supply that interface for MCP v2 while retaining the shared validators.
 function mcpSchema<T extends z.ZodType>(schema: T) {

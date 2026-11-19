@@ -3,14 +3,12 @@
  * The slug map is built from the same snapshot the sitemap lists.
  */
 import { listingIdEmbedsUrl, publicListingId } from "@workspace/agent-core";
-import { getInventory } from "../services/agent-inventory";
+import { getInventory, perSnapshot } from "../services/agent-inventory";
 
-let slugToId: Map<string, string> | null = null;
-
-function slugIndex(): Map<string, string> {
-  if (slugToId) return slugToId;
+/** Built once per loaded snapshot. */
+const slugIndex = perSnapshot((inv): Map<string, string> => {
   const map = new Map<string, string>();
-  for (const unit of getInventory().units) {
+  for (const unit of inv.units) {
     if (!listingIdEmbedsUrl(unit.id)) continue;
     const slug = publicListingId(unit.id);
     const prev = map.get(slug);
@@ -19,8 +17,12 @@ function slugIndex(): Map<string, string> {
     }
     map.set(slug, unit.id);
   }
-  slugToId = map;
   return map;
+});
+
+/** Build the slug map for the current snapshot now (startup / reload warm). */
+export function warmListingPublicIds(): number {
+  return slugIndex().size;
 }
 
 /**
@@ -31,7 +33,7 @@ function slugIndex(): Map<string, string> {
 export function resolveCatalogUnitId(requested: string): string {
   const inv = getInventory();
   if (inv.byId.has(requested)) return requested;
-  return slugIndex().get(requested) ?? requested;
+  return slugIndex(inv).get(requested) ?? requested;
 }
 
 export interface ListingRequestDecision {

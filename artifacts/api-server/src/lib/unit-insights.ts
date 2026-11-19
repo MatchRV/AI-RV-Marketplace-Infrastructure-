@@ -19,8 +19,9 @@ import {
   publicListingId,
   type CanonicalUnit,
   type Fact,
+  type InventoryIndex,
 } from "@workspace/agent-core";
-import { getInventory } from "../services/agent-inventory";
+import { getInventory, perSnapshot } from "../services/agent-inventory";
 import { inventoryQualityIssues } from "../services/mcp-inventory-quality";
 import { isBoilerplateDescription } from "./description-boilerplate";
 import { hubForUnit, type HubRef } from "./inventory-hubs";
@@ -165,11 +166,14 @@ interface Indexes {
   screenIssues: Map<string, string[]>;
 }
 
-let cached: { units: CanonicalUnit[]; idx: Indexes } | null = null;
+/** Indexes plus each unit's noindex decision, built once per loaded snapshot. */
+const insightState = perSnapshot((inv) => ({ idx: buildIndexes(inv), reasons: new Map<string, string[]>() }));
 
 function indexes(): Indexes {
-  const inv = getInventory();
-  if (cached && cached.units === inv.units) return cached.idx;
+  return insightState().idx;
+}
+
+function buildIndexes(inv: InventoryIndex): Indexes {
   const builtAt = Date.parse(inv.snapshot?.builtAt ?? "");
   const referenceTime = Number.isFinite(builtAt) ? new Date(builtAt) : undefined;
   const groups = new Map<string, CanonicalUnit[]>();
@@ -186,16 +190,12 @@ function indexes(): Indexes {
     if (!g) groups.set(k, (g = []));
     g.push(u);
   }
-  const idx = { units: inv.units, groups, titleCount, referenceTime, screenIssues };
-  cached = { units: inv.units, idx };
-  indexInsightsCache.clear();
-  return idx;
+  return { units: inv.units, groups, titleCount, referenceTime, screenIssues };
 }
 
 /** Test hook: forget the lazy indexes. */
 export function resetUnitInsightsCache(): void {
-  cached = null;
-  indexInsightsCache.clear();
+  insightState.reset();
 }
 
 // ── price sanity against the dealer's own text ──────────────────────────────
@@ -207,6 +207,8 @@ export function resetUnitInsightsCache(): void {
  */
 export function statedPricesInDescription(text: string | null | undefined): number[] {
   const out: number[] = [];
+  // Every match needs a "$"; skipping text without one avoids the costly regex scan and changes nothing.
+  if (!text || !text.includes("$")) return out;
   const re = /\b(?:listing|reduced|sale|our|asking|internet|special|now)\s+price\s*:?\s*\$\s*([\d,]{4,9})/gi;
   for (const m of (text ?? "").matchAll(re)) {
     const n = Number(m[1].replace(/,/g, ""));
@@ -215,8 +217,24 @@ export function statedPricesInDescription(text: string | null | undefined): numb
   return out;
 }
 
+/**
+ * Memo for priceConflictsWithDescription(). Hubs, comps and price context ask about the same unit
+ * many times; the answer depends only on the unit's price and description, which are checked on
+ * every hit so a changed unit is recomputed.
+ */
+const priceConflictMemo = new WeakMap<CanonicalUnit, { price: unknown; description: unknown; conflict: boolean }>();
+
 /** True when the dealer's own text names prices and none of them is the stored price. */
 export function priceConflictsWithDescription(unit: CanonicalUnit): boolean {
+  const priceValue = unit.priceUsd?.value;
+  const hit = priceConflictMemo.get(unit);
+  if (hit && hit.price === priceValue && hit.description === unit.description) return hit.conflict;
+  const conflict = computePriceConflict(unit);
+  priceConflictMemo.set(unit, { price: priceValue, description: unit.description, conflict });
+  return conflict;
+}
+
+function computePriceConflict(unit: CanonicalUnit): boolean {
   const price = priceOf(unit);
   if (price == null) return false;
   const stated = statedPricesInDescription(unit.description);
@@ -474,13 +492,14 @@ function richness(unit: CanonicalUnit, specCount: number, tow: TowInsight | null
   return (pc ? 2 : 0) + (tow ? 2 : 0) + (similarCount >= 3 ? 1 : 0) + Math.min(specCount, 4) * 0.5 + (dealerDescriptionExcerpt(unit) ? 0.5 : 0);
 }
 
-const indexInsightsCache = new Map<string, string[]>();
 /** Shared empty list: most units are indexable, so don't allocate one each. */
 const NO_REASONS: string[] = Object.freeze([]) as unknown as string[];
 
 /** Why a unit page should carry noindex (empty = index it). No hub lookups, so hubs can call it. */
 export function noindexReasons(unit: CanonicalUnit): string[] {
-  const idx = indexes();
+  const state = insightState();
+  const idx = state.idx;
+  const indexInsightsCache = state.reasons;
   const hit = indexInsightsCache.get(unit.id);
   if (hit) return hit;
   let reasons: string[] = [];

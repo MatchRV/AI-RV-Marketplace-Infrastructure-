@@ -24,6 +24,7 @@ import { hubPageData, parseHubPath, renderHubPage } from "./lib/inventory-hubs";
 import { listingCanonicalUrl } from "./lib/listing-seo";
 import { MARKDOWN_CONTENT_TYPE, prefersMarkdown, renderHubMarkdown, renderListingMarkdown, renderNotFoundMarkdown } from "./lib/agent-markdown";
 import { renderLiveLlmsTxt, withLiveInventory } from "./lib/live-inventory";
+import internalRoutes from "./routes/internal";
 
 const app: Express = express();
 // Render terminates TLS one proxy hop ahead of this service. Use the real
@@ -57,6 +58,10 @@ app.get("/.well-known/muse-challenge/:token", (req: Request, res: Response) => {
   }
   res.status(200).end(`muse-challenge=${expected}`);
 });
+
+// Localhost-only snapshot reload/status (routes/internal.ts). Before CORS, Clerk, body
+// parsers and the SPA fallback; refuses any proxied or non-loopback request with a 404.
+app.use(internalRoutes);
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 

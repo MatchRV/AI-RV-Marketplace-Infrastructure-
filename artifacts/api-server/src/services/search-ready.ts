@@ -1,5 +1,5 @@
 import { runSearch, type CanonicalUnit, type Constraints, type Fact } from "@workspace/agent-core";
-import { getInventory } from "./agent-inventory";
+import { getInventory, perSnapshot } from "./agent-inventory";
 import { getScreenedInventory } from "./screened-inventory";
 
 const published = (fact: Fact<number>) => fact.value !== null && fact.value > 0 && (fact.source === "dealer_listing" || fact.source === "derived_text");
@@ -27,7 +27,9 @@ export function isSearchReady(unit: CanonicalUnit): boolean {
 }
 
 /** Complete listings from the screened inventory (records held for age, price or a category conflict are not searchable). */
-export const readyUnits = () => getScreenedInventory().units.filter(isSearchReady);
+const readyFor = perSnapshot((inv) => getScreenedInventory(inv).units.filter(isSearchReady));
+/** A fresh array each call (callers may filter or reorder it); the filter itself runs once per snapshot. */
+export const readyUnits = () => readyFor().slice();
 const photoCache = new Map<string, { expires: number; ok: boolean }>();
 
 export async function checkPhoto(url: string): Promise<boolean> {

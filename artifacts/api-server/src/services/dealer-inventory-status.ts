@@ -9,8 +9,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { getInventory } from "./agent-inventory";
-import { screenMcpInventory } from "./mcp-inventory-quality";
+import { getInventory, perSnapshot } from "./agent-inventory";
+import { getScreenedInventory } from "./screened-inventory";
 
 export type DealerInventoryStatus = "listed" | "updating" | "not_listed";
 
@@ -58,10 +58,10 @@ export function heldDealerDomains(): Set<string> {
   return out;
 }
 
-let searchableIds: Set<string> | null = null;
+// The same screen search_rvs uses (one shared, per-snapshot instance instead of a second full screen).
+const searchableIds = perSnapshot((inv) => new Set(getScreenedInventory(inv).units.map(u => u.id)));
 export function liveDealerInventoryStatus(domain: string): DealerInventoryStatus {
   const inv = getInventory();
-  searchableIds ??= new Set(screenMcpInventory(inv).units.map(u => u.id));
-  const ids = searchableIds;
+  const ids = searchableIds(inv);
   return dealerInventoryStatus(domain, inv.units, heldDealerDomains(), u => ids.has(u.id));
 }

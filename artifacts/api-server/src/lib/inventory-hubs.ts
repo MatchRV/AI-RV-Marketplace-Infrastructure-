@@ -12,7 +12,7 @@
  * indexable units, so there are no thin or empty hub pages.
  */
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { getInventory } from "../services/agent-inventory";
+import { perSnapshot } from "../services/agent-inventory";
 import {
   RV_TYPE_LABEL,
   advertisablePrice,
@@ -81,11 +81,19 @@ export function hubLabel(k: HubKey): string {
 
 const keyStr = (k: HubKey) => `${k.state}|${k.type ?? ""}|${k.cap ?? ""}`;
 
-let hubIndex: { units: CanonicalUnit[]; hubs: Map<string, CanonicalUnit[]> } | null = null;
+/** Hub membership and the rendered-page cache, built once per loaded snapshot. */
+const hubState = perSnapshot((inv) => ({ hubs: buildHubs(inv.units), html: new Map<string, string>() }));
 
 function hubs(): Map<string, CanonicalUnit[]> {
-  const inv = getInventory();
-  if (hubIndex && hubIndex.units === inv.units) return hubIndex.hubs;
+  return hubState().hubs;
+}
+
+/** Build the hub index for the current snapshot now (startup and snapshot reload warm it off the request path). */
+export function warmHubs(): number {
+  return hubState().hubs.size;
+}
+
+function buildHubs(units: CanonicalUnit[]): Map<string, CanonicalUnit[]> {
   const map = new Map<string, CanonicalUnit[]>();
   const add = (k: HubKey, u: CanonicalUnit) => {
     const s = keyStr(k);
@@ -93,7 +101,7 @@ function hubs(): Map<string, CanonicalUnit[]> {
     if (!a) map.set(s, (a = []));
     a.push(u);
   };
-  for (const u of inv.units) {
+  for (const u of units) {
     const state = (u.dealer.state ?? "").toUpperCase();
     if (!US_STATES[state] || !TYPE_SLUG[u.rvType]) continue;
     if (!isIndexableUnit(u)) continue;
@@ -107,14 +115,11 @@ function hubs(): Map<string, CanonicalUnit[]> {
     // Freshest first, then cheapest: the page shows what is most likely still on the lot.
     else list.sort((a, b) => (b.provenance.lastSeenAt ?? "").localeCompare(a.provenance.lastSeenAt ?? "") || (advertisablePrice(a) ?? 9e9) - (advertisablePrice(b) ?? 9e9));
   }
-  hubIndex = { units: inv.units, hubs: map };
-  htmlCache.clear();
   return map;
 }
 
 export function resetHubCache(): void {
-  hubIndex = null;
-  htmlCache.clear();
+  hubState.reset();
 }
 
 /** The state × type hub that links to this unit, when it exists. */
@@ -178,8 +183,6 @@ a{color:var(--teal)}.crumbs{font-size:.9rem;color:var(--muted)}.crumbs a{color:v
 footer{border-top:1px solid var(--line);padding:20px 0;color:var(--muted);font-size:.9rem}
 `;
 
-const htmlCache = new Map<string, string>();
-
 /** Hub pages kept in memory; the rest re-render (a few ms each). */
 const HTML_CACHE_MAX = 300;
 
@@ -238,7 +241,9 @@ export function hubPageData(path: string, page = 1): HubPageData | null {
 export function renderHubPage(path: string, page = 1): string | null {
   const k = parseHubPath(path);
   if (!k) return null;
-  const all = hubs();
+  const state = hubState();
+  const htmlCache = state.html;
+  const all = state.hubs;
   const units = all.get(keyStr(k));
   if (!units) return null;
   const pages = hubPageCount(units.length);

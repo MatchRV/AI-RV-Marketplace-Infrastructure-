@@ -3,7 +3,7 @@
  */
 import { publicListingId } from "@workspace/agent-core";
 import { CORE_SITEMAP_URLS } from "./sitemap-core-urls";
-import { getInventory } from "../services/agent-inventory";
+import { getInventory, perSnapshot } from "../services/agent-inventory";
 import { isIndexableUnit } from "./unit-insights";
 import { listHubUrls } from "./inventory-hubs";
 
@@ -27,13 +27,10 @@ function escapeXml(s: string): string {
  * the MatchRV listing URL and a date — never how or where MatchRV got the
  * record.
  */
-let unitsCache: { source: unknown; units: ReturnType<typeof getInventory>["units"] } | null = null;
+/** Built once per loaded snapshot. */
+const sitemapUnitsFor = perSnapshot((inv) => inv.units.filter((u) => u.status !== "removed" && isIndexableUnit(u)));
 function sitemapUnits() {
-  const inv = getInventory();
-  if (unitsCache?.source === inv.units) return unitsCache.units;
-  const units = inv.units.filter((u) => u.status !== "removed" && isIndexableUnit(u));
-  unitsCache = { source: inv.units, units };
-  return units;
+  return sitemapUnitsFor();
 }
 
 const today = () => new Date().toISOString().slice(0, 10);

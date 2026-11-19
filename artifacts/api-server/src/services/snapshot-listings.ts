@@ -4,6 +4,7 @@
  * are not empty on the Render starter box that cannot run PGlite.
  */
 import { resolveCatalogUnitId } from "../lib/listing-public-id";
+import { perSnapshot } from "./agent-inventory";
 import { getListingRows, type ListingRow } from "./outfitter-inventory";
 
 export type ListingQuery = Record<string, string | undefined>;
@@ -79,7 +80,93 @@ function sortRows(rows: ListingRow[], sort: string): ListingRow[] {
   return out;
 }
 
+/** Every query parameter matchesQuery() or sortRows() reads. limit and offset only page the result. */
+const FILTER_KEYS = [
+  "type", "make", "state", "condition", "dealer", "minPrice", "maxPrice", "minYear", "maxYear",
+  "minSleeps", "minLength", "maxLength", "minSlides", "maxTowWeight", "petFriendly", "fourSeason",
+  "outdoorKitchen", "generator", "washerDryer", "search",
+] as const;
+
+/** Sort keys sortRows() distinguishes; anything else sorts like "featured". */
+const SORT_KEYS = new Set(["price_asc", "price_desc", "newest", "length_asc", "length_desc"]);
+const sortKeyOf = (sort: string) => (SORT_KEYS.has(sort) ? sort : "featured");
+
+/** Filtered + sorted results kept per snapshot (most recent first). */
+const RESULT_CACHE_MAX = 32;
+
+const isFiniteKey = (v: unknown) => Number.isFinite(Number(v));
+
+/**
+ * Per snapshot: the photo-bearing rows (the only rows any listing query can return) and,
+ * per sort key, those rows already sorted. Filtering a stably pre-sorted list gives exactly
+ * the order sortRows() gives the filtered list, as long as every sort key is a finite number
+ * (then the comparators are consistent). If any is not, that sort falls back to sorting the
+ * filtered rows per request, as before.
+ */
+const listingState = perSnapshot((inv) => {
+  const photoRows = getListingRows(inv).filter(hasPhotos);
+  const finite = {
+    price: photoRows.every((r) => isFiniteKey(r.price)),
+    year: photoRows.every((r) => isFiniteKey(r.year)),
+    length: photoRows.every((r) => isFiniteKey(r.length ?? 0)),
+  };
+  const presortable = (key: string) =>
+    key === "price_asc" || key === "price_desc" ? finite.price
+      : key === "newest" ? finite.year
+        : key === "length_asc" || key === "length_desc" ? finite.length
+          : finite.year && finite.price;
+  return {
+    photoRows,
+    presortable,
+    sorted: new Map<string, ListingRow[]>(),
+    results: new Map<string, ListingRow[]>(),
+  };
+});
+
+function filteredSorted(q: ListingQuery, sort: string): ListingRow[] {
+  const state = listingState();
+  const key = sortKeyOf(sort);
+  const cacheKey = JSON.stringify([key, ...FILTER_KEYS.map((k) => q[k] ?? null)]);
+  const hit = state.results.get(cacheKey);
+  if (hit) {
+    // refresh recency
+    state.results.delete(cacheKey);
+    state.results.set(cacheKey, hit);
+    return hit;
+  }
+  let out: ListingRow[];
+  if (state.presortable(key)) {
+    let sorted = state.sorted.get(key);
+    if (!sorted) state.sorted.set(key, (sorted = sortRows(state.photoRows, key)));
+    out = sorted.filter((r) => matchesQuery(r, q));
+  } else {
+    out = sortRows(state.photoRows.filter((r) => matchesQuery(r, q)), sort);
+  }
+  state.results.set(cacheKey, out);
+  if (state.results.size > RESULT_CACHE_MAX) state.results.delete(state.results.keys().next().value!);
+  return out;
+}
+
 export function querySnapshotListings(q: ListingQuery): {
+  rows: ListingRow[];
+  total: number;
+  offset: number;
+  limit: number;
+} {
+  const limit = Math.min(Number(q.limit) || 24, 100);
+  const offset = Number(q.offset) || 0;
+  const sort = q.sort || "featured";
+  const filtered = filteredSorted(q, sort);
+  return {
+    rows: filtered.slice(offset, offset + limit),
+    total: filtered.length,
+    offset,
+    limit,
+  };
+}
+
+/** The pre-cache implementation, kept so tests can prove the cached path returns the same thing. */
+export function querySnapshotListingsUncached(q: ListingQuery): {
   rows: ListingRow[];
   total: number;
   offset: number;
@@ -97,9 +184,19 @@ export function querySnapshotListings(q: ListingQuery): {
   };
 }
 
+/** First row per id, as Array.prototype.find would return it. */
+const rowsById = perSnapshot((inv) => {
+  const map = new Map<string, ListingRow>();
+  for (const r of getListingRows(inv)) {
+    const id = String(r.id);
+    if (!map.has(id)) map.set(id, r);
+  }
+  return map;
+});
+
 export function getSnapshotListingById(id: string): ListingRow | undefined {
   const resolved = resolveCatalogUnitId(id);
-  return getListingRows().find((r) => String(r.id) === resolved);
+  return rowsById().get(resolved);
 }
 
 /** Types the marketing site asks for with GET /api/listings?type=. */
@@ -125,9 +222,15 @@ export type SnapshotInventoryCounts = {
  * `byType[type]` matches `querySnapshotListings({ limit: "1", type }).total`.
  */
 export function snapshotInventoryCounts(): SnapshotInventoryCounts {
+  const counts = inventoryCounts();
+  return { total: counts.total, byType: { ...counts.byType } };
+}
+
+/** Computed once per loaded snapshot. */
+const inventoryCounts = perSnapshot((inv): SnapshotInventoryCounts => {
   const byType = Object.fromEntries(SNAPSHOT_COUNT_TYPES.map((type) => [type, 0])) as SnapshotInventoryCounts["byType"];
   let total = 0;
-  for (const row of getListingRows()) {
+  for (const row of getListingRows(inv)) {
     if (!hasPhotos(row)) continue;
     total += 1;
     const type = String(row.type ?? "");
@@ -136,10 +239,22 @@ export function snapshotInventoryCounts(): SnapshotInventoryCounts {
     }
   }
   return { total, byType };
-}
+});
 
 export function snapshotSearchFilters() {
-  const rows = getListingRows().filter(hasPhotos);
+  const f = searchFilters();
+  return {
+    types: f.types.slice(),
+    makes: f.makes.slice(),
+    states: f.states.slice(),
+    priceRange: { ...f.priceRange },
+    yearRange: { ...f.yearRange },
+  };
+}
+
+/** Computed once per loaded snapshot. */
+const searchFilters = perSnapshot((inv) => {
+  const rows = listingState(inv).photoRows;
   const types = new Set<string>();
   const makes = new Set<string>();
   const states = new Set<string>();
@@ -175,4 +290,13 @@ export function snapshotSearchFilters() {
       max: Number.isFinite(maxY) ? maxY : 2026,
     },
   };
+});
+
+/** Fill this snapshot's listing caches now: rows, the default sort, counts, filters and the id map. */
+export function warmSnapshotListings(): number {
+  const total = querySnapshotListings({ limit: "1" }).total;
+  snapshotInventoryCounts();
+  snapshotSearchFilters();
+  rowsById();
+  return total;
 }

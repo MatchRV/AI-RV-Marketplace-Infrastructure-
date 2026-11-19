@@ -1,6 +1,4 @@
 import { spawn } from "child_process";
-import { warmUnitIndexability } from "./lib/unit-insights";
-import { listHubUrls } from "./lib/inventory-hubs";
 import { resolve } from "path";
 import { existsSync } from "fs";
 import { DB_MODE, ensureDbReady } from "@workspace/db";
@@ -14,6 +12,7 @@ import { installDataDirShutdownHandlers } from "./services/data-dir-freeze";
 import { signingSecretSource } from "./services/dealer-inquiries";
 import { startStorageMonitor } from "./services/storage-monitor";
 import { warmInventory } from "./services/agent-inventory";
+import { installSnapshotReloadSignal, warmSnapshotCaches } from "./services/snapshot-reload";
 import { syncScraperDataToDB, writeScrapeStatus, readScrapeStatus } from "./lib/sync-from-scraper";
 
 // Default the port in development so `pnpm dev` works on a fresh clone.
@@ -105,6 +104,8 @@ process.on("unhandledRejection", (reason) => {
 
 // Flush debounced data-dir saves on a clean stop. SIGKILL cannot run this.
 installDataDirShutdownHandlers();
+// SIGHUP re-reads the inventory snapshot in-process (no restart). See services/snapshot-reload.ts.
+installSnapshotReloadSignal();
 
 async function start() {
   if (DB_MODE === "none") {
@@ -147,13 +148,10 @@ async function start() {
     } else {
       console.log("[startup] scraper cron disabled (embedded db or scraper script not present)");
     }
-    // Unit-page index decisions and shopping hubs: computed in slices after
-    // listen so sitemap, hub and listing requests don't pay for them cold.
-    void warmUnitIndexability()
-      .then((n) => {
-        const hubs = listHubUrls().length;
-        console.log(`[seo] ${n} indexable unit pages, ${hubs} shopping hubs`);
-      })
+    // Per-snapshot caches (listings, counts, screened MCP corpus, slugs), then unit-page
+    // index decisions and shopping hubs in slices, after listen so sitemap, hub and
+    // listing requests don't pay for them cold. Logs "[seo] N indexable unit pages, M shopping hubs".
+    void warmSnapshotCaches()
       .catch((err) => console.warn("[seo] warm failed (pages compute lazily):", err));
     // Resolve the inquiry signing secret now (logged by source, never by value) and watch the private data files.
     try {

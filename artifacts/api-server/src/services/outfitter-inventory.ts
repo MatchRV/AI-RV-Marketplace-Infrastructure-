@@ -19,12 +19,10 @@
  */
 
 import type { CanonicalUnit } from "@workspace/agent-core";
-import { getInventory } from "./agent-inventory";
+import { perSnapshot } from "./agent-inventory";
 
 /** A row shaped like `SELECT * FROM listings` returns it. */
 export type ListingRow = Record<string, unknown>;
-
-let rows: ListingRow[] | null = null;
 
 function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
   return {
@@ -79,23 +77,20 @@ function toRow(u: CanonicalUnit, dealerId: number): ListingRow {
   };
 }
 
-/** The snapshot projected into listing rows, built once and cached. */
-export function getListingRows(): ListingRow[] {
-  if (!rows) {
-    const inv = getInventory();
-    // Dealer ids mirror seed-embedded: 1-based order of first appearance.
-    const dealerIds = new Map<string, number>();
-    rows = inv.units.map((u) => {
-      let id = dealerIds.get(u.dealer.id);
-      if (id === undefined) {
-        id = dealerIds.size + 1;
-        dealerIds.set(u.dealer.id, id);
-      }
-      return toRow(u, id);
-    });
-    console.log(
-      `[outfitter] no database — matching against ${rows.length} snapshot listings`,
-    );
-  }
+/** The snapshot projected into listing rows, built once per loaded snapshot and cached. */
+export const getListingRows = perSnapshot((inv): ListingRow[] => {
+  // Dealer ids mirror seed-embedded: 1-based order of first appearance.
+  const dealerIds = new Map<string, number>();
+  const rows = inv.units.map((u) => {
+    let id = dealerIds.get(u.dealer.id);
+    if (id === undefined) {
+      id = dealerIds.size + 1;
+      dealerIds.set(u.dealer.id, id);
+    }
+    return toRow(u, id);
+  });
+  console.log(
+    `[outfitter] no database — matching against ${rows.length} snapshot listings`,
+  );
   return rows;
-}
+});

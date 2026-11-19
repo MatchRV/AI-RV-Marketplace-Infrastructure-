@@ -39,8 +39,18 @@ export interface InventoryIndex {
   factsOnlyBlanked?: FactsOnlyStats;
 }
 
-/** Index a parsed snapshot (loaders differ per runtime; indexing doesn't). */
+/** Index a parsed snapshot (loaders differ per runtime; indexing doesn't). Also makes it the current index. */
 export function indexSnapshot(snapshot: InventorySnapshot): InventoryIndex {
+  cache = buildInventoryIndex(snapshot);
+  return cache;
+}
+
+/**
+ * Index a parsed snapshot without making it current. A server reloading the
+ * snapshot builds the next index with this, validates it, and only then
+ * calls adoptIndexedInventory(), so the running index is never half-built.
+ */
+export function buildInventoryIndex(snapshot: InventorySnapshot): InventoryIndex {
   // Enrich once at load: geocode dealers + backfill/infer sleeps.
   const enrichStats = enrichSnapshotUnits(snapshot.units);
   // Then fill still-missing specs from first-party manufacturer spec pages
@@ -62,8 +72,12 @@ export function indexSnapshot(snapshot: InventorySnapshot): InventoryIndex {
     }
     bucket.push(u);
   }
-  cache = { snapshot, units: snapshot.units, byId, byState, enrichStats, specStats, factsOnlyBlanked };
-  return cache;
+  return { snapshot, units: snapshot.units, byId, byState, enrichStats, specStats, factsOnlyBlanked };
+}
+
+/** Make an index built by buildInventoryIndex() the one getIndexedInventory() returns. */
+export function adoptIndexedInventory(index: InventoryIndex): void {
+  cache = index;
 }
 
 export function getIndexedInventory(): InventoryIndex {

@@ -19,6 +19,10 @@ import type {
 } from "./types.js";
 import { TOWABLE_TYPES } from "./types.js";
 
+/** Same output as Number.prototype.toLocaleString() (default locale and options), without building a formatter per call. */
+const numberFormat = new Intl.NumberFormat();
+const fmtNum = (n: number): string => numberFormat.format(n);
+
 /** Fraction of a stated tow rating we treat as comfortably usable. */
 export const TOW_SAFETY_MARGIN = 0.8;
 
@@ -91,7 +95,7 @@ export function resolveTowVehicle(input: string, learned?: { towRatingLbs: numbe
 
   if (explicitLbs && explicitLbs >= 1500 && explicitLbs <= 40000) {
     caveats.unshift(
-      `Using your stated ${explicitLbs.toLocaleString()} lbs rating; "comfortable" = under ${Math.round(explicitLbs * TOW_SAFETY_MARGIN).toLocaleString()} lbs (${Math.round((1 - TOW_SAFETY_MARGIN) * 100)}% margin).`,
+      `Using your stated ${fmtNum(explicitLbs)} lbs rating; "comfortable" = under ${fmtNum(Math.round(explicitLbs * TOW_SAFETY_MARGIN))} lbs (${Math.round((1 - TOW_SAFETY_MARGIN) * 100)}% margin).`,
     );
     return {
       input,
@@ -107,7 +111,7 @@ export function resolveTowVehicle(input: string, learned?: { towRatingLbs: numbe
 
   if (learned?.towRatingLbs != null && learned.towRatingLbs >= 1500 && learned.towRatingLbs <= 40000) {
     caveats.unshift(
-      `Using a rating MatchRV LEARNED for this vehicle: ${learned.towRatingLbs.toLocaleString()} lbs, confirmed ${learned.confirmations}x (${learned.source}). Verify it matches your exact configuration before towing.`,
+      `Using a rating MatchRV LEARNED for this vehicle: ${fmtNum(learned.towRatingLbs)} lbs, confirmed ${learned.confirmations}x (${learned.source}). Verify it matches your exact configuration before towing.`,
     );
     return {
       input,
@@ -124,7 +128,7 @@ export function resolveTowVehicle(input: string, learned?: { towRatingLbs: numbe
 
   if (matched) {
     caveats.unshift(
-      `${matched.label} ratings span ${matched.towLbsMin.toLocaleString()}–${matched.towLbsMax.toLocaleString()} lbs by configuration. Filtering out anything above the top rating; results show whether a unit fits any configuration or only some. State your actual rating (e.g. "rated 8,000 lbs") for precision.`,
+      `${matched.label} ratings span ${fmtNum(matched.towLbsMin)}–${fmtNum(matched.towLbsMax)} lbs by configuration. Filtering out anything above the top rating; results show whether a unit fits any configuration or only some. State your actual rating (e.g. "rated 8,000 lbs") for precision.`,
     );
     if (matched.note) caveats.push(matched.note);
     return {
@@ -195,21 +199,21 @@ export function evaluateTowFit(unit: CanonicalUnit, tow: TowResolution): TowFitR
     if (weight <= comfort) verdict = "fits_with_margin";
     else if (weight <= rating) verdict = "marginal";
     else verdict = "exceeds";
-    detail = `${weight.toLocaleString()} lbs ${basis} vs your ${rating.toLocaleString()} lbs rating (comfort cap ${comfort.toLocaleString()}).`;
+    detail = `${fmtNum(weight)} lbs ${basis} vs your ${fmtNum(rating)} lbs rating (comfort cap ${fmtNum(comfort)}).`;
   } else if (tow.learned != null && tow.filterCapLbs != null) {
     const rating = tow.filterCapLbs;
     const comfort = tow.comfortCapLbs ?? Math.round(rating * TOW_SAFETY_MARGIN);
     if (weight <= comfort) verdict = "fits_with_margin";
     else if (weight <= rating) verdict = "marginal";
     else verdict = "exceeds";
-    detail = `${weight.toLocaleString()} lbs ${basis} vs a LEARNED ${rating.toLocaleString()} lbs rating for this vehicle (confirmed ${tow.learned.confirmations}x; comfort cap ${comfort.toLocaleString()}).`;
+    detail = `${fmtNum(weight)} lbs ${basis} vs a LEARNED ${fmtNum(rating)} lbs rating for this vehicle (confirmed ${tow.learned.confirmations}x; comfort cap ${fmtNum(comfort)}).`;
   } else if (tow.rangeLbs != null) {
     const { min, max } = tow.rangeLbs;
     if (weight <= Math.round(min * TOW_SAFETY_MARGIN)) verdict = "fits_with_margin";
     else if (weight <= min) verdict = "marginal";
     else if (weight <= max) verdict = "depends_on_config";
     else verdict = "exceeds";
-    detail = `${weight.toLocaleString()} lbs ${basis} vs ${tow.matched?.label} range ${min.toLocaleString()}–${max.toLocaleString()} lbs.`;
+    detail = `${fmtNum(weight)} lbs ${basis} vs ${tow.matched?.label} range ${fmtNum(min)}–${fmtNum(max)} lbs.`;
   } else {
     return {
       unitId: unit.id,

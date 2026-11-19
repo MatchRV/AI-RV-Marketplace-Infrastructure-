@@ -39,6 +39,25 @@ import {
   nextExpandedRadius,
 } from "./fit-rules.js";
 
+/**
+ * Same output as Number.prototype.toLocaleString() (default locale and options), without building
+ * a formatter per call. Search formats the same few prices and weights for every unit in the corpus,
+ * so integer results are memoised (bounded; -0 is never cached because it formats as "-0").
+ */
+const numberFormat = new Intl.NumberFormat();
+const fmtNumCache = new Map<number, string>();
+const FMT_NUM_CACHE_MAX = 50_000;
+const fmtNum = (n: number): string => {
+  if (!Number.isInteger(n) || Object.is(n, -0)) return numberFormat.format(n);
+  let out = fmtNumCache.get(n);
+  if (out === undefined) {
+    out = numberFormat.format(n);
+    if (fmtNumCache.size >= FMT_NUM_CACHE_MAX) fmtNumCache.clear();
+    fmtNumCache.set(n, out);
+  }
+  return out;
+};
+
 export class ConstraintError extends Error {
   constructor(
     message: string,
@@ -177,7 +196,68 @@ export function buildContext(constraints: Constraints, learnedTow?: { towRatingL
 
 // ── Per-unit evaluation ────────────────────────────────────────────────────
 
-const fmtUsd = (n: number) => `$${Math.round(n).toLocaleString()}`;
+/**
+ * Hard-check labels that depend only on the search, built once per search instead of once per
+ * unit. Reusing one string per label also makes the funnel's per-reason counting cheap.
+ */
+type SearchLabels = Record<"make" | "model" | "type" | "condition" | "priceMax" | "priceMin" | "sleeps" | "inState" | "radius", () => string>;
+const labelCache = new WeakMap<SearchContext, SearchLabels>();
+function labelsFor(ctx: SearchContext): SearchLabels {
+  let hit = labelCache.get(ctx);
+  if (hit) return hit;
+  const c = ctx.constraints;
+  const once = (make: () => string) => {
+    let v: string | undefined;
+    return () => (v ??= make());
+  };
+  hit = {
+    make: once(() => `make = ${c.makes!.join(" or ")}`),
+    model: once(() => `model = ${c.models!.join(" or ")}`),
+    type: once(() => `type in [${c.rvTypes!.join(", ")}]`),
+    condition: once(() => `condition = ${c.condition}`),
+    priceMax: once(() => `price ≤ ${fmtUsd(c.priceMaxUsd!)}`),
+    priceMin: once(() => `price ≥ ${fmtUsd(c.priceMinUsd!)}`),
+    sleeps: once(() => `sleeps ≥ ${c.sleepsMin}`),
+    inState: once(() => `dealer in ${ctx.location!.place}`),
+    radius: once(() => `within ${ctx.location!.radiusMiles} mi of ${ctx.location!.place}`),
+  };
+  labelCache.set(ctx, hit);
+  return hit;
+}
+
+/**
+ * Per search: dealer id -> last computed distance. Units of one dealer share coordinates, so the
+ * geo check runs once per dealer location instead of once per unit. Each hit re-checks lat, lng
+ * and state, so a unit whose dealer record differs is computed on its own.
+ */
+const dealerDistanceCache = new WeakMap<SearchContext, Map<string, { lat: number | null; lng: number | null; state: string | null | undefined; miles: number | null }>>();
+
+/**
+ * Rounded miles to the dealer, exactly as the distance check computes it, for a city-radius search;
+ * null when the dealer location is unresolved (or the search has no city location).
+ */
+function dealerDistanceMiles(unit: CanonicalUnit, ctx: SearchContext): number | null {
+  if (!ctx.location || ctx.location.state) return null;
+  const d = unit.dealer;
+  let cache = dealerDistanceCache.get(ctx);
+  if (!cache) dealerDistanceCache.set(ctx, (cache = new Map()));
+  const key = d.id ?? "";
+  const hit = cache.get(key);
+  if (hit && hit.lat === d.lat && hit.lng === d.lng && hit.state === d.state) return hit.miles;
+  let miles: number | null = null;
+  if (d.lat !== null && d.lng !== null && coordsMatchState({ lat: d.lat, lng: d.lng }, d.state)) {
+    miles = Math.round(
+      haversineMiles(
+        { lat: ctx.location.lat, lng: ctx.location.lng },
+        { lat: d.lat, lng: d.lng },
+      ),
+    );
+  }
+  cache.set(key, { lat: d.lat, lng: d.lng, state: d.state, miles });
+  return miles;
+}
+
+const fmtUsd = (n: number) => `$${fmtNum(Math.round(n))}`;
 
 function check(
   constraint: string,
@@ -210,7 +290,36 @@ function cmpMax(
 }
 
 export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch {
+  return evaluateUnitWith(unit, ctx, false);
+}
+
+/**
+ * evaluateUnit, optionally stopping after the hard checks when a unit fails one. runSearch uses
+ * that for the corpus pass: a failed unit only feeds the funnel (its first failing hard check) and
+ * the in-area count (distance), never results, so its soft score would be thrown away.
+ */
+function evaluateUnitWith(unit: CanonicalUnit, ctx: SearchContext, hardOnlyWhenFailed: boolean): UnitMatch {
   const c = ctx.constraints;
+  const L = labelsFor(ctx);
+  // Corpus pass only: once a hard check has failed, the unit is out. Its first failing check
+  // (the funnel reason) is already recorded, so skip the remaining checks and the soft score and
+  // return just what runSearch reads from a failed unit: that check and the dealer distance.
+  let scanned = 0;
+  const stopHard = (): boolean => {
+    if (!hardOnlyWhenFailed) return false;
+    for (; scanned < hardChecks.length; scanned++) if (hardChecks[scanned].status === "fail") return true;
+    return false;
+  };
+  const failedEarly = (): UnitMatch => ({
+    unit,
+    distanceMiles: dealerDistanceMiles(unit, ctx),
+    hardStatus: "fail",
+    hardChecks,
+    softChecks,
+    unknownFields: unknowns.length ? [...new Set(unknowns)] : [],
+    score: 0,
+    scoreBreakdown: breakdown,
+  });
   // Explicit heavy-tow intent, or a loaded trailer weight that needs real hitch capacity.
   const heavyTow = Boolean(c.heavyTowRequired) || (c.trailerWeightLbs != null && c.trailerWeightLbs >= 5_000);
   const hardChecks: ConstraintCheck[] = [];
@@ -223,7 +332,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     const mm = unitMakeModel(unit);
     const brandLabel = `${mm.brand}${mm.series ? ` ${mm.series}` : ""}`;
     if (c.makes?.length) {
-      hardChecks.push(check(`make = ${c.makes.join(" or ")}`, c.makes.some((w) => brandMatches(mm.brand, w)) ? "pass" : "fail", mm.brand || "unknown", mm.brandSource === "title" ? "derived_text" : "dealer_listing"));
+      hardChecks.push(check(L.make(), c.makes.some((w) => brandMatches(mm.brand, w)) ? "pass" : "fail", mm.brand || "unknown", mm.brandSource === "title" ? "derived_text" : "dealer_listing"));
     }
     if (c.excludeMakes?.length && c.excludeMakes.some((w) => brandMatches(mm.brand, w))) {
       hardChecks.push(check(`make not ${c.excludeMakes.join("/")}`, "fail", mm.brand, "dealer_listing"));
@@ -235,18 +344,19 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       const results = c.models.map((w) => modelMatches(unit, w));
       const pass = results.includes("pass");
       const notStated = !pass && results.includes("unknown");
-      hardChecks.push(check(`model = ${c.models.join(" or ")}`, pass ? "pass" : "fail", notStated ? `${mm.brand} — series not stated in the listing` : brandLabel, "dealer_listing"));
+      hardChecks.push(check(L.model(), pass ? "pass" : "fail", notStated ? `${mm.brand} — series not stated in the listing` : brandLabel, "dealer_listing"));
     }
     if (c.excludeModels?.length && c.excludeModels.some((w) => modelMatches(unit, w) === "pass")) {
       hardChecks.push(check(`model not ${c.excludeModels.join("/")}`, "fail", brandLabel, "dealer_listing"));
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: rv type
   if (c.rvTypes && c.rvTypes.length > 0) {
     hardChecks.push(
       check(
-        `type in [${c.rvTypes.join(", ")}]`,
+        L.type(),
         c.rvTypes.includes(unit.rvType) ? "pass" : "fail",
         unit.rvType,
         "dealer_listing",
@@ -254,6 +364,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     );
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: condition
   if (c.condition && c.condition !== "any") {
     // "new" is a hard promise: the dealer's label alone is not enough when the
@@ -261,26 +372,28 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     const isNew = qualifiesAsNew(unit);
     const effective = isNew ? "new" : unit.condition === "new" ? `labelled new, ${unit.year} model year` : unit.condition;
     const ok = c.condition === "new" ? isNew : unit.condition === c.condition || (c.condition === "used" && unit.condition === "new" && !isNew);
-    hardChecks.push(check(`condition = ${c.condition}`, ok ? "pass" : "fail", effective, "dealer_listing"));
+    hardChecks.push(check(L.condition(), ok ? "pass" : "fail", effective, "dealer_listing"));
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: price
   const price = unit.priceUsd.value;
   if (c.priceMaxUsd != null) {
     hardChecks.push(
       price === null
-        ? check(`price ≤ ${fmtUsd(c.priceMaxUsd)}`, "unknown", "unknown", null)
-        : check(`price ≤ ${fmtUsd(c.priceMaxUsd)}`, price <= c.priceMaxUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
+        ? check(L.priceMax(), "unknown", "unknown", null)
+        : check(L.priceMax(), price <= c.priceMaxUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
   if (c.priceMinUsd != null) {
     hardChecks.push(
       price === null
-        ? check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, "unknown", "unknown", null)
-        : check(`price ≥ ${fmtUsd(c.priceMinUsd)}`, price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
+        ? check(L.priceMin(), "unknown", "unknown", null)
+        : check(L.priceMin(), price >= c.priceMinUsd ? "pass" : "fail", fmtUsd(price), unit.priceUsd.source),
     );
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: length
   if (c.lengthMaxFt != null) {
     hardChecks.push(
@@ -296,6 +409,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     );
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: explicit unit weight cap
   const unitWeight = unit.gvwrLbs.value ?? unit.dryWeightLbs.value;
   const weightSource = unit.gvwrLbs.value != null ? unit.gvwrLbs.source : unit.dryWeightLbs.source;
@@ -303,19 +417,20 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   if (c.maxWeightLbs != null) {
     if (unitWeight === null) {
       unknowns.push("weight (GVWR/dry)");
-      hardChecks.push(check(`weight ≤ ${c.maxWeightLbs.toLocaleString()} lbs`, "unknown", "unknown", null));
+      hardChecks.push(check(`weight ≤ ${fmtNum(c.maxWeightLbs)} lbs`, "unknown", "unknown", null));
     } else {
       hardChecks.push(
         check(
-          `weight ≤ ${c.maxWeightLbs.toLocaleString()} lbs`,
+          `weight ≤ ${fmtNum(c.maxWeightLbs)} lbs`,
           unitWeight <= c.maxWeightLbs ? "pass" : "fail",
-          `${unitWeight.toLocaleString()} lbs (${weightBasis})`,
+          `${fmtNum(unitWeight)} lbs (${weightBasis})`,
           weightSource,
         ),
       );
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: tow vehicle cap (only for towables; drivables pass vacuously)
   let towFit = null;
   if (ctx.tow) {
@@ -328,38 +443,41 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     } else {
       hardChecks.push(
         check(
-          `towable by ${ctx.tow.matched?.label ?? "your vehicle"} (≤ ${ctx.tow.filterCapLbs.toLocaleString()} lbs)`,
+          `towable by ${ctx.tow.matched?.label ?? "your vehicle"} (≤ ${fmtNum(ctx.tow.filterCapLbs)} lbs)`,
           towFit.verdict === "exceeds" ? "fail" : "pass",
-          `${towFit.comparedWeightLbs?.toLocaleString()} lbs (${towFit.comparedWeightField === "gvwrLbs" ? "GVWR" : "dry"}) — ${towFit.verdict.replace(/_/g, " ")}`,
+          `${towFit.comparedWeightLbs == null ? undefined : fmtNum(towFit.comparedWeightLbs)} lbs (${towFit.comparedWeightField === "gvwrLbs" ? "GVWR" : "dry"}) — ${towFit.verdict.replace(/_/g, " ")}`,
           weightSource,
         ),
       );
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: payload (door-sticker) — tongue weight eats payload first.
   if (c.sherpa?.truckPayloadLbs != null) {
     const pf = evaluatePayloadFit(unit, c.sherpa);
     if (pf.tongueHighLbs === null) {
       unknowns.push("payload (tongue estimate)");
-      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs`, "unknown", "loaded weight unknown", null));
+      hardChecks.push(check(`payload ${fmtNum(c.sherpa.truckPayloadLbs)} lbs`, "unknown", "loaded weight unknown", null));
     } else {
-      hardChecks.push(check(`payload ${c.sherpa.truckPayloadLbs.toLocaleString()} lbs (tongue ${pf.tongueLowLbs}–${pf.tongueHighLbs} + ${pf.peopleAndCargoLbs} lbs people/cargo)`, pf.verdict === "exceeds" ? "fail" : "pass", pf.detail, "computed"));
+      hardChecks.push(check(`payload ${fmtNum(c.sherpa.truckPayloadLbs)} lbs (tongue ${pf.tongueLowLbs}–${pf.tongueHighLbs} + ${pf.peopleAndCargoLbs} lbs people/cargo)`, pf.verdict === "exceeds" ? "fail" : "pass", pf.detail, "computed"));
     }
   }
+  if (stopHard()) return failedEarly();
   // — hard: sleeps
   if (c.sleepsMin != null) {
     // Facts only: unpublished (or any non-servable) sleeps is needs-verification, never a match.
     if (unit.sleeps.value === null || !isServableFact(unit.sleeps)) {
       unknowns.push("sleeps");
-      hardChecks.push(check(`sleeps ≥ ${c.sleepsMin}`, "unknown", "not published — confirm with dealer", null));
+      hardChecks.push(check(L.sleeps(), "unknown", "not published — confirm with dealer", null));
     } else {
       hardChecks.push(
-        check(`sleeps ≥ ${c.sleepsMin}`, unit.sleeps.value >= c.sleepsMin ? "pass" : "fail", String(unit.sleeps.value), unit.sleeps.source),
+        check(L.sleeps(), unit.sleeps.value >= c.sleepsMin ? "pass" : "fail", String(unit.sleeps.value), unit.sleeps.source),
       );
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: fresh water minimum
   if (c.freshWaterMinGal != null) {
     if (unit.freshWaterGal.value === null) {
@@ -377,6 +495,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: must-have features
   for (const f of c.mustHave ?? []) {
     const v = featureValue(unit, f);
@@ -396,17 +515,18 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: powertrain (motorhomes). Only a rating stated for THIS unit
   //   counts; unknown can never pass, a lower stated rating fails.
   const pt = powertrainOf(unit);
   const minRating = (label: string, f: { value: number | null; source: ConstraintCheck["source"] }, min: number, unitLabel: string, field: string) => {
     if (!isMotorized(unit)) {
-      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "fail", "not a motorhome", "dealer_listing"));
+      hardChecks.push(check(`${label} ≥ ${fmtNum(min)} ${unitLabel}`, "fail", "not a motorhome", "dealer_listing"));
     } else if (f.value === null) {
       unknowns.push(field);
-      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, "unknown", "needs verification — not published for this unit", null));
+      hardChecks.push(check(`${label} ≥ ${fmtNum(min)} ${unitLabel}`, "unknown", "needs verification — not published for this unit", null));
     } else {
-      hardChecks.push(check(`${label} ≥ ${min.toLocaleString()} ${unitLabel}`, f.value >= min ? "pass" : "fail", `${f.value.toLocaleString()} ${unitLabel}`, f.source));
+      hardChecks.push(check(`${label} ≥ ${fmtNum(min)} ${unitLabel}`, f.value >= min ? "pass" : "fail", `${fmtNum(f.value)} ${unitLabel}`, f.source));
     }
   };
   if (c.fuelType) {
@@ -423,13 +543,14 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   if (c.horsepowerMin != null) minRating("horsepower", pt.horsepower, c.horsepowerMin, "hp", "horsepower");
   if (c.torqueMinLbFt != null) minRating("torque", pt.torqueLbFt, c.torqueMinLbFt, "lb-ft", "torqueLbFt");
 
+  if (stopHard()) return failedEarly();
   // — hard: tow a loaded trailer. Each limit is checked separately; full
   //   confirmation needs weighed coach/axle loads, so the best case is
   //   "unknown" (needs verification) with the cleared ratings listed.
   let mhTow: MotorhomeTowResult | null = null;
   if (c.trailerWeightLbs != null) {
     mhTow = evaluateMotorhomeTow(unit, c.trailerWeightLbs, { tongueLbs: c.trailerTongueLbs, coachLoadedLbs: c.coachLoadedWeightLbs });
-    const label = `tows a ${c.trailerWeightLbs.toLocaleString()} lb trailer`;
+    const label = `tows a ${fmtNum(c.trailerWeightLbs)} lb trailer`;
     if (mhTow.verdict === "not_a_motorhome") hardChecks.push(check(label, "fail", "not a motorhome", "dealer_listing"));
     else if (mhTow.verdict !== "not_yet_confirmed") hardChecks.push(check(label, "fail", mhTow.summary, "computed"));
     else {
@@ -438,6 +559,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: heavy tow veto (race / enclosed / heavy trailer behind a motorhome)
   // Unpublished or zero hitch never makes the shortlist; Class B / camper vans are out.
   if (heavyTow) {
@@ -460,28 +582,22 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       ));
     } else {
       const hitch = towingOf(unit).hitchTowRatingLbs.value!;
-      hardChecks.push(check("published hitch rating for heavy tow", "pass", `${hitch.toLocaleString()} lbs hitch`, "dealer_listing"));
+      hardChecks.push(check("published hitch rating for heavy tow", "pass", `${fmtNum(hitch)} lbs hitch`, "dealer_listing"));
     }
   }
 
+  if (stopHard()) return failedEarly();
   // — hard: distance (area guarantee)
   // When the shopper names a place, unresolved dealer coords are a FAIL — never
   // surface FL/AZ inventory as a "local" match for Fife (MAT-34 / MAT-37).
   let distanceMiles: number | null = null;
   if (ctx.location) {
     if (ctx.location.state) {
-      hardChecks.push(check(`dealer in ${ctx.location.place}`, unit.dealer.state?.toUpperCase() === ctx.location.state ? "pass" : "fail", `${unit.dealer.city}, ${unit.dealer.state ?? "unknown"}`, "dealer_listing"));
-    } else if (unit.dealer.lat !== null && unit.dealer.lng !== null
-      && coordsMatchState({ lat: unit.dealer.lat, lng: unit.dealer.lng }, unit.dealer.state)) {
-      distanceMiles = Math.round(
-        haversineMiles(
-          { lat: ctx.location.lat, lng: ctx.location.lng },
-          { lat: unit.dealer.lat, lng: unit.dealer.lng },
-        ),
-      );
+      hardChecks.push(check(L.inState(), unit.dealer.state?.toUpperCase() === ctx.location.state ? "pass" : "fail", `${unit.dealer.city}, ${unit.dealer.state ?? "unknown"}`, "dealer_listing"));
+    } else if ((distanceMiles = dealerDistanceMiles(unit, ctx)) !== null) {
       hardChecks.push(
         check(
-          `within ${ctx.location.radiusMiles} mi of ${ctx.location.place}`,
+          L.radius(),
           distanceMiles <= ctx.location.radiusMiles ? "pass" : "fail",
           `${distanceMiles} mi (${unit.dealer.name}, ${unit.dealer.city})`,
           "computed",
@@ -491,7 +607,7 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
       unknowns.push("dealerLocation");
       hardChecks.push(
         check(
-          `within ${ctx.location.radiusMiles} mi of ${ctx.location.place}`,
+          L.radius(),
           "fail",
           "dealer location unresolved — excluded from local results",
           null,
@@ -504,6 +620,9 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   const anyFail = hardChecks.some((h) => h.status === "fail");
   const anyUnknown = hardChecks.some((h) => h.status === "unknown");
   const hardStatus = anyFail ? "fail" : anyUnknown ? "unverified" : "pass";
+  if (hardOnlyWhenFailed && hardStatus === "fail") {
+    return { unit, distanceMiles, hardStatus, hardChecks, softChecks, unknownFields: unknowns.length ? [...new Set(unknowns)] : [], score: 0, scoreBreakdown: breakdown };
+  }
 
   // — soft scoring (deterministic, documented) ------------------------------
   let score = 50;
@@ -570,13 +689,13 @@ export function evaluateUnit(unit: CanonicalUnit, ctx: SearchContext): UnitMatch
   // Preferred (not minimum) power ranks; it never excludes or substitutes.
   const prefRating = (label: string, v: number | null, pref: number, unitLabel: string) => {
     if (v === null) {
-      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: null, detail: "needs verification — not published" });
+      softChecks.push({ preference: `${label} ≥ ${fmtNum(pref)} ${unitLabel}`, satisfied: null, detail: "needs verification — not published" });
     } else if (v >= pref) {
       score += 8;
-      breakdown.push({ label: `${label} ${v.toLocaleString()} ${unitLabel}`, points: 8 });
-      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: true, detail: `${v.toLocaleString()} ${unitLabel} stated` });
+      breakdown.push({ label: `${label} ${fmtNum(v)} ${unitLabel}`, points: 8 });
+      softChecks.push({ preference: `${label} ≥ ${fmtNum(pref)} ${unitLabel}`, satisfied: true, detail: `${fmtNum(v)} ${unitLabel} stated` });
     } else {
-      softChecks.push({ preference: `${label} ≥ ${pref.toLocaleString()} ${unitLabel}`, satisfied: false, detail: `${v.toLocaleString()} ${unitLabel} stated (below preference)` });
+      softChecks.push({ preference: `${label} ≥ ${fmtNum(pref)} ${unitLabel}`, satisfied: false, detail: `${fmtNum(v)} ${unitLabel} stated (below preference)` });
     }
   };
   if (c.horsepowerPreferred != null && isMotorized(unit)) prefRating("horsepower", pt.horsepower.value, c.horsepowerPreferred, "hp");
@@ -634,11 +753,12 @@ export function runSearch(
   units: CanonicalUnit[],
   constraints: Constraints,
   learnedTow?: { towRatingLbs: number | null; confirmations: number; source: string } | null,
-  opts?: { skipRadiusExpand?: boolean },
+  opts?: { skipRadiusExpand?: boolean; /** Test hook: evaluate every unit in full (the pre-optimisation path). */ fullEvaluation?: boolean },
 ): SearchOutcome {
   const ctx = buildContext(constraints, learnedTow ?? null);
 
-  const evaluated = units.map((u) => evaluateUnit(u, ctx));
+  const hardOnlyWhenFailed = !opts?.fullEvaluation;
+  const evaluated = units.map((u) => evaluateUnitWith(u, ctx, hardOnlyWhenFailed));
 
   const passed = evaluated.filter((m) => m.hardStatus === "pass");
   const unverified = evaluated.filter((m) => m.hardStatus === "unverified");
@@ -731,7 +851,7 @@ export function runSearch(
         location: { place: constraints.location.place, radiusMiles: next },
         sort: constraints.sort ?? (hasFitSignals(constraints) ? "best_match" : "distance"),
       };
-      const widened = runSearch(units, widenedConstraints, learnedTow ?? null, { skipRadiusExpand: true });
+      const widened = runSearch(units, widenedConstraints, learnedTow ?? null, { skipRadiusExpand: true, fullEvaluation: opts?.fullEvaluation });
       radius = next;
       expandedRadiusMiles = next;
       expandedForCoverage = true;

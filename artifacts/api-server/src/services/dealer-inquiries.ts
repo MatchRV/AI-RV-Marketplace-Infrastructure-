@@ -48,6 +48,9 @@ import { recordInquiryOutcome } from "./product-analytics";
 import { DELIVERY_RETRY_BACKOFF_MS } from "./inquiry-safety-policy";
 import { dataDir, writeFileAtomic } from "./atomic-file";
 import { boundClientId, inquiryAttribution, recordAttributionEvent, type AttributionContext, type InquiryAttribution } from "./attribution";
+import { compactAttribution, expandCompactAttribution, overlayAttribution, type CleanAttribution, type LeadRequestContext } from "./lead-attribution";
+import { buildReceiptUrl, mintReceiptToken, recordDuplicateInquiry, recordLeadFromInquiry, syncInquiryDelivery } from "./lead-store";
+import { leadTrackingEnabled, receiptLinksInEmailEnabled } from "./lead-tracking-config";
 export type { ShopperFit };
 
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed" | "forwarded";
@@ -292,6 +295,8 @@ interface TokenPayload {
   u: string; n: string; e: string | null; p: string | null; m: string; pe?: PaymentEstimate | null; exp: number; nonce: string; f?: ShopperFit;
   /** Verified client id the preview was prepared by. Absent for unkeyed callers. Only that identity may send it. */
   c?: string;
+  /** Lead attribution given at prepare time (LEAD_TRACKING_ENABLED only). Whitelisted values, no contact details. */
+  a?: Partial<CleanAttribution>;
 }
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const sign = (body: string) => createHmac("sha256", signingSecret()).update(body).digest("base64url");
@@ -343,7 +348,7 @@ export function prepareInquiry(
   input: { name?: string; email?: string | null; phone?: string | null; message?: string; fit?: unknown; paymentEstimate?: unknown },
   now = Date.now(),
   /** Bind the preview to a verified client. Omitted or null: an unkeyed caller. */
-  binding: { clientId?: string | null } = {},
+  binding: { clientId?: string | null; leadAttribution?: CleanAttribution | null } = {},
 ):
   | { ok: true; preview: InquiryPreview; confirmationToken: string; expiresAt: string; fit?: ShopperFit }
   | { ok: false; errors: ValidationError[] } {
@@ -351,7 +356,8 @@ export function prepareInquiry(
   if (!v.ok) return v;
   const fit = sanitizeFit(input.fit);
   const pe = cleanPaymentEstimate(input.paymentEstimate);
-  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, ...(pe ? { pe } : {}), exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url"), ...(fit ? { f: fit } : {}), ...(binding.clientId ? { c: binding.clientId } : {}) };
+  const leadAttr = leadTrackingEnabled() && binding.leadAttribution ? compactAttribution(binding.leadAttribution) : null;
+  const payload: TokenPayload = { u: unit.id, n: v.contact.name, e: v.contact.email, p: v.contact.phone, m: v.message, ...(pe ? { pe } : {}), exp: now + TOKEN_TTL_MS, nonce: randomBytes(9).toString("base64url"), ...(fit ? { f: fit } : {}), ...(binding.clientId ? { c: binding.clientId } : {}), ...(leadAttr ? { a: leadAttr } : {}) };
   const body = b64(JSON.stringify(payload));
   return { ok: true, preview: buildPreview(unit, v.contact, v.message, pe), confirmationToken: `dic_${body}.${sign(body)}`, expiresAt: new Date(payload.exp).toISOString(), ...(fit ? { fit } : {}) };
 
@@ -495,6 +501,8 @@ interface SendArgs {
   attribution?: AttributionContext | null;
   /** Clock for createdAt and the delivery attempt. Defaults to Date.now(). */
   now?: number;
+  /** Lead tracking context for this request (headers, attribution). Ignored unless LEAD_TRACKING_ENABLED. */
+  leadContext?: LeadRequestContext | null;
 }
 
 /** Sends that have passed every check and are being delivered, by preview nonce. */
@@ -602,18 +610,22 @@ async function performSend(args: SendArgs, p: TokenPayload, now: number, durable
     ...(args.attribution ? { attribution: inquiryAttribution(args.attribution, unit.id, now) } : {}),
   };
   // Duplicate guard: same contact + unit within 24h returns a duplicate notice instead of resending.
+  let receipt: { token: string; hash: string } | null = null;
   const dup = [...inquiries.values()].find((i) => !i.dryRun && !dryRun && i.preview.unit.id === unit.id && (i.preview.shopper.email ?? i.preview.shopper.phone ?? "").toLowerCase() === contactKey && now - Date.parse(i.createdAt) < 24 * 60 * 60 * 1000 && i.status !== "failed");
 
   if (dryRun) {
     inquiry.status = "dry_run";
     inquiry.statusDetail = "Dry run: validated and recorded for testing. Nothing was sent to the dealership or to MatchRV staff.";
   } else if (dup) {
+    if (args.leadContext) recordDuplicateInquiry(dup.id, leadContextWithToken(args.leadContext, p), now);
     return { ok: true, inquiry: toPublic(dup), statusToken: "(use the status token from the first send)", duplicate: true };
   } else {
     // Reserve the nonce before the first await so nothing else can deliver this preview.
     byNonce.set(inquiry.nonce, inquiry.id);
+    // Receipt link: minted only when it will go in the email. The raw token lives only in that email.
+    receipt = receiptLinksInEmailEnabled() && args.leadContext && !isTestInquiry(inquiry) ? mintReceiptToken() : null;
     try {
-      await deliver(inquiry, unit, now);
+      await deliver(inquiry, unit, now, receipt ? buildReceiptUrl(receipt.token) : null);
     } catch (err) {
       byNonce.delete(inquiry.nonce);
       throw err;
@@ -622,10 +634,33 @@ async function performSend(args: SendArgs, p: TokenPayload, now: number, durable
   inquiries.set(inquiry.id, inquiry);
   byNonce.set(inquiry.nonce, inquiry.id);
   if (durable || dataDirAcceptsWrites()) persistSoon();
+  if (!dryRun && args.leadContext && leadTrackingEnabled()) {
+    recordLeadFromInquiry({ inquiry: leadInputFor(inquiry), unit, ctx: leadContextWithToken(args.leadContext, p), receiptTokenHash: receipt?.hash ?? null, now });
+  }
   return { ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false };
 }
 
-function dealerEmailText(i: DealerInquiry): string {
+/** Prepare-time attribution from the signed token, overlaid by what the send call said. */
+function leadContextWithToken(ctx: LeadRequestContext, p: TokenPayload): LeadRequestContext {
+  const fromToken = p.a ? expandCompactAttribution(p.a) : null;
+  return fromToken ? { ...ctx, attribution: overlayAttribution(fromToken, ctx.attribution) } : ctx;
+}
+
+function leadInputFor(i: DealerInquiry) {
+  const s = i.preview.shopper; const u = i.preview.unit; const d = i.preview.dealer;
+  return {
+    inquiryId: i.id, createdAt: i.createdAt, status: i.status, channel: i.delivery.channel, test: isTestInquiry(i),
+    contact: { name: s.name, email: s.email, phone: s.phone, message: i.preview.message },
+    unit: { id: u.id, title: u.title, stockNumber: u.stockNumber, vin: u.vin, priceUsd: u.priceUsd },
+    dealer: { id: d.id, name: d.name, city: d.city, state: d.state },
+  };
+}
+
+const receiptLines = (url: string | null | undefined) => url
+  ? ["", "Track this lead (for the dealership only): open this private link to confirm you received it and to record the outcome.", url]
+  : [];
+
+function dealerEmailText(i: DealerInquiry, receiptUrl: string | null = null): string {
   const s = i.preview.shopper; const u = i.preview.unit;
   const fitLines = formatFitLines(i.fit);
   return [
@@ -637,6 +672,7 @@ function dealerEmailText(i: DealerInquiry): string {
     "Message:", i.preview.message, "",
     ...(i.preview.paymentEstimate ? [...paymentEstimateLines(i.preview.paymentEstimate), ""] : []),
     "The shopper reviewed this exact message and asked MatchRV to send it. Reply directly to the shopper. To share your reply with MatchRV, reply-all or forward it to " + OPS_EMAIL + ".",
+    ...receiptLines(receiptUrl),
   ].join("\n");
 }
 
@@ -687,10 +723,10 @@ function opsForwardPushBody(i: DealerInquiry): string {
   return `${i.id}: ${firstName} asked about ${u.title} (stock ${u.stockNumber ?? "n/a"}) at ${d.name}, ${d.city} ${d.state}. Full contact details in the ops inbox / GET /api/inquiries/ops/${i.id}.`;
 }
 
-function opsForwardEmailText(i: DealerInquiry, dealerDomain: string | null): string {
+function opsForwardEmailText(i: DealerInquiry, dealerDomain: string | null, receiptUrl: string | null = null): string {
   const d = i.preview.dealer;
   const site = d.website ?? dealerDomain;
-  return `Forward to: ${d.name}, ${d.city} ${d.state}${site ? ` (${site})` : ""}\n\n${dealerEmailText(i)}`;
+  return `Forward to: ${d.name}, ${d.city} ${d.state}${site ? ` (${site})` : ""}\n\n${dealerEmailText(i, receiptUrl)}`;
 }
 
 function deliveredDetail(dealerName: string): string {
@@ -721,7 +757,7 @@ export function isTestInquiry(i: DealerInquiry): boolean {
   return /\bTEST\b/.test(i.preview?.shopper?.name ?? "");
 }
 
-async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()): Promise<void> {
+async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now(), receiptUrl: string | null = null): Promise<void> {
   const route = dealerRoute(unit.dealer.id);
   const d = i.delivery;
   const emailOn = transport.emailConfigured();
@@ -734,7 +770,7 @@ async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()):
   if (canEmailDealer && route) {
     d.channel = "dealer_email";
     try {
-      await transport.sendEmail({ to: route, subject: `MatchRV inquiry: ${unit.title} (stock ${unit.stockNumber ?? "n/a"})`, text: dealerEmailText(i), replyTo: i.preview.shopper.email });
+      await transport.sendEmail({ to: route, subject: `MatchRV inquiry: ${unit.title} (stock ${unit.stockNumber ?? "n/a"})`, text: dealerEmailText(i, receiptUrl), replyTo: i.preview.shopper.email });
       d.dealerEmailAccepted = true;
       i.status = "delivered";
       i.statusDetail = deliveredDetail(unit.dealer.name);
@@ -757,7 +793,7 @@ async function deliver(i: DealerInquiry, unit: CanonicalUnit, now = Date.now()):
     d.error = [d.error, `ntfy_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
   });
   if (emailOn) {
-    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward inquiry ${i.id} to ${unit.dealer.name}`, text: opsForwardEmailText(i, unit.provenance.dealerDomain ?? null), replyTo: i.preview.shopper.email })
+    await transport.sendEmail({ to: OPS_EMAIL, subject: `[MatchRV] Forward inquiry ${i.id} to ${unit.dealer.name}`, text: opsForwardEmailText(i, unit.provenance.dealerDomain ?? null, receiptUrl), replyTo: i.preview.shopper.email })
       .then(() => { d.opsNotified.email = true; }, (err) => {
         opsFailure = worsen(opsFailure, classifyDeliveryFailure(redactDeliveryError(err)));
         d.error = [d.error, `ops_email_failed: ${redactDeliveryError(err)}`].filter(Boolean).join("; ");
@@ -810,6 +846,7 @@ export async function attemptAuthorizedRetry(i: DealerInquiry, now: number, stil
         title: "MatchRV inquiry delivered",
         body: `${i.id}: ${i.preview.unit.title} -> ${i.preview.dealer.name} (${i.preview.dealer.city}, ${i.preview.dealer.state}). Delivered by email.`,
       }).then(() => { d.opsNotified.ntfy = true; }, () => {});
+      syncInquiryDelivery(i.id, { status: "delivered", now });
       return "delivered";
     } catch (err) {
       dealerFailure = classifyDeliveryFailure(redactDeliveryError(err));
@@ -855,6 +892,7 @@ export async function attemptAuthorizedRetry(i: DealerInquiry, now: number, stil
       i.queuedAt = new Date(now).toISOString();
       i.statusDetail = queuedDetail(i.preview.dealer.name);
     }
+    syncInquiryDelivery(i.id, { status: i.status, now });
     return i.status === "delivered" ? "delivered" : "queued";
   }
   if (dealerFailure === "transient" || opsFailure === "transient") return "transient";
@@ -939,6 +977,7 @@ export function opsUpdate(id: string, update: { status?: "delivered" | "queued_f
   if (update.statusDetail) i.statusDetail = clean(update.statusDetail).slice(0, 500);
   if (update.dealerReply) i.dealerReply = { text: clean(update.dealerReply).slice(0, 4000), receivedAt: new Date().toISOString(), recordedBy: "matchrv_ops" };
   persistSoon();
+  syncInquiryDelivery(i.id, { status: update.status ? i.status : undefined, dealerReplyRecorded: Boolean(update.dealerReply) });
   return i;
 }
 
@@ -960,6 +999,7 @@ export function confirmInquiryForwarded(id: string, now = Date.now()): { ok: tru
   i.delivery.nextRetryAt = null;
   if (i.delivery.retryState === "active") i.delivery.retryState = "stopped";
   persistSync();
+  syncInquiryDelivery(i.id, { status: "forwarded", now });
   return { ok: true, inquiry: i };
 }
 

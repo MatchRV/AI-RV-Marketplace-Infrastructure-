@@ -4,6 +4,33 @@ import { sql, desc, eq } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
 import { notifyLead, postToCrm } from "../lib/notify-lead.js";
 import { idRef, toIntegerId } from "../lib/record-ids.js";
+import { buildLeadRequestContext } from "../services/lead-attribution";
+import { recordLeadFromInquiry } from "../services/lead-store";
+import { leadTrackingEnabled } from "../services/lead-tracking-config";
+import { getInventory } from "../services/agent-inventory";
+
+/** Canonical lead for a legacy /api/leads contact (LEAD_TRACKING_ENABLED only). Never throws. */
+function trackLegacyLead(req: Request, input: { id: number; listingId: unknown; dealerId: unknown; snapshot: Record<string, unknown>; name: unknown; email: unknown; phone: unknown; message: unknown; body: Record<string, unknown> }): void {
+  try {
+    if (!leadTrackingEnabled()) return;
+    const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 300) : null);
+    const unitKey = str(input.snapshot.unitId) ?? str(input.listingId);
+    const unit = unitKey ? getInventory().byId.get(unitKey) ?? null : null;
+    const price = typeof input.snapshot.price === "number" ? input.snapshot.price : null;
+    recordLeadFromInquiry({
+      inquiry: {
+        inquiryId: `buyer_lead_${input.id}`, createdAt: new Date().toISOString(), status: "recorded", channel: "legacy_buyer_lead", test: /\bTEST\b/.test(String(input.name ?? "")),
+        contact: { name: str(input.name), email: str(input.email), phone: str(input.phone), message: str(input.message) },
+        unit: { id: unit?.id ?? (unitKey ?? `listing_${String(input.listingId ?? "unknown")}`), title: unit?.title ?? str(input.snapshot.title) ?? "RV listing", stockNumber: unit?.stockNumber ?? null, vin: unit?.vin ?? null, priceUsd: price },
+        dealer: { id: unit?.dealer.id ?? String(input.dealerId ?? "unknown"), name: unit?.dealer.name ?? "", city: unit?.dealer.city ?? "", state: unit?.dealer.state ?? "" },
+      },
+      unit,
+      ctx: buildLeadRequestContext({ channel: "http", entryPoint: "legacy_buyer_lead_api", headers: (n) => req.get(n) ?? null, attribution: input.body.attribution }),
+    });
+  } catch {
+    /* lead tracking must not change lead handling */
+  }
+}
 
 const ADMIN_KEY_VALUE = process.env.ADMIN_KEY;
 
@@ -190,6 +217,8 @@ router.post("/leads", async (req, res) => {
       crmSyncStatus: process.env.LOTLINK_CRM_WEBHOOK_URL ? "pending" : null,
       smsOptIn: smsOptIn === true,
     }).returning({ id: buyerLeadsTable.id });
+
+    trackLegacyLead(req, { id: lead.id, listingId, dealerId, snapshot: snapshotWithRefs as Record<string, unknown>, name: contactName, email: contactEmail, phone: contactPhone, message, body: req.body ?? {} });
 
     notifyLead({
       leadId: lead.id,

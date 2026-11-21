@@ -59,6 +59,7 @@ import { RV_CARDS_HTML, RV_CARDS_MIME, RV_CARDS_URI } from "./ui/rv-cards";
 import { buildCardsPayload, CARDS_META_KEY, photoOrigins, type RvCardsPayload } from "./lib/rv-cards";
 import { observeMcpFetch } from "./services/product-analytics";
 import { boundClientId, currentAttribution } from "./services/attribution";
+import { mcpLeadContext } from "./services/lead-mcp";
 import { attributeMcpFetch } from "./services/mcp-attribution";
 
 const OPT = "Optional. Pass only what the shopper actually said.";
@@ -1237,7 +1238,7 @@ function buildMatchRvServer(): McpServer {
         }
         return textResult({ error: "unit_not_found", guidance: "Use a unit_id returned by search_rvs." }, true);
       }
-      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message }, undefined, { clientId: boundClientId(currentAttribution()) });
+      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message }, undefined, { clientId: boundClientId(currentAttribution()), leadAttribution: mcpLeadContext(["prepare_dealer_inquiry"], "mcp_send_dealer_inquiry", currentAttribution())?.attribution ?? null });
       if (!prepared.ok) return textResult({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
       const projection = fresh?.project(unit) ?? null;
       return textResult({
@@ -1274,6 +1275,7 @@ function buildMatchRvServer(): McpServer {
         scope: scope.id,
         analyticsSource: "mcp",
         attribution: currentAttribution(),
+        leadContext: mcpLeadContext(["send_dealer_inquiry"], "mcp_send_dealer_inquiry", currentAttribution()),
         fitHint: recallFit(scope) ?? null,
         lookupUnit: (id) => inventoryFreshnessRecheckEnabled() ? recheckForRecommend().byId.get(id) : getInventory().byId.get(id),
       });

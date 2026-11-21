@@ -6,6 +6,8 @@ import {
 import { runInquirySafetySweep } from "../services/inquiry-safety";
 import { DATA_DIR_FROZEN_GUIDANCE, DATA_DIR_FROZEN_RETRY_AFTER_SECONDS, isDataDirFrozen } from "../services/data-dir-freeze";
 import { ANONYMOUS_CONTEXT } from "../services/attribution";
+import { buildLeadRequestContext } from "../services/lead-attribution";
+import { leadTrackingEnabled } from "../services/lead-tracking-config";
 
 /**
  * Dealer inquiry HTTP API (same service the MCP tools use).
@@ -22,6 +24,12 @@ import { ANONYMOUS_CONTEXT } from "../services/attribution";
  */
 const router: IRouter = Router();
 const requester = (req: Request) => `ip:${req.ip ?? "unknown"}`;
+
+/** Lead tracking context from this request's X-MatchRV-* headers and optional body.attribution. Null when tracking is off. */
+function leadContextFor(req: Request, body: Record<string, unknown>) {
+  if (!leadTrackingEnabled()) return null;
+  return buildLeadRequestContext({ channel: "http", entryPoint: "website_inquiry_api", headers: (n) => req.get(n), attribution: body.attribution, agent: null });
+}
 
 function refuseFrozen(res: Response): boolean {
   if (!isDataDirFrozen()) return false;
@@ -42,6 +50,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
       scope: null,
       analyticsSource: "website",
       attribution: { ...ANONYMOUS_CONTEXT, surface: "website" },
+      leadContext: leadContextFor(req, body),
       lookupUnit: (id) => getInventory().byId.get(id),
     });
     if (!result.ok) {
@@ -68,7 +77,7 @@ router.post("/inquiries", async (req: Request, res: Response) => {
 fit: body.fit && typeof body.fit === "object" ? body.fit : undefined,
     // Website calculator numbers, sent only when the shopper ticked the share box.
     paymentEstimate: body.payment_estimate,
-  });
+  }, undefined, { leadAttribution: leadContextFor(req, body)?.attribution ?? null });
   if (!prepared.ok) { res.status(400).json({ error: "invalid_contact", errors: prepared.errors }); return; }
   res.json({ preview: prepared.preview, confirmationToken: prepared.confirmationToken, expiresAt: prepared.expiresAt, next: "Nothing has been sent. POST again with { confirmation_token, confirmed: true } only after the shopper approves this exact preview." });
 });

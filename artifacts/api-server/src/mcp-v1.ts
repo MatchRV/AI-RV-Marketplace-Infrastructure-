@@ -25,6 +25,7 @@ import {
 import { agentKeyFromHeaders, checkAgentKey, DEFAULT_AGENT_LIMITS } from "./services/agent-clients";
 import { attributionRows, boundClientId, currentAttribution, type AttributionContext } from "./services/attribution";
 import { getInquiryStatus, prepareInquiry, sendInquiry } from "./services/dealer-inquiries";
+import { mcpLeadContext } from "./services/lead-mcp";
 import { inventoryFreshnessRecheckEnabled, recheckForRecommend } from "./services/inventory-state-freshness";
 import { attributeMcpFetch } from "./services/mcp-attribution";
 import { getScreenedInventory } from "./services/screened-inventory";
@@ -445,7 +446,7 @@ function buildV1Server(): McpServer {
       if (!ctx.scopes.includes("inquiry")) return result({ error: "client_not_permitted", guidance: "This API key is not allowed to send dealer inquiries. Ask MatchRV for the inquiry scope." }, true);
       const unit = inventory().byId.get(input.unit_id);
       if (!unit) return result({ error: "unit_not_found", guidance: "Use a unit_id returned by search_inventory." }, true);
-      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message }, undefined, { clientId: ctx.clientId });
+      const prepared = prepareInquiry(unit, { name: input.name, email: input.email ?? null, phone: input.phone ?? null, message: input.message }, undefined, { clientId: ctx.clientId, leadAttribution: mcpLeadContext(["prepare_inquiry"], "mcp_v1_send_inquiry", ctx)?.attribution ?? null });
       if (!prepared.ok) return result({ error: "invalid_contact", errors: prepared.errors, guidance: "Ask the shopper to correct these fields. Nothing was sent." }, true);
       return result({
         status: "preview_only_nothing_sent",
@@ -481,6 +482,7 @@ function buildV1Server(): McpServer {
         scope: null,
         analyticsSource: "unknown",
         attribution: ctx,
+        leadContext: mcpLeadContext(["send_inquiry"], "mcp_v1_send_inquiry", ctx),
         lookupUnit: (id) => inventory().byId.get(id),
       });
       if (!sent.ok) return result({ error: sent.code, guidance: sent.guidance, sent: false, ...(sent.code === "writes_frozen" ? { retryable: true } : {}) }, true);

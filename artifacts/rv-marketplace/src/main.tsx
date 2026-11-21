@@ -4,6 +4,10 @@ import App from "./App";
 import "./index.css";
 import "./lib/posthog";
 import { registerMatchrvTools } from "./agent/webmcp";
+import { captureLandingAttribution } from "./lib/lead-attribution";
+
+// First landing of this browser session (utm tags, referrer host, path) for lead attribution.
+captureLandingAttribution();
 
 // Register WebMCP tools at module load (before React render) so ChatGPT's
 // in-app browser sees them as top-level page JS as early as possible.

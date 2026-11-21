@@ -13,6 +13,7 @@ import {
   ANONYMOUS_CONTEXT, allowClientRequest, hashSession, recordAttributionEvent, runWithAttribution, touchUnits,
   type AttributionContext, type AttributionSurface,
 } from "./attribution";
+import { recordMcpToolFunnel, runWithMcpLeadPeek } from "./lead-mcp";
 
 const MAX_PEEK_BYTES = 262_144;
 const SESSION_RE = /^[A-Za-z0-9._:-]{8,128}$/;
@@ -190,7 +191,8 @@ export async function attributeMcpFetch(
   if (ctx.tier === "verified_partner" && ctx.clientId && ctx.limits && !allowClientRequest(ctx.clientId, ctx.limits.requestsPerMinute)) {
     return rateLimited(ctx);
   }
-  const response = await runWithAttribution(ctx, () => inner(request));
+  const leadPeek = { headers: request.headers, meta: peek.meta, calls: peek.calls };
+  const response = await runWithAttribution(ctx, () => runWithMcpLeadPeek(leadPeek, () => inner(request)));
   if (ctx.rejectedKey) {
     try { response.headers.set("x-matchrv-key-status", "rejected"); } catch { /* immutable headers */ }
   }
@@ -203,7 +205,10 @@ export async function attributeMcpFetch(
         for (const call of peek.calls) {
           const result = results.get(call.id) ?? (peek.calls.length === 1 ? [...results.values()][0] : undefined);
           const payload = toolPayload(result);
-          if (payload) recordToolOutcome(ctx, call, payload, opts.dealerFor);
+          if (payload) {
+            recordToolOutcome(ctx, call, payload, opts.dealerFor);
+            recordMcpToolFunnel(request.headers, peek.meta, ctx, call, payload);
+          }
         }
       }).catch(() => undefined);
     }

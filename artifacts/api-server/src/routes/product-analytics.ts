@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { captureProductEvent } from "../services/product-analytics";
 import { clientFromNodeRequest } from "../services/analytics-client";
+import { recordWebsiteBeaconFunnel } from "./lead-funnel";
 
 /**
  * Browser events for the product collector. The body is allowlisted again in
@@ -37,7 +38,10 @@ router.post("/analytics/product", (req: Request, res: Response) => {
   try {
     const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
     const session = typeof body.session_id === "string" ? body.session_id.slice(0, 80) : "anon";
-    if (allowed(session)) captureProductEvent({ ...body, source: "website" }, clientFromNodeRequest(req));
+    if (allowed(session)) {
+      captureProductEvent({ ...body, source: "website" }, clientFromNodeRequest(req));
+      recordWebsiteBeaconFunnel(req, body);
+    }
   } catch {
     /* fail open */
   }

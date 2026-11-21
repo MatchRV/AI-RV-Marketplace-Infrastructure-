@@ -231,6 +231,7 @@ export function defaultInquiryMessage(c: Pick<SwipeCard, "year" | "make" | "mode
 export function inquiryPayload(unitId: string, form: InquiryForm, share?: { sharePayment: boolean; estimate: PaymentEstimatePayload | null }) {
   return {
     unitId,
+    surface: "swipe" as const,
     name: form.name.trim(),
     email: form.email.trim() || null,
     phone: form.phone.trim() || null,

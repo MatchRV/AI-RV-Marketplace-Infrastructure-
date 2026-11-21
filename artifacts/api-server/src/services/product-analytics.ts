@@ -975,3 +975,65 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
   }).catch(() => undefined);
   return response;
 }
+
+// ── Lead tracking events (LEAD_TRACKING_ENABLED) ───────────────────────────
+
+const LEAD_EVENTS = new Set(["lead_created", "lead_repeat", "lead_stage", "lead_funnel_step"]);
+const LEAD_ENUMS: Record<string, ReadonlySet<string>> = {
+  lead_source: new Set(["native_ios", "native_android", "website", "chatgpt_app", "lotai", "other_ai_agent", "unknown"]),
+  lead_surface: new Set(["swipe", "grid", "ask_ai", "favorites", "compare", "saved_search_alert", "price_drop", "tow_fit", "unit_detail", "other"]),
+  traffic: new Set(["human", "ai_agent_user"]),
+  entry_point: new Set(["website_inquiry_api", "mcp_send_dealer_inquiry", "mcp_v1_send_inquiry", "legacy_buyer_lead_api"]),
+  funnel_step: new Set(["impression", "view", "swipe", "favorite", "search", "compare", "inquiry_start", "inquiry"]),
+  stage: new Set(["sent", "delivered", "opened", "dealer_responded", "appointment", "sold", "lost"]),
+  lost_reason: new Set(["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "other"]),
+  price_band: new Set(["under_20k", "20k_40k", "40k_60k", "60k_100k", "100k_200k", "200k_plus", "unknown"]),
+  rv_type: RV_TYPES,
+};
+const LEAD_FLAGS = ["lead_source_verified", "qualified", "has_name", "has_contact", "specific_unit", "exclusivity", "repeat"] as const;
+const LEAD_COUNTS = ["repeat_count", "response_time_minutes", "step_count"] as const;
+const LEAD_TAGS = ["utm_source", "utm_medium", "utm_campaign"] as const;
+
+/**
+ * Allowlisted lead event for PostHog. Only enums, booleans, counts, an opaque
+ * lead id, a hashed listing id, a dealer slug, a state code and slug-shaped utm
+ * tags pass. No name, email, phone, message, IP or user agent is ever copied.
+ */
+export function sanitizeLeadEvent(name: string, props: Record<string, unknown>): ProductEvent | null {
+  if (!LEAD_EVENTS.has(name)) return null;
+  const out: ProductEvent = { event: name, source: "lead_tracking", identity_is_person: false, $process_person_profile: false };
+  for (const [key, allowed] of Object.entries(LEAD_ENUMS)) {
+    const v = props[key];
+    if (typeof v === "string" && allowed.has(v)) out[key] = v;
+  }
+  for (const key of LEAD_FLAGS) if (typeof props[key] === "boolean") out[key] = props[key];
+  for (const key of LEAD_COUNTS) { const n = safeCount(props[key]); if (n !== undefined) out[key] = n; }
+  for (const key of LEAD_TAGS) {
+    const v = props[key];
+    if (typeof v === "string" && /^[a-z0-9][a-z0-9._+~-]{0,79}$/.test(v)) out[key] = v;
+  }
+  if (typeof props.lead_id === "string" && /^lead_[A-Za-z0-9_-]{8,40}$/.test(props.lead_id)) out.lead_id = props.lead_id;
+  if (typeof props.region === "string" && /^[A-Z]{2,3}$/.test(props.region)) out.region = props.region;
+  const listing = telemetryListingId(props.listing_id);
+  const dealer = telemetryDealerId(props.dealer_id);
+  if (listing) out.listing_id = listing;
+  if (dealer) out.dealer_id = dealer;
+  return out;
+}
+
+/**
+ * Queue a lead event. identityKey is an already-hashed session key; the
+ * distinct id is a further HMAC of it, so it cannot be joined to the raw id.
+ * Without one, events about the same lead share an id derived from lead_id.
+ */
+export function captureLeadAnalyticsEvent(name: string, props: Record<string, unknown>, identityKey: string | null): void {
+  try {
+    const clean = sanitizeLeadEvent(name, props);
+    if (!clean) return;
+    const basis = identityKey ? `s:${identityKey}` : typeof clean.lead_id === "string" ? `l:${clean.lead_id}` : null;
+    const distinctId = basis ? `anon_${opaqueHash("lead-tracking", basis)}` : `anon_${randomBytes(16).toString("hex")}`;
+    enqueue({ ...clean, identity_scope: basis ? "lead_tracking_session" : "anonymous_request", distinctId });
+  } catch {
+    /* fail open */
+  }
+}

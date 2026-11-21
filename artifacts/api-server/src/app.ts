@@ -9,6 +9,7 @@ import { matchRvMcpNodeHandler } from "./mcp";
 import { matchRvMcpV1NodeHandler } from "./mcp-v1";
 import { getMcpDocsHtml } from "./lib/mcp-docs";
 import opsLeadsPage from "./routes/ops-leads-page";
+import leadPages from "./routes/lead-pages";
 import { DB_MODE } from "@workspace/db";
 import { getInventory } from "./services/agent-inventory";
 import { injectListingIntoShell } from "./lib/listing-seo";
@@ -141,8 +142,13 @@ app.use(
     next();
   },
 );
+// Shopper funnel events (routes/lead-funnel.ts): small bodies only. 404 until LEAD_TRACKING_ENABLED.
+app.use("/api/funnel/events", express.json({ limit: "8kb" }));
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+// Dealer lead receipts and the owner leads dashboard (routes/lead-pages.ts). Receipts 404 until
+// LEAD_TRACKING_ENABLED; the dashboard 404s until LEADS_DASHBOARD_TOKEN is set.
+app.use(leadPages);
 
 // Security headers — applied to all API responses
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -204,7 +210,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 export function apiPathAllowedWithoutDatabase(method: string, path: string): boolean {
   if (path === "/admin/data-dir") return true;
   if (/^\/(agent|healthz|outfitter|webmcp|listings|listing-insights|search|inquiries|swipe|out|attribution)(\/|$)/.test(path)) return true;
-  if (method === "POST" && (path === "/analytics/event" || path === "/analytics/product" || path === "/dealer-tools/quick-report" || path === "/dealer-tools/quick-report/email")) return true;
+  if (method === "POST" && (path === "/funnel/events" || path === "/analytics/event" || path === "/analytics/product" || path === "/dealer-tools/quick-report" || path === "/dealer-tools/quick-report/email")) return true;
   if (method === "GET" && (path === "/dealer-tools/quick-report/status" || path.startsWith("/dealer-tools/quick-report/pdf/"))) return true;
   return false;
 }

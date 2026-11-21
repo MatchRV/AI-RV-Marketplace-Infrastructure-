@@ -21,6 +21,7 @@ import inquiriesRouter from "./inquiries";
 import swipeRouter from "./swipe";
 import productAnalyticsRouter from "./product-analytics";
 import attributionRouter from "./attribution";
+import leadFunnelRouter from "./lead-funnel";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(inquiriesRouter);
 router.use(swipeRouter);
 router.use(productAnalyticsRouter);
 router.use(attributionRouter);
+router.use(leadFunnelRouter);
 
 export default router;

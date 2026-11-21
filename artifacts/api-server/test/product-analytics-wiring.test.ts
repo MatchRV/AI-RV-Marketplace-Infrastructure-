@@ -81,7 +81,9 @@ describe("MCP request observer", () => {
     expect(events[0].event).toBe("mcp_protocol_request");
     expect(events[0].properties.counts_as_shopper_tool).toBe(false);
     expect(events[0].properties.client_hint).toBe("unknown");
-    expect(JSON.stringify(events)).not.toContain("SomeCustomClient");
+    // The raw UA is forwarded as $raw_user_agent (PostHog parses it); it never becomes part of the id.
+    expect(events[0].properties.$raw_user_agent).toBe("SomeCustomClient/9");
+    expect(events[0].distinct_id).not.toContain("SomeCustomClient");
   });
 
   it("emits one start and one completion for a tool call, not a second copy", async () => {
@@ -110,7 +112,9 @@ describe("MCP request observer", () => {
       source: "mcp",
     });
     expect(JSON.stringify(events)).not.toContain("bunkhouse");
-    expect(JSON.stringify(events)).not.toContain("openai-mcp/1.0.0");
+    expect(events.every((event) => event.properties.$raw_user_agent === "openai-mcp/1.0.0")).toBe(true);
+    expect(events.every((event) => event.properties.bot_category === "ai_agent_user")).toBe(true);
+    expect(events[0].distinct_id).not.toContain("openai-mcp");
   });
 });
 
@@ -265,7 +269,11 @@ describe("website server actions", () => {
   it("accepts one allowlisted website event and ignores a forged inquiry", async () => {
     const events = collectEvents();
     const ok = await fetch(`${base}/api/analytics/product`, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15",
+      },
       body: JSON.stringify({
         event: "website_page_view", source: "website", path: "/swipe",
         email: SHOPPER_EMAIL, session_id: "sess_abc12345",

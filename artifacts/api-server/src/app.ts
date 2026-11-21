@@ -25,6 +25,7 @@ import { listingCanonicalUrl } from "./lib/listing-seo";
 import { MARKDOWN_CONTENT_TYPE, prefersMarkdown, renderHubMarkdown, renderListingMarkdown, renderNotFoundMarkdown } from "./lib/agent-markdown";
 import { renderLiveLlmsTxt, withLiveInventory } from "./lib/live-inventory";
 import internalRoutes from "./routes/internal";
+import { stampAnalyticsClientIp } from "./services/analytics-client";
 
 const app: Express = express();
 // Render terminates TLS one proxy hop ahead of this service. Use the real
@@ -67,7 +68,9 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
-app.all("/mcp", matchRvMcpNodeHandler);
+// stampAnalyticsClientIp resolves the client IP (X-Forwarded-For only from the local
+// Caddy) into a private header for product analytics; any inbound copy is dropped.
+app.all("/mcp", stampAnalyticsClientIp, matchRvMcpNodeHandler);
 // Keyed endpoint for third-party agents. A separate server: nothing here changes /mcp. 404 until AGENT_V1_ENABLED is set.
 app.all("/mcp/v1", matchRvMcpV1NodeHandler);
 // Public MCP documentation (static, server-rendered HTML; no JS). Registered

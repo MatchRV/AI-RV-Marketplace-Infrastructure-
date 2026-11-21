@@ -1,4 +1,5 @@
 import { getAnalyticsSessionId } from "@/lib/analytics";
+import { posthog } from "@/lib/posthog";
 
 /**
  * Allowlisted website events for the server collector at POST /api/analytics/product.
@@ -97,6 +98,22 @@ function sessionId(explicit?: string): string | undefined {
   }
 }
 
+function posthogIds(): { distinctId?: string; sessionId?: string } {
+  try {
+    if (typeof window === "undefined") return {};
+    const client = posthog as unknown as { __loaded?: boolean; get_distinct_id?: () => unknown; get_session_id?: () => unknown };
+    if (!client.__loaded) return {};
+    const distinctId = typeof client.get_distinct_id === "function" ? client.get_distinct_id() : undefined;
+    const sessionId = typeof client.get_session_id === "function" ? client.get_session_id() : undefined;
+    return {
+      distinctId: typeof distinctId === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{7,119}$/.test(distinctId) ? distinctId : undefined,
+      sessionId: typeof sessionId === "string" && /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 function claim(key: string): boolean {
   const now = Date.now();
   const prev = recent.get(key);
@@ -130,6 +147,11 @@ export function trackWebsiteProductEvent(event: WebsiteProductEvent): boolean {
     if (Number.isInteger(event.matchedCount) && (event.matchedCount as number) >= 0 && (event.matchedCount as number) <= 100_000) body.matched_count = event.matchedCount;
     const sid = sessionId(event.sessionId);
     if (sid) body.session_id = sid;
+    // Tie server-side events to the same browser posthog-js already tracks, so a
+    // visitor is one distinct id, not one per request. The server validates both.
+    const ph = posthogIds();
+    if (ph.distinctId) body.distinct_id = ph.distinctId;
+    if (ph.sessionId) body.$session_id = ph.sessionId;
     const dedupe = [event.event, path ?? "", listing === "missing" || listing === "reject" ? "" : listing.raw, body.surface ?? "", body.action ?? "", body.rv_type ?? ""].join("|");
     if (!claim(dedupe)) return false;
     const base = import.meta.env.BASE_URL || "/";

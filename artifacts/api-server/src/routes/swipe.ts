@@ -5,6 +5,7 @@ import { getScreenedInventory } from "../services/screened-inventory";
 import { nearestZip } from "../services/zip-centroids";
 import { outboundSummary, recordOutboundClick } from "../services/outbound-clicks";
 import { captureProductEvent } from "../services/product-analytics";
+import { clientFromNodeRequest } from "../services/analytics-client";
 import { opsKeyValid } from "../services/dealer-inquiries";
 
 /**
@@ -63,7 +64,7 @@ router.post("/swipe/deck", async (req: Request, res: Response) => {
         ...(rvType ? { rv_type: rvType } : {}),
         result_count: pool.cards.length,
         matched_count: pool.stats.matched,
-      });
+      }, clientFromNodeRequest(req));
     } catch {
       /* analytics must not change the deck response */
     }
@@ -98,7 +99,7 @@ router.get("/out", (req: Request, res: Response) => {
       surface: from === "swipe" ? "swipe" : "outbound",
       listing_id: u.id,
       dealer_id: u.dealer.id,
-    });
+    }, clientFromNodeRequest(req));
   } catch {
     /* analytics must not block the redirect */
   }

@@ -12,6 +12,12 @@
  */
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import {
+  ANALYTICS_CLIENT_IP_HEADER, UUID_RE, botTags, classifyUserAgent, hashedIpUaId, opaqueHash,
+  resetAnalyticsClientForTests, sessionUuidFor, type AnalyticsClient,
+} from "./analytics-client";
+
+export type { AnalyticsClient } from "./analytics-client";
 
 export const POSTHOG_US_HOST = "https://us.i.posthog.com";
 export const POSTHOG_EU_HOST = "https://eu.i.posthog.com";
@@ -80,6 +86,7 @@ let scheduled = false;
 let warnedAt = 0;
 
 export function resetProductAnalyticsForTests(): void {
+  resetAnalyticsClientForTests();
   generation += 1;
   testConfig = undefined;
   queue = [];
@@ -237,25 +244,135 @@ function flag(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
-function baseIdentity(sessionId?: string): { distinctId: string; identity_scope: string } {
-  if (sessionId) return { distinctId: `web_session_${sessionId}`, identity_scope: "anonymous_session" };
-  return { distinctId: `anon_${randomBytes(16).toString("hex")}`, identity_scope: "anonymous_request" };
+const SESSION_RE = /^[A-Za-z0-9_-]{8,80}$/;
+/** posthog-js anonymous ids are UUIDv7; identified ids are Clerk/dealer ids. Reserved prefixes are refused so a browser cannot claim a bot or MCP id. */
+const CLIENT_DISTINCT_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,119}$/;
+const RESERVED_DISTINCT_PREFIX = /^(bot:|mcp_|anon_|web_session_)/i;
+
+function cleanClientDistinctId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  if (!CLIENT_DISTINCT_RE.test(text) || RESERVED_DISTINCT_PREFIX.test(text) || text.includes("@")) return undefined;
+  return text;
 }
 
-function withIdentity(event: ProductEvent, distinctId?: string): ProductEvent & { distinctId: string } {
-  const session = typeof event.session_id === "string" && /^[A-Za-z0-9_-]{8,80}$/.test(event.session_id)
-    ? event.session_id
-    : undefined;
-  const identity = distinctId
-    ? { distinctId, identity_scope: "anonymous_request" as const }
-    : baseIdentity(session);
+function cleanSessionUuid(value: unknown): string | undefined {
+  return typeof value === "string" && UUID_RE.test(value.trim()) ? value.trim().toLowerCase() : undefined;
+}
+
+function clientProperties(client?: AnalyticsClient): ProductEvent {
+  if (!client) return {};
+  const out: ProductEvent = {};
+  if (client.ip) out.$ip = client.ip;
+  if (client.userAgent) out.$raw_user_agent = client.userAgent.slice(0, 512);
+  return out;
+}
+
+/**
+ * Identity for website events, first match wins:
+ *  1. Known bot / AI agent / script user agent: distinct_id `bot:<name>` (one id per bot).
+ *  2. The browser's posthog-js distinct_id, posted by the beacon.
+ *  3. The browser's MatchRV session id: `web_session_<id>`.
+ *  4. Daily-rotating HMAC of client IP + UA: `anon_<hash>`.
+ *  5. A random per-request id (no client info at all; tests and internal callers).
+ * $process_person_profile stays false for every server event, so none of these create person profiles.
+ */
+function websiteIdentity(raw: ProductEvent, clean: ProductEvent, client?: AnalyticsClient): ProductEvent & { distinctId: string } {
+  const session = typeof clean.session_id === "string" && SESSION_RE.test(clean.session_id) ? clean.session_id : undefined;
+  const postedDistinct = cleanClientDistinctId(raw.distinct_id);
+  const postedSession = cleanSessionUuid(raw.$session_id);
+  const tags = client ? botTags(classifyUserAgent(client.userAgent)) : undefined;
+  let distinctId: string;
+  let scope: string;
+  if (tags?.is_bot && tags.bot_name) {
+    distinctId = `bot:${tags.bot_name}`;
+    scope = "bot";
+  } else if (postedDistinct) {
+    distinctId = postedDistinct;
+    scope = "browser_distinct_id";
+  } else if (session) {
+    distinctId = `web_session_${session}`;
+    scope = "anonymous_session";
+  } else {
+    const hashed = client ? hashedIpUaId("anon_", client) : undefined;
+    distinctId = hashed ?? `anon_${randomBytes(16).toString("hex")}`;
+    scope = hashed ? "anonymous_ip_ua_daily" : "anonymous_request";
+  }
+  let sessionUuid = tags?.is_bot ? undefined : postedSession;
+  if (!sessionUuid && scope !== "anonymous_request") {
+    const key = tags?.is_bot
+      ? `${distinctId}|${hashedIpUaId("", client ?? {}) ?? ""}`
+      : session ? `web:${session}` : `id:${distinctId}`;
+    sessionUuid = sessionUuidFor(key);
+  }
+  return {
+    ...clean,
+    ...clientProperties(client),
+    ...(tags ?? {}),
+    ...(sessionUuid ? { $session_id: sessionUuid } : {}),
+    session_id: undefined,
+    identity_scope: scope,
+    identity_is_person: false,
+    $process_person_profile: false,
+    distinctId,
+  };
+}
+
+/**
+ * Identity for MCP events. AI-agent traffic is a segment, never a person:
+ * distinct_id `mcp_<hash>` from the Mcp-Session-Id (or X-MatchRV-Session)
+ * header, else a daily-rotating hash of client IP + UA. The raw session id,
+ * IP and UA never appear in the id. Every MCP event carries is_bot=true.
+ */
+export function mcpIdentity(headers: Headers | null | undefined, responseHeaders?: Headers | null): ProductEvent & { distinctId: string } {
+  const get = (name: string) => headers?.get(name) ?? null;
+  const ua = get("user-agent")?.slice(0, 512) || undefined;
+  const ip = get(ANALYTICS_CLIENT_IP_HEADER) || undefined;
+  const client: AnalyticsClient = { ip, userAgent: ua };
+  // initialize has no session yet; the server assigns one on its response.
+  const rawSession = get("mcp-session-id") ?? get("x-matchrv-session") ?? responseHeaders?.get("mcp-session-id") ?? null;
+  const session = rawSession && /^[A-Za-z0-9._:-]{8,128}$/.test(rawSession) ? rawSession : undefined;
+  const classified = classifyUserAgent(ua);
+  const tags = classified.is_bot
+    ? botTags(classified)
+    : { is_bot: true, bot_name: "browser-mcp-client", bot_category: "ai_agent_user" };
+  let distinctId: string;
+  let scope: string;
+  if (session) {
+    distinctId = `mcp_${opaqueHash("mcp-session", session)}`;
+    scope = "mcp_session";
+  } else {
+    const hashed = hashedIpUaId("mcp_", client);
+    distinctId = hashed ?? `mcp_req_${randomBytes(12).toString("hex")}`;
+    scope = hashed ? "mcp_ip_ua_daily" : "anonymous_request";
+  }
+  return {
+    ...clientProperties(client),
+    ...tags,
+    ...(scope !== "anonymous_request" ? { $session_id: sessionUuidFor(`mcp:${distinctId}`) } : {}),
+    identity_scope: scope,
+    distinctId,
+  };
+}
+
+function withIdentity(event: ProductEvent, identity?: ProductEvent & { distinctId: string }): ProductEvent & { distinctId: string } {
+  if (identity) {
+    return {
+      ...event,
+      ...identity,
+      session_id: undefined,
+      identity_is_person: false,
+      $process_person_profile: false,
+    };
+  }
+  // Server-side event with no request context (inquiry outcomes): one-off anonymous id.
   return {
     ...event,
     session_id: undefined,
-    identity_scope: event.identity_scope ?? identity.identity_scope,
+    identity_scope: event.identity_scope ?? "anonymous_request",
     identity_is_person: false,
     $process_person_profile: false,
-    distinctId: distinctId ?? identity.distinctId,
+    distinctId: `anon_${randomBytes(16).toString("hex")}`,
   };
 }
 
@@ -295,12 +412,12 @@ export function sanitizeProductEvent(event: ProductEvent): ProductEvent | null {
   return clean;
 }
 
-function sanitizeServerEvent(event: ProductEvent): (ProductEvent & { distinctId: string }) | null {
+function sanitizeServerEvent(event: ProductEvent, identity?: ProductEvent & { distinctId: string }): (ProductEvent & { distinctId: string }) | null {
   const name = event.event;
   if (typeof name !== "string" || !SERVER_EVENTS.has(name)) return null;
   if (WEBSITE_EVENTS.has(name)) {
     const web = sanitizeProductEvent(event);
-    return web ? withIdentity(web) : null;
+    return web ? websiteIdentity(event, web) : null;
   }
   const clean: ProductEvent = {
     event: name,
@@ -344,18 +461,26 @@ function sanitizeServerEvent(event: ProductEvent): (ProductEvent & { distinctId:
   if (results !== undefined) clean.result_count = results;
   if (typeof event.execution_id === "string" && /^[A-Za-z0-9_-]{8,80}$/.test(event.execution_id)) clean.execution_id = event.execution_id;
   if (typeof event.surface === "string" && SURFACES.has(event.surface)) clean.surface = event.surface;
-  return withIdentity(clean, typeof event.distinctId === "string" ? event.distinctId : undefined);
+  return withIdentity(clean, identity);
 }
 
-export function captureProductEvent(event: ProductEvent): void {
-  const clean = sanitizeProductEvent(event);
-  if (!clean) return;
-  enqueue(withIdentity(clean));
-}
-
-export function captureServerProductEvent(event: ProductEvent): void {
+/**
+ * Website event from a browser beacon or a server route. Pass `client` (from
+ * clientFromNodeRequest) so $ip, $raw_user_agent, bot tags and a stable id are set.
+ */
+export function captureProductEvent(event: ProductEvent, client?: AnalyticsClient): void {
   try {
-    const clean = sanitizeServerEvent(event);
+    const clean = sanitizeProductEvent(event);
+    if (!clean) return;
+    enqueue(websiteIdentity(event, clean, client));
+  } catch {
+    /* fail open */
+  }
+}
+
+export function captureServerProductEvent(event: ProductEvent, identity?: ProductEvent & { distinctId: string }): void {
+  try {
+    const clean = sanitizeServerEvent(event, identity);
     if (!clean) return;
     enqueue(clean);
   } catch {
@@ -757,6 +882,8 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
     response = await inner(request);
   } catch (err) {
     if (enabled) {
+      let failIdentity: ReturnType<typeof mcpIdentity> | undefined;
+      try { failIdentity = mcpIdentity(request.headers); } catch { failIdentity = undefined; }
       void peekPromise.then((peeked) => {
         const calls = peeked?.calls ?? [];
         for (const call of calls) {
@@ -770,7 +897,7 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
             listingIds: call.listingIds,
             executionId: executionId(),
             bodyState: "aborted",
-          })) captureServerProductEvent(event);
+          })) captureServerProductEvent(event, failIdentity);
         }
       }).catch(() => undefined);
     }
@@ -779,6 +906,8 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
   if (!enabled) return response;
   const userAgent = request.headers.get("user-agent");
   const httpStatus = response.status;
+  let identity: ReturnType<typeof mcpIdentity> | undefined;
+  try { identity = mcpIdentity(request.headers, response.headers); } catch { identity = undefined; }
   // Only POST bodies are finite tool results. A GET SSE session is not read.
   let bodyPromise: Promise<string> | null = null;
   if (request.method === "POST") {
@@ -795,7 +924,7 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
         responseBody: "",
         userAgent,
       })) {
-        captureServerProductEvent(peeked?.batch ? { ...event, batch_executed: false, requested_tool_calls: 0 } : event);
+        captureServerProductEvent(peeked?.batch ? { ...event, batch_executed: false, requested_tool_calls: 0 } : event, identity);
       }
       return;
     }
@@ -822,7 +951,7 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
         identity_is_person: false,
         identity_scope: "anonymous_request",
         $process_person_profile: false,
-      });
+      }, identity);
     }
     for (const call of calls) {
       const matched = peeked?.batch
@@ -840,8 +969,8 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
         executionId: executionId(),
         bodyState: failed ? "aborted" : "ok",
       });
-      captureServerProductEvent(pair[0]);
-      captureServerProductEvent(pair[1]);
+      captureServerProductEvent(pair[0], identity);
+      captureServerProductEvent(pair[1], identity);
     }
   }).catch(() => undefined);
   return response;

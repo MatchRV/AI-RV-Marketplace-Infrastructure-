@@ -73,16 +73,85 @@ rejected. The website posts only the `website_*` names.
 
 ## Identity
 
-MCP does not provide a stable person id. Each MCP event gets its own
-`distinct_id` starting with `anon_`. `identity_is_person` is false.
-`client_hint` is `unknown`, `openai_mcp_user_agent`, `anthropic_user_agent`,
-or `test_or_scan`. The hint is not proof: `openai-mcp/1.0.0` is also what
-scans use, and any other user agent stays `unknown`. The raw user agent is
-not stored.
+Every event carries `identity_is_person: false` and
+`$process_person_profile: false`, so the server collector never creates
+PostHog person profiles. Bots, AI agents and scripts are kept visible as their
+own segment, but they never look like human visitors.
 
-A website browser session id, when the page already has one, is sent as
-`web_session_…` with `identity_scope: anonymous_session`. That is one browser
-tab session, not one person. Do not chart unique distinct ids as shoppers.
+### Client context (`$ip`, `$raw_user_agent`, `$session_id`)
+
+The VM runs behind Caddy on the same host, so the socket peer is loopback.
+`X-Forwarded-For` is honored only when the socket peer is a local proxy
+(loopback, RFC 1918, link-local, IPv6 ULA); the left-most valid entry is the
+client. A direct connection from the internet uses its socket address and any
+`X-Forwarded-For` it sends is ignored. The resolved IP is sent as `$ip` (PostHog
+GeoIP) and the request's user agent as `$raw_user_agent` (PostHog parses it into
+`$browser`/`$os`). Neither is read from a posted body. For `/mcp`, an Express
+middleware stamps the resolved IP into the private header
+`x-matchrv-analytics-client-ip` (any inbound copy is deleted first) so the
+fetch-level observer can read it.
+
+`$session_id` is a UUIDv7, which is what PostHog's sessions model expects. The
+browser's posthog-js session id is used when the beacon posts one; otherwise a
+UUIDv7 is minted on first sight of a session key (website session id, MCP
+session) and reused while the key is active (30 min idle, bounded LRU of
+20,000 keys, in memory; a restart starts new sessions).
+
+### Bot detection
+
+`src/services/bot-detect.ts` is an in-house, ordered list of user-agent rules
+(no third-party UA package). Each match sets `is_bot: true`, `bot_name` and
+`bot_category`:
+
+| bot_category | examples (bot_name) |
+| --- | --- |
+| `ai_agent_user` | `chatgpt-user`, `openai-mcp`, `claude-user`, `perplexity-user`, `mistralai-user`, `duckassistbot`, `meta-externalfetcher` |
+| `ai_crawler` | `gptbot`, `oai-searchbot`, `claudebot`, `claude-searchbot`, `anthropic-ai`, `perplexitybot`, `meta-externalagent`, `bytespider`, `ccbot`, `amazonbot`, `applebot-extended`, `googleother` |
+| `search_crawler` | `googlebot`, `bingbot`, `applebot`, `yandexbot`, `duckduckbot`, `baiduspider`, `petalbot` |
+| `social_preview` | `facebookexternalhit`, `twitterbot`, `linkedinbot`, `slackbot`, `discordbot` |
+| `seo_tool` | `ahrefsbot`, `semrushbot`, `mj12bot`, `dotbot`, `screaming-frog` |
+| `headless` | `headlesschrome`, `phantomjs`, `puppeteer`, `playwright`, `selenium`, `lighthouse` |
+| `generic_script` | `python-requests`, `curl`, `wget`, `go-http-client`, `node-fetch`, `axios`, `empty-ua`, `unknown-client` (no `Mozilla/5.0` prefix) |
+| `other_crawler` | `other-bot` (self-declared bot/spider/crawler not listed above) |
+
+Real browsers get `is_bot: false`. A user agent is self-reported, so this is a
+reporting tag, never an access-control decision.
+
+### distinct_id
+
+Website events (`website_*`), first match wins:
+
+1. Bot/agent/script UA: `bot:<bot_name>` (`identity_scope: bot`). Every hit from
+   GPTBot is one id, not one id per page, so crawls cannot inflate unique users.
+2. The browser's posthog-js `distinct_id`, posted by the beacon
+   (`identity_scope: browser_distinct_id`). Server events join the same id the
+   browser SDK already uses. Ids starting `bot:`, `mcp_`, `anon_`,
+   `web_session_`, or containing `@`, are refused.
+3. The MatchRV tab session id: `web_session_<id>` (`anonymous_session`).
+4. HMAC-SHA256 of UTC day + client IP + UA: `anon_<24 hex>`
+   (`anonymous_ip_ua_daily`).
+5. Random `anon_<hex>` only when there is no request context at all
+   (`anonymous_request`, e.g. inquiry outcomes).
+
+MCP events (`mcp_*`) are always agent traffic and always carry `is_bot: true`
+(a browser-like MCP client is tagged `browser-mcp-client` / `ai_agent_user`):
+
+1. `Mcp-Session-Id` (or `X-MatchRV-Session`) request header, or the session id
+   the server assigns on the `initialize` response: `mcp_<HMAC(session)>`
+   (`identity_scope: mcp_session`).
+2. Otherwise `mcp_<HMAC(UTC day + IP + UA)>` (`mcp_ip_ua_daily`).
+
+HMACs are keyed with `ANALYTICS_ID_SALT` if set, else the PostHog project
+token. No raw IP, user agent or MCP session key appears in a distinct id. The
+IP-based ids rotate daily so they cannot be joined across days.
+
+Choice: bots get a stable `bot:<name>` id *and* `$process_person_profile:
+false`. That keeps each bot countable as one actor in its own segment while
+human counts stay clean. Filter humans with `properties.is_bot = false`.
+
+`client_hint` (`unknown`, `openai_mcp_user_agent`, `anthropic_user_agent`,
+`test_or_scan`) is kept for older charts. Like `bot_name`, it is a hint, not
+proof.
 
 Events do not include contact fields, message text, search text, prompts,
 confirmation tokens, raw MCP session keys, authorization headers, full page
@@ -103,6 +172,7 @@ without the unit id.
 
 These counts are requests, tool executions, browser sessions, user-agent
 hints, and delivery outcomes. They are not counts of people and not sales.
+Unique distinct ids with `is_bot = false` approximate browsers, not shoppers.
 
 ## Denominators
 
@@ -153,6 +223,18 @@ WHERE event IN ('website_search_results', 'website_card_viewed', 'website_listin
   AND properties.source = 'website'
   AND timestamp > now() - INTERVAL 7 DAY
 GROUP BY event, surface
+```
+
+Humans vs bots vs AI agents on the website:
+
+```sql
+SELECT if(properties.is_bot, properties.bot_category, 'human') AS segment,
+       count() AS events, count(DISTINCT distinct_id) AS actors
+FROM events
+WHERE event LIKE 'website_%'
+  AND timestamp > now() - INTERVAL 7 DAY
+GROUP BY segment
+ORDER BY events DESC
 ```
 
 Protocol noise, kept separate:

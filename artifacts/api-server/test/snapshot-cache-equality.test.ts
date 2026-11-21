@@ -26,8 +26,13 @@ const FILTERS: ListingQuery[] = [
   { minPrice: "abc" },
 ];
 
+// These loops are CPU-bound for tens of seconds on CI. Yield to the event loop
+// between iterations so the vitest worker can answer its RPC heartbeats
+// (otherwise: "[vitest-worker]: Timeout calling onTaskUpdate"). Assertions unchanged.
+const yieldToLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 describe("cached /api/listings equals the uncached path", () => {
-  it("matches for every sort, filter and page", { timeout: 600_000 }, () => {
+  it("matches for every sort, filter and page", { timeout: 600_000 }, async () => {
     expect(getInventory().units.length).toBeGreaterThan(100);
     let compared = 0;
     for (const f of FILTERS) {
@@ -39,6 +44,7 @@ describe("cached /api/listings equals the uncached path", () => {
           expect(querySnapshotListings(q)).toEqual(want);
           expect(querySnapshotListings(q)).toEqual(want);
           compared++;
+          await yieldToLoop();
         }
       }
     }
@@ -68,10 +74,13 @@ const SEARCHES: Constraints[] = [
 ];
 
 describe("MCP search fast path equals full evaluation", () => {
-  it("runSearch returns identical outcomes with and without early exit", { timeout: 300_000 }, () => {
+  it("runSearch returns identical outcomes with and without early exit", { timeout: 300_000 }, async () => {
     const units = getInventory().units;
     for (const c of SEARCHES) {
-      expect(runSearch(units, c, null)).toEqual(runSearch(units, c, null, { fullEvaluation: true }));
+      const fast = runSearch(units, c, null);
+      await yieldToLoop();
+      expect(fast).toEqual(runSearch(units, c, null, { fullEvaluation: true }));
+      await yieldToLoop();
     }
   });
 

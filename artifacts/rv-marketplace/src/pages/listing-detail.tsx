@@ -994,6 +994,7 @@ export function ListingDetail() {
                                 // database and lands in the MatchRV lead inbox (/ops/leads).
                                 const sent = await sendDealerInquiry({
                                   unitId: String(listing.id),
+                                  surface: "unit_detail",
                                   name: guestName.trim(),
                                   email: guestEmail.trim(),
                                   phone: guestPhone.trim() || null,
@@ -1036,6 +1037,7 @@ export function ListingDetail() {
                               const signedInName = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : "";
                               const sent = await sendDealerInquiry({
                                 unitId: String(listing.id),
+                                  surface: "unit_detail",
                                 name: signedInName || "MatchRV shopper",
                                 email: user?.email ?? null,
                                 message: contactMsg.trim(),

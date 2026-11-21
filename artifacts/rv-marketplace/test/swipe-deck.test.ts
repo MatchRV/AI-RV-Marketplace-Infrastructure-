@@ -92,7 +92,7 @@ describe("see it in person inquiry", () => {
     expect(inquiryFormValid(form)).toBe(true);
     expect(inquiryFormValid({ ...form, email: "", phone: "" })).toBe(false);
     const payload = inquiryPayload(c.id, form);
-    expect(payload).toEqual({ unitId: c.id, name: "Pat Shopper", email: "pat@example.com", phone: null, message: "I'd like to see the 2022 Grand Design Imagine 2500RL in person. Is it still available, and when could I come by?" });
+    expect(payload).toEqual({ unitId: c.id, surface: "swipe", name: "Pat Shopper", email: "pat@example.com", phone: null, message: "I'd like to see the 2022 Grand Design Imagine 2500RL in person. Is it still available, and when could I come by?" });
 
     const calls: { url: string; body: any }[] = [];
     const responses = [
@@ -107,7 +107,7 @@ describe("see it in person inquiry", () => {
     const r = await sendDealerInquiry(payload, "/", fetchImpl);
     expect(r).toMatchObject({ ok: true, inquiryId: "inq_9", status: "dry_run" });
     expect(calls.map((x) => x.url)).toEqual(["/api/inquiries", "/api/inquiries"]);
-    expect(calls[0].body).toEqual({ unit_id: c.id, name: "Pat Shopper", email: "pat@example.com", phone: null, message: payload.message });
+    expect(calls[0].body).toEqual({ unit_id: c.id, attribution: { client: "website", platform: "web", surface: "swipe" }, name: "Pat Shopper", email: "pat@example.com", phone: null, message: payload.message });
     expect(calls[1].body).toEqual({ confirmation_token: "dic_x.sig", confirmed: true });
   });
 });

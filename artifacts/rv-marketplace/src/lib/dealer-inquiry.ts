@@ -7,6 +7,8 @@
  * shopper has already typed the message and pressed "Contact Dealer", which is
  * the explicit approval, so both steps run back to back here.
  */
+import { websiteLeadAttribution, type WebsiteLeadAttribution } from "./lead-attribution";
+
 export interface DealerInquiryInput {
   unitId: string;
   name: string;
@@ -15,6 +17,8 @@ export interface DealerInquiryInput {
   message: string;
   /** Only when the shopper ticked "Share my payment numbers with the dealer" (off by default). */
   paymentEstimate?: import("./payment-calc").PaymentEstimatePayload | null;
+  /** Where on the site the inquiry was sent from (lead attribution). */
+  surface?: import("./lead-attribution").WebsiteLeadSurface;
 }
 export type DealerInquiryResult =
   | { ok: true; inquiryId: string; status: string; statusDetail: string; statusToken?: string }
@@ -79,7 +83,13 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export async function sendDealerInquiry(input: DealerInquiryInput, base = "/", fetchImpl: FetchLike = fetch): Promise<DealerInquiryResult> {
+export async function sendDealerInquiry(
+  input: DealerInquiryInput,
+  base = "/",
+  fetchImpl: FetchLike = fetch,
+  // Optional lead attribution (no contact details). The server ignores it unless LEAD_TRACKING_ENABLED.
+  attribution: WebsiteLeadAttribution | null = websiteLeadAttribution(input.surface),
+): Promise<DealerInquiryResult> {
   const url = `${base.endsWith("/") ? base : `${base}/`}api/inquiries`;
   const headers = { "Content-Type": "application/json" };
   try {
@@ -92,6 +102,7 @@ export async function sendDealerInquiry(input: DealerInquiryInput, base = "/", f
         phone: input.phone || null,
         message: input.message,
         ...(input.paymentEstimate ? { payment_estimate: input.paymentEstimate } : {}),
+        ...(attribution ? { attribution } : {}),
       }),
     });
     if (!prep.ok) return { ok: false, error: await readError(prep, "Unable to send message. Please try again.") };

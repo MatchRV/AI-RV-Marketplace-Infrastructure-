@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useUser, useAuth, useClerk } from "@clerk/react";
 import { useSavedListings } from "@/hooks/use-saved-listings";
 import { posthog } from "@/lib/posthog";
+import { trackSignUp } from "@/lib/analytics";
 
 interface SavedSearch {
   id: number;
@@ -109,13 +110,15 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    posthog.identify(clerkUser.id, {
-      ...(clerkUser.primaryEmailAddress?.emailAddress
-        ? { email: clerkUser.primaryEmailAddress.emailAddress }
-        : {}),
-      ...(clerkUser.firstName ? { first_name: clerkUser.firstName } : {}),
-      ...(clerkUser.lastName ? { last_name: clerkUser.lastName } : {}),
-    });
+    posthog.identify(clerkUser.id);
+    const createdAt = clerkUser.createdAt instanceof Date
+      ? clerkUser.createdAt.getTime()
+      : typeof clerkUser.createdAt === "number"
+        ? clerkUser.createdAt
+        : Date.parse(String(clerkUser.createdAt ?? ""));
+    if (Number.isFinite(createdAt) && Date.now() - createdAt < 10 * 60 * 1000) {
+      trackSignUp({ method: "clerk", dedupeKey: clerkUser.id });
+    }
   }, [clerkUser?.id, isAuthenticated, isLoaded]);
 
   useEffect(() => {

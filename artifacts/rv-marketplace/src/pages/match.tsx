@@ -143,7 +143,7 @@ function EmailCaptureCard({
       try { localStorage.setItem("matchrv_email", clean); } catch { /* ignore */ }
       trackClarity("email_captured");
       trackEvent("match_report_email_capture", { metadata: { reportId, source: "match_quiz" } });
-      trackLead("buyer_email_capture", { dedupeKey: reportId, metadata: { source: "match_quiz" } });
+      trackLead("buyer_email_capture", { formId: "match_quiz_email", dedupeKey: reportId, source: "match_quiz", surface: "other", placement: "match_quiz_email" });
       onCaptured(clean);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your email. Please try again.");
@@ -208,6 +208,7 @@ function AgentInterestCard({ profile, onDone }: { profile: BuyerProfile; onDone:
   });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [touched, setTouched] = useState<{ name?: boolean; email?: boolean }>({});
 
   const nameError = !name.trim() ? "Please enter your name." : "";
@@ -219,9 +220,10 @@ function AgentInterestCard({ profile, onDone }: { profile: BuyerProfile; onDone:
     setTouched({ name: true, email: true });
     if (nameError || emailError) return;
     setLoading(true);
+    setSubmitError("");
     try {
       try { localStorage.setItem("rv_sms_opt_in", String(smsOptIn)); } catch { /* ignore */ }
-      await fetch(`/api/leads`, {
+      const res = await fetch(`/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -234,9 +236,20 @@ function AgentInterestCard({ profile, onDone }: { profile: BuyerProfile; onDone:
           smsOptIn,
         }),
       });
-    } catch { /* silent */ }
-    setLoading(false);
-    setSent(true);
+      if (!res.ok) throw new Error("Request failed");
+      trackLead("buyers_agent_inquiry", {
+        formId: "buyers_agent",
+        dedupeKey: email.trim().toLowerCase(),
+        source: "match_quiz",
+        surface: "other",
+        placement: "buyers_agent_card",
+      });
+      setSent(true);
+    } catch {
+      setSubmitError("We couldn't send your request. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) {
@@ -308,6 +321,7 @@ function AgentInterestCard({ profile, onDone }: { profile: BuyerProfile; onDone:
             <a href="/privacy" className="underline hover:text-[#161d1d]" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
           </span>
         </label>
+        {submitError && <p className="text-sm text-red-600" role="alert">{submitError}</p>}
         <button
           onClick={handleSubmit}
           disabled={loading}
@@ -338,10 +352,6 @@ export function Match() {
   const [reportFailed, setReportFailed] = useState(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "match_quiz_chat" } });
-  }, []);
 
   useEffect(() => {
     const container = chatContainerRef.current;

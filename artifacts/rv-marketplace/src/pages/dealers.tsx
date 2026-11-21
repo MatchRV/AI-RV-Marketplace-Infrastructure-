@@ -42,7 +42,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
-import { trackEvent } from "@/lib/analytics";
 import { posthog } from "@/lib/posthog";
 import { clearDealerSession, getDealerSession, upgradeDealerTier, type DealerTier } from "@/lib/dealer-auth";
 
@@ -235,10 +234,6 @@ export function Dealers() {
   const [upgradeTarget, setUpgradeTarget] = useState<DealerTier | null>(null);
 
   const tier: DealerTier = dealerSession?.tier ?? "free";
-
-  useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "dealers" } });
-  }, []);
 
   useEffect(() => {
     if (!adminKey) return;

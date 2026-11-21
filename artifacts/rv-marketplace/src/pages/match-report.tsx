@@ -167,7 +167,7 @@ function ContactDealerModal({ pick, onClose }: { pick: Pick; onClose: () => void
       trackEvent("dealer_contact_submitted", {
         metadata: { listingId: l.id, source: "match_report", tier: pick.tier },
       });
-      trackLead("buyer_dealer_inquiry", { dedupeKey: l.id, listingId: l.id, metadata: { source: "match_report", tier: pick.tier } });
+      trackLead("buyer_dealer_inquiry", { formId: "match_report_contact_dealer", dedupeKey: l.id, listingId: l.id, source: "match_report", surface: "unit_detail", placement: "match_report_contact", value: l.price, metadata: { tier: pick.tier } });
       trackClarity("dealer_contacted");
       setSent(true);
     } catch {
@@ -366,7 +366,7 @@ export function MatchReport() {
       }
       try { localStorage.setItem("matchrv_email", clean); } catch { /* ignore */ }
       trackEvent("match_report_email_capture", { metadata: { reportId: report?.reportId ?? null } });
-      trackLead("buyer_email_capture", { dedupeKey: report?.reportId ?? null, metadata: { source: "match_report" } });
+      trackLead("buyer_email_capture", { formId: "match_report_email", dedupeKey: report?.reportId ?? null, source: "match_report", surface: "other", placement: "match_report_email" });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your email. Please try again.");

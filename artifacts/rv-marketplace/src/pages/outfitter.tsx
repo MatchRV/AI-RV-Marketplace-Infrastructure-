@@ -6,7 +6,6 @@ import { useChatSession } from "@/hooks/use-chat-session";
 import { Send, Loader2, Sparkles, Compass, ChevronRight, Heart, ExternalLink, Search, AlertTriangle, RefreshCw, MessageCircle, HelpCircle, Mic, MicOff } from "lucide-react";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { formatCurrency, formatRvType } from "@/lib/utils";
-import { trackEvent } from "@/lib/analytics";
 import { useAppAuth } from "@/contexts/auth-context";
 import type { BuyerProfile } from "@workspace/api-client-react";
 import type { ExpansionSuggestion } from "@/hooks/use-chat-session";
@@ -79,10 +78,6 @@ export function Outfitter() {
   const [smsOptIn, setSmsOptIn] = useState(() => {
     try { return localStorage.getItem("rv_sms_opt_in") === "true"; } catch { return false; }
   });
-
-  useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "outfitter_chat" } });
-  }, []);
 
   // Hide suggestions after first user message
   useEffect(() => {

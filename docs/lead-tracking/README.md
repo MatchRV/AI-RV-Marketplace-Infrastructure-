@@ -167,6 +167,10 @@ id = HMAC of the hashed session key. **No name, email, phone, message, IP or use
 | `LEAD_FUNNEL_RETENTION_DAYS` | 400 | Days of funnel counters kept |
 | `LEAD_LOTAI_CLIENT_IDS` | unset | Comma-separated /mcp/v1 client ids to label `lotai` (a client whose registered name contains LotAI is also labelled) |
 | `LEADS_PATH`, `LEAD_FUNNEL_PATH` | data dir | File locations override |
+| `GA4_MP_ENABLED` | off | Independent of this feature. When on, off-site inquiries also send a GA4 Measurement Protocol `generate_lead` (no PII). Website inquiries are not sent this way — they already use gtag. See [analytics-conversions.md](../analytics-conversions.md). |
+| `GA4_MEASUREMENT_ID` | `G-Y2C0PN44L2` | Used only when `GA4_MP_ENABLED` is on |
+| `GA4_API_SECRET` | unset | Required when `GA4_MP_ENABLED` is on. Never commit or paste in chat |
+
 
 ## Rollout plan
 

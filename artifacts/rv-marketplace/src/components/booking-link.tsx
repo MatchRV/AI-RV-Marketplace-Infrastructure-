@@ -13,6 +13,6 @@ export function BookingLink({ placement, className = "brand-button", children }:
     href={BOOKING_URL}
     target="_blank"
     rel="noopener noreferrer"
-    onClick={() => trackLead("book_demo_click", { dedupeKey: placement, metadata: { placement } })}
+    onClick={() => trackLead("book_demo_click", { dedupeKey: placement, source: "website", surface: "other", placement })}
   >{children}</a>;
 }

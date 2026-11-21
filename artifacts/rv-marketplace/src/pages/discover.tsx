@@ -52,10 +52,6 @@ export function Discover() {
   const progress   = allListings.length > 0 ? Math.round((currentIdx / allListings.length) * 100) : 0;
 
   useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "discover" } });
-  }, []);
-
-  useEffect(() => {
     if (searchReported.current || isLoading || !listingsData) return;
     searchReported.current = true;
     let sessionId: string | undefined;

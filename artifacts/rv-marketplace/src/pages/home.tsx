@@ -194,10 +194,6 @@ export function Home() {
   const inventoryCount = listingsData?.total ?? null;
   const bgVideoRef = useRef<HTMLVideoElement>(null);
 
-  useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "home" } });
-  }, []);
-
   // Scroll-linked parallax on the fixed background video (no re-renders).
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

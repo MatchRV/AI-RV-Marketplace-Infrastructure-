@@ -15,6 +15,7 @@ const VALID_EVENT_TYPES = [
   // Conversion outcomes sent by trackLead() on the web client
   "dealer_contact_form", "snapshot_request", "snapshot_pdf_email",
   "buyer_dealer_inquiry", "buyer_email_capture", "book_demo_click",
+  "price_alert", "buyers_agent_inquiry", "seller_listing_submit", "sign_up",
 ];
 
 router.post("/analytics/event", async (req, res) => {

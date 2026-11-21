@@ -41,7 +41,7 @@ export function setDealerSession(email: string, tier: DealerTier = "free"): Deal
   };
 
   localStorage.setItem(DEALER_SESSION_KEY, JSON.stringify(session));
-  posthog.identify(session.distinctId, { email: session.email, dealer_tier: session.tier });
+  posthog.identify(session.distinctId, { dealer_tier: session.tier });
   return session;
 }
 

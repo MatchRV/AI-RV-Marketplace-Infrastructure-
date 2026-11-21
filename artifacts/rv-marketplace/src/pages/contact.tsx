@@ -19,7 +19,7 @@ export function Contact() {
     try {
       const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]))) });
       if (!response.ok) throw new Error("Your message could not be sent. Try again or email Jonathan directly.");
-      trackLead("dealer_contact_form", { formId: "dealer_contact", dedupeKey: form.email.trim().toLowerCase() });
+      trackLead("dealer_contact_form", { formId: "dealer_contact", dedupeKey: form.email.trim().toLowerCase(), source: "website", surface: "other", placement: "contact_page" });
       setSubmitted(true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Your message could not be sent. Please try again."); }
     finally { setBusy(false); }

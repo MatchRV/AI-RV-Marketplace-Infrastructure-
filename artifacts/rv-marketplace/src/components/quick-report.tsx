@@ -78,7 +78,7 @@ export function QuickReport() {
           provider: "gemini",
         });
       }
-      trackLead("snapshot_request", { formId: "visibility_snapshot", dedupeKey: report.reportId, metadata: { report_id: report.reportId } });
+      trackLead("snapshot_request", { formId: "visibility_snapshot", dedupeKey: report.reportId, source: "website", surface: "other", placement: "visibility_snapshot", metadata: { report_id: report.reportId } });
       setResult(report);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The check could not finish. Please try again.");
@@ -98,7 +98,7 @@ export function QuickReport() {
         body: JSON.stringify({ reportId: result.reportId }),
       });
       const payload = await response.json();
-      if (response.ok) trackLead("snapshot_pdf_email", { dedupeKey: result.reportId, metadata: { report_id: result.reportId } });
+      if (response.ok) trackLead("snapshot_pdf_email", { formId: "visibility_snapshot_pdf_email", dedupeKey: result.reportId, source: "website", surface: "other", placement: "snapshot_pdf_email", metadata: { report_id: result.reportId } });
       setEmailStatus(response.ok ? "Your PDF has been sent. Check your inbox." : payload.message || "We could not send the PDF right now.");
     } catch { setEmailStatus("We could not send the PDF right now. Please try again later."); }
     finally { setEmailBusy(false); }

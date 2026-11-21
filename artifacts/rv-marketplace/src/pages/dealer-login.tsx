@@ -39,7 +39,6 @@ export function DealerLogin() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    trackEvent("page_view", { metadata: { page: "dealer_login" } });
     if (getDealerSession()) {
       setLocation("/dealers", { replace: true });
     }

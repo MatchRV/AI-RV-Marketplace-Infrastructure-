@@ -51,6 +51,7 @@ import { boundClientId, inquiryAttribution, recordAttributionEvent, type Attribu
 import { compactAttribution, expandCompactAttribution, overlayAttribution, type CleanAttribution, type LeadRequestContext } from "./lead-attribution";
 import { buildReceiptUrl, mintReceiptToken, recordDuplicateInquiry, recordLeadFromInquiry, syncInquiryDelivery } from "./lead-store";
 import { leadTrackingEnabled, receiptLinksInEmailEnabled } from "./lead-tracking-config";
+import { reportOffsiteGenerateLead } from "./ga4-measurement-protocol";
 export type { ShopperFit };
 
 export type InquiryStatus = "dry_run" | "delivered" | "queued_for_matchrv" | "failed" | "forwarded";
@@ -636,6 +637,18 @@ async function performSend(args: SendArgs, p: TokenPayload, now: number, durable
   if (durable || dataDirAcceptsWrites()) persistSoon();
   if (!dryRun && args.leadContext && leadTrackingEnabled()) {
     recordLeadFromInquiry({ inquiry: leadInputFor(inquiry), unit, ctx: leadContextWithToken(args.leadContext, p), receiptTokenHash: receipt?.hash ?? null, now });
+  }
+  // GA4 MP is independent of LEAD_TRACKING_ENABLED. Website browser leads
+  // already send generate_lead from gtag; this only fires for off-site
+  // sources (ChatGPT/MCP, LotAI, native app) and never throws.
+  if (!dryRun && !isTestInquiry(inquiry)) {
+    reportOffsiteGenerateLead({
+      ctx: args.leadContext ? leadContextWithToken(args.leadContext, p) : null,
+      unitId: unit.id,
+      dealerId: unit.dealer.id,
+      priceUsd: typeof unit.priceUsd === "number" ? unit.priceUsd : null,
+      inquiryId: inquiry.id,
+    });
   }
   return { ok: true, inquiry: toPublic(inquiry), statusToken, duplicate: false };
 }

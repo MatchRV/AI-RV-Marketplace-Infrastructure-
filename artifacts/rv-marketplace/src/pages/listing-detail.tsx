@@ -279,6 +279,16 @@ export function ListingDetail() {
     } catch {
       return;
     }
+    trackLead("price_alert", {
+      formId: "listing_similar_rv_alerts",
+      dedupeKey: listing?.id ?? "drawer",
+      listingId: listing?.id,
+      dealerId: listing?.dealerId as number | undefined,
+      source: "listing_detail",
+      surface: "price_drop",
+      placement: "similar_rv_drawer",
+      value: listing?.price,
+    });
     setEmailSubmitted(true);
     localStorage.setItem("price_alert_dismissed", "1");
     setTimeout(() => setShowEmailDrawer(false), 2000);
@@ -865,6 +875,16 @@ export function ListingDetail() {
                           listing_type: listing.type,
                           is_authenticated: isAuthenticated,
                         });
+                        trackLead("price_alert", {
+                          formId: "listing_price_alert",
+                          dedupeKey: `${listing.id}:target`,
+                          listingId: listing.id,
+                          dealerId: listing.dealerId as number,
+                          source: "listing_detail",
+                          surface: "price_drop",
+                          placement: "price_alert_form",
+                          value: listing.price,
+                        });
                         setAlertSet(true);
                         setAlertPrice("");
                         setAlertEmail("");
@@ -1018,7 +1038,7 @@ export function ListingDetail() {
                                 }
                                 if (ok && sent.ok) {
                                   recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
-                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
+                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, source: "listing_detail", surface: "unit_detail", placement: "listing_contact_form", value: listing.price });
                                   posthog.capture("listing_contact_submitted", {
                                     listing_id: listing.id,
                                     listing_type: listing.type,
@@ -1063,7 +1083,7 @@ export function ListingDetail() {
                               }
                               if (ok && sent.ok) {
                                 recordBuyerIntent("dealer_contact", { listingId: listing.id, dealerId: listing.dealerId as number });
-                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, metadata: { source: "listing_detail" } });
+                                  trackLead("buyer_dealer_inquiry", { formId: "listing_contact_dealer", dedupeKey: listing.id, listingId: listing.id, dealerId: listing.dealerId as number, source: "listing_detail", surface: "unit_detail", placement: "listing_contact_form", value: listing.price });
                                 posthog.capture("listing_contact_submitted", {
                                   listing_id: listing.id,
                                   listing_type: listing.type,

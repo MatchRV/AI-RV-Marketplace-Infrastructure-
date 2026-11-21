@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Button, Input } from "@/components/ui-elements";
 import { posthog, posthogLogger } from "@/lib/posthog";
+import { trackLead } from "@/lib/analytics";
 import { captureAiGeneration, createAiTraceId } from "@/lib/ai-observability";
 import { Truck, Check, Upload, Sparkles, Loader2, X } from "lucide-react";
 
@@ -226,6 +227,15 @@ export function Sell() {
         condition: form.condition,
         photo_count: photos.length,
         feature_count: featureStrings.length,
+      });
+      const asking = Number(form.askingPrice);
+      trackLead("seller_listing_submit", {
+        formId: "sell_your_rv",
+        source: "website",
+        surface: "other",
+        placement: "sell_form",
+        value: Number.isFinite(asking) ? asking : undefined,
+        metadata: { listing_type: form.type, condition: form.condition },
       });
       setSubmitted(true);
     }

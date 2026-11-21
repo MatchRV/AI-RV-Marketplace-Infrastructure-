@@ -131,7 +131,7 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
       if (!r.ok) { setError(r.error); return; }
       setSent({ status: r.status, inquiryId: r.inquiryId, statusToken: r.statusToken });
       trackSwipe("inquiry_submitted", { unitId: card.id, status: r.status, sharedPayment: sharePayment && Boolean(estimate) });
-      if (r.status !== "dry_run") trackLead("buyer_dealer_inquiry", { formId: "swipe_see_in_person", dedupeKey: card.id, metadata: { source: "swipe_deck", unitId: card.id } });
+      if (r.status !== "dry_run") trackLead("buyer_dealer_inquiry", { formId: "swipe_see_in_person", dedupeKey: card.id, listingId: card.id, source: "swipe_deck", surface: "swipe", placement: "swipe_see_in_person", value: card.priceUsd });
     } finally { setSending(false); }
   };
 

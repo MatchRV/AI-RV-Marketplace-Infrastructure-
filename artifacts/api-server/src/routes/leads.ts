@@ -327,18 +327,29 @@ router.post("/admin/leads/:id/retry-crm", adminAuth, async (req, res) => {
 // Public: Email capture for price alerts (logged-out users)
 router.post("/price-alerts", async (req, res) => {
   try {
-    const { email, listingId, listingType, buyerProfile, sessionId } = req.body;
+    const { email, listingId: rawListingId, listingType, buyerProfile, sessionId, placement } = req.body;
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return void res.status(400).json({ message: "Valid email required" });
     }
+    // listing_id is an integer column (legacy listings). Canonical inventory ids (swipe deck, answer engine,
+    // the "before you go" step) are strings: keep those in the snapshot instead of failing the insert.
+    const numericId = typeof rawListingId === "number" ? rawListingId : typeof rawListingId === "string" && /^\d{1,9}$/.test(rawListingId) ? Number(rawListingId) : null;
+    const listingId = numericId != null && Number.isSafeInteger(numericId) ? numericId : null;
+    const unitId = listingId == null && typeof rawListingId === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{2,119}$/.test(rawListingId) ? rawListingId : null;
+    const alertPlacement = typeof placement === "string" && /^[a-z_]{1,40}$/.test(placement) ? placement : null;
+    const snapshot: Record<string, unknown> = {
+      ...(listingType ? { type: listingType } : {}),
+      ...(unitId ? { unitId } : {}),
+      ...(alertPlacement ? { placement: alertPlacement } : {}),
+    };
     const leadSessionId = getLeadSessionId(sessionId, buyerProfile);
     const enrichedBuyerProfile = await enrichBuyerProfileWithAnalytics(buyerProfile, leadSessionId);
     // Store as a lead with leadSource "price_alert_email"
     const [alertLead] = await db.insert(buyerLeadsTable).values({
       sessionId: leadSessionId,
-      listingId: listingId ?? null,
+      listingId,
       dealerId: null,
-      listingSnapshot: listingType ? { type: listingType } : {},
+      listingSnapshot: snapshot,
       buyerProfile: enrichedBuyerProfile,
       conversation: [],
       contactName: null,
@@ -354,7 +365,7 @@ router.post("/price-alerts", async (req, res) => {
       buyerLeadId: alertLead.id,
       leadSource: "price_alert_email",
       contactEmail: email.trim().toLowerCase(),
-      listingSnapshot: listingType ? { type: listingType } : {},
+      listingSnapshot: snapshot,
       buyerProfile: enrichedBuyerProfile,
     }).catch(console.error);
 

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Building2, CheckCircle2, MapPin, PlayCircle, X } from "lucide-react";
+import { Building2, CheckCircle2, MapPin, PlayCircle, X } from "lucide-react";
 import { creditLabel, loadPaymentPrefs, paymentEstimatePayload, type PaymentPrefs } from "@/lib/payment-calc";
 import { PaymentCalculator } from "./payment-calculator";
 import { fetchShopperInquiryStatus, sendDealerInquiry, SHOPPER_STATUS_POLL_MS, shopperInquiryStatusCopy } from "@/lib/dealer-inquiry";
@@ -8,6 +8,7 @@ import { trackWebsiteProductEvent } from "@/lib/product-analytics";
 import { trackSwipe } from "@/lib/swipe-analytics";
 import { cardFacts, cardPlace, cardTitle, defaultInquiryMessage, formatPrice, inquiryFormValid, inquiryPayload, type InquiryForm, type SwipeCard } from "@/lib/swipe-deck";
 import { NAVY, TEAL, TEAL_DARK, LINE } from "./tokens";
+import { DealerSiteLink } from "@/components/dealer-handoff";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
@@ -21,14 +22,13 @@ interface Detail {
   video: { youtubeId: string; url: string; note: string } | null;
 }
 
-const outHref = (id: string) => `${BASE}api/out?unit=${encodeURIComponent(id)}&from=swipe`;
-
 /** Description, options and specs exactly as the dealer listed them. Nothing here is written by MatchRV. */
-function ListingDetails({ d, unitId }: { d: Detail; unitId: string }) {
+function ListingDetails({ d, unitId, priceUsd, onCheckAvailability }: { d: Detail; unitId: string; priceUsd: number | null; onCheckAvailability: () => void }) {
   const [open, setOpen] = useState(false);
   const long = (d.description?.length ?? 0) > 420;
+  // Secondary, tagged link (MatchRV's /api/out redirect); the primary action stays "Check availability".
   const dealerLink = d.hasDealerPage ? (label: string) => (
-    <a href={outHref(unitId)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-bold underline underline-offset-4" style={{ color: NAVY }}>{label} <ArrowUpRight size={14} /></a>
+    <DealerSiteLink unitId={unitId} surface="swipe_detail" priceUsd={priceUsd} dealerName={d.dealer.name} onCheckAvailability={onCheckAvailability}>{label}</DealerSiteLink>
   ) : null;
   return (
     <>
@@ -75,7 +75,7 @@ function ListingDetails({ d, unitId }: { d: Detail; unitId: string }) {
   );
 }
 
-/** Detail view: reveals the dealer and lot next to the primary "See it in person" action. */
+/** Detail view: reveals the dealer and lot next to the primary "Check availability" action (MatchRV's inquiry form). */
 export function DetailSheet({ card, onClose, initialForm = false }: { card: SwipeCard; onClose: () => void; initialForm?: boolean }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -120,6 +120,7 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
   }, [card.id]);
 
   const dealerName = detail?.dealer.name ?? "the dealer";
+  const openForm = () => { setShowForm(true); window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); };
   const lot = detail ? `${detail.dealer.city}, ${detail.dealer.state}` : null;
   const title = cardTitle(card);
 
@@ -157,21 +158,24 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
             <p className="mt-1 flex items-center gap-2 text-lg font-extrabold" style={{ color: NAVY }} data-testid="detail-dealer"><Building2 size={18} color={TEAL_DARK} /> {detail ? detail.dealer.name : loadError ? "Dealer details unavailable" : "Loading…"}</p>
             {lot && <p className="mt-0.5 flex items-center gap-2 text-sm text-slate-600"><MapPin size={15} color={TEAL_DARK} /> Lot: {lot}{typeof card.distanceMiles === "number" ? ` · ${card.distanceMiles} mi away` : ""}</p>}
             {!showForm && !sent && (
-              <button type="button" disabled={!detail} onClick={() => setShowForm(true)} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: NAVY, color: TEAL }}>See it in person</button>
+              <>
+                <button type="button" disabled={!detail} onClick={() => setShowForm(true)} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: NAVY, color: TEAL }} data-testid="check-availability">Check availability</button>
+                <p className="mt-1.5 text-center text-xs text-slate-600">Contact the dealer through MatchRV. Free, and you keep a record of it.</p>
+              </>
             )}
             {detail?.hasDealerPage && (
-              <a href={outHref(card.id)} target="_blank" rel="noopener" className="mt-3 flex items-center justify-center gap-1 text-sm font-bold underline underline-offset-4" style={{ color: NAVY }}>
-                View on dealer site <ArrowUpRight size={15} />
-              </a>
+              <p className="mt-3 text-center">
+                <DealerSiteLink unitId={card.id} surface="swipe_detail" priceUsd={card.priceUsd} dealerName={detail.dealer.name} onCheckAvailability={openForm}>Dealer's own page</DealerSiteLink>
+              </p>
             )}
           </section>
 
-          {detail && <ListingDetails d={detail} unitId={card.id} />}
+          {detail && <ListingDetails d={detail} unitId={card.id} priceUsd={card.priceUsd} onCheckAvailability={openForm} />}
           <PaymentCalculator listedPriceUsd={card.priceUsd} prefs={payPrefs} onPrefs={setPayPrefs} onPrice={setCalcPrice} />
 
           {showForm && !sent && detail && (
-            <form ref={formRef} className="mt-4" onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label="See it in person">
-              <h3 className="text-base font-extrabold" style={{ color: NAVY }}>See it in person</h3>
+            <form ref={formRef} className="mt-4" onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label="Check availability">
+              <h3 className="text-base font-extrabold" style={{ color: NAVY }}>Check availability</h3>
               <p className="mt-1 mb-3 text-sm text-slate-600" data-testid="inquiry-recipient">
                 Your name, contact info and message go to <strong style={{ color: NAVY }}>{dealerName}</strong> ({lot}) through MatchRV, so they can reply about this RV. Nothing is sent until you tap Send.
               </p>

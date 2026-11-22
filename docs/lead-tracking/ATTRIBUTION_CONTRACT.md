@@ -114,3 +114,27 @@ path) in sessionStorage and sends `attribution` with `client: "website"`, the su
 (`unit_detail` for the listing page, `swipe` for the swipe sheet) and its analytics session id on
 every Contact Dealer inquiry. Its existing `/api/analytics/product` beacon events feed the funnel
 counters with the same session id, so website leads get their server-side journey.
+
+## 5. Links to a dealer's own site: `GET /api/out`
+
+Never link straight to a dealer URL. Use MatchRV's tagged redirect so the click is MatchRV's
+evidence in a lead-credit dispute ([LEAD_CREDIT_POLICY.md](LEAD_CREDIT_POLICY.md)):
+
+```
+/api/out?unit=<unit id>&from=<surface>&sid=<analytics session id>[&alert=1]
+/api/out?dealer=<dealer id>&from=<surface>&sid=<analytics session id>     (dealer home page)
+```
+
+- `from`: `swipe`, `swipe_detail`, `answer_engine`, `listing_detail`, `compare`, `outfitter`,
+  `app`, `chatgpt` (any `[a-z_]{1,24}` is accepted). Becomes `utm_campaign`.
+- `sid`: the same session id sent as `x-matchrv-session-id` / `attribution.session_id`
+  (`[A-Za-z0-9_-]{8,128}`). Only a one-way hash is stored. It links the click to a later
+  MatchRV inquiry from the same session.
+- `alert=1`: the shopper saved a price-drop alert on the "before you go" step.
+- The server adds `utm_source=matchrv&utm_medium=referral&utm_campaign=<from>` unless the dealer
+  URL already has its own `utm_*` tags. A unit goes out only while MatchRV lists it as available;
+  otherwise the shopper lands back on the MatchRV listing (or `/swipe`). `dealer=` resolves only
+  to a dealer MatchRV lists, never an arbitrary URL.
+- App note: the Expo app (`MatchRV-APP`, `feat/expo-rebuild`) still opens dealer URLs directly.
+  Switch its "View Dealer Listing" / "Dealer Website" buttons to
+  `https://matchrv.com/api/out?unit=<id>&from=app&sid=<session>` after this ships.

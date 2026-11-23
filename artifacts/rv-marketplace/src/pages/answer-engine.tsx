@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Constraints, UnitMatch } from "@workspace/agent-core";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
+import { DealerSiteLink } from "@/components/dealer-handoff";
 import { agentApi, type SearchResponse } from "@/agent/api";
 
 function parseQuestion(question: string): Constraints {
@@ -187,8 +188,9 @@ export function AnswerEngine() {
                     )}
 
                     <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                      <a className="rounded-full bg-primary px-4 py-2 font-bold text-primary-foreground" href={`/listing/${encodeURIComponent(u.id)}#contact-dealer-form`} data-testid="check-availability">Check availability</a>
                       <a className="font-bold text-primary underline" href={`/listing/${encodeURIComponent(u.id)}`}>MatchRV listing</a>
-                      {u.dealer.website ? <a className="font-bold text-primary underline" href={u.dealer.website} target="_blank" rel="noreferrer">Dealer website</a> : <span className="text-muted-foreground">Dealer URL unverified</span>}
+                      {u.dealer.website ? <DealerSiteLink unitId={u.id} dealerId={u.dealer.id} surface="answer_engine" priceUsd={u.priceUsd.value} dealerName={u.dealer.name}>Dealer's own page</DealerSiteLink> : <span className="text-muted-foreground">Dealer URL unverified</span>}
                       <span className="text-muted-foreground">Source listing URL: not published in current canonical feed</span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-3">

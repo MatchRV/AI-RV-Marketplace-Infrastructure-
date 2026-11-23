@@ -154,6 +154,15 @@ id = HMAC of the hashed session key. **No name, email, phone, message, IP or use
   leads. Contact details are not on the page; they are only in the CSV "with contact details"
   link (`include_contact=1`) and the existing `/ops/leads` inbox. CSV cells are formula-safe.
 
+### Lead credit and outbound clicks
+
+Each lead carries `credit.evidence` (first view of the RV, first click to the dealer's site via
+`/api/out`, inquiry time, first touch) and `credit.review` (ops-recorded dealer dispute). The
+dashboard always shows "Shoppers sent to dealer sites" (outbound click counts by dealer). With
+`LEAD_CREDIT_ENABLED` it also shows a Lead credit section with the verdict per lead and a
+"Record dealer dispute" form (signed-in cookie + per-session form token + same-origin check).
+Rules: [LEAD_CREDIT_POLICY.md](LEAD_CREDIT_POLICY.md) (DRAFT).
+
 ## Environment variables (none are set by this PR)
 
 | Var | Default | Effect |
@@ -167,6 +176,8 @@ id = HMAC of the hashed session key. **No name, email, phone, message, IP or use
 | `LEAD_FUNNEL_RETENTION_DAYS` | 400 | Days of funnel counters kept |
 | `LEAD_LOTAI_CLIENT_IDS` | unset | Comma-separated /mcp/v1 client ids to label `lotai` (a client whose registered name contains LotAI is also labelled) |
 | `LEADS_PATH`, `LEAD_FUNNEL_PATH` | data dir | File locations override |
+| `LEAD_CREDIT_ENABLED` | off | Lead-credit verdicts and dealer-dispute review on the dashboard (DRAFT terms, see [LEAD_CREDIT_POLICY.md](LEAD_CREDIT_POLICY.md)). Evidence is captured whenever `LEAD_TRACKING_ENABLED` is on |
+| `LEAD_CREDIT_WINDOW_DAYS` | 30 | Lead-credit window (DRAFT, pending Jonathan/CSO) |
 | `GA4_MP_ENABLED` | off | Independent of this feature. When on, off-site inquiries also send a GA4 Measurement Protocol `generate_lead` (no PII). Website inquiries are not sent this way — they already use gtag. See [analytics-conversions.md](../analytics-conversions.md). |
 | `GA4_MEASUREMENT_ID` | `G-Y2C0PN44L2` | Used only when `GA4_MP_ENABLED` is on |
 | `GA4_API_SECRET` | unset | Required when `GA4_MP_ENABLED` is on. Never commit or paste in chat |

@@ -5,6 +5,7 @@
  */
 import { botExclusions, funnelRows, HEADLINE_FUNNEL } from "./lead-funnel";
 import { listLeads, type LeadRecord } from "./lead-store";
+import { creditVerdict, leadCreditEnabled } from "./lead-credit";
 
 export type Granularity = "day" | "week";
 
@@ -160,6 +161,8 @@ export const CSV_COLUMNS = [
   "journey_views", "journey_swipes", "journey_favorites", "journey_searches", "journey_first_at", "journey_last_at",
   "session_id", "device_id", "anonymous_id", "agent_tier", "agent_client_id", "agent_host_label",
   "cost_usd", "revenue_usd", "contact_name", "contact_email", "contact_phone", "pii_purged_at",
+  "credit_first_view_at", "credit_first_outbound_click_at", "credit_outbound_clicks", "credit_first_touch_at",
+  "credit_review_status", "credit_review_reason", "credit_dealer_record_at", "credit_verdict", "credit_billable",
 ] as const;
 
 /** Quote a CSV cell and neutralize spreadsheet formulas (=, +, -, @ at the start). */
@@ -174,6 +177,8 @@ export function leadsCsv(opts: ReportOptions & { includeContact?: boolean } = {}
   const { from, to } = resolveRange(opts);
   const rows = listLeads().filter((l) => (opts.includeTests || !l.test) && dayOf(l.created_at) >= from && dayOf(l.created_at) <= to);
   const lines = [CSV_COLUMNS.join(",")];
+  // The billing verdict columns stay empty until LEAD_CREDIT_ENABLED (DRAFT terms).
+  const verdictOn = leadCreditEnabled();
   for (const l of rows) {
     const c = opts.includeContact ? l.contact : null;
     const lc = l.lifecycle;
@@ -187,6 +192,9 @@ export function leadsCsv(opts: ReportOptions & { includeContact?: boolean } = {}
       l.journey.counts.views, l.journey.counts.swipes, l.journey.counts.favorites, l.journey.counts.searches, l.journey.first_at, l.journey.last_at,
       l.ids.session_id, l.ids.device_id, l.ids.anonymous_id, l.ids.agent_tier, l.ids.agent_client_id, l.ids.agent_host_label,
       l.cost_usd, l.revenue_usd, c?.name ?? null, c?.email ?? null, c?.phone ?? null, l.pii_purged_at,
+      l.credit?.evidence.first_view_at ?? null, l.credit?.evidence.first_outbound_click_at ?? null, l.credit?.evidence.outbound_clicks ?? null, l.credit?.evidence.first_touch_at ?? null,
+      l.credit?.review.status ?? null, l.credit?.review.reason ?? null, l.credit?.review.dealer_record_at ?? null,
+      ...(verdictOn ? [creditVerdict(l).status, creditVerdict(l).billable] : [null, null]),
     ];
     lines.push(values.map(csvCell).join(","));
   }

@@ -277,9 +277,14 @@ export function unitDetail(id: string, corpus = getScreenedInventory()): UnitDet
   };
 }
 
-/** Adds utm_source=matchrv (plus medium/campaign) without dropping the dealer's own query string. */
+/**
+ * Adds utm_source=matchrv (plus medium/campaign) without dropping the dealer's own query string.
+ * A dealer URL that already carries its own utm_* tags is left as the dealer wrote it (overwriting them could break
+ * the dealer's own tracking); the click is still logged on MatchRV's side.
+ */
 export function withUtm(target: string, campaign = "swipe_deck"): string {
   const url = new URL(target);
+  if ([...url.searchParams.keys()].some((k) => /^utm_/i.test(k))) return url.toString();
   url.searchParams.set("utm_source", "matchrv");
   url.searchParams.set("utm_medium", "referral");
   url.searchParams.set("utm_campaign", campaign);

@@ -978,7 +978,7 @@ export async function observeMcpFetch(request: Request, inner: (request: Request
 
 // ── Lead tracking events (LEAD_TRACKING_ENABLED) ───────────────────────────
 
-const LEAD_EVENTS = new Set(["lead_created", "lead_repeat", "lead_stage", "lead_funnel_step"]);
+const LEAD_EVENTS = new Set(["lead_created", "lead_repeat", "lead_stage", "lead_funnel_step", "lead_credit_review"]);
 const LEAD_ENUMS: Record<string, ReadonlySet<string>> = {
   lead_source: new Set(["native_ios", "native_android", "website", "chatgpt_app", "lotai", "other_ai_agent", "unknown"]),
   lead_surface: new Set(["swipe", "grid", "ask_ai", "favorites", "compare", "saved_search_alert", "price_drop", "tow_fit", "unit_detail", "other"]),
@@ -989,6 +989,8 @@ const LEAD_ENUMS: Record<string, ReadonlySet<string>> = {
   lost_reason: new Set(["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "other"]),
   price_band: new Set(["under_20k", "20k_40k", "40k_60k", "60k_100k", "100k_200k", "200k_plus", "unknown"]),
   rv_type: RV_TYPES,
+  credit_review: new Set(["none", "disputed", "dealer_already_had", "upheld"]),
+  credit_reason: new Set(["dealer_crm_record_earlier", "shopper_used_dealer_form_first", "existing_customer", "walk_in_or_call_first", "other_lead_provider_first", "matchrv_evidence_earlier", "other"]),
 };
 const LEAD_FLAGS = ["lead_source_verified", "qualified", "has_name", "has_contact", "specific_unit", "exclusivity", "repeat"] as const;
 const LEAD_COUNTS = ["repeat_count", "response_time_minutes", "step_count"] as const;

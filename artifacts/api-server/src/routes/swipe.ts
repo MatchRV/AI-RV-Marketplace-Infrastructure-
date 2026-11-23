@@ -1,9 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { ConstraintError, type RvType } from "@workspace/agent-core";
+import { ConstraintError, type CanonicalUnit, type RvType } from "@workspace/agent-core";
 import { buildDeckPool, deckRadius, outboundTarget, RV_TYPES, unitDetail, withUtm, deckEligible } from "../services/swipe-deck";
 import { getScreenedInventory } from "../services/screened-inventory";
 import { nearestZip } from "../services/zip-centroids";
-import { outboundSummary, recordOutboundClick } from "../services/outbound-clicks";
+import { outboundSessionHash, outboundSummary, recordOutboundClick } from "../services/outbound-clicks";
 import { captureProductEvent } from "../services/product-analytics";
 import { clientFromNodeRequest } from "../services/analytics-client";
 import { opsKeyValid } from "../services/dealer-inquiries";
@@ -11,7 +11,10 @@ import { opsKeyValid } from "../services/dealer-inquiries";
 /**
  *   POST /api/swipe/deck        { rvType?, priceMaxUsd?, zip?, lat?, lng?, radiusMiles? (5 to 3000 = nationwide) } → candidate cards (no dealer names)
  *   GET  /api/swipe/units/:id   detail view: adds the dealer name and lot
- *   GET  /api/out?unit=ID&from= logged 302 to the dealer's page with utm_source=matchrv
+ *   GET  /api/out?unit=ID&from=&sid=&alert=1
+ *                               logged 302 to the dealer's page with utm_source=matchrv&utm_medium=referral&utm_campaign=<from>
+ *   GET  /api/out?dealer=ID&from=&sid=
+ *                               same, to the dealer's home page (only a dealer MatchRV lists; never an arbitrary URL)
  *   GET  /api/out/ops           click counts (Authorization: Bearer INQUIRY_OPS_KEY)
  */
 const router: IRouter = Router();
@@ -82,23 +85,62 @@ router.get("/swipe/units/:id", (req: Request, res: Response) => {
   res.json(d);
 });
 
+/** Surfaces MatchRV tags clicks with (documented list; any [a-z_]{1,24} value is still accepted so older links keep working). */
+export const OUT_SURFACES = ["swipe", "swipe_detail", "answer_engine", "listing_detail", "compare", "outfitter", "app", "chatgpt", "other"] as const;
+const SURFACE_RE = /^[a-z_]{1,24}$/;
+
+/** First listed website per dealer id, cached per inventory snapshot. */
+const dealerSites = new WeakMap<object, Map<string, { site: string; unit: CanonicalUnit }>>();
+function dealerHome(dealerId: string): { site: string; unit: CanonicalUnit } | null {
+  const inv = getScreenedInventory();
+  let m = dealerSites.get(inv);
+  if (!m) {
+    m = new Map();
+    for (const u of inv.units) {
+      const id = u.dealer?.id?.toLowerCase();
+      if (!id || m.has(id) || !u.dealer.website) continue;
+      try {
+        const url = new URL(u.dealer.website);
+        if ((url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password && url.hostname.includes(".")) m.set(id, { site: url.toString(), unit: u });
+      } catch { /* skip */ }
+    }
+    dealerSites.set(inv, m);
+  }
+  return m.get(dealerId.toLowerCase()) ?? null;
+}
+
 router.get("/out", (req: Request, res: Response) => {
   noindex(res);
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Referrer-Policy", "origin");
   const id = typeof req.query.unit === "string" ? req.query.unit : "";
-  const from = typeof req.query.from === "string" && /^[a-z_]{1,24}$/.test(req.query.from) ? req.query.from : "swipe";
+  const dealerParam = typeof req.query.dealer === "string" && /^[A-Za-z0-9._:-]{1,120}$/.test(req.query.dealer) ? req.query.dealer : "";
+  const from = typeof req.query.from === "string" && SURFACE_RE.test(req.query.from) ? req.query.from : "swipe";
+  const session = outboundSessionHash(typeof req.query.sid === "string" ? req.query.sid : null);
+  const alert = req.query.alert === "1";
   const u = id ? getScreenedInventory().byId.get(id) : undefined;
-  const target = u && deckEligible(u) ? outboundTarget(u) : null;
-  if (!u || !target) { res.redirect(302, "/swipe"); return; }
+  // A unit goes out only while MatchRV lists it as available (the deck rule for the swipe deck, as before).
+  const unitOk = u && (from === "swipe" ? deckEligible(u) : u.status === "available");
+  const unitTarget = u && unitOk ? outboundTarget(u) : null;
+  const home = !id && dealerParam ? dealerHome(dealerParam) : null;
+  const target = unitTarget ?? home?.site ?? null;
+  if (!target) {
+    res.redirect(302, from === "swipe" || !u ? "/swipe" : `/listing/${encodeURIComponent(u.id)}`);
+    return;
+  }
+  const dealer = (u && unitTarget ? u : home!.unit).dealer;
   const dest = withUtm(target, from === "swipe" ? "swipe_deck" : from);
-  recordOutboundClick({ unitId: u.id, dealerId: u.dealer.id, dealerName: u.dealer.name, host: new URL(dest).hostname, from });
+  recordOutboundClick({
+    unitId: u && unitTarget ? u.id : "", dealerId: dealer.id, dealerName: dealer.name, host: new URL(dest).hostname, from,
+    ...(session ? { session } : {}), ...(alert ? { alert: true as const } : {}),
+  });
   try {
     captureProductEvent({
       event: "website_dealer_click",
       source: "website",
       surface: from === "swipe" ? "swipe" : "outbound",
-      listing_id: u.id,
-      dealer_id: u.dealer.id,
+      ...(u && unitTarget ? { listing_id: u.id } : {}),
+      dealer_id: dealer.id,
     }, clientFromNodeRequest(req));
   } catch {
     /* analytics must not block the redirect */

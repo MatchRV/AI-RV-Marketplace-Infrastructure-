@@ -29,6 +29,8 @@ import {
 import { dedupeWindowDays, leadsPath, leadTrackingEnabled, piiRetentionDays, publicBaseUrl } from "./lead-tracking-config";
 import { journeyForSession, recordFunnelStep, sessionKeyFor } from "./lead-funnel";
 import { captureLeadAnalyticsEvent } from "./product-analytics";
+import { buildCreditEvidence, CREDIT_POLICY_VERSION, emptyReview, leadCreditEnabled, type CreditReview, type LeadCredit } from "./lead-credit";
+import { clicksForSession, outboundSessionHash } from "./outbound-clicks";
 
 export const LEAD_SCHEMA_VERSION = 1;
 /** Version of the qualified rule below. Bump when the rule changes so old rows stay explainable. */
@@ -126,6 +128,12 @@ export interface LeadRecord {
   cost_usd: number | null;
   revenue_usd: number | null;
   pii_purged_at: string | null;
+  /**
+   * First-touch evidence and the dealer-dispute review (services/lead-credit.ts).
+   * Optional: leads recorded before this field existed have none. Adding it does
+   * not change the file schema version; older builds ignore it.
+   */
+  credit?: LeadCredit | null;
 }
 
 interface LeadFile { schema_version: number; created_at: string; hash_salt: string; leads: LeadRecord[] }
@@ -477,6 +485,7 @@ export function recordLeadFromInquiry(input: { inquiry: InquiryForLead; unit: Ca
       revenue_usd: null,
       pii_purged_at: null,
     };
+    lead.credit = creditFor(lead, a.session_id);
     if (inquiry.status === "delivered" || inquiry.status === "forwarded") {
       lead.lifecycle.delivered_at = sentAt;
       lead.lifecycle.stage = "delivered";
@@ -492,6 +501,49 @@ export function recordLeadFromInquiry(input: { inquiry: InquiryForLead; unit: Ca
     console.warn("[lead-tracking] lead not recorded:", err instanceof Error ? err.name : "error");
     return { kind: "skipped", reason: "error" };
   }
+}
+
+/** First-touch evidence for a new lead. Never throws: missing evidence just means a later review by hand. */
+function creditFor(lead: LeadRecord, sessionId: string | null): LeadCredit | null {
+  try {
+    return {
+      policy_version: CREDIT_POLICY_VERSION,
+      evidence: buildCreditEvidence({
+        inquiryAt: lead.created_at, unitId: lead.unit.id, dealerId: lead.dealer.id,
+        journey: lead.journey, clicks: clicksForSession(outboundSessionHash(sessionId)),
+      }),
+      review: emptyReview(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type CreditReviewResult = { ok: true; lead: LeadRecord } | { ok: false; code: "disabled" | "frozen" | "not_found" };
+
+/**
+ * Ops records a dealer's dispute ("we already had this shopper") or its outcome.
+ * Needs LEAD_TRACKING_ENABLED and LEAD_CREDIT_ENABLED. The review is replaced as a
+ * whole; the evidence is never edited.
+ */
+export function recordCreditReview(leadId: string, review: CreditReview): CreditReviewResult {
+  if (!leadTrackingEnabled() || !leadCreditEnabled()) return { ok: false, code: "disabled" };
+  if (isDataDirFrozen() || !dataDirAcceptsWrites() || readOnly) return { ok: false, code: "frozen" };
+  load();
+  const lead = leads.get(leadId);
+  if (!lead) return { ok: false, code: "not_found" };
+  if (!lead.credit) {
+    // A lead from before evidence existed: keep its review, with evidence limited to the inquiry itself.
+    lead.credit = {
+      policy_version: CREDIT_POLICY_VERSION,
+      evidence: { first_view_at: null, first_outbound_click_at: null, outbound_clicks: 0, outbound_surfaces: [], price_alert_before_leaving: false, inquiry_at: lead.created_at, first_touch_at: lead.created_at },
+      review: emptyReview(),
+    };
+  }
+  lead.credit.review = review;
+  persistSoon();
+  if (!lead.test) captureLeadAnalyticsEvent("lead_credit_review", { ...leadAnalyticsProps(lead), credit_review: review.status, ...(review.reason ? { credit_reason: review.reason } : {}) }, null);
+  return { ok: true, lead };
 }
 
 /** A second confirmed send the inquiry store answered as a duplicate (same contact + unit within 24h). */

@@ -151,7 +151,7 @@ describe('first-touch evidence on the lead', () => {
 describe('credit verdict (DRAFT terms)', () => {
   const lead = (c: LeadCredit | null, test = false) => ({ test, created_at: '2026-11-10T12:00:00.000Z', credit: c });
   const reviewed = (status: 'disputed' | 'dealer_already_had' | 'upheld', dealer_record_at: string | null = null) =>
-    ({ ...emptyReview(), status, reason: 'dealer_crm_record_earlier' as const, dealer_record_at, by: 'matchrv_ops' as const, at: '2026-11-12T00:00:00.000Z' });
+    ({ ...emptyReview(), status, reason: 'dealer_crm_record_earlier' as const, dealer_record_at, proof_type: dealer_record_at ? 'crm_entry' as const : null, by: 'matchrv_ops' as const, at: '2026-11-12T00:00:00.000Z' });
 
   it('defaults to a 30-day window, configurable by LEAD_CREDIT_WINDOW_DAYS', () => {
     expect(creditWindowDays()).toBe(30);
@@ -178,8 +178,9 @@ describe('credit verdict (DRAFT terms)', () => {
     expect(cleanCreditReview({ status: 'bogus' })).toEqual({ ok: false, code: 'invalid_status' });
     expect(cleanCreditReview({ status: 'upheld', dealer_record_at: 'yesterday' })).toEqual({ ok: false, code: 'invalid_date' });
     expect(cleanCreditReview({ status: 'upheld', dealer_record_at: '2999-01-01' })).toEqual({ ok: false, code: 'date_in_future' });
-    const ok = cleanCreditReview({ status: 'dealer_already_had', reason: 'existing_customer', dealer_record_at: '2026-11-01', note: 'x'.repeat(400) });
-    expect(ok.ok && ok.review.dealer_record_at).toBe('2026-11-01T00:00:00.000Z');
+    expect(cleanCreditReview({ status: 'dealer_already_had', reason: 'existing_customer', dealer_record_at: '2026-11-01' })).toEqual({ ok: false, code: 'dated_record_required' });
+    const ok = cleanCreditReview({ status: 'dealer_already_had', reason: 'existing_customer', proof_type: 'crm_entry', dealer_record_at: '2026-11-01', note: 'x'.repeat(400) });
+    expect(ok.ok && ok.review.dealer_record_at).toBe('2026-11-01T07:00:00.000Z'); // date only = midnight on the dealer's local day (Pacific when unknown)
     expect(ok.ok && ok.review.note?.length).toBe(280);
     expect(cleanCreditReview({ status: 'clear' })).toMatchObject({ ok: true, review: { status: 'none' } });
   });
@@ -193,13 +194,12 @@ describe('ops review from the dashboard', () => {
     const r = await fetch(`${base}/ops/leads-dashboard/api/leads/${lead.lead_id}/credit`, { method: 'POST', headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'dealer_already_had', reason: 'existing_customer' }) });
     expect(r.status).toBe(409);
     const html = await (await fetch(`${base}/ops/leads-dashboard`, { headers: { authorization: `Bearer ${TOKEN}` } })).text();
-    expect(html).not.toContain('Lead credit (DRAFT');
+    expect(html).not.toContain('Lead credit (');
     expect(html).toContain('Shoppers sent to dealer sites');
     const csv = leadsCsv({}).split('\r\n');
     const cols = csv[0].split(',');
     const row = csv[1].split(',');
-    expect(cols.slice(-2)).toEqual(['credit_verdict', 'credit_billable']);
-    expect(row.slice(-2)).toEqual(['', '']);
+    for (const c of ['credit_verdict', 'credit_billable', 'credit_weight']) expect(row[cols.indexOf(c)]).toBe('');
   });
 
   it('flag on: Bearer API marks dealer_already_had, verdict flips to not billable, and the CSV shows it', async () => {
@@ -208,12 +208,15 @@ describe('ops review from the dashboard', () => {
     await websiteInquiry(unit().id);
     const [lead] = listLeads();
     expect(creditVerdict(lead).billable).toBe(true);
-    const r = await fetch(`${base}/ops/leads-dashboard/api/leads/${lead.lead_id}/credit`, { method: 'POST', headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'dealer_already_had', reason: 'shopper_used_dealer_form_first', dealer_record_at: '2026-01-02' }) });
+    const r = await fetch(`${base}/ops/leads-dashboard/api/leads/${lead.lead_id}/credit`, { method: 'POST', headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'dealer_already_had', reason: 'shopper_used_dealer_form_first', proof_type: 'web_lead_timestamped', dealer_record_at: '2026-01-02' }) });
     expect(r.status).toBe(200);
     const body = await r.json();
     expect(body.verdict).toMatchObject({ billable: false, status: 'dealer_already_had' });
-    const csv = leadsCsv({}).split('\r\n')[1].split(',');
-    expect(csv.slice(-2)).toEqual(['dealer_already_had', 'false']);
+    const [head, line] = leadsCsv({}).split('\r\n');
+    const cols = head.split(','); const csv = line.split(',');
+    expect(csv[cols.indexOf('credit_verdict')]).toBe('dealer_already_had');
+    expect(csv[cols.indexOf('credit_billable')]).toBe('false');
+    expect(csv[cols.indexOf('credit_weight')]).toBe('0');
     expect((await fetch(`${base}/ops/leads-dashboard/api/leads/${lead.lead_id}/credit`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status).toBe(401);
   });
 
@@ -225,7 +228,8 @@ describe('ops review from the dashboard', () => {
     const login = await fetch(`${base}/ops/leads-dashboard/login`, { method: 'POST', redirect: 'manual', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: TOKEN }).toString() });
     const cookie = login.headers.get('set-cookie')!.split(';')[0];
     const html = await (await fetch(`${base}/ops/leads-dashboard`, { headers: { cookie } })).text();
-    expect(html).toContain('Lead credit (DRAFT terms: 30-day window)');
+    expect(html).toContain('Lead credit (Jonathan-approved pilot terms)');
+    expect(html).toContain('Total credits');
     const csrf = /name="csrf" value="([^"]+)"/.exec(html)![1];
     const url = `${base}/ops/leads-dashboard/leads/${lead.lead_id}/credit`;
     const form = (extra: Record<string, string>, headers: Record<string, string> = {}) =>

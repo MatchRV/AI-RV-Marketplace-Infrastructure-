@@ -14,6 +14,10 @@
  *   POST /ops/leads-dashboard/api/leads/:id/credit     { status: disputed|dealer_already_had|upheld|clear, reason?, dealer_record_at?, note? } (Bearer only)
  *   POST /ops/leads-dashboard/leads/:id/credit         the same from the dashboard's own form: signed-in cookie + per-session
  *                                                      form token + same-origin check (LEAD_CREDIT_ENABLED only)
+ *   POST /ops/leads-dashboard/api/click-matches        { click_key, dealer_record_at, source, note? }: match a click to the dealer's
+ *                                                      own record (CRM export / utm analytics); starts the click's dispute clock (Bearer only)
+ *   POST /ops/leads-dashboard/api/click-matches/credit { click_key, status, reason?, proof_type?, dealer_record_at?, note? } (Bearer only)
+ *   POST /ops/leads-dashboard/click-matches[/credit]   the same two from the dashboard's forms (cookie + form token + same origin)
  *
  * Receipt: 404 unless LEAD_TRACKING_ENABLED and the token matches a stored hash.
  * Dashboard: 404 unless LEADS_DASHBOARD_TOKEN is set (>= 24 chars). The secret is
@@ -30,7 +34,12 @@ import {
   LEAD_STAGES, LOST_REASONS, getLead, issueReceiptToken, leadByReceiptToken, listLeads, purgeLeadPii, recordCreditReview, recordLeadStage, recordReceiptView,
   type LeadRecord, type LeadStage, type LostReason,
 } from "../services/lead-store";
-import { CREDIT_REASON_LABELS, CREDIT_REASONS, cleanCreditReview, creditVerdict, creditWindowDays, leadCreditEnabled } from "../services/lead-credit";
+import {
+  CLICK_MATCH_SOURCE_LABELS, CLICK_MATCH_SOURCES, CREDIT_REASON_LABELS, CREDIT_REASONS, PROOF_LABELS, PROOF_TYPES,
+  cleanCreditReview, creditVerdict, dealerTimeZone, leadCreditEnabled, matchAsLead, type ClickCredit,
+} from "../services/lead-credit";
+import { buildCreditSummary, wrongNumberFlags, WRONG_NUMBER_FLAG_DAYS, WRONG_NUMBER_FLAG_LIMIT, type CreditSummary, type WrongNumberFlag } from "../services/lead-report";
+import { getClickMatch, recordClickMatch, recordClickMatchReview } from "../services/click-matches";
 import { outboundSummary } from "../services/outbound-clicks";
 import { dashboardToken, leadTrackingEnabled } from "../services/lead-tracking-config";
 
@@ -89,7 +98,7 @@ export function __resetLeadPageLimits(): void { windows.clear(); }
 const OUTCOMES: Record<string, LeadStage> = { responded: "dealer_responded", appointment: "appointment", sold: "sold", lost: "lost" };
 const REASON_LABELS: Record<LostReason, string> = {
   bought_elsewhere: "Bought elsewhere", unit_sold: "This RV was already sold", no_response_from_shopper: "Shopper did not respond",
-  financing: "Financing did not work out", price: "Price", not_a_fit: "Not the right RV", duplicate: "Duplicate of another lead", spam: "Spam / not a real shopper", other: "Other",
+  financing: "Financing did not work out", price: "Price", not_a_fit: "Not the right RV", duplicate: "Duplicate of another lead", spam: "Spam / not a real shopper", wrong_number: "Wrong number / bad contact details", other: "Other",
 };
 
 const csrfFor = (lead: LeadRecord) => createHmac("sha256", lead.receipt!.token_hash).update("receipt-form-v1").digest("base64url");
@@ -275,29 +284,91 @@ function outboundSection(): string {
   return `<section><h2>Shoppers sent to dealer sites</h2><p class="muted">Every click to a dealer's own site goes through MatchRV's tagged link (/api/out) with utm_source=matchrv. This is MatchRV's own record of when each shopper was sent, for lead-credit disputes. Total recorded: <b>${num(o.total)}</b>.</p>${top.length ? `<table><tr><th>Dealer</th><th class="n">Clicks</th></tr>${top.map((d) => `<tr><td>${esc(d.dealerName)}</td><td class="n">${num(d.clicks)}</td></tr>`).join("")}</table>` : `<p class="muted">No clicks recorded yet.</p>`}</section>`;
 }
 
-/** Lead credit: evidence, verdict and the dispute form for each recent lead. */
-function creditSection(recent: LeadRecord[], csrf: string | null): string {
-  const days = creditWindowDays();
-  const rows = recent.map((l) => {
-    const v = creditVerdict(l, days);
-    const ev = l.credit?.evidence;
-    const r = l.credit?.review;
-    const form = csrf
-      ? `<details><summary>Record dealer dispute</summary><form method="post" action="/ops/leads-dashboard/leads/${encodeURIComponent(l.lead_id)}/credit">
-<input type="hidden" name="csrf" value="${esc(csrf)}">
-<p><select name="status" required><option value="disputed">Dealer disputes (checking)</option><option value="dealer_already_had">Dealer already had this shopper: do not bill</option><option value="upheld">Reviewed: MatchRV was first</option><option value="clear">Clear review</option></select></p>
+/** The dealer-dispute form shared by leads and matched clicks. */
+function disputeForm(action: string, csrf: string, open: boolean, deadline: string | null, hidden: string, stands: string): string {
+  return `<details><summary>Record dealer dispute</summary><form method="post" action="${esc(action)}">
+<input type="hidden" name="csrf" value="${esc(csrf)}">${hidden}
+<p class="muted">Dispute window (7 calendar days): ${esc(open ? `open until ${fmtDay(deadline)} UTC` : `closed, ${stands} (a dispute filed in time can still be resolved)`)}.</p>
+<p><select name="status" required><option value="disputed">Dealer disputes (checking)</option><option value="dealer_already_had">Dealer's dated record is earlier: do not count</option><option value="upheld">Reviewed: MatchRV was first</option><option value="clear">Clear review</option></select></p>
 <p><select name="reason"><option value="">Reason</option>${CREDIT_REASONS.map((x) => `<option value="${x}">${esc(CREDIT_REASON_LABELS[x])}</option>`).join("")}</select></p>
-<p>Dealer's own record date <input type="date" name="dealer_record_at"></p>
+<p><select name="proof_type"><option value="">Proof the dealer showed</option>${PROOF_TYPES.map((x) => `<option value="${x}">${esc(PROOF_LABELS[x])}</option>`).join("")}</select></p>
+<p>Date on the dealer's own record <input type="date" name="dealer_record_at"> <span class="muted">(the dealer's local day)</span></p>
+<p class="muted">"Do not count" needs both the proof type and its date. An undated claim does not overturn a credit.</p>
 <p><input type="text" name="note" maxlength="280" placeholder="Note (no shopper contact details)" style="width:100%"></p>
-<button type="submit">Save</button></form></details>`
-      : `<span class="muted">Sign in with the form to edit (or use the API)</span>`;
-    return `<tr><td>${esc(l.lead_id)}</td><td>${esc(l.dealer.name)}</td><td>${esc(fmtDay(ev?.first_view_at))}</td><td>${esc(fmtDay(ev?.first_outbound_click_at))}${ev?.outbound_clicks ? ` (${ev.outbound_clicks})` : ""}</td><td>${esc(fmtDay(ev?.inquiry_at ?? l.created_at))}</td><td><b>${esc(v.status.replace(/_/g, " "))}</b><br><span class="muted">${esc(v.explanation)}</span>${r && r.status !== "none" ? `<br><span class="muted">Review: ${esc(r.status.replace(/_/g, " "))}${r.reason ? `, ${esc(CREDIT_REASON_LABELS[r.reason])}` : ""}${r.dealer_record_at ? `, dealer record ${esc(r.dealer_record_at.slice(0, 10))}` : ""}${r.note ? `, "${esc(r.note)}"` : ""}</span>` : ""}</td><td>${form}</td></tr>`;
-  }).join("");
-  return `<section><h2>Lead credit (DRAFT terms: ${days}-day window)</h2><p class="muted">A dealer is never billed for a shopper it can show it already had. MatchRV's evidence: first view of the RV, first click to the dealer's site, and the inquiry (UTC). Billable only if MatchRV's first touch comes before the dealer's own record. Terms pending Jonathan and the CSO; nothing here charges anyone.</p>
-<table><tr><th>Lead</th><th>Dealer</th><th>First view</th><th>Sent to dealer site</th><th>Inquiry</th><th>Verdict</th><th></th></tr>${rows || `<tr><td colspan="7" class="muted">No leads yet.</td></tr>`}</table></section>`;
+<button type="submit">Save</button></form></details>`;
 }
 
-export function renderDashboard(report: ReturnType<typeof buildLeadReport>, recent: LeadRecord[], opts: { creditCsrf?: string | null } = {}): string {
+/** Dealers marking "wrong number" unusually often from the receipt page. Shown whether or not lead credit is on. */
+export function wrongNumberSection(flags: WrongNumberFlag[]): string {
+  if (!flags.length) return "";
+  return `<section><h2 class="err">Check: frequent "wrong number" marks</h2><p class="muted">These dealers marked more than ${WRONG_NUMBER_FLAG_LIMIT} leads "wrong number" on the receipt page in the last ${WRONG_NUMBER_FLAG_DAYS} days. Wrong-number leads never count, so check the contact details on these leads.</p>
+<table><tr><th>Dealer</th><th class="n">Wrong number (last ${WRONG_NUMBER_FLAG_DAYS} days)</th></tr>${flags.map((f) => `<tr><td>${esc(f.dealerName ?? f.dealerId ?? "unknown")}</td><td class="n"><b>${f.count}</b></td></tr>`).join("")}</table></section>`;
+}
+
+const CLICK_STATUS_TEXT: Record<string, string> = {
+  unmatched: "Not matched yet: counts 0 until matched to the dealer's own record",
+  credited: "Matched; MatchRV's click came first",
+  already_counted_as_inquiry: "Counted as a MatchRV inquiry instead",
+  dealer_already_had: "Dealer's record is earlier or the same local day: does not count",
+  outside_window: "Dealer's record came more than the window after the click: does not count",
+  disputed_pending: "Dealer disputes (checking): does not count until reviewed",
+  no_session: "No session: never counts",
+};
+
+/** Click-only credits: match form for unmatched clicks, verdict + dispute form for matched ones. */
+function clickSection(clicks: ClickCredit[], csrf: string | null, sum: CreditSummary): string {
+  const shown = clicks.filter((c) => c.status !== "already_counted_as_inquiry").slice(-50).reverse();
+  const rows = shown.map((c) => {
+    const hidden = `<input type="hidden" name="click_key" value="${esc(c.key)}">`;
+    let action = "";
+    if (csrf && !c.match) {
+      action = `<details><summary>Record dealer match</summary><form method="post" action="/ops/leads-dashboard/click-matches">
+<input type="hidden" name="csrf" value="${esc(csrf)}">${hidden}
+<p>Date on the dealer's own record of this shopper <input type="date" name="dealer_record_at" required> <span class="muted">(dealer's local day)</span></p>
+<p><select name="source" required><option value="">Where it came from</option>${CLICK_MATCH_SOURCES.map((x) => `<option value="${x}">${esc(CLICK_MATCH_SOURCE_LABELS[x])}</option>`).join("")}</select></p>
+<p><input type="text" name="note" maxlength="280" placeholder="Note (no shopper contact details)" style="width:100%"></p>
+<p class="muted">Saving sends the match: the dealer then has 7 calendar days to dispute it.</p>
+<button type="submit">Save match</button></form></details>`;
+    } else if (csrf && c.match) {
+      action = disputeForm("/ops/leads-dashboard/click-matches/credit", csrf, c.dispute_window_open, c.dispute_deadline, hidden, "the credit stands");
+    }
+    const m = c.match;
+    const r = m?.review;
+    const matchLine = m
+      ? `Dealer record ${esc(fmtDay(m.dealer_record_at))} (${esc(CLICK_MATCH_SOURCE_LABELS[m.source])})<br>Match sent ${esc(fmtDay(m.matched_at))}${r && r.status !== "none" ? `<br><span class="muted">Review: ${esc(r.status.replace(/_/g, " "))}${r.proof_type ? `, ${esc(PROOF_LABELS[r.proof_type])}` : ""}${r.dealer_record_at ? ` dated ${esc(fmtDay(r.dealer_record_at))}` : ""}</span>` : ""}`
+      : `<span class="muted">No dealer record yet</span>`;
+    return `<tr><td>${esc(fmtDay(c.clicked_at))}</td><td>${esc(c.dealer_name)}<br><span class="muted">${esc(dealerTimeZone(c.dealer_state))}</span></td><td>${esc(c.unit_id ?? "dealer home page")}<br><span class="muted">session ${esc((c.session ?? "").slice(0, 8))}…</span></td><td>${matchLine}</td><td><b>${esc(c.status.replace(/_/g, " "))}</b><br><span class="muted">${esc(CLICK_STATUS_TEXT[c.status] ?? "")}</span></td><td class="n"><b>${c.credit_weight}</b></td><td>${action}</td></tr>`;
+  }).join("");
+  return `<h3>Click-only credits</h3><p class="muted">Matched: ${sum.matchedClicks} (${sum.creditedClicks} counted × ${sum.weights.click} = ${sum.clickCredits}). <b>Unmatched clicks: ${sum.unmatchedClicks}</b>, counted 0 until ops matches them to the dealer's own record (CRM export, or the dealer's analytics on utm_source=matchrv).</p>
+<table><tr><th>Clicked (UTC)</th><th>Dealer (time zone for same-day ties)</th><th>RV</th><th>Dealer match</th><th>Verdict</th><th class="n">Credit</th><th></th></tr>${rows || `<tr><td colspan="7" class="muted">No click-only referrals in this range.</td></tr>`}</table>`;
+}
+
+/** Lead credit: totals, MatchRV's evidence trail, verdict, weight and the dispute form for each recent lead. */
+function creditSection(recent: LeadRecord[], csrf: string | null, sum: CreditSummary): string {
+  const w = sum.weights;
+  const rows = recent.map((l) => {
+    const v = creditVerdict(l);
+    const ev = l.credit?.evidence;
+    const r = l.credit?.review;
+    const signals = ev?.buying_signals?.length ? ev.buying_signals.join(", ").replace(/_/g, "-") : "none";
+    const form = csrf
+      ? disputeForm(`/ops/leads-dashboard/leads/${encodeURIComponent(l.lead_id)}/credit`, csrf, v.dispute_window_open, v.dispute_deadline, "", "the lead stands")
+      : `<span class="muted">Sign in with the form to edit (or use the API)</span>`;
+    const trail = `First view ${esc(fmtDay(ev?.first_view_at))}<br>Sent to dealer site ${esc(fmtDay(ev?.first_outbound_click_at))}${ev?.outbound_clicks ? ` (${ev.outbound_clicks}${ev.outbound_surfaces.length ? `, ${esc(ev.outbound_surfaces.join(", "))}` : ""})` : ""}${ev?.price_alert_before_leaving ? "<br>Price alert saved before leaving" : ""}<br>Inquiry ${esc(fmtDay(ev?.inquiry_at ?? l.created_at))}<br>Delivered ${esc(fmtDay(v.delivered_at))}<br><b>First touch ${esc(fmtDay(ev?.first_touch_at))}</b>`;
+    const reviewLine = r && r.status !== "none"
+      ? `<br><span class="muted">Review: ${esc(r.status.replace(/_/g, " "))}${r.reason ? `, ${esc(CREDIT_REASON_LABELS[r.reason])}` : ""}${r.proof_type ? `, ${esc(PROOF_LABELS[r.proof_type])}` : ""}${r.dealer_record_at ? ` dated ${esc(r.dealer_record_at.slice(0, 10))}` : ""}${r.dispute_filed_at ? `, filed ${esc(fmtDay(r.dispute_filed_at))}` : ""}${r.note ? `, "${esc(r.note)}"` : ""}</span>`
+      : "";
+    return `<tr><td>${esc(l.lead_id)}</td><td>${esc(l.dealer.name)}</td><td>${trail}</td><td>${ev?.has_phone ? "phone" : "no phone"}; signals: ${esc(signals)}<br>${esc(v.credit_tier ?? "—")}</td><td><b>${esc(v.status.replace(/_/g, " "))}</b><br><span class="muted">${esc(v.explanation)}</span>${reviewLine}</td><td class="n"><b>${v.credit_weight}</b></td><td>${form}</td></tr>`;
+  }).join("");
+  const nb = Object.entries(sum.notBillable).map(([k, n]) => `${esc(k.replace(/_/g, " "))} ${n}`).join(", ") || "none";
+  return `<section><h2>Lead credit (Jonathan-approved pilot terms)</h2>
+<div class="kpis"><div class="kpi"><b>${sum.totalCredits}</b>Total credits</div><div class="kpi"><b>${sum.leadCredits}</b>Lead credits (${sum.basicLeads} basic × ${w.inquiry}, ${sum.qualifiedLeads} qualified × ${w.qualified})</div><div class="kpi"><b>${sum.clickCredits}</b>Matched click credits (${sum.creditedClicks} × ${w.click})</div><div class="kpi"><b>${sum.unmatchedClicks}</b>Unmatched clicks (count 0)</div></div>
+<p class="muted">${esc(sum.range.from)} to ${esc(sum.range.to)} (UTC). Not billable: ${nb}. Clicks already counted as a MatchRV inquiry: ${sum.clicksAlreadyCounted}. Window ${sum.windowDays} days from MatchRV's first touch; dealers have ${sum.disputeDays} calendar days from delivery (inquiries) or from the match being sent (clicks) to dispute with a dated record; ties and same-day close calls (on the dealer's local day; Pacific when unknown) go to ${sum.tiesToDealer ? "the dealer" : "the earliest timestamp"}. Qualified = phone + a buying signal (timeline, trade-in or financing). Clicks count only once matched to the dealer's own record. Nothing here charges anyone.</p>
+<table><tr><th>Lead</th><th>Dealer</th><th>MatchRV evidence trail (UTC)</th><th>Tier</th><th>Verdict</th><th class="n">Credit</th><th></th></tr>${rows || `<tr><td colspan="7" class="muted">No leads yet.</td></tr>`}</table>
+${clickSection(sum.clicks, csrf, sum)}</section>`;
+}
+
+export function renderDashboard(report: ReturnType<typeof buildLeadReport>, recent: LeadRecord[], opts: { creditCsrf?: string | null; creditSummary?: CreditSummary } = {}): string {
   const r = report;
   const sources = [...new Set(r.series.flatMap((s) => Object.keys(s.bySource)))].sort();
   const csvQuery = `from=${encodeURIComponent(r.range.from)}&to=${encodeURIComponent(r.range.to)}${r.range.includeTests ? "&include_tests=1" : ""}`;
@@ -307,6 +378,7 @@ export function renderDashboard(report: ReturnType<typeof buildLeadReport>, rece
 <label><input type="checkbox" name="include_tests" value="1"${r.range.includeTests ? " checked" : ""}> include test leads</label> <button type="submit">Show</button></form>
 <p class="muted">Days are UTC. <a href="/ops/leads-dashboard.csv?${csvQuery}">Download CSV</a> · <a href="/ops/leads-dashboard.csv?${csvQuery}&amp;include_contact=1">CSV with contact details</a></p>
 <form method="post" action="/ops/leads-dashboard/logout"><button type="submit">Sign out</button></form></section>
+${wrongNumberSection(opts.creditSummary?.wrongNumberFlags ?? wrongNumberFlags({ includeTests: r.range.includeTests }))}
 <section><div class="kpis"><div class="kpi"><b>${num(r.totals.leads)}</b>leads</div><div class="kpi"><b>${num(r.totals.qualifiedPct, "%")}</b>qualified (${num(r.totals.qualified)})</div><div class="kpi"><b>${num(r.totals.repeats)}</b>repeat inquiries (not counted as leads)</div><div class="kpi"><b>${mins(r.totals.medianResponseMinutes)}</b>median dealer response</div><div class="kpi"><b>${mins(r.totals.p90ResponseMinutes)}</b>p90 dealer response</div></div></section>
 <section><h2>Funnel</h2><table><tr><th>Step</th><th class="n">Shoppers (human)</th><th class="n">AI agent for a shopper</th><th class="n">Total</th><th class="n">Conversion from previous step</th></tr>${r.funnel.map((f) =>
     `<tr><td>${esc(f.step)}</td><td class="n">${num(f.human)}</td><td class="n">${num(f.aiAgentUser)}</td><td class="n">${num(f.total)}</td><td class="n">${num(f.conversionFromPreviousPct, "%")}</td></tr>`).join("")}</table>
@@ -321,7 +393,7 @@ ${breakdownTable("By source", r.bySource)}${breakdownTable("By surface", r.bySur
 <section><h2>Recent leads</h2><table><tr><th>When (UTC)</th><th>Lead</th><th>Source</th><th>Surface</th><th>Dealer</th><th>RV</th><th class="n">Price</th><th>Qualified</th><th>Stage</th><th class="n">Repeats</th></tr>${recent.map((l) =>
     `<tr><td>${esc(l.created_at.slice(0, 16).replace("T", " "))}</td><td>${esc(l.lead_id)}</td><td>${esc(l.source)}${l.source_verified ? " ✓" : ""}</td><td>${esc(l.surface)}</td><td>${esc(l.dealer.name)}</td><td>${esc(l.unit.title)}</td><td class="n">${l.unit.price_usd == null ? "—" : usd(l.unit.price_usd)}</td><td>${l.qualification.qualified ? "yes" : "no"}</td><td>${esc(l.lifecycle.stage)}</td><td class="n">${num(l.repeat_count)}</td></tr>`).join("") || `<tr><td colspan="10" class="muted">No leads yet.</td></tr>`}</table>
 <p class="muted">Contact details are in the CSV with contact details and the lead inbox (/ops/leads). Cost and revenue columns are placeholders until those numbers are recorded.</p></section>
-${leadCreditEnabled() ? creditSection(recent, opts.creditCsrf ?? null) : ""}
+${leadCreditEnabled() ? creditSection(recent, opts.creditCsrf ?? null, opts.creditSummary ?? buildCreditSummary({ from: r.range.from, to: r.range.to, includeTests: r.range.includeTests })) : ""}
 ${outboundSection()}`);
 }
 
@@ -362,7 +434,8 @@ function requireBearer(req: Request, res: Response): boolean {
 
 router.get("/ops/leads-dashboard/api/report", (req: Request, res: Response) => {
   if (!requireBearer(req, res)) return;
-  res.json(buildLeadReport(reportOpts(req)));
+  const ro = reportOpts(req);
+  res.json(leadCreditEnabled() ? { ...buildLeadReport(ro), credit: buildCreditSummary(ro) } : buildLeadReport(ro));
 });
 
 router.post("/ops/leads-dashboard/api/leads/:id/stage", (req: Request, res: Response) => {
@@ -386,18 +459,80 @@ router.post("/ops/leads-dashboard/api/leads/:id/receipt-link", (req: Request, re
 });
 
 function creditError(res: Response, code: string): void {
-  const status = code === "not_found" ? 404 : code === "frozen" ? 503 : code === "disabled" ? 409 : 400;
+  const status = code === "not_found" ? 404 : code === "frozen" ? 503 : code === "disabled" || code === "dispute_window_closed" ? 409 : 400;
   res.status(status).json({ error: code === "disabled" ? "lead_credit_disabled" : code });
 }
 
 router.post("/ops/leads-dashboard/api/leads/:id/credit", (req: Request, res: Response) => {
   if (!requireBearer(req, res)) return;
   if (!leadTrackingEnabled() || !leadCreditEnabled()) { creditError(res, "disabled"); return; }
-  const clean = cleanCreditReview((req.body ?? {}) as Record<string, unknown>);
+  const lead = getLead(String(req.params.id));
+  if (!lead) { creditError(res, "not_found"); return; }
+  const clean = cleanCreditReview((req.body ?? {}) as Record<string, unknown>, { lead });
   if (!clean.ok) { creditError(res, clean.code); return; }
   const r = recordCreditReview(String(req.params.id), clean.review);
   if (!r.ok) { creditError(res, r.code); return; }
   res.json({ lead_id: r.lead.lead_id, credit: r.lead.credit, verdict: creditVerdict(r.lead) });
+});
+
+const formError = (res: Response, status: number, msg: string) =>
+  res.status(status).type("html").send(page("Lead credit", `<section><p class="err">Not saved: ${esc(msg.replace(/_/g, " "))}.</p><p><a href="/ops/leads-dashboard">Back to the dashboard</a></p></section>`));
+
+/** Dashboard form gate: lead credit on, same origin, signed-in cookie and this session's form token. */
+function creditFormAllowed(req: Request, res: Response): boolean {
+  privateHeaders(res);
+  const token = dashboardToken();
+  if (!token || !leadTrackingEnabled() || !leadCreditEnabled()) { notFound(res); return false; }
+  if (!sameOrigin(req)) { res.status(403).type("text/plain").send("Cross-site form refused."); return false; }
+  const cookie = readCookie(req, DASHBOARD_COOKIE);
+  if (!cookie || !verifyDashboardCookie(cookie, token)) { res.status(401).type("html").send(loginPage("Sign in again to save.")); return false; }
+  const given = typeof req.body?.csrf === "string" ? req.body.csrf : "";
+  if (!given || !secretEquals(given, creditFormToken(cookie, token))) { res.status(403).type("text/plain").send("Form expired. Reload the dashboard and try again."); return false; }
+  return true;
+}
+
+const matchStatus = (code: string) => (code === "click_not_found" || code === "not_found" ? 404 : code === "frozen" || code === "write_failed" ? 503 : code === "dispute_window_closed" ? 409 : 400);
+
+/** Validate + save a dispute review on a matched click. */
+function reviewClickMatch(body: Record<string, unknown>): { ok: true; result: unknown } | { ok: false; code: string } {
+  const key = typeof body.click_key === "string" ? body.click_key.trim() : "";
+  const m = key ? getClickMatch(key) : null;
+  if (!m) return { ok: false, code: "not_found" };
+  const clean = cleanCreditReview(body, { lead: matchAsLead(m) });
+  if (!clean.ok) return { ok: false, code: clean.code };
+  const r = recordClickMatchReview(key, clean.review);
+  if (!r.ok) return { ok: false, code: r.code };
+  return { ok: true, result: { match: r.match } };
+}
+
+router.post("/ops/leads-dashboard/api/click-matches", (req: Request, res: Response) => {
+  if (!requireBearer(req, res)) return;
+  if (!leadTrackingEnabled() || !leadCreditEnabled()) { creditError(res, "disabled"); return; }
+  const r = recordClickMatch((req.body ?? {}) as Record<string, unknown>);
+  if (!r.ok) { res.status(matchStatus(r.code)).json({ error: r.code }); return; }
+  res.status(r.created ? 201 : 200).json({ match: r.match, created: r.created });
+});
+
+router.post("/ops/leads-dashboard/api/click-matches/credit", (req: Request, res: Response) => {
+  if (!requireBearer(req, res)) return;
+  if (!leadTrackingEnabled() || !leadCreditEnabled()) { creditError(res, "disabled"); return; }
+  const r = reviewClickMatch((req.body ?? {}) as Record<string, unknown>);
+  if (!r.ok) { res.status(matchStatus(r.code)).json({ error: r.code }); return; }
+  res.json(r.result);
+});
+
+router.post("/ops/leads-dashboard/click-matches", (req: Request, res: Response) => {
+  if (!creditFormAllowed(req, res)) return;
+  const r = recordClickMatch((req.body ?? {}) as Record<string, unknown>);
+  if (!r.ok) { formError(res, matchStatus(r.code), r.code); return; }
+  res.redirect(303, "/ops/leads-dashboard");
+});
+
+router.post("/ops/leads-dashboard/click-matches/credit", (req: Request, res: Response) => {
+  if (!creditFormAllowed(req, res)) return;
+  const r = reviewClickMatch((req.body ?? {}) as Record<string, unknown>);
+  if (!r.ok) { formError(res, matchStatus(r.code), r.code); return; }
+  res.redirect(303, "/ops/leads-dashboard");
 });
 
 router.post("/ops/leads-dashboard/leads/:id/credit", (req: Request, res: Response) => {
@@ -409,7 +544,9 @@ router.post("/ops/leads-dashboard/leads/:id/credit", (req: Request, res: Respons
   if (!cookie || !verifyDashboardCookie(cookie, token)) { res.status(401).type("html").send(loginPage("Sign in again to save.")); return; }
   const given = typeof req.body?.csrf === "string" ? req.body.csrf : "";
   if (!given || !secretEquals(given, creditFormToken(cookie, token))) { res.status(403).type("text/plain").send("Form expired. Reload the dashboard and try again."); return; }
-  const clean = cleanCreditReview((req.body ?? {}) as Record<string, unknown>);
+  const formLead = getLead(String(req.params.id));
+  if (!formLead) { res.status(404).type("html").send(page("Lead credit", `<section><p class="err">Not saved: not found.</p><p><a href="/ops/leads-dashboard">Back to the dashboard</a></p></section>`)); return; }
+  const clean = cleanCreditReview((req.body ?? {}) as Record<string, unknown>, { lead: formLead });
   if (!clean.ok) { res.status(400).type("html").send(page("Lead credit", `<section><p class="err">Not saved: ${esc(clean.code.replace(/_/g, " "))}.</p><p><a href="/ops/leads-dashboard">Back to the dashboard</a></p></section>`)); return; }
   const r = recordCreditReview(String(req.params.id), clean.review);
   if (!r.ok) { res.status(r.code === "not_found" ? 404 : 503).type("html").send(page("Lead credit", `<section><p class="err">Not saved: ${esc(r.code.replace(/_/g, " "))}.</p><p><a href="/ops/leads-dashboard">Back to the dashboard</a></p></section>`)); return; }

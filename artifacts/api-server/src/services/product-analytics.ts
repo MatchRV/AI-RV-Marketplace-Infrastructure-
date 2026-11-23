@@ -986,11 +986,11 @@ const LEAD_ENUMS: Record<string, ReadonlySet<string>> = {
   entry_point: new Set(["website_inquiry_api", "mcp_send_dealer_inquiry", "mcp_v1_send_inquiry", "legacy_buyer_lead_api"]),
   funnel_step: new Set(["impression", "view", "swipe", "favorite", "search", "compare", "inquiry_start", "inquiry"]),
   stage: new Set(["sent", "delivered", "opened", "dealer_responded", "appointment", "sold", "lost"]),
-  lost_reason: new Set(["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "other"]),
+  lost_reason: new Set(["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "wrong_number", "other"]),
   price_band: new Set(["under_20k", "20k_40k", "40k_60k", "60k_100k", "100k_200k", "200k_plus", "unknown"]),
   rv_type: RV_TYPES,
   credit_review: new Set(["none", "disputed", "dealer_already_had", "upheld"]),
-  credit_reason: new Set(["dealer_crm_record_earlier", "shopper_used_dealer_form_first", "existing_customer", "walk_in_or_call_first", "other_lead_provider_first", "matchrv_evidence_earlier", "other"]),
+  credit_reason: new Set(["dealer_crm_record_earlier", "shopper_used_dealer_form_first", "existing_customer", "walk_in_or_call_first", "other_lead_provider_first", "matchrv_evidence_earlier", "undated_claim", "other"]),
 };
 const LEAD_FLAGS = ["lead_source_verified", "qualified", "has_name", "has_contact", "specific_unit", "exclusivity", "repeat"] as const;
 const LEAD_COUNTS = ["repeat_count", "response_time_minutes", "step_count"] as const;

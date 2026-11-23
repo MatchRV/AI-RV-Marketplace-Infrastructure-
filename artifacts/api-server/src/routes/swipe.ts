@@ -133,6 +133,7 @@ router.get("/out", (req: Request, res: Response) => {
   recordOutboundClick({
     unitId: u && unitTarget ? u.id : "", dealerId: dealer.id, dealerName: dealer.name, host: new URL(dest).hostname, from,
     ...(session ? { session } : {}), ...(alert ? { alert: true as const } : {}),
+    ...(dealer.state ? { dealerState: String(dealer.state).slice(0, 40) } : {}),
   });
   try {
     captureProductEvent({

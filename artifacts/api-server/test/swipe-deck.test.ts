@@ -129,7 +129,8 @@ describe("near me and outbound redirect", () => {
     const s = outboundSummary();
     expect(s.total).toBe(1);
     expect(s.recent[0]).toMatchObject({ unitId: u.id, dealerId: u.dealer.id, from: "swipe" });
-    expect(Object.keys(s.recent[0]).sort()).toEqual(["at", "dealerId", "dealerName", "from", "host", "unitId"]);
+    // Only unit/dealer facts (dealerState = dealer's location, for local-day ties); nothing about the shopper.
+    expect(Object.keys(s.recent[0]).sort()).toEqual(["at", "dealerId", "dealerName", ...(u.dealer.state ? ["dealerState"] : []), "from", "host", "unitId"]);
   });
   it("GET /api/out for an unknown or held unit goes back to /swipe and logs nothing", async () => {
     const held = [...inv().quarantined.keys()][0];

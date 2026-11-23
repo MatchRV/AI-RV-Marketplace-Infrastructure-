@@ -180,7 +180,7 @@ describe('credit verdict (DRAFT terms)', () => {
     expect(cleanCreditReview({ status: 'upheld', dealer_record_at: '2999-01-01' })).toEqual({ ok: false, code: 'date_in_future' });
     expect(cleanCreditReview({ status: 'dealer_already_had', reason: 'existing_customer', dealer_record_at: '2026-11-01' })).toEqual({ ok: false, code: 'dated_record_required' });
     const ok = cleanCreditReview({ status: 'dealer_already_had', reason: 'existing_customer', proof_type: 'crm_entry', dealer_record_at: '2026-11-01', note: 'x'.repeat(400) });
-    expect(ok.ok && ok.review.dealer_record_at).toBe('2026-11-01T00:00:00.000Z');
+    expect(ok.ok && ok.review.dealer_record_at).toBe('2026-11-01T07:00:00.000Z'); // date only = midnight on the dealer's local day (Pacific when unknown)
     expect(ok.ok && ok.review.note?.length).toBe(280);
     expect(cleanCreditReview({ status: 'clear' })).toMatchObject({ ok: true, review: { status: 'none' } });
   });

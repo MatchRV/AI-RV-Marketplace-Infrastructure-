@@ -233,9 +233,60 @@ export interface LeadForCredit {
   created_at: string;
   credit?: LeadCredit | null;
   lifecycle?: { sent_at?: string | null; delivered_at?: string | null; lost_reason?: string | null } | null;
+  /** The dealer's state/province, for judging "same day" on the dealer's local calendar. */
+  dealer?: { state?: string | null } | null;
 }
 
-const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+// ── Dealer local day ───────────────────────────────────────────────────────
+
+/** When the dealer's location is unknown, "same day" is judged on Pacific time. */
+export const DEFAULT_DEALER_TIME_ZONE = "America/Los_Angeles";
+
+const STATE_TIME_ZONES: Record<string, string> = {
+  CT: "America/New_York", DE: "America/New_York", DC: "America/New_York", FL: "America/New_York", GA: "America/New_York",
+  ME: "America/New_York", MD: "America/New_York", MA: "America/New_York", MI: "America/Detroit", NH: "America/New_York",
+  NJ: "America/New_York", NY: "America/New_York", NC: "America/New_York", OH: "America/New_York", PA: "America/New_York",
+  RI: "America/New_York", SC: "America/New_York", VT: "America/New_York", VA: "America/New_York", WV: "America/New_York",
+  IN: "America/Indiana/Indianapolis", KY: "America/New_York",
+  AL: "America/Chicago", AR: "America/Chicago", IL: "America/Chicago", IA: "America/Chicago", KS: "America/Chicago",
+  LA: "America/Chicago", MN: "America/Chicago", MS: "America/Chicago", MO: "America/Chicago", NE: "America/Chicago",
+  ND: "America/Chicago", OK: "America/Chicago", SD: "America/Chicago", TN: "America/Chicago", TX: "America/Chicago", WI: "America/Chicago",
+  CO: "America/Denver", MT: "America/Denver", NM: "America/Denver", UT: "America/Denver", WY: "America/Denver", ID: "America/Boise",
+  AZ: "America/Phoenix",
+  CA: "America/Los_Angeles", NV: "America/Los_Angeles", OR: "America/Los_Angeles", WA: "America/Los_Angeles",
+  AK: "America/Anchorage", HI: "Pacific/Honolulu",
+  BC: "America/Vancouver", AB: "America/Edmonton", SK: "America/Regina", MB: "America/Winnipeg", ON: "America/Toronto",
+  QC: "America/Toronto", NB: "America/Halifax", NS: "America/Halifax", PE: "America/Halifax", NL: "America/St_Johns",
+};
+
+/** The dealer's time zone from its state/province (two-letter code); Pacific when unknown. */
+export function dealerTimeZone(state: string | null | undefined): string {
+  const code = typeof state === "string" ? state.trim().toUpperCase() : "";
+  return STATE_TIME_ZONES[code] ?? DEFAULT_DEALER_TIME_ZONE;
+}
+
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
+/** Calendar day (YYYY-MM-DD) of an instant in a time zone. */
+export function localDay(ms: number, timeZone = DEFAULT_DEALER_TIME_ZONE): string {
+  let f = dayFormatters.get(timeZone);
+  if (!f) { f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }); dayFormatters.set(timeZone, f); }
+  return f.format(new Date(ms));
+}
+
+/** Offset (ms) of a time zone from UTC at an instant. */
+function zoneOffsetMs(ms: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    .formatToParts(new Date(ms)).reduce<Record<string, number>>((o, p) => { if (p.type !== "literal") o[p.type] = Number(p.value); return o; }, {});
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) - (ms - (ms % 1000));
+}
+
+/** Midnight at the start of a calendar day (YYYY-MM-DD) in a time zone, as epoch ms. */
+export function zonedMidnight(day: string, timeZone = DEFAULT_DEALER_TIME_ZONE): number {
+  const utc = Date.parse(`${day}T00:00:00Z`);
+  let guess = utc - zoneOffsetMs(utc, timeZone);
+  guess = utc - zoneOffsetMs(guess, timeZone);
+  return guess;
+}
 
 export function disputeDeadline(lead: LeadForCredit, days = disputeWindowDays()): { deliveredAt: string | null; deadline: string | null } {
   const deliveredAt = lead.lifecycle?.delivered_at ?? lead.lifecycle?.sent_at ?? lead.created_at ?? null;
@@ -243,11 +294,14 @@ export function disputeDeadline(lead: LeadForCredit, days = disputeWindowDays())
   return { deliveredAt, deadline: Number.isFinite(ms) ? new Date(ms + days * 86_400_000).toISOString() : null };
 }
 
-/** Who wins a date comparison. Earliest wins; with tiesToDealer, a tie or the same UTC day goes to the dealer. */
-export function dealerWins(dealerRecordMs: number, matchrvTouchMs: number, ties = tiesToDealer()): boolean {
+/**
+ * Who wins a date comparison. Earliest wins; with tiesToDealer, a tie or the same calendar day
+ * on the dealer's local clock (dealer time zone, Pacific when unknown) goes to the dealer.
+ */
+export function dealerWins(dealerRecordMs: number, matchrvTouchMs: number, ties = tiesToDealer(), timeZone = DEFAULT_DEALER_TIME_ZONE): boolean {
   if (dealerRecordMs < matchrvTouchMs) return true;
   if (!ties) return false;
-  return dealerRecordMs === matchrvTouchMs || utcDay(dealerRecordMs) === utcDay(matchrvTouchMs);
+  return dealerRecordMs === matchrvTouchMs || localDay(dealerRecordMs, timeZone) === localDay(matchrvTouchMs, timeZone);
 }
 
 /** The billing verdict for one lead. Pure apart from config and `now`. */
@@ -259,6 +313,7 @@ export function creditVerdict(
   const windowDays = o.windowDays ?? creditWindowDays();
   const weights = o.weights ?? creditWeights();
   const now = o.now ?? Date.now();
+  const tz = dealerTimeZone(lead.dealer?.state);
   const { deliveredAt, deadline } = disputeDeadline(lead, o.disputeDays);
   const open = deadline ? now <= Date.parse(deadline) : false;
   const credit = lead.credit;
@@ -280,7 +335,7 @@ export function creditVerdict(
   const touch = Date.parse(credit.evidence.first_touch_at);
   const dealerAt = r.dealer_record_at && r.proof_type ? Date.parse(r.dealer_record_at) : NaN;
   if (Number.isFinite(dealerAt)) {
-    if (dealerWins(dealerAt, touch, o.ties)) return v(false, "dealer_already_had", "The dealer's dated record is earlier than (or the same day as) MatchRV's first touch. Not billed.");
+    if (dealerWins(dealerAt, touch, o.ties, tz)) return v(false, "dealer_already_had", "The dealer's dated record is earlier than (or the same local day as) MatchRV's first touch. Not billed.");
     if (dealerAt - touch > windowDays * 86_400_000) return v(false, "outside_window", `The dealer's own record came more than ${windowDays} days after MatchRV's first touch. Not billed.`);
   }
   const what = tier === "qualified" ? "qualified lead (phone + buying signal)" : "basic inquiry";
@@ -289,39 +344,100 @@ export function creditVerdict(
 
 // ── Click credits (outbound click, no MatchRV inquiry) ─────────────────────
 
-export type ClickCreditStatus = "provisional" | "credited" | "already_counted_as_inquiry" | "dealer_already_had" | "outside_window" | "no_session";
+export type ClickCreditStatus =
+  | "unmatched" | "credited" | "already_counted_as_inquiry" | "dealer_already_had"
+  | "outside_window" | "disputed_pending" | "no_session";
+
+/** Where MatchRV ops found the dealer's own record of a shopper who clicked through. */
+export const CLICK_MATCH_SOURCES = ["crm_export", "dealer_analytics_utm", "web_lead_timestamped", "email", "call_log", "other_dated_record"] as const;
+export type ClickMatchSource = (typeof CLICK_MATCH_SOURCES)[number];
+export const CLICK_MATCH_SOURCE_LABELS: Record<ClickMatchSource, string> = {
+  crm_export: "Dealer CRM export",
+  dealer_analytics_utm: "Dealer analytics (utm_source=matchrv)",
+  web_lead_timestamped: "Dealer web lead with timestamp",
+  email: "Dealer email",
+  call_log: "Dealer call log",
+  other_dated_record: "Other dated dealer record",
+};
+
+/** Ops matched a click to the dealer's own record of that shopper. `matched_at` (match sent) starts the dispute clock. */
+export interface ClickMatch {
+  click_key: string;
+  dealer_id: string;
+  unit_id: string | null;
+  dealer_state: string | null;
+  clicked_at: string;
+  /** Date of the dealer's own record of this shopper (their contact with the dealer). */
+  dealer_record_at: string;
+  source: ClickMatchSource;
+  note: string | null;
+  matched_at: string;
+  by: "matchrv_ops";
+  /** Dealer dispute of the match (same rules as an inquiry). */
+  review: CreditReview;
+}
 
 export interface ClickCredit {
-  session: string | null; unit_id: string | null; dealer_id: string; dealer_name: string; clicked_at: string;
+  key: string | null;
+  session: string | null; unit_id: string | null; dealer_id: string; dealer_name: string; dealer_state: string | null; clicked_at: string;
   status: ClickCreditStatus; credit_weight: number;
+  match: { dealer_record_at: string; source: ClickMatchSource; matched_at: string; review: CreditReview } | null;
+  dispute_deadline: string | null;
+  dispute_window_open: boolean;
+}
+
+/** A matched click as a lead-shaped record, so the dispute rules (window from match sent, dated proof) are shared. */
+export function matchAsLead(m: Pick<ClickMatch, "matched_at" | "clicked_at" | "review" | "dealer_state">): LeadForCredit {
+  return {
+    test: false, created_at: m.matched_at, lifecycle: { delivered_at: m.matched_at }, dealer: { state: m.dealer_state },
+    credit: { policy_version: CREDIT_POLICY_VERSION, review: m.review, evidence: { first_view_at: null, first_outbound_click_at: m.clicked_at, outbound_clicks: 1, outbound_surfaces: [], price_alert_before_leaving: false, inquiry_at: m.clicked_at, first_touch_at: m.clicked_at } },
+  };
 }
 
 /**
- * One click's credit. It counts only when MatchRV's click comes before the dealer's own record
- * of that shopper (and within the window), and never when a MatchRV inquiry from the same
- * shopper for the same unit/dealer already counted. Without a dealer record yet it is provisional.
+ * One click's credit. A click counts 0 until MatchRV ops matches it to the dealer's own record of
+ * that shopper (CRM export or the dealer's analytics on the utm tag). Then it counts only when
+ * MatchRV's click came first (same local day goes to the dealer while ties-to-dealer is on) and the
+ * dealer's record is within the window. Never when a MatchRV inquiry from the same shopper already
+ * counted. The dealer can dispute a match within the dispute window from when the match was sent.
  */
 export function clickCreditVerdict(input: {
-  clickedAt: string; dealerRecordAt?: string | null; inquiryCounted: boolean; hasSession: boolean;
-  windowDays?: number; weights?: CreditWeights; ties?: boolean;
-}): { status: ClickCreditStatus; credit_weight: number } {
+  clickedAt: string; match?: Pick<ClickMatch, "dealer_record_at" | "matched_at" | "review"> | null;
+  dealerState?: string | null; inquiryCounted: boolean; hasSession: boolean;
+  windowDays?: number; weights?: CreditWeights; ties?: boolean; disputeDays?: number; now?: number;
+}): { status: ClickCreditStatus; credit_weight: number; dispute_deadline: string | null; dispute_window_open: boolean } {
   const w = (input.weights ?? creditWeights()).click;
-  if (!input.hasSession) return { status: "no_session", credit_weight: 0 };
-  if (input.inquiryCounted) return { status: "already_counted_as_inquiry", credit_weight: 0 };
+  const tz = dealerTimeZone(input.dealerState);
+  const m = input.match ?? null;
+  const deadline = m ? disputeDeadline({ test: false, created_at: m.matched_at, lifecycle: { delivered_at: m.matched_at } }, input.disputeDays).deadline : null;
+  const open = deadline ? (input.now ?? Date.now()) <= Date.parse(deadline) : false;
+  const out = (status: ClickCreditStatus, credit = 0) => ({ status, credit_weight: credit, dispute_deadline: deadline, dispute_window_open: open });
+  if (!input.hasSession) return out("no_session");
+  if (input.inquiryCounted) return out("already_counted_as_inquiry");
+  if (!m) return out("unmatched");
   const click = Date.parse(input.clickedAt);
-  const dealerAt = input.dealerRecordAt ? Date.parse(input.dealerRecordAt) : NaN;
-  if (!Number.isFinite(dealerAt)) return { status: "provisional", credit_weight: w };
-  if (dealerWins(dealerAt, click, input.ties)) return { status: "dealer_already_had", credit_weight: 0 };
-  if (dealerAt - click > (input.windowDays ?? creditWindowDays()) * 86_400_000) return { status: "outside_window", credit_weight: 0 };
-  return { status: "credited", credit_weight: w };
+  const r = m.review;
+  if (r.status === "dealer_already_had") return out("dealer_already_had");
+  if (r.status === "disputed") return out("disputed_pending");
+  // A dated, proven earlier record from a dispute review beats the click.
+  const proven = r.dealer_record_at && r.proof_type ? Date.parse(r.dealer_record_at) : NaN;
+  if (Number.isFinite(proven) && dealerWins(proven, click, input.ties, tz)) return out("dealer_already_had");
+  const dealerAt = Date.parse(m.dealer_record_at);
+  if (!Number.isFinite(dealerAt)) return out("unmatched");
+  if (dealerWins(dealerAt, click, input.ties, tz)) return out("dealer_already_had");
+  if (dealerAt - click > (input.windowDays ?? creditWindowDays()) * 86_400_000) return out("outside_window");
+  return out("credited", w);
 }
 
 /**
  * Click credits from the outbound log: one per shopper session per RV (or dealer home page),
- * earliest click wins, clicks without a session id never count.
+ * earliest click wins, clicks without a session id never count, unmatched clicks count 0.
  * `inquirySessions` holds "session|unit" and "session|dealer:<id>" keys of leads already counted.
  */
-export function computeClickCredits(clicks: OutboundClick[], inquirySessions: Set<string>, opts: { from?: string; to?: string; weights?: CreditWeights } = {}): ClickCredit[] {
+export function computeClickCredits(
+  clicks: OutboundClick[], inquirySessions: Set<string>,
+  opts: { from?: string; to?: string; weights?: CreditWeights; matches?: Map<string, ClickMatch>; now?: number } = {},
+): ClickCredit[] {
   const first = new Map<string, OutboundClick>();
   for (const c of clicks) {
     if (!c.session) continue;
@@ -331,16 +447,49 @@ export function computeClickCredits(clicks: OutboundClick[], inquirySessions: Se
     const cur = first.get(key);
     if (!cur || c.at < cur.at) first.set(key, c);
   }
-  return [...first.values()].sort((a, b) => a.at.localeCompare(b.at)).map((c) => {
+  return [...first.entries()].sort((a, b) => a[1].at.localeCompare(b[1].at)).map(([key, c]) => {
     const counted = inquirySessions.has(`${c.session}|${c.unitId}`) || inquirySessions.has(`${c.session}|dealer:${c.dealerId.toLowerCase()}`);
-    const v = clickCreditVerdict({ clickedAt: c.at, inquiryCounted: counted, hasSession: true, weights: opts.weights });
-    return { session: c.session ?? null, unit_id: c.unitId || null, dealer_id: c.dealerId, dealer_name: c.dealerName, clicked_at: c.at, ...v };
+    const match = opts.matches?.get(key) ?? null;
+    const dealerState = match?.dealer_state ?? c.dealerState ?? null;
+    const v = clickCreditVerdict({ clickedAt: c.at, match, dealerState, inquiryCounted: counted, hasSession: true, weights: opts.weights, now: opts.now });
+    return {
+      key, session: c.session ?? null, unit_id: c.unitId || null, dealer_id: c.dealerId, dealer_name: c.dealerName, dealer_state: dealerState, clicked_at: c.at,
+      ...v,
+      match: match ? { dealer_record_at: match.dealer_record_at, source: match.source, matched_at: match.matched_at, review: match.review } : null,
+    };
   });
+}
+
+/** Validates ops input for a click match. Date-only dates are midnight on the dealer's local calendar. */
+export function cleanClickMatch(raw: Record<string, unknown>, ctx: { now?: number; dealerState?: string | null; clickedAt?: string } = {}):
+  { ok: true; value: { dealer_record_at: string; source: ClickMatchSource; note: string | null } } | { ok: false; code: "invalid_source" | "date_required" | "invalid_date" | "date_in_future" } {
+  const now = ctx.now ?? Date.now();
+  const source = typeof raw.source === "string" ? raw.source.trim() : "";
+  if (!(CLICK_MATCH_SOURCES as readonly string[]).includes(source)) return { ok: false, code: "invalid_source" };
+  const dateRaw = typeof raw.dealer_record_at === "string" ? raw.dealer_record_at.trim() : "";
+  if (!dateRaw) return { ok: false, code: "date_required" };
+  const ms = parseDealerDate(dateRaw, dealerTimeZone(ctx.dealerState));
+  if (ms === null) return { ok: false, code: "invalid_date" };
+  if (ms > now + 86_400_000) return { ok: false, code: "date_in_future" };
+  return { ok: true, value: { dealer_record_at: new Date(ms).toISOString(), source: source as ClickMatchSource, note: cleanNote(raw.note) } };
 }
 
 // ── Ops input ──────────────────────────────────────────────────────────────
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
+/** A dealer-record date: a date-only value is midnight on the dealer's local calendar; a time without a zone is dealer-local too. */
+function parseDealerDate(raw: string, timeZone: string): number | null {
+  if (!DATE_RE.test(raw) || !Number.isFinite(Date.parse(raw.length === 10 ? `${raw}T00:00:00Z` : raw))) return null;
+  if (raw.length === 10) return zonedMidnight(raw, timeZone);
+  if (/(Z|[+-]\d{2}:\d{2})$/.test(raw)) return Date.parse(raw);
+  const asUtc = Date.parse(`${raw}Z`);
+  const day = raw.slice(0, 10);
+  return asUtc - (Date.parse(`${day}T00:00:00Z`) - zonedMidnight(day, timeZone));
+}
+
+const cleanNote = (raw: unknown): string | null =>
+  typeof raw === "string" ? raw.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 280) || null : null;
 
 export type CreditReviewError =
   | "invalid_status" | "reason_required" | "invalid_reason" | "invalid_date" | "date_in_future"
@@ -368,8 +517,9 @@ export function cleanCreditReview(raw: Record<string, unknown>, nowOrCtx: number
   const dateRaw = typeof raw.dealer_record_at === "string" ? raw.dealer_record_at.trim() : "";
   let dealerAt: string | null = null;
   if (dateRaw) {
-    if (!DATE_RE.test(dateRaw) || !Number.isFinite(Date.parse(dateRaw))) return { ok: false, code: "invalid_date" };
-    const iso = new Date(Date.parse(dateRaw.length === 10 ? `${dateRaw}T00:00:00Z` : dateRaw)).toISOString();
+    const ms = parseDealerDate(dateRaw, dealerTimeZone(ctx.lead?.dealer?.state));
+    if (ms === null) return { ok: false, code: "invalid_date" };
+    const iso = new Date(ms).toISOString();
     if (Date.parse(iso) > now + 86_400_000) return { ok: false, code: "date_in_future" };
     dealerAt = iso;
   }
@@ -386,7 +536,7 @@ export function cleanCreditReview(raw: Record<string, unknown>, nowOrCtx: number
       filedAt = new Date(now).toISOString();
     }
   }
-  const note = typeof raw.note === "string" ? raw.note.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 280) || null : null;
+  const note = cleanNote(raw.note);
   return {
     ok: true,
     review: { status: status as CreditReviewStatus, reason, dealer_record_at: dealerAt, proof_type: proof, note, by: "matchrv_ops", at: new Date(now).toISOString(), dispute_filed_at: filedAt },

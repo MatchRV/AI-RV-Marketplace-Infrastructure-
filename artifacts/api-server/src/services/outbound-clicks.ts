@@ -19,6 +19,8 @@ export interface OutboundClick {
   session?: string;
   /** The shopper saved a price-drop alert on the "before you go" step right before leaving. */
   alert?: true;
+  /** Dealer's state/province (for judging "same day" on the dealer's local calendar). Older clicks lack it. */
+  dealerState?: string;
 }
 
 const SID_RE = /^[A-Za-z0-9_-]{8,128}$/;
@@ -36,7 +38,7 @@ const MAX_CLICKS_PER_SESSION = 20;
 const byDealer = new Map<string, { dealerName: string; clicks: number }>();
 let loaded = false;
 let persistenceOverride: boolean | null = null;
-const persistenceEnabled = () => persistenceOverride ?? (process.env.NODE_ENV !== "test" && !process.env.VITEST);
+export const persistenceEnabled = () => persistenceOverride ?? (process.env.NODE_ENV !== "test" && !process.env.VITEST);
 
 export function clicksPath(): string {
   if (process.env.OUTBOUND_CLICKS_PATH) return resolve(process.env.OUTBOUND_CLICKS_PATH);
@@ -114,6 +116,17 @@ export function clicksForSession(sessionHash: string | null | undefined): Outbou
 export function allSessionClicks(): OutboundClick[] {
   load();
   return [...bySession.values()].flat().sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** Key of one click credit: the shopper session plus the RV (or the dealer home page). */
+export function clickKey(c: Pick<OutboundClick, "session" | "unitId" | "dealerId">): string | null {
+  return c.session ? `${c.session}|${c.unitId || `dealer:${c.dealerId.toLowerCase()}`}` : null;
+}
+
+/** The earliest click for one click key, or null. */
+export function firstClickForKey(key: string): OutboundClick | null {
+  const session = key.split("|")[0];
+  return clicksForSession(session).find((c) => clickKey(c) === key) ?? null;
 }
 
 /** Test helper. */

@@ -7,6 +7,7 @@ import { botExclusions, funnelRows, HEADLINE_FUNNEL } from "./lead-funnel";
 import { listLeads, type LeadRecord } from "./lead-store";
 import { computeClickCredits, creditVerdict, creditWeights, creditWindowDays, disputeWindowDays, leadCreditEnabled, tiesToDealer, type ClickCredit } from "./lead-credit";
 import { allSessionClicks, outboundSessionHash } from "./outbound-clicks";
+import { listClickMatches } from "./click-matches";
 
 export type Granularity = "day" | "week";
 
@@ -218,14 +219,40 @@ export interface CreditSummary {
   windowDays: number; disputeDays: number; tiesToDealer: boolean;
   billableLeads: number; qualifiedLeads: number; basicLeads: number; notBillable: Record<string, number>;
   leadCredits: number;
-  clickCredits: number; creditedClicks: number; clicksAlreadyCounted: number;
+  /** Matched click credits only (0.5 each when MatchRV's click came first). Unmatched clicks count 0. */
+  clickCredits: number; creditedClicks: number; matchedClicks: number; unmatchedClicks: number; clicksAlreadyCounted: number;
   totalCredits: number;
   clicks: ClickCredit[];
+  wrongNumberFlags: WrongNumberFlag[];
+}
+
+/** A dealer that marked more than WRONG_NUMBER_FLAG_LIMIT leads "wrong number" on the receipt page in the last 30 days. */
+export interface WrongNumberFlag { dealerId: string | null; dealerName: string | null; count: number; since: string }
+export const WRONG_NUMBER_FLAG_LIMIT = 3;
+export const WRONG_NUMBER_FLAG_DAYS = 30;
+
+/** Dealers marking more than 3 leads "wrong number" from the receipt page in the last 30 days (rolling, from now). */
+export function wrongNumberFlags(opts: { now?: number; includeTests?: boolean } = {}): WrongNumberFlag[] {
+  const now = opts.now ?? Date.now();
+  const since = now - WRONG_NUMBER_FLAG_DAYS * 86_400_000;
+  const by = new Map<string, WrongNumberFlag>();
+  for (const l of listLeads()) {
+    if (l.test && !opts.includeTests) continue;
+    const lc = l.lifecycle;
+    if (lc.lost_reason !== "wrong_number" || lc.outcome_by !== "dealer_receipt" || !lc.lost_at) continue;
+    const at = Date.parse(lc.lost_at);
+    if (!Number.isFinite(at) || at < since || at > now + 60_000) continue;
+    const k = (l.dealer.id ?? l.dealer.name ?? "unknown").toLowerCase();
+    const row = by.get(k) ?? { dealerId: l.dealer.id, dealerName: l.dealer.name, count: 0, since: new Date(since).toISOString() };
+    row.count += 1;
+    by.set(k, row);
+  }
+  return [...by.values()].filter((r) => r.count > WRONG_NUMBER_FLAG_LIMIT).sort((a, b) => b.count - a.count);
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Credits in a date range: lead credits (inquiry 1.0 / qualified 1.5) plus click-only credits (0.5, provisional). */
+/** Credits in a date range: lead credits (inquiry 1.0 / qualified 1.5) plus matched click-only credits (0.5). */
 export function buildCreditSummary(opts: ReportOptions = {}): CreditSummary {
   const { from, to } = resolveRange(opts);
   const weights = creditWeights();
@@ -246,15 +273,18 @@ export function buildCreditSummary(opts: ReportOptions = {}): CreditSummary {
     if (l.unit.id) counted.add(`${h}|${l.unit.id}`);
     if (l.dealer.id) counted.add(`${h}|dealer:${l.dealer.id.toLowerCase()}`);
   }
-  const clicks = computeClickCredits(allSessionClicks(), counted, { from, to, weights });
-  const clickCredits = clicks.reduce((n, c) => n + c.credit_weight, 0);
+  const clicks = computeClickCredits(allSessionClicks(), counted, { from, to, weights, matches: listClickMatches(), now: opts.now });
+  const clickCredits = clicks.filter((c) => c.match).reduce((n, c) => n + c.credit_weight, 0);
   return {
     range: { from, to }, weights, windowDays: creditWindowDays(), disputeDays: disputeWindowDays(), tiesToDealer: tiesToDealer(),
     billableLeads: billable, qualifiedLeads: qualified, basicLeads: basic, notBillable,
     leadCredits: round2(leadCredits),
-    clickCredits: round2(clickCredits), creditedClicks: clicks.filter((c) => c.credit_weight > 0).length,
+    clickCredits: round2(clickCredits), creditedClicks: clicks.filter((c) => c.match && c.credit_weight > 0).length,
+    matchedClicks: clicks.filter((c) => c.match && c.status !== "already_counted_as_inquiry").length,
+    unmatchedClicks: clicks.filter((c) => c.status === "unmatched").length,
     clicksAlreadyCounted: clicks.filter((c) => c.status === "already_counted_as_inquiry").length,
     totalCredits: round2(leadCredits + clickCredits),
     clicks,
+    wrongNumberFlags: wrongNumberFlags({ now: opts.now, includeTests: opts.includeTests }),
   };
 }

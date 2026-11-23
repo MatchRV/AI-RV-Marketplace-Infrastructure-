@@ -162,7 +162,8 @@ dashboard always shows "Shoppers sent to dealer sites" (outbound click counts by
 `LEAD_CREDIT_ENABLED` it also shows a Lead credit section with the verdict per lead and a
 "Record dealer dispute" form (signed-in cookie + per-session form token + same-origin check).
 It shows each lead's evidence trail, tier (basic / qualified), credit weight, dispute deadline,
-and the total credits (lead credits + provisional click-only credits) for the date range; the
+and the total credits (lead credits + matched click-only credits; unmatched clicks shown separately)
+for the date range, with a form to match a click to the dealer's own record; the
 JSON report adds a `credit` summary. Rules: [LEAD_CREDIT_POLICY.md](LEAD_CREDIT_POLICY.md).
 
 ## Environment variables (none are set by this PR)
@@ -180,8 +181,8 @@ JSON report adds a `credit` summary. Rules: [LEAD_CREDIT_POLICY.md](LEAD_CREDIT_
 | `LEADS_PATH`, `LEAD_FUNNEL_PATH` | data dir | File locations override |
 | `LEAD_CREDIT_ENABLED` | off | Lead-credit verdicts, credit weights, totals and dealer-dispute review on the dashboard (Jonathan-approved terms, see [LEAD_CREDIT_POLICY.md](LEAD_CREDIT_POLICY.md)). Evidence is captured whenever `LEAD_TRACKING_ENABLED` is on |
 | `LEAD_CREDIT_WINDOW_DAYS` | 30 | Lead-credit window |
-| `LEAD_CREDIT_DISPUTE_DAYS` | 7 | Days from delivery a dealer has to dispute |
-| `LEAD_CREDIT_TIES_TO_DEALER` | on | Ties / same-day close calls go to the dealer (pilot) |
+| `LEAD_CREDIT_DISPUTE_DAYS` | 7 | Calendar days from delivery (inquiries) or match sent (clicks) a dealer has to dispute |
+| `LEAD_CREDIT_TIES_TO_DEALER` | on | Ties / same-day close calls (dealer's local day) go to the dealer (pilot) |
 | `LEAD_CREDIT_WEIGHT_CLICK` / `_INQUIRY` / `_QUALIFIED` | 0.5 / 1.0 / 1.5 | Credit weights |
 | `GA4_MP_ENABLED` | off | Independent of this feature. When on, off-site inquiries also send a GA4 Measurement Protocol `generate_lead` (no PII). Website inquiries are not sent this way — they already use gtag. See [analytics-conversions.md](../analytics-conversions.md). |
 | `GA4_MEASUREMENT_ID` | `G-Y2C0PN44L2` | Used only when `GA4_MP_ENABLED` is on |

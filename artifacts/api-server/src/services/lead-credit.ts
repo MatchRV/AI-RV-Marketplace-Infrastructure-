@@ -1,35 +1,31 @@
 /**
- * Lead credit: who gets credit for a shopper, and when a dealer must never be
- * charged. Answers the pilot dealers' question "what if we both have the same
- * lead? I don't want to pay for my own lead."
+ * Lead credit: who gets credit for a shopper, how much, and when a dealer must
+ * never be charged. Answers the pilot dealers' question "what if we both have
+ * the same lead? I don't want to pay for my own lead."
  *
- * Evidence (captured on every canonical lead while LEAD_TRACKING_ENABLED):
- *   first_view_at            first time this browser session looked at this RV on MatchRV (server journey)
- *   first_outbound_click_at  first time MatchRV sent this session to the dealer's site (GET /api/out)
- *   inquiry_at               when MatchRV delivered the inquiry
- *   first_touch_at           earliest of the three: the start of MatchRV's credit window
+ * Terms approved by Jonathan on Nov 22, 2026 (docs/lead-tracking/LEAD_CREDIT_POLICY.md):
  *
- * Review (MatchRV ops, from the leads dashboard): a dealer can show it already
- * had the shopper (CRM entry, its own web form, a walk-in or call). Ops records
- * the date of the dealer's own record and a reason. The verdict below then
- * decides "billable" or not:
+ *   Window      30 days from MatchRV's first touch (LEAD_CREDIT_WINDOW_DAYS).
+ *   Weights     outbound click with no MatchRV inquiry  0.5  (LEAD_CREDIT_WEIGHT_CLICK)
+ *               basic inquiry (name + email)            1.0  (LEAD_CREDIT_WEIGHT_INQUIRY)
+ *               qualified lead                          1.5  (LEAD_CREDIT_WEIGHT_QUALIFIED)
+ *               qualified = a phone number AND at least one buying signal
+ *               (timeline, trade-in or financing interest).
+ *   Disputes    the dealer has 7 days from delivery (LEAD_CREDIT_DISPUTE_DAYS); after that the lead stands.
+ *               Only a dated record of that shopper (CRM entry, email, timestamped web lead, call log)
+ *               that predates MatchRV's first touch overturns it. An undated claim does not.
+ *               Earliest timestamp wins; ties and same-day close calls go to the dealer while
+ *               LEAD_CREDIT_TIES_TO_DEALER is on (default on for the pilots).
+ *   Never billed test leads, spam, wrong number, duplicate (same shopper + same unit within the window).
  *
- *   - test lead                                           -> not billable
- *   - ops marked dealer_already_had                       -> not billable (never charged)
- *   - ops marked disputed (still being checked)           -> not billable until resolved
- *   - dealer's own record is on or before first_touch_at  -> dealer_already_had, not billable
- *   - dealer's own record is more than WINDOW days after  -> outside_window, not billable
- *   - otherwise (no earlier dealer record)                -> billable: MatchRV touched first, within the window
- *
- * DRAFT terms: the 30-day window and the rules above are a proposal pending
- * Jonathan and the CSO (docs/lead-tracking/LEAD_CREDIT_POLICY.md). Nothing here
- * charges anyone; MatchRV has no billing code. LEAD_CREDIT_ENABLED (default off)
- * only turns on the verdict column, the review controls and the CSV verdict.
+ * Nothing here charges anyone; MatchRV has no billing code. LEAD_CREDIT_ENABLED
+ * (default off) only turns on the verdict, weights, totals and the review controls.
  */
 import type { JourneySummary } from "./lead-attribution";
 import type { OutboundClick } from "./outbound-clicks";
 
 const truthy = (v: string | undefined) => /^(1|true|yes|on)$/i.test((v ?? "").trim());
+const falsy = (v: string | undefined) => /^(0|false|no|off)$/i.test((v ?? "").trim());
 let enabledOverride: boolean | null = null;
 
 /** LEAD_CREDIT_ENABLED: show credit verdicts and allow dispute review. Off by default. */
@@ -37,14 +33,67 @@ export function leadCreditEnabled(): boolean {
   return enabledOverride ?? truthy(process.env.LEAD_CREDIT_ENABLED);
 }
 
-/** LEAD_CREDIT_WINDOW_DAYS (default 30, 1..365). DRAFT pending Jonathan/CSO pilot terms. */
-export function creditWindowDays(): number {
-  const raw = process.env.LEAD_CREDIT_WINDOW_DAYS;
+const numberEnv = (name: string, fallback: number, min: number, max: number, int = false): number => {
+  const raw = process.env[name];
   const n = raw === undefined || raw.trim() === "" ? NaN : Number(raw);
-  return Number.isFinite(n) && n >= 1 && n <= 365 ? Math.floor(n) : 30;
+  if (!Number.isFinite(n) || n < min || n > max) return fallback;
+  return int ? Math.floor(n) : n;
+};
+
+/** LEAD_CREDIT_WINDOW_DAYS (default 30, 1..365). */
+export const creditWindowDays = (): number => numberEnv("LEAD_CREDIT_WINDOW_DAYS", 30, 1, 365, true);
+/** LEAD_CREDIT_DISPUTE_DAYS: days from delivery a dealer has to dispute (default 7, 1..90). */
+export const disputeWindowDays = (): number => numberEnv("LEAD_CREDIT_DISPUTE_DAYS", 7, 1, 90, true);
+/** LEAD_CREDIT_TIES_TO_DEALER: ties and same-day close calls go to the dealer. Default ON (pilot). */
+export const tiesToDealer = (): boolean => !falsy(process.env.LEAD_CREDIT_TIES_TO_DEALER);
+
+export const DEFAULT_CREDIT_WEIGHTS = { click: 0.5, inquiry: 1.0, qualified: 1.5 } as const;
+export interface CreditWeights { click: number; inquiry: number; qualified: number }
+/** LEAD_CREDIT_WEIGHT_CLICK / _INQUIRY / _QUALIFIED (0..10). Defaults 0.5 / 1.0 / 1.5. */
+export function creditWeights(): CreditWeights {
+  return {
+    click: numberEnv("LEAD_CREDIT_WEIGHT_CLICK", DEFAULT_CREDIT_WEIGHTS.click, 0, 10),
+    inquiry: numberEnv("LEAD_CREDIT_WEIGHT_INQUIRY", DEFAULT_CREDIT_WEIGHTS.inquiry, 0, 10),
+    qualified: numberEnv("LEAD_CREDIT_WEIGHT_QUALIFIED", DEFAULT_CREDIT_WEIGHTS.qualified, 0, 10),
+  };
 }
 
-export const CREDIT_POLICY_VERSION = 1;
+export const CREDIT_POLICY_VERSION = 2;
+
+// ── Buying signals ─────────────────────────────────────────────────────────
+
+export const BUYING_SIGNALS = ["timeline", "trade_in", "financing"] as const;
+export type BuyingSignal = typeof BUYING_SIGNALS[number];
+
+const DAY = "(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)";
+const MONTH = "(?:january|february|march|april|may|june|july|august|september|october|november|december|spring|summer|fall|autumn|winter)";
+const TIMELINE_RE = new RegExp([
+  String.raw`\b(?:this|next) (?:week|weekend|month)\b`,
+  String.raw`\b(?:today|tomorrow|tonight)\b`,
+  String.raw`\b(?:on |this |next )?${DAY}s?\b`,
+  String.raw`\b(?:within|in(?: the next)?) (?:a|one|two|three|\d{1,2}) (?:days?|weeks?|months?)\b`,
+  String.raw`\b(?:asap|as soon as possible)\b`,
+  String.raw`\bready to (?:buy|purchase)\b`,
+  String.raw`\b(?:buy|buying|purchase) (?:soon|now|this)\b`,
+  String.raw`\bby (?:the end of )?${MONTH}\b`,
+].join("|"), "i");
+const TRADE_RE = /\btrade[- ]?ins?\b|\btrad(?:e|ing) (?:in )?(?:my|our)\b/i;
+const FINANCING_RE = /\bfinanc(?:e|ed|ing)\b|\bloans?\b|\bmonthly payments?\b|\bpre-?approv|\bAPR\b|\bdown payment\b/i;
+
+/**
+ * Buying signals from what the shopper actually wrote or chose to share. The website's prefilled
+ * "Is it still available, and when could I come by?" is not a timeline.
+ */
+export function detectBuyingSignals(input: { message?: string | null; shared?: { tradeIn?: boolean; financing?: boolean } | null }): BuyingSignal[] {
+  const m = (input.message ?? "").slice(0, 4000);
+  const out = new Set<BuyingSignal>();
+  if (TIMELINE_RE.test(m)) out.add("timeline");
+  if (TRADE_RE.test(m) || input.shared?.tradeIn) out.add("trade_in");
+  if (FINANCING_RE.test(m) || input.shared?.financing) out.add("financing");
+  return BUYING_SIGNALS.filter((s) => out.has(s));
+}
+
+// ── Review (disputes) ──────────────────────────────────────────────────────
 
 export const CREDIT_REVIEW_STATUSES = ["none", "disputed", "dealer_already_had", "upheld"] as const;
 export type CreditReviewStatus = typeof CREDIT_REVIEW_STATUSES[number];
@@ -56,6 +105,7 @@ export const CREDIT_REASONS = [
   "walk_in_or_call_first",
   "other_lead_provider_first",
   "matchrv_evidence_earlier",
+  "undated_claim",
   "other",
 ] as const;
 export type CreditReason = typeof CREDIT_REASONS[number];
@@ -67,8 +117,35 @@ export const CREDIT_REASON_LABELS: Record<CreditReason, string> = {
   walk_in_or_call_first: "Shopper walked in or called first",
   other_lead_provider_first: "Another lead provider sent the shopper first",
   matchrv_evidence_earlier: "MatchRV's evidence is earlier (dispute rejected)",
+  undated_claim: "Dealer's claim has no dated record (dispute rejected)",
   other: "Other",
 };
+
+/** Proof a dealer can show. Each is a dated record of that shopper. */
+export const PROOF_TYPES = ["crm_entry", "email", "web_lead_timestamped", "call_log", "other_dated_record"] as const;
+export type ProofType = typeof PROOF_TYPES[number];
+export const PROOF_LABELS: Record<ProofType, string> = {
+  crm_entry: "CRM entry", email: "Email", web_lead_timestamped: "Web lead with timestamp", call_log: "Call log", other_dated_record: "Other dated record",
+};
+
+export interface CreditReview {
+  status: CreditReviewStatus;
+  reason: CreditReason | null;
+  /** Date (or time) of the dealer's own earliest record of this shopper, as the dealer showed it. */
+  dealer_record_at: string | null;
+  /** What the dealer showed. Required with dealer_record_at to overturn a lead. */
+  proof_type?: ProofType | null;
+  /** Short ops note. Never sent to analytics. */
+  note: string | null;
+  by: "matchrv_ops" | null;
+  at: string | null;
+  /** When the dealer first raised the dispute (kept across later edits; must be inside the dispute window). */
+  dispute_filed_at?: string | null;
+}
+
+export const emptyReview = (): CreditReview => ({ status: "none", reason: null, dealer_record_at: null, proof_type: null, note: null, by: null, at: null, dispute_filed_at: null });
+
+// ── Evidence ───────────────────────────────────────────────────────────────
 
 export interface CreditEvidence {
   first_view_at: string | null;
@@ -79,22 +156,14 @@ export interface CreditEvidence {
   price_alert_before_leaving: boolean;
   inquiry_at: string;
   first_touch_at: string;
-}
-
-export interface CreditReview {
-  status: CreditReviewStatus;
-  reason: CreditReason | null;
-  /** Date (or time) of the dealer's own earliest record of this shopper, as the dealer showed it. */
-  dealer_record_at: string | null;
-  /** Short ops note. Never sent to analytics. */
-  note: string | null;
-  by: "matchrv_ops" | null;
-  at: string | null;
+  /** Policy v2: what the inquiry contained (no contact values, only whether they were given). */
+  has_name?: boolean;
+  has_email?: boolean;
+  has_phone?: boolean;
+  buying_signals?: BuyingSignal[];
 }
 
 export interface LeadCredit { policy_version: number; evidence: CreditEvidence; review: CreditReview }
-
-export const emptyReview = (): CreditReview => ({ status: "none", reason: null, dealer_record_at: null, note: null, by: null, at: null });
 
 const earliest = (xs: Array<string | null | undefined>): string | null =>
   xs.filter((x): x is string => typeof x === "string" && Number.isFinite(Date.parse(x))).sort((a, b) => Date.parse(a) - Date.parse(b))[0] ?? null;
@@ -106,6 +175,8 @@ const earliest = (xs: Array<string | null | undefined>): string | null =>
 export function buildCreditEvidence(input: {
   inquiryAt: string; unitId: string | null; dealerId: string | null;
   journey: JourneySummary | null | undefined; clicks: OutboundClick[];
+  hasPhone?: boolean; hasEmail?: boolean; hasName?: boolean;
+  buyingSignals?: BuyingSignal[];
 }): CreditEvidence {
   const inquiryMs = Date.parse(input.inquiryAt);
   const views = (input.journey?.events ?? [])
@@ -124,39 +195,166 @@ export function buildCreditEvidence(input: {
     price_alert_before_leaving: clicks.some((c) => c.alert === true),
     inquiry_at: input.inquiryAt,
     first_touch_at: earliest([firstView, firstClick, input.inquiryAt]) ?? input.inquiryAt,
+    has_name: input.hasName ?? false,
+    has_email: input.hasEmail ?? false,
+    has_phone: input.hasPhone ?? false,
+    buying_signals: input.buyingSignals ?? [],
   };
 }
 
-export type CreditVerdictStatus = "billable" | "dealer_already_had" | "disputed_pending" | "outside_window" | "test" | "no_evidence";
+/** Qualified for credit (approved terms): a phone number plus at least one buying signal. */
+export function creditQualified(ev: CreditEvidence | null | undefined): boolean {
+  return Boolean(ev?.has_phone) && (ev?.buying_signals?.length ?? 0) > 0;
+}
 
-export interface CreditVerdict { billable: boolean; status: CreditVerdictStatus; explanation: string; window_days: number }
+// ── Verdict ────────────────────────────────────────────────────────────────
 
-/** The billing verdict for one lead. Pure: same inputs, same answer. */
+export type CreditVerdictStatus =
+  | "billable" | "dealer_already_had" | "disputed_pending" | "outside_window"
+  | "test" | "spam" | "wrong_number" | "duplicate" | "no_evidence";
+
+export interface CreditVerdict {
+  billable: boolean;
+  status: CreditVerdictStatus;
+  explanation: string;
+  window_days: number;
+  /** Credits this lead counts for: 0 when not billable, else the inquiry or qualified weight. */
+  credit_weight: number;
+  /** "qualified" (phone + buying signal) or "basic". */
+  credit_tier: "qualified" | "basic" | null;
+  delivered_at: string | null;
+  /** Last moment a dealer can raise a dispute. */
+  dispute_deadline: string | null;
+  dispute_window_open: boolean;
+}
+
+export interface LeadForCredit {
+  test: boolean;
+  created_at: string;
+  credit?: LeadCredit | null;
+  lifecycle?: { sent_at?: string | null; delivered_at?: string | null; lost_reason?: string | null } | null;
+}
+
+const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+export function disputeDeadline(lead: LeadForCredit, days = disputeWindowDays()): { deliveredAt: string | null; deadline: string | null } {
+  const deliveredAt = lead.lifecycle?.delivered_at ?? lead.lifecycle?.sent_at ?? lead.created_at ?? null;
+  const ms = deliveredAt ? Date.parse(deliveredAt) : NaN;
+  return { deliveredAt, deadline: Number.isFinite(ms) ? new Date(ms + days * 86_400_000).toISOString() : null };
+}
+
+/** Who wins a date comparison. Earliest wins; with tiesToDealer, a tie or the same UTC day goes to the dealer. */
+export function dealerWins(dealerRecordMs: number, matchrvTouchMs: number, ties = tiesToDealer()): boolean {
+  if (dealerRecordMs < matchrvTouchMs) return true;
+  if (!ties) return false;
+  return dealerRecordMs === matchrvTouchMs || utcDay(dealerRecordMs) === utcDay(matchrvTouchMs);
+}
+
+/** The billing verdict for one lead. Pure apart from config and `now`. */
 export function creditVerdict(
-  lead: { test: boolean; created_at: string; credit?: LeadCredit | null },
-  windowDays = creditWindowDays(),
+  lead: LeadForCredit,
+  opts: { windowDays?: number; weights?: CreditWeights; ties?: boolean; disputeDays?: number; now?: number } | number = {},
 ): CreditVerdict {
-  const v = (billable: boolean, status: CreditVerdictStatus, explanation: string): CreditVerdict => ({ billable, status, explanation, window_days: windowDays });
-  if (lead.test) return v(false, "test", "Test lead. Never billed.");
+  const o = typeof opts === "number" ? { windowDays: opts } : opts;
+  const windowDays = o.windowDays ?? creditWindowDays();
+  const weights = o.weights ?? creditWeights();
+  const now = o.now ?? Date.now();
+  const { deliveredAt, deadline } = disputeDeadline(lead, o.disputeDays);
+  const open = deadline ? now <= Date.parse(deadline) : false;
   const credit = lead.credit;
+  const tier: "qualified" | "basic" | null = credit ? (creditQualified(credit.evidence) ? "qualified" : "basic") : null;
+  const v = (billable: boolean, status: CreditVerdictStatus, explanation: string): CreditVerdict => ({
+    billable, status, explanation, window_days: windowDays,
+    credit_weight: billable ? (tier === "qualified" ? weights.qualified : weights.inquiry) : 0,
+    credit_tier: tier, delivered_at: deliveredAt, dispute_deadline: deadline, dispute_window_open: open,
+  });
+  if (lead.test) return v(false, "test", "Test lead. Never billed.");
+  const lost = lead.lifecycle?.lost_reason;
+  if (lost === "spam") return v(false, "spam", "Marked spam. Never billed.");
+  if (lost === "wrong_number") return v(false, "wrong_number", "Wrong number or bad contact details. Never billed.");
+  if (lost === "duplicate") return v(false, "duplicate", "Duplicate of another lead (same shopper, same RV). Never billed.");
   if (!credit) return v(false, "no_evidence", "Recorded before lead-credit evidence existed. Review by hand before billing.");
   const r = credit.review;
-  if (r.status === "dealer_already_had") return v(false, "dealer_already_had", "The dealer showed it already had this shopper. Not billed.");
-  if (r.status === "disputed") return v(false, "disputed_pending", "The dealer disputes this lead. Not billed until MatchRV reviews it.");
+  if (r.status === "dealer_already_had") return v(false, "dealer_already_had", "The dealer showed a dated record of this shopper from before MatchRV's first touch. Not billed.");
+  if (r.status === "disputed") return v(false, "disputed_pending", "The dealer disputed this lead in time. Not billed until MatchRV reviews the proof.");
   const touch = Date.parse(credit.evidence.first_touch_at);
-  const dealerAt = r.dealer_record_at ? Date.parse(r.dealer_record_at) : NaN;
+  const dealerAt = r.dealer_record_at && r.proof_type ? Date.parse(r.dealer_record_at) : NaN;
   if (Number.isFinite(dealerAt)) {
-    if (dealerAt <= touch) return v(false, "dealer_already_had", "The dealer's own record is on or before MatchRV's first touch. Not billed.");
+    if (dealerWins(dealerAt, touch, o.ties)) return v(false, "dealer_already_had", "The dealer's dated record is earlier than (or the same day as) MatchRV's first touch. Not billed.");
     if (dealerAt - touch > windowDays * 86_400_000) return v(false, "outside_window", `The dealer's own record came more than ${windowDays} days after MatchRV's first touch. Not billed.`);
   }
-  return v(true, "billable", `MatchRV touched this shopper first (${credit.evidence.first_touch_at.slice(0, 10)}) and no earlier dealer record was shown.`);
+  const what = tier === "qualified" ? "qualified lead (phone + buying signal)" : "basic inquiry";
+  return v(true, "billable", `MatchRV touched this shopper first (${credit.evidence.first_touch_at.slice(0, 10)}); ${what}.${open ? "" : " Dispute window closed: the lead stands."}`);
 }
+
+// ── Click credits (outbound click, no MatchRV inquiry) ─────────────────────
+
+export type ClickCreditStatus = "provisional" | "credited" | "already_counted_as_inquiry" | "dealer_already_had" | "outside_window" | "no_session";
+
+export interface ClickCredit {
+  session: string | null; unit_id: string | null; dealer_id: string; dealer_name: string; clicked_at: string;
+  status: ClickCreditStatus; credit_weight: number;
+}
+
+/**
+ * One click's credit. It counts only when MatchRV's click comes before the dealer's own record
+ * of that shopper (and within the window), and never when a MatchRV inquiry from the same
+ * shopper for the same unit/dealer already counted. Without a dealer record yet it is provisional.
+ */
+export function clickCreditVerdict(input: {
+  clickedAt: string; dealerRecordAt?: string | null; inquiryCounted: boolean; hasSession: boolean;
+  windowDays?: number; weights?: CreditWeights; ties?: boolean;
+}): { status: ClickCreditStatus; credit_weight: number } {
+  const w = (input.weights ?? creditWeights()).click;
+  if (!input.hasSession) return { status: "no_session", credit_weight: 0 };
+  if (input.inquiryCounted) return { status: "already_counted_as_inquiry", credit_weight: 0 };
+  const click = Date.parse(input.clickedAt);
+  const dealerAt = input.dealerRecordAt ? Date.parse(input.dealerRecordAt) : NaN;
+  if (!Number.isFinite(dealerAt)) return { status: "provisional", credit_weight: w };
+  if (dealerWins(dealerAt, click, input.ties)) return { status: "dealer_already_had", credit_weight: 0 };
+  if (dealerAt - click > (input.windowDays ?? creditWindowDays()) * 86_400_000) return { status: "outside_window", credit_weight: 0 };
+  return { status: "credited", credit_weight: w };
+}
+
+/**
+ * Click credits from the outbound log: one per shopper session per RV (or dealer home page),
+ * earliest click wins, clicks without a session id never count.
+ * `inquirySessions` holds "session|unit" and "session|dealer:<id>" keys of leads already counted.
+ */
+export function computeClickCredits(clicks: OutboundClick[], inquirySessions: Set<string>, opts: { from?: string; to?: string; weights?: CreditWeights } = {}): ClickCredit[] {
+  const first = new Map<string, OutboundClick>();
+  for (const c of clicks) {
+    if (!c.session) continue;
+    const day = c.at.slice(0, 10);
+    if ((opts.from && day < opts.from) || (opts.to && day > opts.to)) continue;
+    const key = `${c.session}|${c.unitId || `dealer:${c.dealerId.toLowerCase()}`}`;
+    const cur = first.get(key);
+    if (!cur || c.at < cur.at) first.set(key, c);
+  }
+  return [...first.values()].sort((a, b) => a.at.localeCompare(b.at)).map((c) => {
+    const counted = inquirySessions.has(`${c.session}|${c.unitId}`) || inquirySessions.has(`${c.session}|dealer:${c.dealerId.toLowerCase()}`);
+    const v = clickCreditVerdict({ clickedAt: c.at, inquiryCounted: counted, hasSession: true, weights: opts.weights });
+    return { session: c.session ?? null, unit_id: c.unitId || null, dealer_id: c.dealerId, dealer_name: c.dealerName, clicked_at: c.at, ...v };
+  });
+}
+
+// ── Ops input ──────────────────────────────────────────────────────────────
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/;
 
-/** Validates an ops review. Returns the cleaned review or an error code. */
-export function cleanCreditReview(raw: Record<string, unknown>, now = Date.now()):
-  { ok: true; review: CreditReview } | { ok: false; code: "invalid_status" | "reason_required" | "invalid_reason" | "invalid_date" | "date_in_future" } {
+export type CreditReviewError =
+  | "invalid_status" | "reason_required" | "invalid_reason" | "invalid_date" | "date_in_future"
+  | "invalid_proof" | "dated_record_required" | "dispute_window_closed";
+
+/**
+ * Validates an ops review against the approved terms. `lead` (when given) enforces the
+ * dispute window: a new dispute must be filed within LEAD_CREDIT_DISPUTE_DAYS of delivery;
+ * a dispute filed in time can still be resolved later. "upheld" and "clear" are always allowed.
+ */
+export function cleanCreditReview(raw: Record<string, unknown>, nowOrCtx: number | { now?: number; lead?: LeadForCredit | null } = {}):
+  { ok: true; review: CreditReview } | { ok: false; code: CreditReviewError } {
+  const ctx = typeof nowOrCtx === "number" ? { now: nowOrCtx } : nowOrCtx;
+  const now = ctx.now ?? Date.now();
   const status = typeof raw.status === "string" ? raw.status.trim() : "";
   if (status === "clear") return { ok: true, review: emptyReview() };
   if (!(CREDIT_REVIEW_STATUSES as readonly string[]).includes(status) || status === "none") return { ok: false, code: "invalid_status" };
@@ -164,6 +362,9 @@ export function cleanCreditReview(raw: Record<string, unknown>, now = Date.now()
   if (reasonRaw && !(CREDIT_REASONS as readonly string[]).includes(reasonRaw)) return { ok: false, code: "invalid_reason" };
   const reason = (reasonRaw || null) as CreditReason | null;
   if ((status === "disputed" || status === "dealer_already_had") && !reason) return { ok: false, code: "reason_required" };
+  const proofRaw = typeof raw.proof_type === "string" ? raw.proof_type.trim() : "";
+  if (proofRaw && !(PROOF_TYPES as readonly string[]).includes(proofRaw)) return { ok: false, code: "invalid_proof" };
+  const proof = (proofRaw || null) as ProofType | null;
   const dateRaw = typeof raw.dealer_record_at === "string" ? raw.dealer_record_at.trim() : "";
   let dealerAt: string | null = null;
   if (dateRaw) {
@@ -172,8 +373,24 @@ export function cleanCreditReview(raw: Record<string, unknown>, now = Date.now()
     if (Date.parse(iso) > now + 86_400_000) return { ok: false, code: "date_in_future" };
     dealerAt = iso;
   }
+  // An undated claim never overturns a lead.
+  if (status === "dealer_already_had" && (!dealerAt || !proof)) return { ok: false, code: "dated_record_required" };
+  const prior = ctx.lead?.credit?.review;
+  let filedAt: string | null = prior?.dispute_filed_at ?? (prior?.status === "disputed" ? prior.at : null);
+  if (status === "disputed" || status === "dealer_already_had") {
+    if (!filedAt) {
+      if (ctx.lead) {
+        const { deadline } = disputeDeadline(ctx.lead);
+        if (deadline && now > Date.parse(deadline)) return { ok: false, code: "dispute_window_closed" };
+      }
+      filedAt = new Date(now).toISOString();
+    }
+  }
   const note = typeof raw.note === "string" ? raw.note.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 280) || null : null;
-  return { ok: true, review: { status: status as CreditReviewStatus, reason, dealer_record_at: dealerAt, note, by: "matchrv_ops", at: new Date(now).toISOString() } };
+  return {
+    ok: true,
+    review: { status: status as CreditReviewStatus, reason, dealer_record_at: dealerAt, proof_type: proof, note, by: "matchrv_ops", at: new Date(now).toISOString(), dispute_filed_at: filedAt },
+  };
 }
 
 export function __setLeadCreditForTests(on: boolean | null): void { enabledOverride = on; }

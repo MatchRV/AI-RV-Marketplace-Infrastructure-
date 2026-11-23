@@ -5,7 +5,8 @@
  */
 import { botExclusions, funnelRows, HEADLINE_FUNNEL } from "./lead-funnel";
 import { listLeads, type LeadRecord } from "./lead-store";
-import { creditVerdict, leadCreditEnabled } from "./lead-credit";
+import { computeClickCredits, creditVerdict, creditWeights, creditWindowDays, disputeWindowDays, leadCreditEnabled, tiesToDealer, type ClickCredit } from "./lead-credit";
+import { allSessionClicks, outboundSessionHash } from "./outbound-clicks";
 
 export type Granularity = "day" | "week";
 
@@ -163,6 +164,8 @@ export const CSV_COLUMNS = [
   "cost_usd", "revenue_usd", "contact_name", "contact_email", "contact_phone", "pii_purged_at",
   "credit_first_view_at", "credit_first_outbound_click_at", "credit_outbound_clicks", "credit_first_touch_at",
   "credit_review_status", "credit_review_reason", "credit_dealer_record_at", "credit_verdict", "credit_billable",
+  "credit_has_phone", "credit_buying_signals", "credit_tier", "credit_delivered_at", "credit_dispute_deadline",
+  "credit_review_proof", "credit_dispute_filed_at", "credit_outbound_surfaces", "credit_price_alert_before_leaving", "credit_weight",
 ] as const;
 
 /** Quote a CSV cell and neutralize spreadsheet formulas (=, +, -, @ at the start). */
@@ -180,6 +183,7 @@ export function leadsCsv(opts: ReportOptions & { includeContact?: boolean } = {}
   // The billing verdict columns stay empty until LEAD_CREDIT_ENABLED (DRAFT terms).
   const verdictOn = leadCreditEnabled();
   for (const l of rows) {
+    const verdict = verdictOn ? creditVerdict(l) : null;
     const c = opts.includeContact ? l.contact : null;
     const lc = l.lifecycle;
     const values: unknown[] = [
@@ -194,9 +198,63 @@ export function leadsCsv(opts: ReportOptions & { includeContact?: boolean } = {}
       l.cost_usd, l.revenue_usd, c?.name ?? null, c?.email ?? null, c?.phone ?? null, l.pii_purged_at,
       l.credit?.evidence.first_view_at ?? null, l.credit?.evidence.first_outbound_click_at ?? null, l.credit?.evidence.outbound_clicks ?? null, l.credit?.evidence.first_touch_at ?? null,
       l.credit?.review.status ?? null, l.credit?.review.reason ?? null, l.credit?.review.dealer_record_at ?? null,
-      ...(verdictOn ? [creditVerdict(l).status, creditVerdict(l).billable] : [null, null]),
+      ...(verdict ? [verdict.status, verdict.billable] : [null, null]),
+      l.credit?.evidence.has_phone ?? null, l.credit?.evidence.buying_signals?.join("|") ?? null, verdict?.credit_tier ?? null,
+      verdict?.delivered_at ?? null, verdict?.dispute_deadline ?? null,
+      l.credit?.review.proof_type ?? null, l.credit?.review.dispute_filed_at ?? null,
+      l.credit?.evidence.outbound_surfaces.join("|") ?? null, l.credit?.evidence.price_alert_before_leaving ?? null,
+      verdict ? verdict.credit_weight : null,
     ];
     lines.push(values.map(csvCell).join(","));
   }
   return `${lines.join("\r\n")}\r\n`;
+}
+
+// ── Lead credit summary (LEAD_CREDIT_ENABLED) ──────────────────────────────
+
+export interface CreditSummary {
+  range: { from: string; to: string };
+  weights: { click: number; inquiry: number; qualified: number };
+  windowDays: number; disputeDays: number; tiesToDealer: boolean;
+  billableLeads: number; qualifiedLeads: number; basicLeads: number; notBillable: Record<string, number>;
+  leadCredits: number;
+  clickCredits: number; creditedClicks: number; clicksAlreadyCounted: number;
+  totalCredits: number;
+  clicks: ClickCredit[];
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Credits in a date range: lead credits (inquiry 1.0 / qualified 1.5) plus click-only credits (0.5, provisional). */
+export function buildCreditSummary(opts: ReportOptions = {}): CreditSummary {
+  const { from, to } = resolveRange(opts);
+  const weights = creditWeights();
+  const all = listLeads().filter((l) => opts.includeTests || !l.test);
+  const inRange = all.filter((l) => dayOf(l.created_at) >= from && dayOf(l.created_at) <= to);
+  let leadCredits = 0, billable = 0, qualified = 0, basic = 0;
+  const notBillable: Record<string, number> = {};
+  for (const l of inRange) {
+    const v = creditVerdict(l, { weights, now: opts.now });
+    if (v.billable) { billable += 1; leadCredits += v.credit_weight; if (v.credit_tier === "qualified") qualified += 1; else basic += 1; }
+    else notBillable[v.status] = (notBillable[v.status] ?? 0) + 1;
+  }
+  // Any MatchRV inquiry from the same shopper session for the same RV/dealer means its clicks never count again.
+  const counted = new Set<string>();
+  for (const l of all) {
+    const h = outboundSessionHash(l.ids.session_id);
+    if (!h) continue;
+    if (l.unit.id) counted.add(`${h}|${l.unit.id}`);
+    if (l.dealer.id) counted.add(`${h}|dealer:${l.dealer.id.toLowerCase()}`);
+  }
+  const clicks = computeClickCredits(allSessionClicks(), counted, { from, to, weights });
+  const clickCredits = clicks.reduce((n, c) => n + c.credit_weight, 0);
+  return {
+    range: { from, to }, weights, windowDays: creditWindowDays(), disputeDays: disputeWindowDays(), tiesToDealer: tiesToDealer(),
+    billableLeads: billable, qualifiedLeads: qualified, basicLeads: basic, notBillable,
+    leadCredits: round2(leadCredits),
+    clickCredits: round2(clickCredits), creditedClicks: clicks.filter((c) => c.credit_weight > 0).length,
+    clicksAlreadyCounted: clicks.filter((c) => c.status === "already_counted_as_inquiry").length,
+    totalCredits: round2(leadCredits + clickCredits),
+    clicks,
+  };
 }

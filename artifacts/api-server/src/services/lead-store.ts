@@ -29,7 +29,7 @@ import {
 import { dedupeWindowDays, leadsPath, leadTrackingEnabled, piiRetentionDays, publicBaseUrl } from "./lead-tracking-config";
 import { journeyForSession, recordFunnelStep, sessionKeyFor } from "./lead-funnel";
 import { captureLeadAnalyticsEvent } from "./product-analytics";
-import { buildCreditEvidence, CREDIT_POLICY_VERSION, emptyReview, leadCreditEnabled, type CreditReview, type LeadCredit } from "./lead-credit";
+import { buildCreditEvidence, CREDIT_POLICY_VERSION, detectBuyingSignals, emptyReview, leadCreditEnabled, type CreditReview, type LeadCredit } from "./lead-credit";
 import { clicksForSession, outboundSessionHash } from "./outbound-clicks";
 
 export const LEAD_SCHEMA_VERSION = 1;
@@ -40,7 +40,7 @@ export const LEAD_STAGES = ["sent", "delivered", "opened", "dealer_responded", "
 export type LeadStage = typeof LEAD_STAGES[number];
 const STAGE_RANK: Record<LeadStage, number> = { sent: 0, delivered: 1, opened: 2, dealer_responded: 3, appointment: 4, sold: 5, lost: 5 };
 
-export const LOST_REASONS = ["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "other"] as const;
+export const LOST_REASONS = ["bought_elsewhere", "unit_sold", "no_response_from_shopper", "financing", "price", "not_a_fit", "duplicate", "spam", "wrong_number", "other"] as const;
 export type LostReason = typeof LOST_REASONS[number];
 
 export const PRICE_BANDS = ["under_20k", "20k_40k", "40k_60k", "60k_100k", "100k_200k", "200k_plus", "unknown"] as const;
@@ -357,6 +357,8 @@ export interface InquiryForLead {
   contact: LeadContact;
   unit: { id: string; title: string; stockNumber: string | null; vin: string | null; priceUsd: number | null };
   dealer: { id: string; name: string; city: string; state: string };
+  /** What the shopper chose to share in the payment calculator (lead-credit buying signals). */
+  shared?: { tradeIn: boolean; financing: boolean } | null;
 }
 
 export type LeadCreateResult =
@@ -485,7 +487,7 @@ export function recordLeadFromInquiry(input: { inquiry: InquiryForLead; unit: Ca
       revenue_usd: null,
       pii_purged_at: null,
     };
-    lead.credit = creditFor(lead, a.session_id);
+    lead.credit = creditFor(lead, a.session_id, inquiry);
     if (inquiry.status === "delivered" || inquiry.status === "forwarded") {
       lead.lifecycle.delivered_at = sentAt;
       lead.lifecycle.stage = "delivered";
@@ -504,13 +506,18 @@ export function recordLeadFromInquiry(input: { inquiry: InquiryForLead; unit: Ca
 }
 
 /** First-touch evidence for a new lead. Never throws: missing evidence just means a later review by hand. */
-function creditFor(lead: LeadRecord, sessionId: string | null): LeadCredit | null {
+function creditFor(lead: LeadRecord, sessionId: string | null, inquiry: InquiryForLead): LeadCredit | null {
   try {
+    const c = inquiry.contact;
     return {
       policy_version: CREDIT_POLICY_VERSION,
       evidence: buildCreditEvidence({
         inquiryAt: lead.created_at, unitId: lead.unit.id, dealerId: lead.dealer.id,
         journey: lead.journey, clicks: clicksForSession(outboundSessionHash(sessionId)),
+        hasName: lead.qualification.has_name,
+        hasEmail: Boolean(normalizeEmail(c.email)),
+        hasPhone: Boolean(normalizePhone(c.phone)),
+        buyingSignals: detectBuyingSignals({ message: c.message, shared: inquiry.shared ?? null }),
       }),
       review: emptyReview(),
     };
@@ -536,7 +543,12 @@ export function recordCreditReview(leadId: string, review: CreditReview): Credit
     // A lead from before evidence existed: keep its review, with evidence limited to the inquiry itself.
     lead.credit = {
       policy_version: CREDIT_POLICY_VERSION,
-      evidence: { first_view_at: null, first_outbound_click_at: null, outbound_clicks: 0, outbound_surfaces: [], price_alert_before_leaving: false, inquiry_at: lead.created_at, first_touch_at: lead.created_at },
+      evidence: {
+        first_view_at: null, first_outbound_click_at: null, outbound_clicks: 0, outbound_surfaces: [], price_alert_before_leaving: false,
+        inquiry_at: lead.created_at, first_touch_at: lead.created_at,
+        has_name: lead.qualification.has_name, has_email: Boolean(normalizeEmail(lead.contact?.email)), has_phone: Boolean(normalizePhone(lead.contact?.phone)),
+        buying_signals: detectBuyingSignals({ message: lead.contact?.message ?? null }),
+      },
       review: emptyReview(),
     };
   }

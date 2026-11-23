@@ -666,6 +666,16 @@ function leadInputFor(i: DealerInquiry) {
     contact: { name: s.name, email: s.email, phone: s.phone, message: i.preview.message },
     unit: { id: u.id, title: u.title, stockNumber: u.stockNumber, vin: u.vin, priceUsd: u.priceUsd },
     dealer: { id: d.id, name: d.name, city: d.city, state: d.state },
+    shared: sharedSignals(i.preview.paymentEstimate ?? null),
+  };
+}
+
+/** Trade-in / financing interest from payment numbers the shopper chose to share (lead-credit buying signals). */
+function sharedSignals(pe: PaymentEstimate | null): { tradeIn: boolean; financing: boolean } | null {
+  if (!pe) return null;
+  return {
+    tradeIn: typeof pe.tradeUsd === "number" && pe.tradeUsd > 0,
+    financing: [pe.downUsd, pe.aprPct, pe.termMonths, pe.estMonthlyUsd].some((v) => typeof v === "number" && v > 0) || Boolean(pe.creditRange),
   };
 }
 

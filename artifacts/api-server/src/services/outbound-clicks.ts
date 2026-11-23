@@ -110,6 +110,12 @@ export function clicksForSession(sessionHash: string | null | undefined): Outbou
   return [...(bySession.get(sessionHash) ?? [])].sort((a, b) => a.at.localeCompare(b.at));
 }
 
+/** Every click that carried a session id (bounded like the session index), oldest first. For click credits. */
+export function allSessionClicks(): OutboundClick[] {
+  load();
+  return [...bySession.values()].flat().sort((a, b) => a.at.localeCompare(b.at));
+}
+
 /** Test helper. */
 export function resetOutboundClicks() { recent.length = 0; byDealer.clear(); bySession.clear(); loaded = true; }
 export function __setClickPersistenceForTests(on: boolean | null): void { persistenceOverride = on; }

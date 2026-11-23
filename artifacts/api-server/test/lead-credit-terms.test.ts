@@ -30,6 +30,8 @@ beforeAll(async () => {
   app.use(express.json()); app.use(express.urlencoded({ extended: true }));
   app.use(leadPages); app.use('/api', inquiriesRouter); app.use('/api', swipeRouter);
   server = app.listen(0); await new Promise((r) => server.once('listening', r));
+  // Keep idle sockets open longer than slow steps on CI, so fetch never reuses a socket the server just closed (ECONNRESET).
+  server.keepAliveTimeout = 120_000; server.headersTimeout = 121_000;
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 afterAll(() => { server.close(); __setTransport(null); __setLeadTrackingForTests({ enabled: null, receiptLinks: null }); __setLeadCreditForTests(null); resetProductAnalyticsForTests(); delete process.env.LEADS_DASHBOARD_TOKEN; });

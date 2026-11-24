@@ -1,0 +1,14 @@
+{
+ "dealer_domain": "soidrvmarine.com",
+ "dealer_name": "Southern Idaho RV & Marine",
+ "city": "Jerome",
+ "state": "ID",
+ "result": "blocked",
+ "units": 0,
+ "site_total_shown": null,
+ "inventory_urls": [
+  "https://www.soidrvmarine.com/search/inventory/availability/In%20Stock/industry/RV"
+ ],
+ "reason": "Cloudflare security check on the first inventory page: page title 'Just a moment...', heading 'Performing security verification' (h1 'www.soidrvmarine.com'), Ray ID a5fb92db7e58494b. Stopped per brief; did not wait out, solve or route around it.",
+ "notes": "Dealer site found by web search (result titles 'Used Inventory Southern Idaho RV & Marine Jerome, ID (208) 324-4661' on soidrvmarine.com). robots.txt loaded fine and allows single-facet inventory search pages for User-agent * (disallows only /Data/Component, /*/sort/* and repeated facets). A second domain, idahorvandmarine.com (title 'SOUTHERN IDAHO RV AND MARINE'), also appeared in search; not opened - unclear whether it is the same dealer, and using it would look like going around the block. Search also showed third-party listings (rvusa.com, outdoorsy, boatzon) - not used. CSV written with header only."
+}

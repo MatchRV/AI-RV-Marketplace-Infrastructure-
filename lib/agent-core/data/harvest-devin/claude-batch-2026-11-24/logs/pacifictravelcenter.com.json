@@ -1,0 +1,16 @@
+{
+ "dealer_domain": "pacifictravelcenter.com",
+ "dealer_name": "Pacific Travel Center",
+ "city": "Tacoma",
+ "state": "WA",
+ "result": "partial",
+ "units": 3,
+ "site_total_shown": 3,
+ "inventory_urls": [
+  "https://www.pacifictravelcenter.com/rvs-for-sale",
+  "https://www.pacifictravelcenter.com/nuis",
+  "https://www.pacifictravelcenter.com/shop"
+ ],
+ "reason": "Wix site. 'RVs for Sale' nav page shows no unit listings (only a Lance/REV logo). The only unit pages are 3 Wix Store products on the unlinked 'New Units In Stock' page (/nuis), which also appear on /shop alongside Wix template placeholders ('I'm a product'), which were excluded. robots.txt allows all.",
+ "notes": "Listings look stale: all three are 2014 Lance truck campers (details say '2014 LANCE MODEL 1050S'/'1172'), store-products sitemap lastmod 2018-05-16, every price is $0.00 (price left blank), and pages carry a Wix 'Add to Cart' button. Treat as likely not current inventory; reviewer should confirm with dealer before listing. condition=new taken from the page category title 'New Units In Stock'. rv_type blank: pages never state 'truck camper'. Pages show 'Serial# 170828/170833/170855' (not a 17-char VIN, not labelled stock) - left out of vin/stock_number. 'Interior Floor Length' 10'11\"/11'11\" is interior, not overall length, so length_ft left blank. dry_weight from 'C.O.G. 48/Dry Weight 3030 Lbs' style text. photo_url blank: snapshot tool does not expose image src. Browser window was shared with other helpers during the run (another helper's pages appeared in screenshots); all recorded data came from navigate-time snapshots whose URL matched this dealer. seen_at times approximate."
+}

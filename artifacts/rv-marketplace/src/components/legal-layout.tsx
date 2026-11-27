@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import { SiteLayout } from "@/components/site/site-layout";
 import { SEO } from "@/components/seo";
 import { SITE } from "@/config/site";
+import { currentSite } from "@/lib/site-host";
 
 export function LegalLayout({ title, canonical, children }: { title: string; canonical: string; children: ReactNode }) {
+  const dealer = currentSite() === "dealer";
   return <SiteLayout>
-    <SEO title={title} description={`${title} for MatchRV’s dealership auditing, inventory services, and AI shopping tools.`} canonical={canonical}/>
+    <SEO title={title} description={dealer ? `${title} for MatchRV’s dealership auditing, inventory services, and AI shopping tools.` : `${title} for the MatchRV RV marketplace.`} canonical={canonical}/>
     <section className="page-hero page-hero--compact" aria-labelledby="page-title">
       <div className="page-hero__bg" aria-hidden="true"></div>
       <div className="container container--narrow">

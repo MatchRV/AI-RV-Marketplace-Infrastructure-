@@ -159,8 +159,8 @@ export function DetailSheet({ card, onClose, initialForm = false }: { card: Swip
             {lot && <p className="mt-0.5 flex items-center gap-2 text-sm text-slate-600"><MapPin size={15} color={TEAL_DARK} /> Lot: {lot}{typeof card.distanceMiles === "number" ? ` · ${card.distanceMiles} mi away` : ""}</p>}
             {!showForm && !sent && (
               <>
-                <button type="button" disabled={!detail} onClick={() => setShowForm(true)} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: NAVY, color: TEAL }} data-testid="check-availability">Check availability</button>
-                <p className="mt-1.5 text-center text-xs text-slate-600">Contact the dealer through MatchRV. Free, and you keep a record of it.</p>
+                <button type="button" disabled={!detail} onClick={() => setShowForm(true)} className="mt-4 w-full rounded-full py-3.5 text-base font-extrabold disabled:opacity-50" style={{ background: NAVY, color: TEAL }} data-testid="check-availability">Ask the dealer</button>
+                <p className="mt-1.5 text-center text-xs text-slate-600">Check availability. Your name and message go to this dealership. Free, and you keep a record of it.</p>
               </>
             )}
             {detail?.hasDealerPage && (

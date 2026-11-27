@@ -26,7 +26,7 @@ describe("search readiness gate", () => {
     const llms = readFileSync(new URL("../../rv-marketplace/public/llms.txt", import.meta.url), "utf8");
     expect(llms).toContain("{{LIVE_RV_COUNT}}");
     expect(llms).toContain("517 dealers, 841 stores, 49 states, as of October 19, 2026");
-    expect(llms).toContain("https://matchrv.com/visibility-solution");
+    expect(llms).toContain("https://dealer.matchrv.com/visibility-solution");
     expect(llms).toContain("https://matchrv.com/mcp");
     expect(llms).not.toContain("onrender.com");
     expect(llms).not.toContain("150,000");

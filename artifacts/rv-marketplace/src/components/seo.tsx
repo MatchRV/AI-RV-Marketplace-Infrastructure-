@@ -1,8 +1,8 @@
 import { Helmet } from "react-helmet-async";
+import { currentOrigin } from "@/lib/site-host";
 
 const SITE_NAME = "MatchRV";
 const DEFAULT_OG_IMAGE = "/opengraph.jpg";
-const BASE_URL = "https://matchrv.com";
 
 interface BreadcrumbItem {
   name: string;
@@ -27,10 +27,13 @@ interface SEOProps {
 }
 
 export function SEO({ title, description, canonical, ogImage, jsonLd, noIndex, breadcrumbs, faqs, type = "website" }: SEOProps) {
+  const baseUrl = currentOrigin();
   const fullTitle = title ? `${title.replace(/\s*[—|]\s*MatchRV(?: for Dealers)?$/, "")} — ${SITE_NAME}` : SITE_NAME;
-  const image = ogImage || DEFAULT_OG_IMAGE;
+  const image = ogImage
+    ? (/^https?:\/\//i.test(ogImage) ? ogImage : `${baseUrl}${ogImage.startsWith("/") ? ogImage : `/${ogImage}`}`)
+    : `${baseUrl}${DEFAULT_OG_IMAGE}`;
   const canonicalUrl = canonical
-    ? (/^https?:\/\//i.test(canonical) ? canonical : `${BASE_URL}${canonical.startsWith("/") ? canonical : `/${canonical}`}`)
+    ? (/^https?:\/\//i.test(canonical) ? canonical : `${baseUrl}${canonical.startsWith("/") ? canonical : `/${canonical}`}`)
     : undefined;
 
   const baseSchemas = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
@@ -43,7 +46,7 @@ export function SEO({ title, description, canonical, ogImage, jsonLd, noIndex, b
           "@type": "ListItem",
           position: i + 1,
           name: b.name,
-          item: `${BASE_URL}${b.href}`,
+          item: `${baseUrl}${b.href}`,
         })),
       }
     : null;

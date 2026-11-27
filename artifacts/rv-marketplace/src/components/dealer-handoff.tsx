@@ -76,7 +76,7 @@ function BeforeYouGo({ unitId, surface, priceUsd, dealerName, onCheckAvailabilit
         {onCheckAvailability && (
           <>
             <p className="mt-1 text-sm text-slate-600">MatchRV can ask {who} for you. Your message goes straight to them, and you keep a record of it here.</p>
-            <button type="button" onClick={onCheckAvailability} className="mt-3 w-full rounded-full bg-[#0B1117] py-3 text-sm font-extrabold text-[#65E7DF]">Check availability through MatchRV</button>
+            <button type="button" onClick={onCheckAvailability} className="mt-3 w-full rounded-full bg-[#0B1117] py-3 text-sm font-extrabold text-[#65E7DF]">Ask the dealer through MatchRV</button>
           </>
         )}
         <form

@@ -73,7 +73,7 @@ export function renderSampleReportPdf(report: PdfReport): Buffer {
   block(report.ai.answer ? `Gemini: ${report.ai.siteWasCited === true ? "Website cited in this answer." : report.ai.siteWasCited === false ? "Website not cited in this answer." : "Citation result not determined."} ${report.ai.answer}` : "AI answer unavailable. This is not a visibility failure.", 54, 212, 504, 8, 2, muted);
   if (report.ai.sources[0]) block(`Source: ${report.ai.sources[0].url}`, 54, 187, 504, 7, 2, muted);
   rect(54, 104, 504, 67, navy); text("Want the fix list?", 70, 151, 12, teal, true);
-  block("The full AI Visibility Report includes your scorecard, inventory gaps, listing spot-checks and fixes ranked by impact. Book a short report call at matchrv.com/book.", 70, 133, 472, 10, 2, "1 1 1");
+  block("The full AI Visibility Report includes your scorecard, inventory gaps, listing spot-checks and fixes ranked by impact. Book a short report call at dealer.matchrv.com/book.", 70, 133, 472, 10, 2, "1 1 1");
   block(snapshot.scoreNote, 54, 88, 504, 7, 2, muted);
   block("MatchRV | Dated website sample. Not extracted does not prove a fact is absent from every source. Full AI answer and source links are available on your report page.", 54, 64, 504, 7, 2, muted);
   const stream = commands.join("\n");

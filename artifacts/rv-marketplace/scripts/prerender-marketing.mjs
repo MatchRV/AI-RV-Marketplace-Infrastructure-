@@ -11,36 +11,41 @@ const dist = resolve(root, "dist/public");
 const prerenderDir = resolve(root, "dist/prerender");
 const shell = await readFile(resolve(dist, "index.html"), "utf8");
 const pages = [
-  ["/", "/src/pages/dealer-home.tsx", "DealerHome", "home"],
-  ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers"],
-  ["/visibility-report", "/src/pages/visibility-report.tsx", "VisibilityReport", "visibility-report"],
-  ["/visibility-solution", "/src/pages/visibility-solution.tsx", "VisibilitySolution", "visibility-solution"],
-  ["/lotai", "/src/pages/lotai.tsx", "LotAI", "lotai"],
-  ["/shop", "/src/pages/shop.tsx", "Shop", "shop"],
-  ["/mcp-setup", "/src/pages/mcp-setup.tsx", "McpSetup", "mcp-setup"],
-  ["/about", "/src/pages/about.tsx", "About", "about"],
-  ["/contact", "/src/pages/contact.tsx", "Contact", "contact"],
-  ["/privacy", "/src/pages/privacy.tsx", "Privacy", "privacy"],
-  ["/terms", "/src/pages/terms.tsx", "Terms", "terms"],
-  ["/book", "/src/pages/book.tsx", "BookReportCall", "book"],
-  ["/tow-guide", "/src/pages/tow-guide.tsx", "TowGuide", "tow-guide"],
-  ["/answers", "/src/pages/answer-engine.tsx", "AnswerEngine", "answers"],
-  ["/outfitter", "/src/pages/outfitter.tsx", "Outfitter", "outfitter"],
-  ["/match", "/src/pages/match.tsx", "Match", "match"],
-  ["/dealer-tools", "/src/pages/dealer-aeo-toolkit.tsx", "DealerAeoToolkit", "dealer-tools"],
-  ["/dealers/chatgpt-advertising", "/src/pages/chatgpt-advertising.tsx", "ChatGPTAdvertising", "dealers-chatgpt-advertising"],
-  ["/find-the-right-rv-for-your-tow-vehicle", "/src/pages/find-the-right-rv-for-your-tow-vehicle.tsx", "FindTheRightRvForYourTowVehicle", "find-the-right-rv"],
-  ["/guides/best-rvs-for-full-time-living", "/src/pages/guides/best-rvs-for-full-time-living.tsx", "BestRvsForFullTimeLiving", "guides-best-rvs-for-full-time-living"],
-  ["/guides/rv-cost-guide", "/src/pages/guides/rv-cost-guide.tsx", "RvCostGuide", "guides-rv-cost-guide"],
-  ["/guides/tow-vehicle-guide", "/src/pages/guides/tow-vehicle-guide.tsx", "TowVehicleGuide", "guides-tow-vehicle-guide"],
-  ["/guides/travel-trailer-vs-fifth-wheel", "/src/pages/guides/travel-trailer-vs-fifth-wheel.tsx", "TravelTrailerVsFifthWheel", "guides-travel-trailer-vs-fifth-wheel"],
-  ["/rv-financing", "/src/pages/rv-financing/index.tsx", "RvFinancing", "rv-financing"],
-  ["/rv-financing/what-credit-score-do-you-need-to-buy-an-rv", "/src/pages/rv-financing/what-credit-score-do-you-need-to-buy-an-rv.tsx", "CreditScoreToBuyRv", "rv-financing-credit-score"],
-  ["/rv-financing/bad-credit-rv-financing", "/src/pages/rv-financing/bad-credit-rv-financing.tsx", "BadCreditRvFinancing", "rv-financing-bad-credit"],
-  ["/rv-financing/rv-loan-calculator", "/src/pages/rv-financing/rv-loan-calculator.tsx", "RvLoanCalculator", "rv-financing-loan-calculator"],
-  ["/rv-financing/find-rvs-by-monthly-payment", "/src/pages/rv-financing/find-rvs-by-monthly-payment.tsx", "FindRvsByMonthlyPayment", "rv-financing-monthly-payment"],
-  ["/rv-financing/rv-pre-approval-before-shopping", "/src/pages/rv-financing/rv-pre-approval-before-shopping.tsx", "RvPreApproval", "rv-financing-pre-approval"],
-  ["/rv-financing/used-rv-financing", "/src/pages/rv-financing/used-rv-financing.tsx", "UsedRvFinancing", "rv-financing-used"],
+  ["/", "/src/pages/home.tsx", "Home", "consumer-home", "consumer"],
+  ["/", "/src/pages/dealer-home.tsx", "DealerHome", "dealer-home", "dealer"],
+  ["/for-dealers", "/src/pages/for-dealers.tsx", "ForDealers", "for-dealers", "dealer"],
+  ["/visibility-report", "/src/pages/visibility-report.tsx", "VisibilityReport", "visibility-report", "dealer"],
+  ["/visibility-solution", "/src/pages/visibility-solution.tsx", "VisibilitySolution", "visibility-solution", "dealer"],
+  ["/lotai", "/src/pages/lotai.tsx", "LotAI", "lotai", "dealer"],
+  ["/shop", "/src/pages/shop.tsx", "Shop", "shop", "consumer"],
+  ["/mcp-setup", "/src/pages/mcp-setup.tsx", "McpSetup", "mcp-setup", "consumer"],
+  ["/about", "/src/pages/about.tsx", "About", "about", "consumer"],
+  ["/about", "/src/pages/about.tsx", "About", "about-dealer", "dealer"],
+  ["/contact", "/src/pages/contact.tsx", "Contact", "contact", "consumer"],
+  ["/contact", "/src/pages/contact.tsx", "Contact", "contact-dealer", "dealer"],
+  ["/privacy", "/src/pages/privacy.tsx", "Privacy", "privacy", "consumer"],
+  ["/privacy", "/src/pages/privacy.tsx", "Privacy", "privacy-dealer", "dealer"],
+  ["/terms", "/src/pages/terms.tsx", "Terms", "terms", "consumer"],
+  ["/terms", "/src/pages/terms.tsx", "Terms", "terms-dealer", "dealer"],
+  ["/book", "/src/pages/book.tsx", "BookReportCall", "book", "dealer"],
+  ["/tow-guide", "/src/pages/tow-guide.tsx", "TowGuide", "tow-guide", "consumer"],
+  ["/answers", "/src/pages/answer-engine.tsx", "AnswerEngine", "answers", "consumer"],
+  ["/outfitter", "/src/pages/outfitter.tsx", "Outfitter", "outfitter", "consumer"],
+  ["/match", "/src/pages/match.tsx", "Match", "match", "consumer"],
+  ["/dealer-tools", "/src/pages/dealer-aeo-toolkit.tsx", "DealerAeoToolkit", "dealer-tools", "dealer"],
+  ["/dealers/chatgpt-advertising", "/src/pages/chatgpt-advertising.tsx", "ChatGPTAdvertising", "dealers-chatgpt-advertising", "dealer"],
+  ["/find-the-right-rv-for-your-tow-vehicle", "/src/pages/find-the-right-rv-for-your-tow-vehicle.tsx", "FindTheRightRvForYourTowVehicle", "find-the-right-rv", "consumer"],
+  ["/guides/best-rvs-for-full-time-living", "/src/pages/guides/best-rvs-for-full-time-living.tsx", "BestRvsForFullTimeLiving", "guides-best-rvs-for-full-time-living", "consumer"],
+  ["/guides/rv-cost-guide", "/src/pages/guides/rv-cost-guide.tsx", "RvCostGuide", "guides-rv-cost-guide", "consumer"],
+  ["/guides/tow-vehicle-guide", "/src/pages/guides/tow-vehicle-guide.tsx", "TowVehicleGuide", "guides-tow-vehicle-guide", "consumer"],
+  ["/guides/travel-trailer-vs-fifth-wheel", "/src/pages/guides/travel-trailer-vs-fifth-wheel.tsx", "TravelTrailerVsFifthWheel", "guides-travel-trailer-vs-fifth-wheel", "consumer"],
+  ["/rv-financing", "/src/pages/rv-financing/index.tsx", "RvFinancing", "rv-financing", "consumer"],
+  ["/rv-financing/what-credit-score-do-you-need-to-buy-an-rv", "/src/pages/rv-financing/what-credit-score-do-you-need-to-buy-an-rv.tsx", "CreditScoreToBuyRv", "rv-financing-credit-score", "consumer"],
+  ["/rv-financing/bad-credit-rv-financing", "/src/pages/rv-financing/bad-credit-rv-financing.tsx", "BadCreditRvFinancing", "rv-financing-bad-credit", "consumer"],
+  ["/rv-financing/rv-loan-calculator", "/src/pages/rv-financing/rv-loan-calculator.tsx", "RvLoanCalculator", "rv-financing-loan-calculator", "consumer"],
+  ["/rv-financing/find-rvs-by-monthly-payment", "/src/pages/rv-financing/find-rvs-by-monthly-payment.tsx", "FindRvsByMonthlyPayment", "rv-financing-monthly-payment", "consumer"],
+  ["/rv-financing/rv-pre-approval-before-shopping", "/src/pages/rv-financing/rv-pre-approval-before-shopping.tsx", "RvPreApproval", "rv-financing-pre-approval", "consumer"],
+  ["/rv-financing/used-rv-financing", "/src/pages/rv-financing/used-rv-financing.tsx", "UsedRvFinancing", "rv-financing-used", "consumer"],
 ];
 
 const vite = await createServer({
@@ -52,12 +57,14 @@ const vite = await createServer({
 
 try {
   const { AuthProvider } = await vite.ssrLoadModule("/src/contexts/auth-context.tsx");
+  const siteHost = await vite.ssrLoadModule("/src/lib/site-host.ts");
   const rq = await vite.ssrLoadModule("@tanstack/react-query");
   const queryClient = new rq.QueryClient({
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
   await mkdir(prerenderDir, { recursive: true });
-  for (const [path, modulePath, exportName, filename] of pages) {
+  for (const [path, modulePath, exportName, filename, site] of pages) {
+    siteHost.setPrerenderSite(site);
     const component = (await vite.ssrLoadModule(modulePath))[exportName];
     const rendered = renderToString(
       React.createElement(rq.QueryClientProvider, { client: queryClient },

@@ -14,13 +14,14 @@ import { DB_MODE } from "@workspace/db";
 import { getInventory } from "./services/agent-inventory";
 import { injectListingIntoShell } from "./lib/listing-seo";
 import { decideListingRequest } from "./lib/listing-public-id";
-import { PRERENDER_PAGES } from "./lib/prerender-pages";
+import { prerenderFileFor } from "./lib/prerender-pages";
 import {
   renderSitemapIndex,
   renderCoreSitemap,
   renderUnitSitemapPage,
   renderHubSitemap,
 } from "./lib/sitemap";
+import { classifyHost, migrationTarget, type SiteSurface } from "./lib/site-host";
 import { hubPageData, parseHubPath, renderHubPage } from "./lib/inventory-hubs";
 import { listingCanonicalUrl } from "./lib/listing-seo";
 import { MARKDOWN_CONTENT_TYPE, prefersMarkdown, renderHubMarkdown, renderListingMarkdown, renderNotFoundMarkdown } from "./lib/agent-markdown";
@@ -67,7 +68,25 @@ app.use(internalRoutes);
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+const BROWSER_ORIGINS = new Set([
+  "https://matchrv.com",
+  "https://www.matchrv.com",
+  "https://dealer.matchrv.com",
+]);
+app.use(cors({
+  credentials: true,
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    if (BROWSER_ORIGINS.has(origin) || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|matchrv\.local|dealer\.matchrv\.local)(:\d+)?$/.test(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+}));
 // MCP must receive the raw request body; mount it before Express JSON parsing.
 // stampAnalyticsClientIp resolves the client IP (X-Forwarded-For only from the local
 // Caddy) into a private header for product analytics; any inbound copy is dropped.
@@ -95,12 +114,65 @@ app.get("/tow-match", (_req: Request, res: Response) => res.redirect(301, "/tow-
 app.get("/buyer-guides", (_req: Request, res: Response) => res.redirect(301, "/guides"));
 // /advertising was replaced by /visibility-solution. Permanent, before the SPA
 // shell, so clients that do not run JavaScript still leave the old URL.
-app.get(["/advertising", "/advertising/"], (_req: Request, res: Response) => {
-  res.redirect(301, "/visibility-solution");
+app.get(["/advertising", "/advertising/"], (req: Request, res: Response) => {
+  const search = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
+  const target = migrationTarget(req.hostname, req.path, search);
+  res.redirect(301, target ?? `/visibility-solution${search}`);
 });
 
 // llms.txt names the live listings total. Registered before express.static so
 // the built file's placeholder is not served as-is.
+app.get("/robots.txt", (req: Request, res: Response) => {
+  const origin = classifyHost(req.hostname) === "dealer" ? "https://dealer.matchrv.com" : "https://matchrv.com";
+  const body = `User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: ${origin}/sitemap.xml
+`;
+  res.setHeader("Vary", "Host");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.type("text/plain; charset=utf-8").send(body);
+});
+
 app.get("/llms.txt", async (_req: Request, res: Response) => {
   try {
     const body = await renderLiveLlmsTxt();
@@ -232,20 +304,49 @@ if (DB_MODE === "none") {
 
 app.use("/api", router);
 
+function requestSite(req: Request): SiteSurface {
+  return classifyHost(req.hostname) === "dealer" ? "dealer" : "consumer";
+}
+
+function requestSearch(req: Request): string {
+  return req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
+}
+
+// Host split for HTML pages. Registered after /api, /mcp, /.well-known and /ops
+// so those contracts never redirect. Only the public production hostnames 301.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    next();
+    return;
+  }
+  const target = migrationTarget(req.hostname, req.path, requestSearch(req));
+  if (!target) {
+    next();
+    return;
+  }
+  res.redirect(301, target);
+});
+
 // ── Dynamic sitemaps (must be registered BEFORE express.static so a leftover
 //    public/sitemap.xml cannot shadow them) ─────────────────────────────────
-app.get("/sitemap.xml", (_req: Request, res: Response) => {
+app.get("/sitemap.xml", (req: Request, res: Response) => {
   try {
-    res.type("application/xml").send(renderSitemapIndex());
+    res.setHeader("Vary", "Host");
+    res.type("application/xml").send(renderSitemapIndex(requestSite(req)));
   } catch (err) {
     console.error("[sitemap] index failed:", err);
     res.status(503).type("text/plain").send("sitemap unavailable");
   }
 });
-app.get("/sitemaps/core.xml", (_req: Request, res: Response) => {
-  res.type("application/xml").send(renderCoreSitemap());
+app.get("/sitemaps/core.xml", (req: Request, res: Response) => {
+  res.setHeader("Vary", "Host");
+  res.type("application/xml").send(renderCoreSitemap(requestSite(req)));
 });
 app.get("/sitemaps/units-:page.xml", (req: Request, res: Response) => {
+  if (requestSite(req) === "dealer") {
+    res.status(404).type("text/plain").send("sitemap page not found");
+    return;
+  }
   const page = Number(req.params.page);
   try {
     const xml = renderUnitSitemapPage(page);
@@ -260,8 +361,13 @@ app.get("/sitemaps/units-:page.xml", (req: Request, res: Response) => {
   }
 });
 
-app.get("/sitemaps/hubs.xml", (_req: Request, res: Response) => {
+app.get("/sitemaps/hubs.xml", (req: Request, res: Response) => {
+  if (requestSite(req) === "dealer") {
+    res.status(404).type("text/plain").send("sitemap page not found");
+    return;
+  }
   try {
+    res.setHeader("Vary", "Host");
     res.type("application/xml").send(renderHubSitemap());
   } catch (err) {
     console.error("[sitemap] hubs failed:", err);
@@ -411,16 +517,14 @@ if (existsSync(resolvePath(webDist, "index.html"))) {
 
   const liveCountPaths = new Set(["/", "/shop", "/mcp-setup"]);
   app.get(/^\/(?!api\/).*/, async (req: Request, res: Response) => {
-    const prerenderedPages: Record<string, string> = Object.fromEntries(
-      PRERENDER_PAGES.map((page) => [page.path, page.file]),
-    );
     const sendPage = async (html: string, status = 200) => {
+      res.setHeader("Vary", "Host");
       if (liveCountPaths.has(req.path)) res.setHeader("Cache-Control", "public, max-age=60");
       const body = await withLiveInventory(html);
       res.status(status).type("html").send(body);
     };
 
-    const prerenderedName = prerenderedPages[req.path];
+    const prerenderedName = prerenderFileFor(req.path, requestSite(req));
     if (prerenderedName) {
       const prerenderedPath = resolvePath(webDist, "..", "prerender", `${prerenderedName}.html`);
       if (existsSync(prerenderedPath)) {

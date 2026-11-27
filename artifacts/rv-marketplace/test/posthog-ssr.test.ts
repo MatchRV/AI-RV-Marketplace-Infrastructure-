@@ -64,7 +64,7 @@ describe("posthog init guard", () => {
     const loaded = await loadPosthog();
 
     expect(posthogMock.init).toHaveBeenCalledTimes(1);
-    expect(posthogMock.init).toHaveBeenCalledWith("phc_dummy", {
+    expect(posthogMock.init).toHaveBeenCalledWith("phc_dummy", expect.objectContaining({
       api_host: "https://us.i.posthog.com",
       capture_exceptions: {
         capture_unhandled_errors: true,
@@ -75,7 +75,8 @@ describe("posthog init guard", () => {
         serviceName: "rv-marketplace-web",
         environment: "production",
       },
-    });
+      loaded: expect.any(Function),
+    }));
     loaded.posthog.identify("user_1", { email: "dealer@example.com" });
     loaded.posthog.capture("$pageview");
     expect(posthogMock.identify).toHaveBeenCalledWith("user_1", { email: "dealer@example.com" });

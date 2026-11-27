@@ -58,9 +58,10 @@ describe("live inventory counts", () => {
     );
   });
 
-  it("lists the visibility solution and not the retired /advertising URL", () => {
-    const xml = renderCoreSitemap();
-    expect(xml).toContain("https://matchrv.com/visibility-solution");
+  it("lists the visibility solution on the dealer sitemap and not the retired /advertising URL", () => {
+    const xml = renderCoreSitemap("dealer");
+    expect(xml).toContain("https://dealer.matchrv.com/visibility-solution");
     expect(xml).not.toContain("/advertising");
+    expect(renderCoreSitemap("consumer")).not.toContain("/visibility-solution");
   });
 });

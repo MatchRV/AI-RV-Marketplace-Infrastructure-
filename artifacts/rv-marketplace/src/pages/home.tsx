@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { useGetListings } from "@workspace/api-client-react";
 import { trackEvent } from "@/lib/analytics";
+import { InventoryCoverage, TypeCount } from "@/components/inventory-coverage";
+import { useInventoryTotal } from "@/hooks/use-inventory-total";
+import { OUTFITTER_PROMPT_KEY } from "@/lib/site-host";
+import { RV_COUNT_PLACEHOLDER, RV_COUNT_LIVE_STATUS, RV_COUNT_UNAVAILABLE_STATUS, formatCount } from "@/config/site";
 import {
   ArrowRight,
   Sparkles,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Star,
@@ -181,7 +184,18 @@ function HomepageListingCard({ listing }: { listing: {
   );
 }
 
+const SHOP_TYPES: Array<{ type: "travel_trailer" | "fifth_wheel" | "class_a" | "class_c" | "toy_hauler"; label: string; href: string }> = [
+  { type: "travel_trailer", label: "Travel trailers", href: "/travel-trailers-for-sale" },
+  { type: "fifth_wheel", label: "Fifth wheels", href: "/fifth-wheels-for-sale" },
+  { type: "class_a", label: "Class A", href: "/class-a-rvs-for-sale" },
+  { type: "class_c", label: "Class C", href: "/class-c-rvs-for-sale" },
+  { type: "toy_hauler", label: "Toy haulers", href: "/toy-haulers-for-sale" },
+];
+
 export function Home() {
+  const [, navigate] = useLocation();
+  const [prompt, setPrompt] = useState("");
+  const liveTotal = useInventoryTotal();
   const { data: listingsData } = useGetListings(
     { limit: 4 },
     {
@@ -191,8 +205,16 @@ export function Home() {
     },
   );
   const featuredListings = listingsData?.listings ?? [];
-  const inventoryCount = listingsData?.total ?? null;
   const bgVideoRef = useRef<HTMLVideoElement>(null);
+
+  function askOutfitter(event: FormEvent) {
+    event.preventDefault();
+    const text = prompt.trim();
+    if (text) {
+      try { sessionStorage.setItem(OUTFITTER_PROMPT_KEY, text); } catch { /* private mode */ }
+    }
+    navigate("/outfitter");
+  }
 
   // Scroll-linked parallax on the fixed background video (no re-renders).
   useEffect(() => {
@@ -223,7 +245,7 @@ export function Home() {
     "name": "MatchRV",
     "url": "https://matchrv.com",
     "logo": { "@type": "ImageObject", "url": "https://matchrv.com/matchrv-logo.png", "width": 200, "height": 60 },
-    "description": "MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents.",
+    "description": "MatchRV is a consumer RV marketplace. Search dealer inventory in your own words, compare RVs, and ask the dealer.",
     "foundingLocation": { "@type": "Place", "name": "Pacific Northwest, Washington State, USA" },
     "sameAs": ["https://matchrv.com/about"],
   };
@@ -232,17 +254,13 @@ export function Home() {
     "@type": "WebSite",
     "name": "MatchRV",
     "url": "https://matchrv.com",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": { "@type": "EntryPoint", "urlTemplate": "https://matchrv.com/shop" },
-    },
   };
 
   return (
     <Layout>
       <SEO
-        title="AI-Ready RV Inventory for Agents & Dealers"
-        description="MatchRV connects dealer RV inventory to buyers shopping through AI — an AI-ready inventory network for ChatGPT, Gemini, and other agents."
+        title="Find the RV that fits"
+        description="Search live dealer inventory in your own words. Browse by type, location, and budget, compare RVs, and ask the dealer. Free Match Report."
         canonical="https://matchrv.com/"
         jsonLd={[organizationSchema, websiteSchema]}
       />
@@ -270,35 +288,54 @@ export function Home() {
 
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-16 py-20 sm:py-28">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#00CED1]/20 text-[#00CED1] rounded text-xs font-bold uppercase tracking-widest mb-5 sm:mb-6 select-none cursor-default">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#00CED1]/20 text-[#00CED1] rounded text-xs font-bold uppercase tracking-widest mb-5 sm:mb-6">
               <span className="w-2 h-2 bg-[#00CED1] rounded-full animate-pulse" />
-              {inventoryCount ? `${inventoryCount.toLocaleString()} RVs Listed` : "RVs Listed Across WA"}
+              <strong data-rv-count="total">{liveTotal.value == null ? RV_COUNT_PLACEHOLDER : formatCount(liveTotal.value)}</strong>
+              <span>RVs in live inventory</span>
             </div>
+            <p className="sr-only">
+              <span data-rv-count-status="total">{liveTotal.live ? RV_COUNT_LIVE_STATUS : RV_COUNT_UNAVAILABLE_STATUS}</span>
+            </p>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black text-white tracking-tight mb-4 sm:mb-6 select-none cursor-default">
-              Answer 7 questions.{" "}
-              <span className="text-[#00CED1]">Get your perfect RV match.</span>
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-black text-white tracking-tight mb-4 sm:mb-6">
+              Search in your own words.{" "}
+              <span className="text-[#00CED1]">Compare. Ask the dealer.</span>
             </h1>
 
-            <p className="text-lg sm:text-xl text-white/70 mb-6 sm:mb-10 max-w-xl leading-relaxed cursor-default">
-              Tell us your lifestyle, tow vehicle, and budget — we scan{" "}
-              {inventoryCount ? `${inventoryCount.toLocaleString()}` : "thousands of"} WA dealer listings and hand you{" "}
-              <strong className="text-white">three specific RVs</strong> worth your time. Free.
+            <p className="text-lg sm:text-xl text-white/70 mb-6 sm:mb-8 max-w-xl leading-relaxed">
+              Describe the trip, the people coming, and a budget. MatchRV searches dealer inventory, checks tow fit, and lets you ask the dealership about a specific RV. Free.
             </p>
+
+            <form onSubmit={askOutfitter} className="flex flex-col sm:flex-row gap-3 max-w-xl mb-4">
+              <label className="sr-only" htmlFor="home-search">Describe the RV you want</label>
+              <input
+                id="home-search"
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="Family bunkhouse I can tow with a half-ton"
+                className="flex-1 rounded-xl bg-white/10 border border-white/20 px-4 py-4 text-white placeholder:text-white/40 outline-none focus:border-[#00CED1]"
+              />
+              <button type="submit" className="rounded-xl bg-[#00CED1] text-[#0B1117] font-bold px-6 py-4 inline-flex items-center justify-center gap-2">
+                <Search className="w-5 h-5" /> Search
+              </button>
+            </form>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/match">
                 <button
                   onClick={() => trackEvent("hero_cta_click", { metadata: { cta: "get_match_report" } })}
-                  className="w-full sm:w-auto bg-[#00CED1] text-[#0B1117] px-8 py-4 min-h-[52px] rounded font-bold flex items-center justify-center gap-3 glow-cyan hover:brightness-110 active:scale-95 transition-all text-base sm:text-lg"
+                  className="w-full sm:w-auto bg-white/10 text-white px-8 py-4 min-h-[52px] rounded font-bold flex items-center justify-center gap-3 hover:bg-white/15 active:scale-95 transition-all text-base"
                 >
-                  Find My Perfect RV
+                  Get a Match Report
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </Link>
+              <Link href="/swipe" className="w-full sm:w-auto px-8 py-4 min-h-[52px] rounded font-bold flex items-center justify-center border border-white/20 text-white">
+                Swipe inventory
+              </Link>
             </div>
 
-            <p className="mt-4 text-white/40 text-sm">No sign-up required · Completely free</p>
+            <p className="mt-4 text-white/40 text-sm">No sign-up required · The count above is the live total from MatchRV inventory</p>
           </div>
         </div>
 
@@ -306,9 +343,9 @@ export function Home() {
         <div className="absolute bottom-0 left-0 right-0 bg-[#0B1117]/80 backdrop-blur-sm border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-16 min-h-[3.5rem] py-2 flex flex-wrap items-center justify-center sm:justify-between gap-x-5 gap-y-1">
             {[
-              { icon: Users, label: "651 RV buyers matched" },
-              { icon: BadgeCheck, label: "517 dealers across 841 stores" },
-              { icon: Sparkles, label: "Free match report in 2 minutes" },
+              { icon: Sparkles, label: "Free Match Report" },
+              { icon: Scale, label: "Side-by-side compare" },
+              { icon: BadgeCheck, label: "Ask the dealer from the listing" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-2 text-white/60 text-xs font-medium whitespace-nowrap">
                 <Icon className="w-4 h-4 text-[#00CED1] flex-shrink-0" />
@@ -326,15 +363,28 @@ export function Home() {
           </div>
         </div>
       </section>
-      {/* Dealer ChatGPT advertising early-access announcement */}
-      <section className="relative z-10 bg-[#0B1117] text-white border-y border-[#00CED1]/30 px-4 py-10">
-        <div className="max-w-7xl mx-auto sm:px-12 flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
-          <div>
-            <p className="text-[#00CED1] uppercase tracking-widest text-xs font-bold mb-2">For RV Dealerships · Early Access</p>
-            <h2 className="text-2xl sm:text-3xl font-display font-black mb-2">Get ready for advertising opportunities in ChatGPT.</h2>
-            <p className="text-white/70 max-w-2xl">MatchRV is developing inventory-readiness and future ChatGPT advertising services for dealers, subject to OpenAI eligibility and approval.</p>
+      <section className="relative z-10 bg-[#0B1117] text-white border-y border-white/10 px-4 py-12" aria-labelledby="browse-title">
+        <div className="max-w-7xl mx-auto sm:px-12">
+          <h2 id="browse-title" className="font-display font-black text-2xl sm:text-3xl mb-6">Browse by type, then narrow it</h2>
+          <ul className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+            {SHOP_TYPES.map((item) => (
+              <li key={item.type}>
+                <Link href={item.href} className="block rounded-xl bg-white/5 border border-white/10 p-4 hover:border-[#00CED1]">
+                  <span className="block font-bold">{item.label}</span>
+                  <span className="block text-xs text-white/60 mt-1"><TypeCount type={item.type} /> listed</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3 text-sm font-bold">
+            <Link href="/shop" className="rounded-full bg-[#00CED1] text-[#0B1117] px-4 py-2">Shop by budget and location</Link>
+            <Link href="/tow-guide" className="rounded-full border border-white/20 px-4 py-2">Check tow fit</Link>
+            <Link href="/swipe" className="rounded-full border border-white/20 px-4 py-2">Compare favorites</Link>
+            <a href="https://dealer.matchrv.com/" className="rounded-full border border-white/20 px-4 py-2">For dealerships</a>
           </div>
-          <Link href="/dealers/chatgpt-advertising"><span className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00CED1] text-[#0B1117] px-6 py-4 font-bold whitespace-nowrap hover:brightness-110">Dealer Early Access <ArrowRight className="w-4 h-4" /></span></Link>
+          <div className="mt-8 text-white/80">
+            <InventoryCoverage />
+          </div>
         </div>
       </section>
       {/* ── How It Works ──────────────────────────────────────────────── */}
@@ -409,7 +459,7 @@ export function Home() {
           <div className="flex justify-center mt-12">
             <Link href="/browse">
               <button className="px-8 py-3 rounded border-2 border-[#0B1117] text-[#0B1117] font-medium text-sm hover:bg-[#0B1117]/5 transition-colors">
-                Browse all {inventoryCount ? `${inventoryCount.toLocaleString()} ` : ""}RVs
+                Browse RVs
               </button>
             </Link>
           </div>
@@ -536,7 +586,7 @@ export function Home() {
             Ready to find your perfect RV?
           </h2>
           <p className="text-white/60 text-lg mb-10 leading-relaxed">
-            Browse {inventoryCount ? `${inventoryCount.toLocaleString()} live listings` : "live inventory"} from WA dealers, or get a free personalized Match Report — no account needed.
+            Browse live dealer inventory, or get a free Match Report — no account needed.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/match">

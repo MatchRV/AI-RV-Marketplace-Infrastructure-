@@ -778,9 +778,9 @@ export function ListingDetail() {
                     document.getElementById("contact-dealer-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
                 >
-                  Check availability
+                  Ask the dealer
                 </button>
-                <p className="-mt-1 text-center text-xs text-[#3b4949]">Contact the dealer through MatchRV</p>
+                <p className="-mt-1 text-center text-xs text-[#3b4949]">Check availability with this dealership. Free through MatchRV.</p>
                 <button className="w-full py-3.5 rounded-2xl border-2 border-[#E2E8F0] text-[#161d1d] font-bold text-sm hover:border-[#0B1117] transition-colors">
                   Calculate Payments
                 </button>
@@ -1234,7 +1234,7 @@ export function ListingDetail() {
               }}
               className="flex-1 py-3 rounded-xl bg-[#924c00] text-white font-black text-sm hover:bg-[#6f3800] transition-colors"
             >
-              Check availability
+              Ask the dealer
             </button>
             <button
               onClick={() => {

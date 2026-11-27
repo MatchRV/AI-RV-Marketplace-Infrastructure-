@@ -62,11 +62,11 @@ WebMCP site tools (registered in the browser on https://matchrv.com/shop via `na
 
 ## For Dealers
 
-- [Dealer AI Visibility](https://matchrv.com/): how AI shopping assistants see a dealership and its inventory
-- [For Dealers](https://matchrv.com/for-dealers): services overview
-- [AI Visibility Report examples](https://matchrv.com/visibility-report): completed report examples
-- [Visibility Solution](https://matchrv.com/visibility-solution): why dealers go unseen in AI answers, and how MatchRV fixes it
-- [Book a call](https://matchrv.com/book): scope and next steps
+- [Dealer AI Visibility](https://dealer.matchrv.com/): how AI shopping assistants see a dealership and its inventory
+- [For Dealers](https://dealer.matchrv.com/for-dealers): services overview
+- [AI Visibility Report examples](https://dealer.matchrv.com/visibility-report): completed report examples
+- [Visibility Solution](https://dealer.matchrv.com/visibility-solution): why dealers go unseen in AI answers, and how MatchRV fixes it
+- [Book a call](https://dealer.matchrv.com/book): scope and next steps
 
 Services (scope and service terms are confirmed before enrollment):
 

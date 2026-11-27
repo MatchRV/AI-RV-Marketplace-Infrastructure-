@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { siteSurface } from "@/lib/site-host";
 
 const posthogKey = import.meta.env.VITE_POSTHOG_KEY;
 const posthogHost = import.meta.env.VITE_POSTHOG_HOST;
@@ -24,6 +25,9 @@ if (posthogKey && posthogHost) {
       logs: {
         serviceName: "rv-marketplace-web",
         environment: import.meta.env.MODE,
+      },
+      loaded: (client) => {
+        client.register({ site_surface: siteSurface() });
       },
     });
   }

@@ -5,6 +5,7 @@ import { SEO } from "@/components/seo";
 import { Icon } from "@/components/site/icon";
 import { SITE } from "@/config/site";
 import { trackLead } from "@/lib/analytics";
+import { currentSite } from "@/lib/site-host";
 
 export function Contact() {
   const [submitted, setSubmitted] = useState(false);
@@ -24,16 +25,17 @@ export function Contact() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Your message could not be sent. Please try again."); }
     finally { setBusy(false); }
   }
+  const dealer = currentSite() === "dealer";
   return <SiteLayout>
-    <SEO title="Contact MatchRV — Dealer Services & Support" description="Talk to Jonathan about dealership AI visibility audits, monthly inventory services, LotAI, MCP support, or compliance." canonical="/contact"/>
+    <SEO title={dealer ? "Contact MatchRV — Dealer Services & Support" : "Contact MatchRV"} description={dealer ? "Talk to Jonathan about dealership AI visibility audits, monthly inventory services, LotAI, MCP support, or compliance." : "Ask MatchRV about an RV, a Match Report, or a dealership question."} canonical="/contact"/>
     <section className="page-hero" aria-labelledby="page-title">
       <div className="page-hero__bg" aria-hidden="true">
         <div className="grain"></div>
       </div>
       <div className="container">
-        <p className="eyebrow eyebrow--live"><Icon name="mail"/> Dealer services and support</p>
-        <h1 id="page-title" className="display display--md"><span className="line"><span>Let’s talk about</span></span> <span className="line"><span><em>your inventory.</em></span></span></h1>
-        <p className="lead">Ask about an audit, monthly inventory services, LotAI, or your MatchRV connection.</p>
+        <p className="eyebrow eyebrow--live"><Icon name="mail"/> {dealer ? "Dealer services and support" : "Shopper and dealer support"}</p>
+        <h1 id="page-title" className="display display--md"><span className="line"><span>{dealer ? "Let’s talk about" : "Questions about"}</span></span> <span className="line"><span><em>{dealer ? "your inventory." : "an RV?"}</em></span></span></h1>
+        <p className="lead">{dealer ? "Ask about an audit, monthly inventory services, LotAI, or your MatchRV connection." : "Ask about a listing, a Match Report, or a dealership. The same form reaches Jonathan."}</p>
       </div>
     </section>
     <section className="section section--tight-top" aria-labelledby="contact-title" data-page="dealer-contact">

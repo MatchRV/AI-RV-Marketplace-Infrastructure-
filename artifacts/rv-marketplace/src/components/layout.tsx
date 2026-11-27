@@ -47,8 +47,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navLinks: Array<{ href: string; label: string; badge?: string }> = DEMO_MODE
     ? [{ href: "/shop", label: "Agent Shop", badge: "WebMCP" }]
     : [
-        { href: "/shop", label: "Agent Shop", badge: "NEW" },
-        { href: "/browse", label: "Visibility Report" },
+        { href: "/shop", label: "Shop" },
+        { href: "/swipe", label: "Swipe" },
+        { href: "/outfitter", label: "Outfitter" },
         { href: "/find-the-right-rv-for-your-tow-vehicle", label: "Tow Match" },
       ];
 
@@ -317,7 +318,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-10 max-w-7xl mx-auto">
           <div className="col-span-2 space-y-5">
             <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-14 w-auto object-contain" />
-            <p className="text-white/60 text-sm leading-relaxed">AI-ready inventory network for ChatGPT, Gemini, and other agents. Dealer tools included.</p>
+            <p className="text-white/60 text-sm leading-relaxed">Search live dealer inventory in your own words, compare RVs, and ask the dealer. Dealership tools live at dealer.matchrv.com.</p>
           </div>
           {!DEMO_MODE && (
             <>
@@ -357,8 +358,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {!DEMO_MODE && (
                 <>
                   <li><Link href="/contact" className="hover:text-[#00CED1] transition">Contact</Link></li>
-                  <li><Link href="/for-dealers" className="hover:text-[#00CED1] transition">For Dealers</Link></li>
-                  <li><Link href="/browse" className="hover:text-[#00CED1] transition">Visibility Report Demo</Link></li>
+                  <li><a href="https://dealer.matchrv.com/" className="hover:text-[#00CED1] transition">For Dealerships</a></li>
                   <li><Link href="/trips" className="hover:text-[#00CED1] transition">Trip Planner</Link></li>
                   <li><Link href="/campgrounds" className="hover:text-[#00CED1] transition">Campgrounds</Link></li>
                   <li><Link href="/sell" className="hover:text-[#00CED1] transition">Sell Your RV</Link></li>
@@ -394,7 +394,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile footer (compact) */}
       <footer className="md:hidden bg-[#0B1117] w-full py-8 px-4 mb-16">
         <img src="/matchrv-logo-dark.png" alt="MatchRV" className="h-10 w-auto object-contain mb-3" />
-        <p className="text-white/50 text-xs mb-4">AI-ready inventory network for ChatGPT, Gemini, and other agents.</p>
+        <p className="text-white/50 text-xs mb-4">Search, compare, and ask the dealer about real RVs.</p>
         <div className="flex gap-4 text-xs text-white/50">
           <Link href="/terms" className="hover:text-[#00CED1]">Terms</Link>
           <Link href="/privacy" className="hover:text-[#00CED1]">Privacy</Link>

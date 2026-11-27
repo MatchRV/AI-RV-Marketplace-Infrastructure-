@@ -146,7 +146,7 @@ export function DealerHome() {
         <div className="more" data-stagger>
           <Link className="more__card" href="/visibility-solution" data-reveal> <Icon name="route"/> <strong>Visibility Solution</strong> <span>Why dealers go unseen in AI answers, and how MatchRV fixes it.</span> </Link>
           <Link className="more__card" href="/lotai" data-reveal> <Icon name="chat"/> <strong>LotAI</strong> <span>AI chat for your dealership website: accurate answers and booked appointments.</span> </Link>
-          <Link className="more__card" href="/match" data-reveal> <Icon name="search"/> <strong>Shopping for an RV?</strong> <span>Answer a few questions and we’ll match you with available dealer inventory.</span> </Link>
+          <a className="more__card" href="https://matchrv.com/" data-reveal> <Icon name="search"/> <strong>Shopping for an RV?</strong> <span>Search, compare, and ask a dealer on matchrv.com.</span> </a>
         </div>
       </div>
     </section>

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { trackPageView, detectReturnVisit, getAnalyticsSessionId } from "@/lib/analytics";
 import { trackWebsiteProductEvent } from "@/lib/product-analytics";
@@ -6,13 +6,15 @@ import { recordBuyerIntent, recordPageViewIntent } from "@/lib/buyer-intent";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/auth-context";
+import { Home } from "@/pages/home";
 import { DealerHome } from "@/pages/dealer-home";
+import { classifyHost, migrationTarget } from "@/lib/site-host";
 import { registerMatchrvTools } from "@/agent/webmcp";
 import { registerNavigate } from "@/agent/session";
 
-// Route-level code splitting: the dealer homepage stays in the entry chunk
-// (it is the main landing page); every other page loads on demand so the
-// first mobile paint is not blocked by the whole app's JavaScript.
+// Both homepages stay in the entry chunk. Each host's first paint is one of
+// them, and a lazy dealer homepage was an empty shell until its chunk arrived.
+// Every other page still loads on demand.
 const BookReportCall = lazy(() => import("@/pages/book").then(m => ({ default: m.BookReportCall })));
 const Browse = lazy(() => import("@/pages/browse").then(m => ({ default: m.Browse })));
 const McpSetup = lazy(() => import("@/pages/mcp-setup").then(m => ({ default: m.McpSetup })));
@@ -186,6 +188,35 @@ function AgentBridge() {
   return null;
 }
 
+function ExternalRedirect({ href }: { href: string }) {
+  useEffect(() => {
+    window.location.replace(href);
+  }, [href]);
+  return <div className="min-h-screen" aria-busy="true" />;
+}
+
+/** Apex `/` is the shopper home. dealer.matchrv.com `/` keeps DealerHome. */
+function HomeSwitch() {
+  if (typeof window !== "undefined" && classifyHost(window.location.hostname) === "dealer") {
+    return <DealerHome />;
+  }
+  return <Home />;
+}
+
+/**
+ * Full page loads are 301'd by the API. This catches in-app navigations so a
+ * shopper who clicks a dealer link leaves for dealer.matchrv.com, and a dealer
+ * who opens a listing leaves for matchrv.com. Local hosts do not bounce.
+ */
+function HostGate({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  if (typeof window === "undefined") return <>{children}</>;
+  const href = migrationTarget(window.location.hostname, location, window.location.search);
+  if (!href) return <>{children}</>;
+  if (/^https?:/i.test(href)) return <ExternalRedirect href={href} />;
+  return <Redirect to={href} />;
+}
+
 function AppRouter() {
   return (
     <>
@@ -193,8 +224,9 @@ function AppRouter() {
       <ReturnVisitDetector />
       <AgentBridge />
       <Suspense fallback={<div className="min-h-screen" aria-busy="true" />}>
+      <HostGate>
       <Switch>
-      <Route path="/" component={DealerHome} />
+      <Route path="/" component={HomeSwitch} />
       <Route path="/visibility-report" component={VisibilityReport} />
       <Route path="/book" component={BookReportCall} />
       <Route path="/shop" component={Shop} />
@@ -288,6 +320,7 @@ function AppRouter() {
 
       <Route component={NotFound} />
     </Switch>
+      </HostGate>
       </Suspense>
     </>
   );

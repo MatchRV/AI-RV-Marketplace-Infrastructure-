@@ -118,6 +118,10 @@ export function applyInventoryCounts(html: string, counts: InventoryCounts | nul
     `<dd data-rv-count="total">${formatCount(counts.total)}</dd>`,
   );
   out = out.replaceAll(
+    `<strong data-rv-count="total">${RV_COUNT_PLACEHOLDER}</strong>`,
+    `<strong data-rv-count="total">${formatCount(counts.total)}</strong>`,
+  );
+  out = out.replaceAll(
     `<span data-rv-count-status="total">${RV_COUNT_UNAVAILABLE_STATUS}</span>`,
     `<span data-rv-count-status="total">${RV_COUNT_LIVE_STATUS}</span>`,
   );

@@ -1,3 +1,5 @@
+import { siteSurface } from "@/lib/site-host";
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
@@ -146,7 +148,7 @@ function sendInternalEvent(
 // Dedicated page_view tracker for the SPA router
 export function trackPageView(path: string, title: string) {
   // Also record in internal analytics
-  trackEvent("page_view", { metadata: { page_path: path, page_title: title, page_location: window.location.href } });
+  trackEvent("page_view", { metadata: { page_path: path, page_title: title, page_location: window.location.href, site_surface: siteSurface() } });
 }
 
 /**

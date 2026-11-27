@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { OUTFITTER_PROMPT_KEY } from "@/lib/site-host";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
@@ -85,6 +86,21 @@ export function Outfitter() {
       setShowSuggestions(false);
     }
   }, [messages]);
+
+  const seededPrompt = useRef(false);
+  useEffect(() => {
+    if (seededPrompt.current) return;
+    let prompt = "";
+    try {
+      prompt = sessionStorage.getItem(OUTFITTER_PROMPT_KEY) ?? "";
+      if (prompt) sessionStorage.removeItem(OUTFITTER_PROMPT_KEY);
+    } catch {
+      prompt = "";
+    }
+    if (!prompt.trim()) return;
+    seededPrompt.current = true;
+    void sendMessage(prompt.trim());
+  }, [sendMessage]);
 
   const { status: micStatus, toggle: toggleMic } = useSpeechToText({
     onResult: (transcript) => setInput(prev => prev ? `${prev} ${transcript}` : transcript),

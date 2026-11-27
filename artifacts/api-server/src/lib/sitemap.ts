@@ -2,12 +2,13 @@
  * Dynamic sitemap index + paginated unit sitemaps (MAT-32).
  */
 import { publicListingId } from "@workspace/agent-core";
-import { CORE_SITEMAP_URLS } from "./sitemap-core-urls";
+import { coreUrlsFor } from "./sitemap-core-urls";
+import { CONSUMER_ORIGIN, DEALER_ORIGIN, type SiteSurface } from "./site-host";
 import { getInventory, perSnapshot } from "../services/agent-inventory";
 import { isIndexableUnit } from "./unit-insights";
 import { listHubUrls } from "./inventory-hubs";
 
-const SITE = "https://matchrv.com";
+const SITE = CONSUMER_ORIGIN;
 /** Sitemap protocol soft limit is 50k; stay under for safety. */
 export const UNITS_PER_SITEMAP = 45_000;
 
@@ -58,22 +59,25 @@ export function unitSitemapPageCount(): number {
   return Math.max(1, Math.ceil(n / UNITS_PER_SITEMAP));
 }
 
-export function renderSitemapIndex(): string {
+export function renderSitemapIndex(site: SiteSurface = "consumer"): string {
+  const origin = site === "dealer" ? DEALER_ORIGIN : SITE;
   const entries: string[] = [];
   entries.push(`  <sitemap>
-    <loc>${SITE}/sitemaps/core.xml</loc>
+    <loc>${origin}/sitemaps/core.xml</loc>
     <lastmod>${today()}</lastmod>
   </sitemap>`);
-  entries.push(`  <sitemap>
-    <loc>${SITE}/sitemaps/hubs.xml</loc>
+  if (site === "consumer") {
+    entries.push(`  <sitemap>
+    <loc>${origin}/sitemaps/hubs.xml</loc>
     <lastmod>${snapshotDay()}</lastmod>
   </sitemap>`);
-  const pages = unitSitemapPageCount();
-  for (let i = 1; i <= pages; i++) {
-    entries.push(`  <sitemap>
-    <loc>${SITE}/sitemaps/units-${i}.xml</loc>
+    const pages = unitSitemapPageCount();
+    for (let i = 1; i <= pages; i++) {
+      entries.push(`  <sitemap>
+    <loc>${origin}/sitemaps/units-${i}.xml</loc>
     <lastmod>${unitPageLastmod(i)}</lastmod>
   </sitemap>`);
+    }
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -82,9 +86,9 @@ ${entries.join("\n")}
 `;
 }
 
-export function renderCoreSitemap(): string {
+export function renderCoreSitemap(site: SiteSurface = "consumer"): string {
   const lastmod = today();
-  const urls = CORE_SITEMAP_URLS.map(
+  const urls = coreUrlsFor(site).map(
     (loc) => `  <url>
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${lastmod}</lastmod>

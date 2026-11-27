@@ -2,8 +2,10 @@ import { Link } from "wouter";
 import { SiteLayout } from "@/components/site/site-layout";
 import { SEO } from "@/components/seo";
 import { Icon } from "@/components/site/icon";
+import { DEALER_ORIGIN, currentSite } from "@/lib/site-host";
 
 export function About() {
+  const dealer = currentSite() === "dealer";
   return <SiteLayout>
     <SEO title="About MatchRV — Built from Experience. Built by Jonathan." description="Jonathan Kitchel founded MatchRV after eight years in the RV industry to help dealerships prepare their inventory for AI-powered discovery." canonical="/about"/>
     <section className="page-hero page-hero--split" aria-labelledby="page-title">
@@ -15,8 +17,17 @@ export function About() {
           <p className="eyebrow eyebrow--live">The person behind MatchRV</p>
           <h1 id="page-title" className="display display--md"><span className="line"><span>Built from experience.</span></span> <span className="line"><span><em>Built by Jonathan.</em></span></span></h1>
           <div className="hero__actions">
-            <Link className="btn btn--primary btn--lg" href="/book">Book a call <Icon name="arrow"/></Link>
-            <Link className="btn btn--ghost btn--lg" href="/visibility-report">View real report examples</Link>
+            {dealer ? (
+              <>
+                <Link className="btn btn--primary btn--lg" href="/book">Book a call <Icon name="arrow"/></Link>
+                <Link className="btn btn--ghost btn--lg" href="/visibility-report">View real report examples</Link>
+              </>
+            ) : (
+              <>
+                <Link className="btn btn--primary btn--lg" href="/match">Get a Match Report <Icon name="arrow"/></Link>
+                <a className="btn btn--ghost btn--lg" href={DEALER_ORIGIN}>For dealerships</a>
+              </>
+            )}
           </div>
         </div>
         <figure className="portrait portrait--person" data-reveal>
@@ -79,10 +90,19 @@ export function About() {
         </ul>
         <div className="center-cta" data-reveal>
           <h2 className="h1">See the work. <em>Meet the builder.</em></h2>
-          <p className="lead">Explore completed audit examples, then talk through what a report could cover for your dealership.</p>
+          <p className="lead">{dealer ? "Explore completed audit examples, then talk through what a report could cover for your dealership." : "Search the inventory, or read how MatchRV got started."}</p>
           <div className="hero__actions hero__actions--center">
-            <Link className="btn btn--primary btn--lg" href="/visibility-report">View real report examples <Icon name="arrow"/></Link>
-            <Link className="btn btn--ghost btn--lg" href="/book">Book a call <Icon name="arrow"/></Link>
+            {dealer ? (
+              <>
+                <Link className="btn btn--primary btn--lg" href="/visibility-report">View real report examples <Icon name="arrow"/></Link>
+                <Link className="btn btn--ghost btn--lg" href="/book">Book a call <Icon name="arrow"/></Link>
+              </>
+            ) : (
+              <>
+                <Link className="btn btn--primary btn--lg" href="/shop">Shop RVs <Icon name="arrow"/></Link>
+                <Link className="btn btn--ghost btn--lg" href="/outfitter">Ask the Outfitter</Link>
+              </>
+            )}
           </div>
         </div>
       </div>

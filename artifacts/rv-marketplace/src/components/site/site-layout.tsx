@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { Link, useLocation } from "wouter";
 import "@/styles/site.css";
 import { SITE } from "@/config/site";
+import { CONSUMER_ORIGIN, DEALER_ORIGIN, currentSite } from "@/lib/site-host";
 import { initSiteEffects } from "@/lib/site-effects";
 import { Icon, IconSprite, type IconName } from "./icon";
 import { StatusPills } from "./blocks";
@@ -86,6 +87,7 @@ function NavMenu({ id, label, items, active, path }: { id: string; label: string
  */
 export function SiteLayout({ nav, home = false, children }: { nav?: NavGroup; home?: boolean; children: ReactNode }) {
   const [path] = useLocation();
+  const dealer = currentSite() === "dealer";
   const root = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const [enhanced, setEnhanced] = useState(false);
@@ -155,12 +157,30 @@ export function SiteLayout({ nav, home = false, children }: { nav?: NavGroup; ho
         <Link className="brand" href="/" aria-label="MatchRV home"><img src="/images/site/logo.webp" alt="MatchRV" width="640" height="193"/></Link>
         <nav className="nav" aria-label="Primary">
           <ul className="nav__list">
-            {MENUS.map(menu => <NavMenu key={menu.id} id={menu.id} label={menu.label} items={menu.items} active={nav === menu.id} path={path}/>)}
-            {LINKS.map(link => <li className="nav__item" key={link.href}><Link className="nav__link" href={link.href} aria-current={current(link.href)}>{link.label}</Link></li>)}
+            {dealer ? (
+              <>
+                {MENUS.filter(menu => menu.id === "dealer").map(menu => <NavMenu key={menu.id} id={menu.id} label={menu.label} items={menu.items} active={nav === menu.id} path={path}/>)}
+                {LINKS.map(link => <li className="nav__item" key={link.href}><Link className="nav__link" href={link.href} aria-current={current(link.href)}>{link.label}</Link></li>)}
+                <li className="nav__item"><a className="nav__link" href={CONSUMER_ORIGIN}>Shop RVs</a></li>
+              </>
+            ) : (
+              <>
+                <li className="nav__item"><Link className="nav__link" href="/shop" aria-current={current("/shop")}>Shop</Link></li>
+                <li className="nav__item"><Link className="nav__link" href="/swipe" aria-current={current("/swipe")}>Swipe</Link></li>
+                <li className="nav__item"><Link className="nav__link" href="/outfitter" aria-current={current("/outfitter")}>AI Outfitter</Link></li>
+                <li className="nav__item"><Link className="nav__link" href="/match" aria-current={current("/match")}>Match Report</Link></li>
+                <li className="nav__item"><Link className="nav__link" href="/find-the-right-rv-for-your-tow-vehicle" aria-current={current("/find-the-right-rv-for-your-tow-vehicle")}>Tow Match</Link></li>
+                <li className="nav__item"><a className="nav__link" href={DEALER_ORIGIN}>For dealerships</a></li>
+              </>
+            )}
           </ul>
         </nav>
         <div className="site-header__actions">
-          <Link className="btn btn--primary btn--sm" href="/book">Book a Call <Icon name="arrow"/></Link>
+          {dealer ? (
+            <Link className="btn btn--primary btn--sm" href="/book">Book a Call <Icon name="arrow"/></Link>
+          ) : (
+            <Link className="btn btn--primary btn--sm" href="/match">Get Match Report <Icon name="arrow"/></Link>
+          )}
           <button ref={toggle} className="menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => setMenu(!menuOpen)}>
             <span className="sr-only">Menu</span>
             <span className="menu-toggle__bars" aria-hidden="true"><i></i><i></i></span>
@@ -170,18 +190,37 @@ export function SiteLayout({ nav, home = false, children }: { nav?: NavGroup; ho
     </header>
 
     <div className={`mobile-menu${menuOpen ? " is-open" : ""}`} id="mobile-menu" hidden={!menuShown} onClick={event => { if ((event.target as HTMLElement).closest("a")) setMenu(false); }}>
-      <nav className="container" aria-label="Mobile">
+        <nav className="container" aria-label="Mobile">
         <ul className="mobile-menu__list">
-          {MENUS.map(menu => <li key={menu.id}>
-            <p className="mobile-menu__group">{menu.label}</p>
-            <ul>
-              {menu.items.map(entry => <li key={entry.href}><Link className="mobile-menu__link" href={entry.href} aria-current={current(entry.href)}>{entry.title}<small>{entry.note}</small></Link></li>)}
-            </ul>
-          </li>)}
-          {LINKS.map(link => <li key={link.href}><Link className="mobile-menu__link" href={link.href} aria-current={current(link.href)}>{link.label}</Link></li>)}
-          <li><Link className="mobile-menu__link" href="/contact" aria-current={current("/contact")}>Contact</Link></li>
+          {dealer ? (
+            <>
+              {MENUS.filter(menu => menu.id === "dealer").map(menu => <li key={menu.id}>
+                <p className="mobile-menu__group">{menu.label}</p>
+                <ul>
+                  {menu.items.map(entry => <li key={entry.href}><Link className="mobile-menu__link" href={entry.href} aria-current={current(entry.href)}>{entry.title}<small>{entry.note}</small></Link></li>)}
+                </ul>
+              </li>)}
+              {LINKS.map(link => <li key={link.href}><Link className="mobile-menu__link" href={link.href} aria-current={current(link.href)}>{link.label}</Link></li>)}
+              <li><a className="mobile-menu__link" href={CONSUMER_ORIGIN}>Shop RVs</a></li>
+              <li><Link className="mobile-menu__link" href="/contact" aria-current={current("/contact")}>Contact</Link></li>
+            </>
+          ) : (
+            <>
+              <li><Link className="mobile-menu__link" href="/shop" aria-current={current("/shop")}>Shop</Link></li>
+              <li><Link className="mobile-menu__link" href="/swipe" aria-current={current("/swipe")}>Swipe</Link></li>
+              <li><Link className="mobile-menu__link" href="/outfitter" aria-current={current("/outfitter")}>AI Outfitter</Link></li>
+              <li><Link className="mobile-menu__link" href="/match" aria-current={current("/match")}>Match Report</Link></li>
+              <li><Link className="mobile-menu__link" href="/find-the-right-rv-for-your-tow-vehicle" aria-current={current("/find-the-right-rv-for-your-tow-vehicle")}>Tow Match</Link></li>
+              <li><Link className="mobile-menu__link" href="/contact" aria-current={current("/contact")}>Contact</Link></li>
+              <li><a className="mobile-menu__link" href={DEALER_ORIGIN}>For dealerships</a></li>
+            </>
+          )}
         </ul>
-        <Link className="btn btn--primary btn--lg" href="/book">Book a Call <Icon name="arrow"/></Link>
+        {dealer ? (
+          <Link className="btn btn--primary btn--lg" href="/book">Book a Call <Icon name="arrow"/></Link>
+        ) : (
+          <Link className="btn btn--primary btn--lg" href="/match">Get Match Report <Icon name="arrow"/></Link>
+        )}
       </nav>
     </div>
 
@@ -192,27 +231,53 @@ export function SiteLayout({ nav, home = false, children }: { nav?: NavGroup; ho
         <div className="site-footer__top">
           <div className="site-footer__brand">
             <Link className="brand" href="/" aria-label="MatchRV home"><img src="/images/site/logo.webp" alt="MatchRV" width="640" height="193" loading="lazy"/></Link>
-            <p>AI visibility for RV dealerships.</p>
-            <StatusPills stacked/>
-            <Link className="btn btn--primary" href="/book">Book a report call <Icon name="arrow"/></Link>
+            <p>{dealer ? "AI visibility for RV dealerships." : "Search, compare, and ask the dealer about real RVs."}</p>
+            {dealer ? <StatusPills stacked/> : null}
+            {dealer ? (
+              <Link className="btn btn--primary" href="/book">Book a report call <Icon name="arrow"/></Link>
+            ) : (
+              <Link className="btn btn--primary" href="/match">Get a Match Report <Icon name="arrow"/></Link>
+            )}
           </div>
           <nav className="site-footer__nav" aria-label="Footer">
+            {dealer ? (
+              <div>
+                <h2>Dealer Services</h2>
+                <ul>
+                  <li><Link href="/">AI Visibility</Link></li>
+                  <li><Link href="/visibility-solution">Visibility Solution</Link></li>
+                  <li><Link href="/lotai">LotAI</Link></li>
+                  <li><Link href="/visibility-report">Report Examples</Link></li>
+                </ul>
+              </div>
+            ) : (
+              <div>
+                <h2>Shop</h2>
+                <ul>
+                  <li><Link href="/shop">Shop RVs</Link></li>
+                  <li><Link href="/swipe">Swipe inventory</Link></li>
+                  <li><Link href="/outfitter">AI Outfitter</Link></li>
+                  <li><Link href="/match">Match Report</Link></li>
+                </ul>
+              </div>
+            )}
             <div>
-              <h2>Dealer Services</h2>
+              <h2>{dealer ? "Shopping for an RV?" : "Tools"}</h2>
               <ul>
-                <li><Link href="/">AI Visibility</Link></li>
-                <li><Link href="/visibility-solution">Visibility Solution</Link></li>
-                <li><Link href="/lotai">LotAI</Link></li>
-                <li><Link href="/visibility-report">Report Examples</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h2>Shop with Your AI</h2>
-              <ul>
-                <li><Link href="/shop">Shop with Your AI</Link></li>
-                <li><a href="/shop#swipe">Swipe inventory</a></li>
-                <li><Link href="/mcp-setup">MCP Setup</Link></li>
-                <li><Link href="/match">Find my RV</Link></li>
+                {dealer ? (
+                  <>
+                    <li><a href={`${CONSUMER_ORIGIN}/shop`}>Shop RVs</a></li>
+                    <li><a href={`${CONSUMER_ORIGIN}/swipe`}>Swipe inventory</a></li>
+                    <li><a href={`${CONSUMER_ORIGIN}/mcp-setup`}>MCP Setup</a></li>
+                    <li><a href={`${CONSUMER_ORIGIN}/match`}>Find my RV</a></li>
+                  </>
+                ) : (
+                  <>
+                    <li><Link href="/tow-guide">Tow check</Link></li>
+                    <li><Link href="/mcp-setup">Connect your AI</Link></li>
+                    <li><a href={DEALER_ORIGIN}>For dealerships</a></li>
+                  </>
+                )}
               </ul>
             </div>
             <div>

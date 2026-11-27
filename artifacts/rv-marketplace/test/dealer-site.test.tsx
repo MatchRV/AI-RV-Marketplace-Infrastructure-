@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { Router } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "../src/contexts/auth-context";
 import { PricingNote } from "../src/components/site/blocks";
 import { DealerHome } from "../src/pages/dealer-home";
 import { VisibilityReport } from "../src/pages/visibility-report";
@@ -19,7 +21,14 @@ import { MCP_ENDPOINT, MCP_JSON_CONFIG } from "../src/config/mcp";
 import { RV_COUNT_PLACEHOLDER, RV_COUNT_UNAVAILABLE_STATUS } from "../src/config/site";
 
 function render(component: React.ReactNode, path = "/") {
-  return renderToStaticMarkup(<HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderToStaticMarkup(
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe("dealer website conversion and public routes", () => {
@@ -53,11 +62,9 @@ describe("dealer website conversion and public routes", () => {
     expect(html).not.toContain('href="/#plans"');
   });
   it("states where MatchRV is available in the required words", () => {
-    for (const [path, component] of [["/", <DealerHome/>], ["/shop", <Shop/>]] as const) {
-      const html = render(component, path);
-      expect(html).toContain("Live in ChatGPT plugins");
-      expect(html).toContain("In final approval on Muse");
-    }
+    const html = render(<DealerHome/>, "/");
+    expect(html).toContain("Live in ChatGPT plugins");
+    expect(html).toContain("In final approval on Muse");
   });
   it("links the RVBusiness article from the home page", () => {
     const html = render(<DealerHome/>);
@@ -82,7 +89,14 @@ describe("dealer website conversion and public routes", () => {
     const placeholder = `<dd data-rv-count="total">${RV_COUNT_PLACEHOLDER}</dd>`;
     const status = `<span data-rv-count-status="total">${RV_COUNT_UNAVAILABLE_STATUS}</span>`;
     for (const [path, component] of [["/", <DealerHome/>], ["/shop", <Shop/>], ["/mcp-setup", <McpSetup/>]] as const) {
-      const html = renderToString(<HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>);
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const html = renderToString(
+        <QueryClientProvider client={client}>
+          <AuthProvider>
+            <HelmetProvider><Router hook={() => [path, () => {}]}>{component}</Router></HelmetProvider>
+          </AuthProvider>
+        </QueryClientProvider>,
+      );
       expect(html).toContain(placeholder);
       expect(html).toContain(status);
       expect(html).not.toMatch(/131[,_]?718/);

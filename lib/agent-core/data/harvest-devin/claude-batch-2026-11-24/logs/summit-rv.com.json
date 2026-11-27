@@ -1,0 +1,18 @@
+{
+ "dealer_domain": "summit-rv.com",
+ "dealer_name": "Summit RV",
+ "city": "Junction City",
+ "state": "OR",
+ "result": "partial",
+ "units": 0,
+ "site_total_shown": null,
+ "inventory_urls": [
+  "https://www.summit-rv.com/class-a",
+  "https://www.summit-rv.com/class-c",
+  "https://www.summit-rv.com/fifth-wheels",
+  "https://www.summit-rv.com/travel-trailers",
+  "https://www.summit-rv.com/truck-campers"
+ ],
+ "reason": "No unit can be listed under the VIN-or-stock + photo rule. Squarespace site: category pages show only a photo and title per unit; unit pages (checked 3 in full: 2017 Newmar Ventana LE 3436, 2011 Tiffin Phaeton 40QBH, 2025 Keystone Cougar 23MLE) show a photo gallery and free-text description only, with no VIN, no stock number and no price. Gallery images expose only file-name alt text (e.g. IMG_1157.jpeg), not an image URL. CSV written with header only.",
+ "notes": "Confirmed on site: 'Summit RV - Junction City, Oregon', 93484 HWY 99, Junction City, OR (North of Eugene), 541-998-0999. robots.txt (Squarespace) lists anthropic-ai and ClaudeBot in the same group as User-agent: * with only the standard Squarespace disallows (/config, /search, /api/, ?format=json etc.); inventory paths are allowed. Category counts: Class A 12, Class C 6, Fifth Wheels 16, Travel Trailers 18, Truck Campers 1 = 53 listings; the 2016 Winnebago Via 25P appears in both Class A (/class-a/2016-winnebago-via-25p-mercedes-diesel) and Class C (/class-c/2016-winnebago-via-25p-diesel) with the same photo, so about 52 distinct units. The 'trucks' tile links to /coming-soon (not read, non-RV). No unit shown as Sold or Pending on the category pages. Site is a used/consignment lot (testimonials mention consignment); no condition or price labels anywhere. The 2017 Newmar Ventana page has only the text 'FRESH INVENTORY!'. Listing freshness is unknown: there are no dates or prices, so some pages may be stale; reviewer should confirm with dealer. Dealer email shown on the site is a gmail address."
+}

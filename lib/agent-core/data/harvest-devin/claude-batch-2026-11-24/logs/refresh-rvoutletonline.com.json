@@ -1,0 +1,9 @@
+{
+  "dealer_domain": "rvoutletonline.com",
+  "result": "blocked",
+  "units": 0,
+  "site_total_shown": null,
+  "pages_read": 0,
+  "reason": "Cloudflare security check on https://www.rvoutletonline.com/ (page title \"Just a moment...\", heading \"Performing security verification\"). Stopped per hard rules; not attempted.",
+  "notes": "robots.txt was readable and allows all agents (User-agent: * Disallow: empty). Home page went to the Cloudflare check before any inventory page loaded. No refresh CSV written; Nov 5 records (~80 units) cannot be confirmed or dropped from this run."
+}

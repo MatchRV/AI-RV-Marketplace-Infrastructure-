@@ -1,0 +1,9 @@
+{
+  "dealer_domain": "valleyrvsupercenter.com",
+  "result": "blocked",
+  "units": 0,
+  "site_total_shown": null,
+  "pages_read": 0,
+  "reason": "Site refused this browser: https://www.valleyrvsupercenter.com/robots.txt returned HTTP 403, page heading \"403 Forbidden\". Stopped per hard rules; no further pages opened.",
+  "notes": "No refresh CSV written. Nov 5 records (~270 units) cannot be confirmed or dropped from this run."
+}
